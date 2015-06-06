@@ -25,6 +25,7 @@ type VolumeManager interface {
 	Create(name string)
 	Delete(name string)
 	Info(name string)
+	List() []string
 }
 
 func VolumeList(w http.ResponseWriter, r *http.Request) {
@@ -37,4 +38,8 @@ func VolumeCreate(w http.ResponseWriter, r *http.Request) {
 
 func VolumeInfo(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "VolumeInfo\n")
+}
+
+func VolumeDelete(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprint(w, "VolumeDelete\n")
 }

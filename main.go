@@ -43,16 +43,23 @@ var routes = Routes{
 
 	Route{
 		"Volumes",
-		"GET",
-		"/volume/create",
+		"POST",
+		"/volume",
 		models.VolumeCreate,
 	},
 
 	Route{
 		"Volumes",
 		"GET",
-		"/volume/info",
+		"/volume",
 		models.VolumeInfo,
+	},
+
+	Route{
+		"Volumes",
+		"DELETE",
+		"/volume",
+		models.VolumeDelete,
 	},
 }
 
