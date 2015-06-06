@@ -22,24 +22,38 @@ import (
 )
 
 type VolumeManager interface {
-	Create(name string)
-	Delete(name string)
-	Info(name string)
-	List() []string
+	Create(name string) (*VolumeCreateMsg, error)
+	Delete(name string) (*VolumeDeleteMsg, error)
+	Info(name string) (*VolumeInfoMsg, error)
+	List() ([]string, error)
 }
 
-func VolumeList(w http.ResponseWriter, r *http.Request) {
+type VolumeInfoMsg struct {
+	Name string `json:"name"`
+	Size uint64 `json:"size"`
+}
+
+type VolumeCreateMsg struct {
+	Name string `json:"name"`
+	Size uint64 `json:"size"`
+}
+
+type VolumeDeleteMsg struct {
+	Name string `json:"name"`
+}
+
+func VolumeListHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "VolumeList\n")
 }
 
-func VolumeCreate(w http.ResponseWriter, r *http.Request) {
+func VolumeCreateHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "VolumeCreate\n")
 }
 
-func VolumeInfo(w http.ResponseWriter, r *http.Request) {
+func VolumeInfoHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "VolumeInfo\n")
 }
 
-func VolumeDelete(w http.ResponseWriter, r *http.Request) {
+func VolumeDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "VolumeDelete\n")
 }

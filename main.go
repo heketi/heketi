@@ -24,6 +24,10 @@ import (
 	"net/http"
 )
 
+//
+// This route style comes from the tutorial on
+// http://thenewstack.io/make-a-restful-json-api-go/
+//
 type Route struct {
 	Name        string
 	Method      string
@@ -34,40 +38,22 @@ type Route struct {
 type Routes []Route
 
 var routes = Routes{
-	Route{
-		"Volumes",
-		"GET",
-		"/volumes",
-		models.VolumeList,
-	},
 
-	Route{
-		"Volumes",
-		"POST",
-		"/volume",
-		models.VolumeCreate,
-	},
-
-	Route{
-		"Volumes",
-		"GET",
-		"/volume",
-		models.VolumeInfo,
-	},
-
-	Route{
-		"Volumes",
-		"DELETE",
-		"/volume",
-		models.VolumeDelete,
-	},
+	// Volume Routes
+	Route{"VolumeList", "GET", "/volumes", models.VolumeListHandler},
+	Route{"VolumeCreate", "POST", "/volume", models.VolumeCreateHandler},
+	Route{"VolumeInfo", "GET", "/volume", models.VolumeInfoHandler},
+	Route{"VolumeDelete", "DELETE", "/volume", models.VolumeDeleteHandler},
 }
 
 func main() {
 
+	// Create a router and do not allow any routes
+	// unless defined.
 	router := mux.NewRouter().StrictSlash(true)
 	for _, route := range routes {
 
+		// Add routes from the table
 		router.
 			Methods(route.Method).
 			Path(route.Pattern).
@@ -76,9 +62,13 @@ func main() {
 
 	}
 
+	// Use negroni to add middleware.  Here we add two
+	// middlewares: Recovery and Logger, which come with
+	// Negroni
 	n := negroni.New(negroni.NewRecovery(), negroni.NewLogger())
 	n.UseHandler(router)
 
+	// Start the server.
 	log.Fatal(http.ListenAndServe(":8080", n))
 
 }
