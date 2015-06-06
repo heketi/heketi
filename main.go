@@ -41,9 +41,12 @@ var routes = Routes{
 
 	// Volume Routes
 	Route{"VolumeList", "GET", "/volumes", models.VolumeListHandler},
-	Route{"VolumeCreate", "POST", "/volume", models.VolumeCreateHandler},
-	Route{"VolumeInfo", "GET", "/volume", models.VolumeInfoHandler},
-	Route{"VolumeDelete", "DELETE", "/volume", models.VolumeDeleteHandler},
+	Route{"VolumeCreate", "POST", "/volumes", models.VolumeCreateHandler},
+	Route{"VolumeInfo", "GET", "/volumes/{volid:[0-9]+}", models.VolumeInfoHandler},
+	Route{"VolumeDelete", "DELETE", "/volumes/{volid:[0-9]+}", models.VolumeDeleteHandler},
+
+	// Node Routes
+
 }
 
 func main() {
