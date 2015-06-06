@@ -51,6 +51,19 @@ type VolumeListResponse struct {
 	Volumes []VolumeInfoResp `json:"volumes"`
 }
 
+// Volume REST URLs routes
+var volumeRoutes = Routes{
+
+	Route{"VolumeList", "GET", "/volumes", VolumeListHandler},
+	Route{"VolumeCreate", "POST", "/volumes", VolumeCreateHandler},
+	Route{"VolumeInfo", "GET", "/volumes/{volid:[0-9]+}", VolumeInfoHandler},
+	Route{"VolumeDelete", "DELETE", "/volumes/{volid:[0-9]+}", VolumeDeleteHandler},
+}
+
+func VolumeRoutes() Routes {
+	return volumeRoutes
+}
+
 // Handlers
 
 func VolumeListHandler(w http.ResponseWriter, r *http.Request) {

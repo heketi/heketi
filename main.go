@@ -24,37 +24,12 @@ import (
 	"net/http"
 )
 
-//
-// This route style comes from the tutorial on
-// http://thenewstack.io/make-a-restful-json-api-go/
-//
-type Route struct {
-	Name        string
-	Method      string
-	Pattern     string
-	HandlerFunc http.HandlerFunc
-}
-
-type Routes []Route
-
-var routes = Routes{
-
-	// Volume Routes
-	Route{"VolumeList", "GET", "/volumes", models.VolumeListHandler},
-	Route{"VolumeCreate", "POST", "/volumes", models.VolumeCreateHandler},
-	Route{"VolumeInfo", "GET", "/volumes/{volid:[0-9]+}", models.VolumeInfoHandler},
-	Route{"VolumeDelete", "DELETE", "/volumes/{volid:[0-9]+}", models.VolumeDeleteHandler},
-
-	// Node Routes
-
-}
-
 func main() {
 
 	// Create a router and do not allow any routes
 	// unless defined.
 	router := mux.NewRouter().StrictSlash(true)
-	for _, route := range routes {
+	for _, route := range models.HandlerRoutes() {
 
 		// Add routes from the table
 		router.
