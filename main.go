@@ -20,7 +20,7 @@ import (
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
 	"github.com/lpabon/heketi/models"
-	"github.com/lpabon/heketi/plugins/mock"
+	"github.com/lpabon/heketi/plugins"
 	"log"
 	"net/http"
 )
@@ -28,10 +28,10 @@ import (
 func main() {
 
 	// Get a mock node server
-	nodep := mock.NewMockNode()
+	plugin := plugins.NewPlugin("mock")
 
 	//
-	ns := models.NewNodeServer(nodep)
+	ns := models.NewNodeServer(plugin)
 
 	r := models.VolumeRoutes()
 	r = append(r, ns.NodeRoutes()...)

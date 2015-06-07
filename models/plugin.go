@@ -14,20 +14,20 @@
 // limitations under the License.
 //
 
-package mock
+package models
 
-type MockDB struct {
-	nodes      map[uint64]*Node
-	current_id uint64
-}
+// Volume interface for plugins
+type Plugin interface {
+	/*
+		VolumeCreate(v *VolumeCreateRequest) (*VolumeInfoResp, error)
+		VolumeDelete(id uint64) error
+		VolumeInfo(id uint64) (*VolumeInfoResp, error)
+		VolumeResize(id uint64) (*VolumeInfoResp, error)
+		VolumeList() (*VolumeListResponse, error)
+	*/
 
-type MockPlugin struct {
-	db MockDB
-}
-
-func NewMockPlugin() *MockPlugin {
-	m := &MockPlugin{}
-	m.db.nodes = make(map[uint64]*Node)
-
-	return m
+	NodeAdd(v *NodeAddRequest) (*NodeInfoResp, error)
+	NodeRemove(id uint64) error
+	NodeInfo(id uint64) (*NodeInfoResp, error)
+	NodeList() (*NodeListResponse, error)
 }

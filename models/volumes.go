@@ -26,15 +26,6 @@ import (
 	"strconv"
 )
 
-// Volume interface for plugins
-type VolumeManager interface {
-	Create(v VolumeCreateRequest) (*VolumeInfoResp, error)
-	Delete(id uint64) error
-	Info(id uint64) (*VolumeInfoResp, error)
-	Resize(id uint64) (*VolumeInfoResp, error)
-	List() (*VolumeListResponse, error)
-}
-
 // Structs for messages
 type VolumeInfoResp struct {
 	Name string `json:"name"`

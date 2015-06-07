@@ -26,14 +26,6 @@ import (
 	"strconv"
 )
 
-// Node interface for plugins
-type NodeManager interface {
-	Add(v *NodeAddRequest) (*NodeInfoResp, error)
-	Remove(id uint64) error
-	Info(id uint64) (*NodeInfoResp, error)
-	List() (*NodeListResponse, error)
-}
-
 type StorageSize struct {
 	Total uint64 `json:"total"`
 	Free  uint64 `json:"free"`
@@ -75,11 +67,11 @@ type NodeListResponse struct {
 }
 
 type NodeServer struct {
-	nm NodeManager
+	nm Plugin
 }
 
 // Handlers
-func NewNodeServer(nodemanager NodeManager) *NodeServer {
+func NewNodeServer(nodemanager Plugin) *NodeServer {
 	return &NodeServer{
 		nm: nodemanager,
 	}
@@ -104,7 +96,7 @@ func (n *NodeServer) NodeListHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
 	// Get list
-	list, _ := n.nm.List()
+	list, _ := n.nm.NodeList()
 
 	// Write msg
 	if err := json.NewEncoder(w).Encode(list); err != nil {
@@ -137,7 +129,7 @@ func (n *NodeServer) NodeAddHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Add node here
-	info, _ := n.nm.Add(&msg)
+	info, _ := n.nm.NodeAdd(&msg)
 
 	// Send back we created it (as long as we did not fail)
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
@@ -162,7 +154,7 @@ func (n *NodeServer) NodeInfoHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	info, _ := n.nm.Info(volid)
+	info, _ := n.nm.NodeInfo(volid)
 
 	// Write msg
 	if err := json.NewEncoder(w).Encode(info); err != nil {
@@ -191,7 +183,7 @@ func (n *NodeServer) NodeDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Remove node
-	n.nm.Remove(volid)
+	n.nm.NodeRemove(volid)
 
 	// Delete here, and send the correct status code in case of failure
 	w.Header().Add("X-Heketi-Deleted", fmt.Sprintf("%v", volid))

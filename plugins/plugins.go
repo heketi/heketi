@@ -14,20 +14,20 @@
 // limitations under the License.
 //
 
-package mock
+package plugins
 
-type MockDB struct {
-	nodes      map[uint64]*Node
-	current_id uint64
-}
+import (
+	"github.com/lpabon/heketi/models"
+	"github.com/lpabon/heketi/plugins/mock"
+)
 
-type MockPlugin struct {
-	db MockDB
-}
+func NewPlugin(name string) models.Plugin {
 
-func NewMockPlugin() *MockPlugin {
-	m := &MockPlugin{}
-	m.db.nodes = make(map[uint64]*Node)
+	switch name {
+	case "mock":
+		return mock.NewMockPlugin()
+	default:
+		return nil
+	}
 
-	return m
 }
