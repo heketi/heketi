@@ -174,7 +174,7 @@ func (n *NodeServer) NodeDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	// Get the id from the URL
-	volid, err := strconv.ParseUint(vars["volid"], 10, 64)
+	id, err := strconv.ParseUint(vars["id"], 10, 64)
 	if err != nil {
 		w.WriteHeader(422) // unprocessable entity
 		if err := json.NewEncoder(w).Encode(err); err != nil {
@@ -183,10 +183,10 @@ func (n *NodeServer) NodeDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Remove node
-	n.plugin.NodeRemove(volid)
+	n.plugin.NodeRemove(id)
 
 	// Delete here, and send the correct status code in case of failure
-	w.Header().Add("X-Heketi-Deleted", fmt.Sprintf("%v", volid))
+	w.Header().Add("X-Heketi-Deleted", fmt.Sprintf("%v", id))
 
 	// Send back we created it (as long as we did not fail)
 	w.WriteHeader(http.StatusOK)
