@@ -18,13 +18,11 @@ package models
 
 // Volume interface for plugins
 type Plugin interface {
-	/*
-		VolumeCreate(v *VolumeCreateRequest) (*VolumeInfoResp, error)
-		VolumeDelete(id uint64) error
-		VolumeInfo(id uint64) (*VolumeInfoResp, error)
-		VolumeResize(id uint64) (*VolumeInfoResp, error)
-		VolumeList() (*VolumeListResponse, error)
-	*/
+	VolumeCreate(v *VolumeCreateRequest) (*VolumeInfoResp, error)
+	VolumeDelete(id uint64) error
+	VolumeInfo(id uint64) (*VolumeInfoResp, error)
+	VolumeResize(id uint64) (*VolumeInfoResp, error)
+	VolumeList() (*VolumeListResponse, error)
 
 	NodeAdd(v *NodeAddRequest) (*NodeInfoResp, error)
 	NodeRemove(id uint64) error

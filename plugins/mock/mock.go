@@ -18,6 +18,7 @@ package mock
 
 type MockDB struct {
 	nodes      map[uint64]*Node
+	volumes    map[uint64]*Volume
 	current_id uint64
 }
 
