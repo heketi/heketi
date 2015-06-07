@@ -31,10 +31,11 @@ func main() {
 	plugin := plugins.NewPlugin("mock")
 
 	//
-	ns := models.NewNodeServer(plugin)
+	nodeserver := models.NewNodeServer(plugin)
+	volumeserver := models.NewVolumeServer(plugin)
 
-	r := models.VolumeRoutes()
-	r = append(r, ns.NodeRoutes()...)
+	r := volumeserver.VolumeRoutes()
+	r = append(r, nodeserver.NodeRoutes()...)
 
 	// Create a router and do not allow any routes
 	// unless defined.

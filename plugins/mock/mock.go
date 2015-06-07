@@ -29,6 +29,7 @@ type MockPlugin struct {
 func NewMockPlugin() *MockPlugin {
 	m := &MockPlugin{}
 	m.db.nodes = make(map[uint64]*Node)
+	m.db.volumes = make(map[uint64]*Volume)
 
 	return m
 }

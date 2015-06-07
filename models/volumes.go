@@ -42,49 +42,43 @@ type VolumeListResponse struct {
 	Volumes []VolumeInfoResp `json:"volumes"`
 }
 
-// Volume REST URLs routes
-var volumeRoutes = Routes{
-
-	Route{"VolumeList", "GET", "/volumes", VolumeListHandler},
-	Route{"VolumeCreate", "POST", "/volumes", VolumeCreateHandler},
-	Route{"VolumeInfo", "GET", "/volumes/{volid:[0-9]+}", VolumeInfoHandler},
-	Route{"VolumeDelete", "DELETE", "/volumes/{volid:[0-9]+}", VolumeDeleteHandler},
+type VolumeServer struct {
+	plugin Plugin
 }
 
-func VolumeRoutes() Routes {
+func NewVolumeServer(plugin Plugin) *VolumeServer {
+	return &VolumeServer{
+		plugin: plugin,
+	}
+
+}
+
+func (v *VolumeServer) VolumeRoutes() Routes {
+
+	// Volume REST URLs routes
+	var volumeRoutes = Routes{
+
+		Route{"VolumeList", "GET", "/volumes", v.VolumeListHandler},
+		Route{"VolumeCreate", "POST", "/volumes", v.VolumeCreateHandler},
+		Route{"VolumeInfo", "GET", "/volumes/{id:[0-9]+}", v.VolumeInfoHandler},
+		Route{"VolumeDelete", "DELETE", "/volumes/{id:[0-9]+}", v.VolumeDeleteHandler},
+	}
+
 	return volumeRoutes
 }
 
 // Handlers
 
-func VolumeListHandler(w http.ResponseWriter, r *http.Request) {
-
-	// Sample - MOCK
-	msg := VolumeListResponse{
-		Volumes: []VolumeInfoResp{
-			VolumeInfoResp{
-				Name: "volume1",
-				Size: 1234,
-				Id:   0,
-			},
-			VolumeInfoResp{
-				Name: "volume2",
-				Size: 12345,
-				Id:   1,
-			},
-			VolumeInfoResp{
-				Name: "volume3",
-				Size: 1234567,
-				Id:   2,
-			},
-		},
-	}
+func (v *VolumeServer) VolumeListHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Set JSON header
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
-	// Write msg
-	if err := json.NewEncoder(w).Encode(msg); err != nil {
+	// Get list
+	list, _ := v.plugin.VolumeList()
+
+	// Write list
+	if err := json.NewEncoder(w).Encode(list); err != nil {
 
 		// Bad error
 		w.WriteHeader(http.StatusInternalServerError)
@@ -95,8 +89,8 @@ func VolumeListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func VolumeCreateHandler(w http.ResponseWriter, r *http.Request) {
-	var msg VolumeCreateRequest
+func (v *VolumeServer) VolumeCreateHandler(w http.ResponseWriter, r *http.Request) {
+	var request VolumeCreateRequest
 
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
 	if err != nil {
@@ -105,7 +99,7 @@ func VolumeCreateHandler(w http.ResponseWriter, r *http.Request) {
 	if err := r.Body.Close(); err != nil {
 		panic(err)
 	}
-	if err := json.Unmarshal(body, &msg); err != nil {
+	if err := json.Unmarshal(body, &request); err != nil {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(422) // unprocessable entity
 		if err := json.NewEncoder(w).Encode(err); err != nil {
@@ -114,28 +108,24 @@ func VolumeCreateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create volume here
-	v := VolumeInfoResp{
-		Name: msg.Name,
-		Size: msg.Size,
-		Id:   1234,
-	}
+	result, _ := v.plugin.VolumeCreate(&request)
 
 	// Send back we created it (as long as we did not fail)
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusCreated)
-	if err := json.NewEncoder(w).Encode(v); err != nil {
+	if err := json.NewEncoder(w).Encode(result); err != nil {
 		panic(err)
 	}
 }
 
-func VolumeInfoHandler(w http.ResponseWriter, r *http.Request) {
+func (v *VolumeServer) VolumeInfoHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Set JSON header
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
 	// Get the id from the URL
 	vars := mux.Vars(r)
-	volid, err := strconv.ParseUint(vars["volid"], 10, 64)
+	id, err := strconv.ParseUint(vars["id"], 10, 64)
 	if err != nil {
 		w.WriteHeader(422) // unprocessable entity
 		if err := json.NewEncoder(w).Encode(err); err != nil {
@@ -143,14 +133,11 @@ func VolumeInfoHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// sample volume information
-	msg := VolumeInfoResp{
-		Name: "infovolume",
-		Id:   volid,
-	}
+	// Get info from the plugin
+	info, _ := v.plugin.VolumeInfo(id)
 
 	// Write msg
-	if err := json.NewEncoder(w).Encode(msg); err != nil {
+	if err := json.NewEncoder(w).Encode(info); err != nil {
 
 		// Bad error
 		w.WriteHeader(http.StatusInternalServerError)
@@ -161,13 +148,13 @@ func VolumeInfoHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func VolumeDeleteHandler(w http.ResponseWriter, r *http.Request) {
+func (v *VolumeServer) VolumeDeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get the id from the URL
 	vars := mux.Vars(r)
 
 	// Get the id from the URL
-	volid, err := strconv.ParseUint(vars["volid"], 10, 64)
+	id, err := strconv.ParseUint(vars["volid"], 10, 64)
 	if err != nil {
 		w.WriteHeader(422) // unprocessable entity
 		if err := json.NewEncoder(w).Encode(err); err != nil {
@@ -175,8 +162,10 @@ func VolumeDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	v.plugin.VolumeDelete(id)
+
 	// Delete here, and send the correct status code in case of failure
-	w.Header().Add("X-Heketi-Deleted", fmt.Sprintf("%v", volid))
+	w.Header().Add("X-Heketi-Deleted", fmt.Sprintf("%v", id))
 
 	// Send back we created it (as long as we did not fail)
 	w.WriteHeader(http.StatusOK)

@@ -67,13 +67,13 @@ type NodeListResponse struct {
 }
 
 type NodeServer struct {
-	nm Plugin
+	plugin Plugin
 }
 
 // Handlers
-func NewNodeServer(nodemanager Plugin) *NodeServer {
+func NewNodeServer(plugin Plugin) *NodeServer {
 	return &NodeServer{
-		nm: nodemanager,
+		plugin: plugin,
 	}
 }
 
@@ -83,8 +83,8 @@ func (n *NodeServer) NodeRoutes() Routes {
 	var nodeRoutes = Routes{
 		Route{"NodeList", "GET", "/nodes", n.NodeListHandler},
 		Route{"NodeAdd", "POST", "/nodes", n.NodeAddHandler},
-		Route{"NodeInfo", "GET", "/nodes/{volid:[0-9]+}", n.NodeInfoHandler},
-		Route{"NodeDelete", "DELETE", "/nodes/{volid:[0-9]+}", n.NodeDeleteHandler},
+		Route{"NodeInfo", "GET", "/nodes/{id:[0-9]+}", n.NodeInfoHandler},
+		Route{"NodeDelete", "DELETE", "/nodes/{id:[0-9]+}", n.NodeDeleteHandler},
 	}
 
 	return nodeRoutes
@@ -96,7 +96,7 @@ func (n *NodeServer) NodeListHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
 	// Get list
-	list, _ := n.nm.NodeList()
+	list, _ := n.plugin.NodeList()
 
 	// Write msg
 	if err := json.NewEncoder(w).Encode(list); err != nil {
@@ -129,7 +129,7 @@ func (n *NodeServer) NodeAddHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Add node here
-	info, _ := n.nm.NodeAdd(&msg)
+	info, _ := n.plugin.NodeAdd(&msg)
 
 	// Send back we created it (as long as we did not fail)
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
@@ -146,7 +146,7 @@ func (n *NodeServer) NodeInfoHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get the id from the URL
 	vars := mux.Vars(r)
-	volid, err := strconv.ParseUint(vars["volid"], 10, 64)
+	id, err := strconv.ParseUint(vars["id"], 10, 64)
 	if err != nil {
 		w.WriteHeader(422) // unprocessable entity
 		if err := json.NewEncoder(w).Encode(err); err != nil {
@@ -154,7 +154,7 @@ func (n *NodeServer) NodeInfoHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	info, _ := n.nm.NodeInfo(volid)
+	info, _ := n.plugin.NodeInfo(id)
 
 	// Write msg
 	if err := json.NewEncoder(w).Encode(info); err != nil {
@@ -183,7 +183,7 @@ func (n *NodeServer) NodeDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Remove node
-	n.nm.NodeRemove(volid)
+	n.plugin.NodeRemove(volid)
 
 	// Delete here, and send the correct status code in case of failure
 	w.Header().Add("X-Heketi-Deleted", fmt.Sprintf("%v", volid))
