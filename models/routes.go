@@ -32,9 +32,3 @@ type Route struct {
 }
 
 type Routes []Route
-
-func HandlerRoutes() Routes {
-	r := VolumeRoutes()
-	r = append(r, NodeRoutes()...)
-	return r
-}

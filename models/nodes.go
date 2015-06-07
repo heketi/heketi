@@ -28,7 +28,7 @@ import (
 
 // Node interface for plugins
 type NodeManager interface {
-	Add(v NodeAddRequest) (*NodeInfoResp, error)
+	Add(v *NodeAddRequest) (*NodeInfoResp, error)
 	Remove(id uint64) error
 	Info(id uint64) (*NodeInfoResp, error)
 	List() (*NodeListResponse, error)
@@ -74,67 +74,40 @@ type NodeListResponse struct {
 	Nodes []NodeInfoResp `json:"nodes"`
 }
 
-// Node REST URLs routes
-var nodeRoutes = Routes{
-
-	Route{"NodeList", "GET", "/nodes", NodeListHandler},
-	Route{"NodeAdd", "POST", "/nodes", NodeAddHandler},
-	Route{"NodeInfo", "GET", "/nodes/{volid:[0-9]+}", NodeInfoHandler},
-	Route{"NodeDelete", "DELETE", "/nodes/{volid:[0-9]+}", NodeDeleteHandler},
-}
-
-func NodeRoutes() Routes {
-	return nodeRoutes
+type NodeServer struct {
+	nm NodeManager
 }
 
 // Handlers
-
-func NodeListHandler(w http.ResponseWriter, r *http.Request) {
-
-	// Sample - MOCK
-	msg := NodeListResponse{
-		Nodes: []NodeInfoResp{
-			NodeInfoResp{
-				Name: "node1",
-				Zone: "1",
-				Id:   0,
-			},
-			NodeInfoResp{
-				Name: "node2",
-				Zone: "2",
-				Id:   1,
-				Storage: StorageSize{
-					Total: 1000,
-					Free:  800,
-					Used:  200,
-				},
-				VolumeGroups: []LvmVolumeGroup{
-					LvmVolumeGroup{
-						Name: "vg_group1",
-						Size: StorageSize{
-							Total: 1000,
-							Free:  100,
-							Used:  900,
-						},
-					},
-					LvmVolumeGroup{
-						Name: "vg_group2",
-						Size: StorageSize{
-							Total: 2000,
-							Free:  200,
-							Used:  2000 - 200,
-						},
-					},
-				},
-			},
-		},
+func NewNodeServer(nodemanager NodeManager) *NodeServer {
+	return &NodeServer{
+		nm: nodemanager,
 	}
+}
+
+func (n *NodeServer) NodeRoutes() Routes {
+
+	// Node REST URLs routes
+	var nodeRoutes = Routes{
+		Route{"NodeList", "GET", "/nodes", n.NodeListHandler},
+		Route{"NodeAdd", "POST", "/nodes", n.NodeAddHandler},
+		Route{"NodeInfo", "GET", "/nodes/{volid:[0-9]+}", n.NodeInfoHandler},
+		Route{"NodeDelete", "DELETE", "/nodes/{volid:[0-9]+}", n.NodeDeleteHandler},
+	}
+
+	return nodeRoutes
+}
+
+func (n *NodeServer) NodeListHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Set JSON header
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
+	// Get list
+	list, _ := n.nm.List()
+
 	// Write msg
-	if err := json.NewEncoder(w).Encode(msg); err != nil {
+	if err := json.NewEncoder(w).Encode(list); err != nil {
 
 		// Bad error
 		w.WriteHeader(http.StatusInternalServerError)
@@ -145,7 +118,7 @@ func NodeListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func NodeAddHandler(w http.ResponseWriter, r *http.Request) {
+func (n *NodeServer) NodeAddHandler(w http.ResponseWriter, r *http.Request) {
 	var msg NodeAddRequest
 
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
@@ -164,21 +137,17 @@ func NodeAddHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Add node here
-	v := NodeInfoResp{
-		Name: msg.Name,
-		Zone: msg.Zone,
-		Id:   1234,
-	}
+	info, _ := n.nm.Add(&msg)
 
 	// Send back we created it (as long as we did not fail)
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(v); err != nil {
+	if err := json.NewEncoder(w).Encode(info); err != nil {
 		panic(err)
 	}
 }
 
-func NodeInfoHandler(w http.ResponseWriter, r *http.Request) {
+func (n *NodeServer) NodeInfoHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Set JSON header
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
@@ -193,14 +162,10 @@ func NodeInfoHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// sample node information
-	msg := NodeInfoResp{
-		Name: "infonode",
-		Id:   volid,
-	}
+	info, _ := n.nm.Info(volid)
 
 	// Write msg
-	if err := json.NewEncoder(w).Encode(msg); err != nil {
+	if err := json.NewEncoder(w).Encode(info); err != nil {
 
 		// Bad error
 		w.WriteHeader(http.StatusInternalServerError)
@@ -211,7 +176,7 @@ func NodeInfoHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func NodeDeleteHandler(w http.ResponseWriter, r *http.Request) {
+func (n *NodeServer) NodeDeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get the id from the URL
 	vars := mux.Vars(r)
@@ -224,6 +189,9 @@ func NodeDeleteHandler(w http.ResponseWriter, r *http.Request) {
 			panic(err)
 		}
 	}
+
+	// Remove node
+	n.nm.Remove(volid)
 
 	// Delete here, and send the correct status code in case of failure
 	w.Header().Add("X-Heketi-Deleted", fmt.Sprintf("%v", volid))

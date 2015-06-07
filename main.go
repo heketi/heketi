@@ -20,16 +20,26 @@ import (
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
 	"github.com/lpabon/heketi/models"
+	"github.com/lpabon/heketi/plugins/mock"
 	"log"
 	"net/http"
 )
 
 func main() {
 
+	// Get a mock node server
+	nodep := mock.NewMockNode()
+
+	//
+	ns := models.NewNodeServer(nodep)
+
+	r := models.VolumeRoutes()
+	r = append(r, ns.NodeRoutes()...)
+
 	// Create a router and do not allow any routes
 	// unless defined.
 	router := mux.NewRouter().StrictSlash(true)
-	for _, route := range models.HandlerRoutes() {
+	for _, route := range r {
 
 		// Add routes from the table
 		router.
