@@ -14,23 +14,22 @@
 // limitations under the License.
 //
 
-package plugins
+package glusterfs
 
-import (
-	"github.com/lpabon/heketi/handlers"
-	"github.com/lpabon/heketi/plugins/glusterfs"
-	"github.com/lpabon/heketi/plugins/mock"
-)
+type GlusterFSDB struct {
+	nodes      map[uint64]*Node
+	volumes    map[uint64]*Volume
+	current_id uint64
+}
 
-func NewPlugin(name string) handlers.Plugin {
+type GlusterFSPlugin struct {
+	db GlusterFSDB
+}
 
-	switch name {
-	case "mock":
-		return mock.NewMockPlugin()
-	case "glusterfs":
-		return glusterfs.NewGlusterFSPlugin()
-	default:
-		return nil
-	}
+func NewGlusterFSPlugin() *GlusterFSPlugin {
+	m := &GlusterFSPlugin{}
+	m.db.nodes = make(map[uint64]*Node)
+	m.db.volumes = make(map[uint64]*Volume)
 
+	return m
 }

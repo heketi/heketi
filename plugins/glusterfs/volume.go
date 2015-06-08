@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-package mock
+package glusterfs
 
 import (
 	"errors"
@@ -25,7 +25,7 @@ type Volume struct {
 	volume *handlers.VolumeInfoResp
 }
 
-func (m *MockPlugin) VolumeCreate(v *handlers.VolumeCreateRequest) (*handlers.VolumeInfoResp, error) {
+func (m *GlusterFSPlugin) VolumeCreate(v *handlers.VolumeCreateRequest) (*handlers.VolumeInfoResp, error) {
 	m.db.current_id++
 
 	info := &handlers.VolumeInfoResp{}
@@ -42,7 +42,7 @@ func (m *MockPlugin) VolumeCreate(v *handlers.VolumeCreateRequest) (*handlers.Vo
 	return m.VolumeInfo(info.Id)
 }
 
-func (m *MockPlugin) VolumeDelete(id uint64) error {
+func (m *GlusterFSPlugin) VolumeDelete(id uint64) error {
 
 	if _, ok := m.db.volumes[id]; ok {
 		delete(m.db.volumes, id)
@@ -52,7 +52,7 @@ func (m *MockPlugin) VolumeDelete(id uint64) error {
 	}
 }
 
-func (m *MockPlugin) VolumeInfo(id uint64) (*handlers.VolumeInfoResp, error) {
+func (m *GlusterFSPlugin) VolumeInfo(id uint64) (*handlers.VolumeInfoResp, error) {
 	if volume, ok := m.db.volumes[id]; ok {
 		info := &handlers.VolumeInfoResp{}
 		*info = *volume.volume
@@ -62,11 +62,11 @@ func (m *MockPlugin) VolumeInfo(id uint64) (*handlers.VolumeInfoResp, error) {
 	}
 }
 
-func (m *MockPlugin) VolumeResize(id uint64) (*handlers.VolumeInfoResp, error) {
+func (m *GlusterFSPlugin) VolumeResize(id uint64) (*handlers.VolumeInfoResp, error) {
 	return m.VolumeInfo(id)
 }
 
-func (m *MockPlugin) VolumeList() (*handlers.VolumeListResponse, error) {
+func (m *GlusterFSPlugin) VolumeList() (*handlers.VolumeListResponse, error) {
 	list := &handlers.VolumeListResponse{}
 	list.Volumes = make([]handlers.VolumeInfoResp, 0)
 

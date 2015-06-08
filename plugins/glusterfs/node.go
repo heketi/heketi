@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-package mock
+package glusterfs
 
 import (
 	"errors"
@@ -25,7 +25,7 @@ type Node struct {
 	node *handlers.NodeInfoResp
 }
 
-func (m *MockPlugin) NodeAdd(v *handlers.NodeAddRequest) (*handlers.NodeInfoResp, error) {
+func (m *GlusterFSPlugin) NodeAdd(v *handlers.NodeAddRequest) (*handlers.NodeInfoResp, error) {
 	m.db.current_id++
 
 	info := &handlers.NodeInfoResp{}
@@ -42,7 +42,7 @@ func (m *MockPlugin) NodeAdd(v *handlers.NodeAddRequest) (*handlers.NodeInfoResp
 	return m.NodeInfo(info.Id)
 }
 
-func (m *MockPlugin) NodeList() (*handlers.NodeListResponse, error) {
+func (m *GlusterFSPlugin) NodeList() (*handlers.NodeListResponse, error) {
 
 	list := &handlers.NodeListResponse{}
 	list.Nodes = make([]handlers.NodeInfoResp, 0)
@@ -58,7 +58,7 @@ func (m *MockPlugin) NodeList() (*handlers.NodeListResponse, error) {
 	return list, nil
 }
 
-func (m *MockPlugin) NodeRemove(id uint64) error {
+func (m *GlusterFSPlugin) NodeRemove(id uint64) error {
 
 	if _, ok := m.db.nodes[id]; ok {
 		delete(m.db.nodes, id)
@@ -69,7 +69,7 @@ func (m *MockPlugin) NodeRemove(id uint64) error {
 
 }
 
-func (m *MockPlugin) NodeInfo(id uint64) (*handlers.NodeInfoResp, error) {
+func (m *GlusterFSPlugin) NodeInfo(id uint64) (*handlers.NodeInfoResp, error) {
 
 	if node, ok := m.db.nodes[id]; ok {
 		info := &handlers.NodeInfoResp{}

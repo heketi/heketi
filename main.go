@@ -19,7 +19,7 @@ package main
 import (
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
-	"github.com/lpabon/heketi/models"
+	"github.com/lpabon/heketi/handlers"
 	"github.com/lpabon/heketi/plugins"
 	"log"
 	"net/http"
@@ -28,11 +28,11 @@ import (
 func main() {
 
 	// Get a mock node server
-	plugin := plugins.NewPlugin("mock")
+	plugin := plugins.NewPlugin("glusterfs")
 
 	//
-	nodeserver := models.NewNodeServer(plugin)
-	volumeserver := models.NewVolumeServer(plugin)
+	nodeserver := handlers.NewNodeServer(plugin)
+	volumeserver := handlers.NewVolumeServer(plugin)
 
 	r := volumeserver.VolumeRoutes()
 	r = append(r, nodeserver.NodeRoutes()...)

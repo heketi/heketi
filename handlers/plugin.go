@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-package models
+package handlers
 
 // Volume interface for plugins
 type Plugin interface {
