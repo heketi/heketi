@@ -14,6 +14,8 @@
 // limitations under the License.
 //
 
+// TODO: Replace panic() calls with correct returns to the caller
+
 package handlers
 
 import (
@@ -92,21 +94,20 @@ func (n *NodeServer) NodeRoutes() Routes {
 
 func (n *NodeServer) NodeListHandler(w http.ResponseWriter, r *http.Request) {
 
-	// Set JSON header
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-
 	// Get list
-	list, _ := n.plugin.NodeList()
+	list, err := n.plugin.NodeList()
+
+	// Must be a server error if we could not get a list
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	// Write msg
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(list); err != nil {
-
-		// Bad error
-		w.WriteHeader(http.StatusInternalServerError)
-		// log
-	} else {
-		// Everything is OK
-		w.WriteHeader(http.StatusOK)
+		panic(err)
 	}
 }
 
@@ -121,19 +122,24 @@ func (n *NodeServer) NodeAddHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	if err := json.Unmarshal(body, &msg); err != nil {
-		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(422) // unprocessable entity
-		if err := json.NewEncoder(w).Encode(err); err != nil {
-			panic(err)
-		}
+		return
 	}
 
 	// Add node here
-	info, _ := n.plugin.NodeAdd(&msg)
+	info, err := n.plugin.NodeAdd(&msg)
+
+	// :TODO:
+	// Depending on the error returned here,
+	// we should return the correct error code
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	// Send back we created it (as long as we did not fail)
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusCreated)
 	if err := json.NewEncoder(w).Encode(info); err != nil {
 		panic(err)
 	}
@@ -141,30 +147,29 @@ func (n *NodeServer) NodeAddHandler(w http.ResponseWriter, r *http.Request) {
 
 func (n *NodeServer) NodeInfoHandler(w http.ResponseWriter, r *http.Request) {
 
-	// Set JSON header
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-
 	// Get the id from the URL
 	vars := mux.Vars(r)
 	id, err := strconv.ParseUint(vars["id"], 10, 64)
 	if err != nil {
 		w.WriteHeader(422) // unprocessable entity
-		if err := json.NewEncoder(w).Encode(err); err != nil {
-			panic(err)
-		}
+		return
 	}
 
-	info, _ := n.plugin.NodeInfo(id)
+	// Call plugin
+	info, err := n.plugin.NodeInfo(id)
+	if err != nil {
+		// Let's guess here and pretend that it failed because
+		// it was not found.
+		// There probably should be a table of err to http status codes
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
 
 	// Write msg
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(info); err != nil {
-
-		// Bad error
-		w.WriteHeader(http.StatusInternalServerError)
-		// log
-	} else {
-		// Everything is OK
-		w.WriteHeader(http.StatusOK)
+		panic(err)
 	}
 }
 
@@ -177,13 +182,18 @@ func (n *NodeServer) NodeDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseUint(vars["id"], 10, 64)
 	if err != nil {
 		w.WriteHeader(422) // unprocessable entity
-		if err := json.NewEncoder(w).Encode(err); err != nil {
-			panic(err)
-		}
+		return
 	}
 
 	// Remove node
-	n.plugin.NodeRemove(id)
+	err = n.plugin.NodeRemove(id)
+	if err != nil {
+		// Let's guess here and pretend that it failed because
+		// it was not found.
+		// There probably should be a table of err to http status codes
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
 
 	// Delete here, and send the correct status code in case of failure
 	w.Header().Add("X-Heketi-Deleted", fmt.Sprintf("%v", id))

@@ -75,17 +75,17 @@ func (v *VolumeServer) VolumeListHandler(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
 	// Get list
-	list, _ := v.plugin.VolumeList()
+	list, err := v.plugin.VolumeList()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	// Write list
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(list); err != nil {
-
-		// Bad error
-		w.WriteHeader(http.StatusInternalServerError)
-		// log
-	} else {
-		// Everything is OK
-		w.WriteHeader(http.StatusOK)
+		panic(err)
 	}
 }
 
@@ -100,15 +100,16 @@ func (v *VolumeServer) VolumeCreateHandler(w http.ResponseWriter, r *http.Reques
 		panic(err)
 	}
 	if err := json.Unmarshal(body, &request); err != nil {
-		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(422) // unprocessable entity
-		if err := json.NewEncoder(w).Encode(err); err != nil {
-			panic(err)
-		}
+		return
 	}
 
 	// Create volume here
-	result, _ := v.plugin.VolumeCreate(&request)
+	result, err := v.plugin.VolumeCreate(&request)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	// Send back we created it (as long as we did not fail)
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
@@ -120,9 +121,6 @@ func (v *VolumeServer) VolumeCreateHandler(w http.ResponseWriter, r *http.Reques
 
 func (v *VolumeServer) VolumeInfoHandler(w http.ResponseWriter, r *http.Request) {
 
-	// Set JSON header
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-
 	// Get the id from the URL
 	vars := mux.Vars(r)
 	id, err := strconv.ParseUint(vars["id"], 10, 64)
@@ -131,20 +129,25 @@ func (v *VolumeServer) VolumeInfoHandler(w http.ResponseWriter, r *http.Request)
 		if err := json.NewEncoder(w).Encode(err); err != nil {
 			panic(err)
 		}
+
+		return
 	}
 
 	// Get info from the plugin
-	info, _ := v.plugin.VolumeInfo(id)
+	info, err := v.plugin.VolumeInfo(id)
+	if err != nil {
+		// Let's guess here and pretend that it failed because
+		// it was not found.
+		// There probably should be a table of err to http status codes
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
 
 	// Write msg
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(info); err != nil {
-
-		// Bad error
-		w.WriteHeader(http.StatusInternalServerError)
-		// log
-	} else {
-		// Everything is OK
-		w.WriteHeader(http.StatusOK)
+		panic(err)
 	}
 }
 
@@ -154,15 +157,20 @@ func (v *VolumeServer) VolumeDeleteHandler(w http.ResponseWriter, r *http.Reques
 	vars := mux.Vars(r)
 
 	// Get the id from the URL
-	id, err := strconv.ParseUint(vars["volid"], 10, 64)
+	id, err := strconv.ParseUint(vars["id"], 10, 64)
 	if err != nil {
 		w.WriteHeader(422) // unprocessable entity
-		if err := json.NewEncoder(w).Encode(err); err != nil {
-			panic(err)
-		}
+		return
 	}
 
-	v.plugin.VolumeDelete(id)
+	err = v.plugin.VolumeDelete(id)
+	if err != nil {
+		// Let's guess here and pretend that it failed because
+		// it was not found.
+		// There probably should be a table of err to http status codes
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
 
 	// Delete here, and send the correct status code in case of failure
 	w.Header().Add("X-Heketi-Deleted", fmt.Sprintf("%v", id))

@@ -16,6 +16,10 @@
 
 package handlers
 
+import (
+	"errors"
+)
+
 // Volume interface for plugins
 type Plugin interface {
 	VolumeCreate(v *VolumeCreateRequest) (*VolumeInfoResp, error)
@@ -29,3 +33,8 @@ type Plugin interface {
 	NodeInfo(id uint64) (*NodeInfoResp, error)
 	NodeList() (*NodeListResponse, error)
 }
+
+// Add errors here
+var (
+	ErrNotFound = errors.New("Request not found")
+)
