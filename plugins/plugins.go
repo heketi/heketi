@@ -17,12 +17,26 @@
 package plugins
 
 import (
-	"github.com/lpabon/heketi/handlers"
 	"github.com/lpabon/heketi/plugins/glusterfs"
 	"github.com/lpabon/heketi/plugins/mock"
+	"github.com/lpabon/heketi/requests"
 )
 
-func NewPlugin(name string) handlers.Plugin {
+// Volume interface for plugins
+type Plugin interface {
+	VolumeCreate(v *requests.VolumeCreateRequest) (*requests.VolumeInfoResp, error)
+	VolumeDelete(id uint64) error
+	VolumeInfo(id uint64) (*requests.VolumeInfoResp, error)
+	VolumeResize(id uint64) (*requests.VolumeInfoResp, error)
+	VolumeList() (*requests.VolumeListResponse, error)
+
+	NodeAdd(v *requests.NodeAddRequest) (*requests.NodeInfoResp, error)
+	NodeRemove(id uint64) error
+	NodeInfo(id uint64) (*requests.NodeInfoResp, error)
+	NodeList() (*requests.NodeListResponse, error)
+}
+
+func NewPlugin(name string) Plugin {
 
 	switch name {
 	case "mock":

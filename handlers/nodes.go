@@ -21,58 +21,20 @@ package handlers
 import (
 	"encoding/json"
 	"github.com/gorilla/mux"
+	"github.com/lpabon/heketi/plugins"
+	"github.com/lpabon/heketi/requests"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 )
 
-type StorageSize struct {
-	Total uint64 `json:"total"`
-	Free  uint64 `json:"free"`
-	Used  uint64 `json:"used"`
-}
-
-type LvmVolumeGroup struct {
-	Name string      `json:"name"`
-	Size StorageSize `json:"storage"`
-}
-
-// Structs for messages
-type NodeInfoResp struct {
-	Name    string      `json:"hostname"`
-	Id      uint64      `json: "id"`
-	Zone    string      `json:"zone"`
-	Storage StorageSize `json:"storage"`
-
-	// -- optional values --
-	VolumeGroups []LvmVolumeGroup `json:"volumegroups,omitempty"`
-}
-
-type NodeLvm struct {
-	VolumeGroup string `json:"volumegroup"`
-}
-
-type NodeAddRequest struct {
-	Name string `json:"name"`
-	Zone string `json:"zone"`
-
-	// ----- Optional Values ------
-
-	// When Adding VGs
-	Lvm NodeLvm `json:"lvm,omitempty"`
-}
-
-type NodeListResponse struct {
-	Nodes []NodeInfoResp `json:"nodes"`
-}
-
 type NodeServer struct {
-	plugin Plugin
+	plugin plugins.Plugin
 }
 
 // Handlers
-func NewNodeServer(plugin Plugin) *NodeServer {
+func NewNodeServer(plugin plugins.Plugin) *NodeServer {
 	return &NodeServer{
 		plugin: plugin,
 	}
@@ -111,7 +73,7 @@ func (n *NodeServer) NodeListHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (n *NodeServer) NodeAddHandler(w http.ResponseWriter, r *http.Request) {
-	var msg NodeAddRequest
+	var msg requests.NodeAddRequest
 
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, r.ContentLength))
 	if err != nil {

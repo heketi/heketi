@@ -18,17 +18,17 @@ package glusterfs
 
 import (
 	"errors"
-	"github.com/lpabon/heketi/handlers"
+	"github.com/lpabon/heketi/requests"
 )
 
 type Node struct {
-	node *handlers.NodeInfoResp
+	node *requests.NodeInfoResp
 }
 
-func (m *GlusterFSPlugin) NodeAdd(v *handlers.NodeAddRequest) (*handlers.NodeInfoResp, error) {
+func (m *GlusterFSPlugin) NodeAdd(v *requests.NodeAddRequest) (*requests.NodeInfoResp, error) {
 	m.db.current_id++
 
-	info := &handlers.NodeInfoResp{}
+	info := &requests.NodeInfoResp{}
 	info.Name = v.Name
 	info.Zone = v.Zone
 	info.Id = m.db.current_id
@@ -42,10 +42,10 @@ func (m *GlusterFSPlugin) NodeAdd(v *handlers.NodeAddRequest) (*handlers.NodeInf
 	return m.NodeInfo(info.Id)
 }
 
-func (m *GlusterFSPlugin) NodeList() (*handlers.NodeListResponse, error) {
+func (m *GlusterFSPlugin) NodeList() (*requests.NodeListResponse, error) {
 
-	list := &handlers.NodeListResponse{}
-	list.Nodes = make([]handlers.NodeInfoResp, 0)
+	list := &requests.NodeListResponse{}
+	list.Nodes = make([]requests.NodeInfoResp, 0)
 
 	for id, _ := range m.db.nodes {
 		info, err := m.NodeInfo(id)
@@ -69,10 +69,10 @@ func (m *GlusterFSPlugin) NodeRemove(id uint64) error {
 
 }
 
-func (m *GlusterFSPlugin) NodeInfo(id uint64) (*handlers.NodeInfoResp, error) {
+func (m *GlusterFSPlugin) NodeInfo(id uint64) (*requests.NodeInfoResp, error) {
 
 	if node, ok := m.db.nodes[id]; ok {
-		info := &handlers.NodeInfoResp{}
+		info := &requests.NodeInfoResp{}
 		*info = *node.node
 		return info, nil
 	} else {

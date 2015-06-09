@@ -20,33 +20,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/lpabon/heketi/plugins"
+	"github.com/lpabon/heketi/requests"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 )
 
-// Structs for messages
-type VolumeInfoResp struct {
-	Name string `json:"name"`
-	Size uint64 `json:"size"`
-	Id   uint64 `json: "id"`
-}
-
-type VolumeCreateRequest struct {
-	Name string `json:"name"`
-	Size uint64 `json:"size"`
-}
-
-type VolumeListResponse struct {
-	Volumes []VolumeInfoResp `json:"volumes"`
-}
-
 type VolumeServer struct {
-	plugin Plugin
+	plugin plugins.Plugin
 }
 
-func NewVolumeServer(plugin Plugin) *VolumeServer {
+func NewVolumeServer(plugin plugins.Plugin) *VolumeServer {
 	return &VolumeServer{
 		plugin: plugin,
 	}
@@ -90,7 +76,7 @@ func (v *VolumeServer) VolumeListHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (v *VolumeServer) VolumeCreateHandler(w http.ResponseWriter, r *http.Request) {
-	var request VolumeCreateRequest
+	var request requests.VolumeCreateRequest
 
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, r.ContentLength))
 	if err != nil {

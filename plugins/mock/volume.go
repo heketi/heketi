@@ -18,17 +18,17 @@ package mock
 
 import (
 	"errors"
-	"github.com/lpabon/heketi/handlers"
+	"github.com/lpabon/heketi/requests"
 )
 
 type Volume struct {
-	volume *handlers.VolumeInfoResp
+	volume *requests.VolumeInfoResp
 }
 
-func (m *MockPlugin) VolumeCreate(v *handlers.VolumeCreateRequest) (*handlers.VolumeInfoResp, error) {
+func (m *MockPlugin) VolumeCreate(v *requests.VolumeCreateRequest) (*requests.VolumeInfoResp, error) {
 	m.db.current_id++
 
-	info := &handlers.VolumeInfoResp{}
+	info := &requests.VolumeInfoResp{}
 	info.Name = v.Name
 	info.Size = v.Size
 	info.Id = m.db.current_id
@@ -52,9 +52,9 @@ func (m *MockPlugin) VolumeDelete(id uint64) error {
 	}
 }
 
-func (m *MockPlugin) VolumeInfo(id uint64) (*handlers.VolumeInfoResp, error) {
+func (m *MockPlugin) VolumeInfo(id uint64) (*requests.VolumeInfoResp, error) {
 	if volume, ok := m.db.volumes[id]; ok {
-		info := &handlers.VolumeInfoResp{}
+		info := &requests.VolumeInfoResp{}
 		*info = *volume.volume
 		return info, nil
 	} else {
@@ -62,13 +62,13 @@ func (m *MockPlugin) VolumeInfo(id uint64) (*handlers.VolumeInfoResp, error) {
 	}
 }
 
-func (m *MockPlugin) VolumeResize(id uint64) (*handlers.VolumeInfoResp, error) {
+func (m *MockPlugin) VolumeResize(id uint64) (*requests.VolumeInfoResp, error) {
 	return m.VolumeInfo(id)
 }
 
-func (m *MockPlugin) VolumeList() (*handlers.VolumeListResponse, error) {
-	list := &handlers.VolumeListResponse{}
-	list.Volumes = make([]handlers.VolumeInfoResp, 0)
+func (m *MockPlugin) VolumeList() (*requests.VolumeListResponse, error) {
+	list := &requests.VolumeListResponse{}
+	list.Volumes = make([]requests.VolumeInfoResp, 0)
 
 	for id, _ := range m.db.volumes {
 		info, err := m.VolumeInfo(id)
