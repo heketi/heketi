@@ -20,7 +20,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/gorilla/mux"
 	"io"
 	"io/ioutil"
@@ -99,7 +98,7 @@ func (n *NodeServer) NodeListHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Must be a server error if we could not get a list
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, "unable to get node list", http.StatusInternalServerError)
 		return
 	}
 
@@ -114,7 +113,7 @@ func (n *NodeServer) NodeListHandler(w http.ResponseWriter, r *http.Request) {
 func (n *NodeServer) NodeAddHandler(w http.ResponseWriter, r *http.Request) {
 	var msg NodeAddRequest
 
-	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
+	body, err := ioutil.ReadAll(io.LimitReader(r.Body, r.ContentLength))
 	if err != nil {
 		panic(err)
 	}
@@ -122,7 +121,7 @@ func (n *NodeServer) NodeAddHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	if err := json.Unmarshal(body, &msg); err != nil {
-		w.WriteHeader(422) // unprocessable entity
+		http.Error(w, "request unable to be parsed", 422)
 		return
 	}
 
@@ -133,7 +132,7 @@ func (n *NodeServer) NodeAddHandler(w http.ResponseWriter, r *http.Request) {
 	// Depending on the error returned here,
 	// we should return the correct error code
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, "Unable to add the node", http.StatusInternalServerError)
 		return
 	}
 
@@ -151,7 +150,7 @@ func (n *NodeServer) NodeInfoHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.ParseUint(vars["id"], 10, 64)
 	if err != nil {
-		w.WriteHeader(422) // unprocessable entity
+		http.Error(w, "id unable to be parsed", 422)
 		return
 	}
 
@@ -161,7 +160,7 @@ func (n *NodeServer) NodeInfoHandler(w http.ResponseWriter, r *http.Request) {
 		// Let's guess here and pretend that it failed because
 		// it was not found.
 		// There probably should be a table of err to http status codes
-		w.WriteHeader(http.StatusNotFound)
+		http.Error(w, "id not found", http.StatusNotFound)
 		return
 	}
 
@@ -181,7 +180,7 @@ func (n *NodeServer) NodeDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	// Get the id from the URL
 	id, err := strconv.ParseUint(vars["id"], 10, 64)
 	if err != nil {
-		w.WriteHeader(422) // unprocessable entity
+		http.Error(w, "id unable to be parsed", 422)
 		return
 	}
 
@@ -191,12 +190,9 @@ func (n *NodeServer) NodeDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		// Let's guess here and pretend that it failed because
 		// it was not found.
 		// There probably should be a table of err to http status codes
-		w.WriteHeader(http.StatusNotFound)
+		http.Error(w, "id not found", http.StatusNotFound)
 		return
 	}
-
-	// Delete here, and send the correct status code in case of failure
-	w.Header().Add("X-Heketi-Deleted", fmt.Sprintf("%v", id))
 
 	// Send back we created it (as long as we did not fail)
 	w.WriteHeader(http.StatusOK)

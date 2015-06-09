@@ -77,7 +77,7 @@ func (v *VolumeServer) VolumeListHandler(w http.ResponseWriter, r *http.Request)
 	// Get list
 	list, err := v.plugin.VolumeList()
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, "unable to get volume list", http.StatusInternalServerError)
 		return
 	}
 
@@ -92,7 +92,7 @@ func (v *VolumeServer) VolumeListHandler(w http.ResponseWriter, r *http.Request)
 func (v *VolumeServer) VolumeCreateHandler(w http.ResponseWriter, r *http.Request) {
 	var request VolumeCreateRequest
 
-	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
+	body, err := ioutil.ReadAll(io.LimitReader(r.Body, r.ContentLength))
 	if err != nil {
 		panic(err)
 	}
@@ -100,14 +100,14 @@ func (v *VolumeServer) VolumeCreateHandler(w http.ResponseWriter, r *http.Reques
 		panic(err)
 	}
 	if err := json.Unmarshal(body, &request); err != nil {
-		w.WriteHeader(422) // unprocessable entity
+		http.Error(w, "volume create json request unable to be parsed", 422)
 		return
 	}
 
 	// Create volume here
 	result, err := v.plugin.VolumeCreate(&request)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, "unable to create volume", http.StatusInternalServerError)
 		return
 	}
 
@@ -125,11 +125,7 @@ func (v *VolumeServer) VolumeInfoHandler(w http.ResponseWriter, r *http.Request)
 	vars := mux.Vars(r)
 	id, err := strconv.ParseUint(vars["id"], 10, 64)
 	if err != nil {
-		w.WriteHeader(422) // unprocessable entity
-		if err := json.NewEncoder(w).Encode(err); err != nil {
-			panic(err)
-		}
-
+		http.Error(w, "id unable to be parsed", 422)
 		return
 	}
 
@@ -139,7 +135,7 @@ func (v *VolumeServer) VolumeInfoHandler(w http.ResponseWriter, r *http.Request)
 		// Let's guess here and pretend that it failed because
 		// it was not found.
 		// There probably should be a table of err to http status codes
-		w.WriteHeader(http.StatusNotFound)
+		http.Error(w, "id not found", http.StatusNotFound)
 		return
 	}
 
@@ -168,7 +164,7 @@ func (v *VolumeServer) VolumeDeleteHandler(w http.ResponseWriter, r *http.Reques
 		// Let's guess here and pretend that it failed because
 		// it was not found.
 		// There probably should be a table of err to http status codes
-		w.WriteHeader(http.StatusNotFound)
+		http.Error(w, "id not found", http.StatusNotFound)
 		return
 	}
 
