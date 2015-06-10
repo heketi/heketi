@@ -17,8 +17,10 @@
 package handlers
 
 import (
+	"bytes"
 	"github.com/lpabon/heketi/plugins/mock"
 	"github.com/lpabon/heketi/requests"
+	"github.com/lpabon/heketi/tests"
 	"github.com/lpabon/heketi/utils"
 	"net/http"
 	"net/http/httptest"
@@ -35,18 +37,45 @@ func TestNodeListHandlerEmpty(t *testing.T) {
 
 	// Request
 	r, err := http.Get(ts.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
+	tests.Assert(t, err == nil)
 
 	// Check body
 	err = utils.GetJsonFromResponse(r, &msg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	tests.Assert(t, err == nil)
 
-	if len(msg.Nodes) > 0 {
-		t.Error("Nodes has more than one value")
-	}
+	tests.Assert(t, len(msg.Nodes) == 0)
+}
 
+func TestNodeAddHandler(t *testing.T) {
+
+	var msg requests.NodeInfoResp
+
+	// Instead of coding our own JSON here,
+	// create the JSON message as a string to test the handler
+	request := []byte(`{
+        "name" : "test_name",
+        "zone" : "test_zone",
+        "lvm" : {
+            "volumegroup" : "test_vg"
+        }
+    }`)
+
+	n := NewNodeServer(mock.NewMockPlugin())
+	ts := httptest.NewServer(http.HandlerFunc(n.NodeAddHandler))
+	defer ts.Close()
+
+	// Request
+	r, err := http.Post(ts.URL, "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+
+	// Check body
+	err = utils.GetJsonFromResponse(r, &msg)
+	tests.Assert(t, err == nil)
+
+	tests.Assert(t, msg.Name == "test_name")
+	tests.Assert(t, msg.Zone == "test_zone")
+	/* Add when vgs are supported
+	tests.Assert(t, len(msg.VolumeGroups) == 1)
+	tests.Assert(t, msg.VolumeGroups[0].Name == "test_vg")
+	*/
 }
