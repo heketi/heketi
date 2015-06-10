@@ -18,19 +18,54 @@ package glusterfs
 
 import (
 	"errors"
+	"fmt"
 	"github.com/lpabon/heketi/requests"
+	"strconv"
+	"strings"
 )
 
 type Node struct {
 	node *requests.NodeInfoResp
 }
 
+func (m *GlusterFSPlugin) vgSize(host string, vg string) (uint64, error) {
+
+	commands := []string{
+		fmt.Sprintf("sudo vgdisplay -c %v", vg),
+	}
+
+	b, err := m.sshexec.ConnectAndExec(host+":22", commands, nil)
+	if err != nil {
+		return 0, err
+	}
+	for k, v := range b {
+		fmt.Printf("[%v] ==\n%v\n", k, v)
+	}
+
+	vginfo := strings.Split(b[0], ":")
+	if len(vginfo) < 12 {
+		return 0, errors.New("vgdisplay returned an invalid string")
+	}
+
+	return strconv.ParseUint(vginfo[11], 10, 64)
+
+}
+
 func (m *GlusterFSPlugin) NodeAdd(v *requests.NodeAddRequest) (*requests.NodeInfoResp, error) {
-	m.db.current_id++
+
+	var err error
 
 	info := &requests.NodeInfoResp{}
 	info.Name = v.Name
 	info.Zone = v.Zone
+
+	// in kb
+	info.Storage.Total, err = m.vgSize(v.Name, v.Lvm.VolumeGroup)
+	if err != nil {
+		return nil, err
+	}
+
+	m.db.current_id++
 	info.Id = m.db.current_id
 
 	node := &Node{

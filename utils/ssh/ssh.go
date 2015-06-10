@@ -131,10 +131,12 @@ func NewSshExecWithKeyFile(user string, file string) *SshExec {
 }
 
 // This function was taken from https://github.com/coreos/etcd-manager/blob/master/main.go
-func (s *SshExec) ConnectAndExec(host string, commands []string, wg *sync.WaitGroup) (*bytes.Buffer, error) {
+func (s *SshExec) ConnectAndExec(host string, commands []string, wg *sync.WaitGroup) ([]string, error) {
 	if wg != nil {
 		defer wg.Done()
 	}
+
+	buffers := make([]string, len(commands))
 
 	client, err := ssh.Dial("tcp", host, s.clientConfig)
 	if err != nil {
@@ -142,10 +144,11 @@ func (s *SshExec) ConnectAndExec(host string, commands []string, wg *sync.WaitGr
 		return nil, err
 	}
 
-	for _, command := range commands {
+	for index, command := range commands {
 
 		session, err := client.NewSession()
 		if err != nil {
+			fmt.Printf("Unable to connect to [%v]: %v\n", command, err)
 			//logStderr(host, fmt.Sprintf("failed to create SSH session: %s", err))
 			return nil, err
 		}
@@ -155,12 +158,15 @@ func (s *SshExec) ConnectAndExec(host string, commands []string, wg *sync.WaitGr
 		var b bytes.Buffer
 		session.Stdout = &b
 
+		// Save the buffer for the caller
+
 		if err := session.Run(command); err != nil {
+			fmt.Printf("Failed to run command [%v] on [%v]: %v\n", command, host, err)
 			// logStderr(host, fmt.Sprintf("error running command: %s", err))
 			return nil, err
 		}
-
-		return &b, nil
+		buffers[index] = b.String()
 	}
-	return nil, nil
+
+	return buffers, nil
 }
