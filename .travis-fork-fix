@@ -1,0 +1,14 @@
+#!/bin/sh
+
+# Go imports point to github.com/pblcache/pblcache. When
+# a fork is tested by Travis-ci, imports may point to code
+# from pblcache repo and not from the fork.  This program
+# will fix the issue.
+
+PBLREPO="github.com/lpabon/heketi"
+PBLCACHEDIR="../../lpabon/heketi"
+
+if ! git remote -v | grep origin | grep ${PBLREPO} ; then
+    mv ${PBLCACHEDIR} ${PBLCACHEDIR}.orig
+    ln -s $PWD ${PBLCACHEDIR}
+fi

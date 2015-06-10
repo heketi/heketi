@@ -1,0 +1,26 @@
+language: go
+install:
+- go get github.com/mattn/goveralls
+- go get -v -d ./...
+env:
+  global:
+  - secure: W+6cCgeBwrdBtvxIXGoUyt5/UkGH9FcPGSZrEnorYJ/PwVLRY9V9zO7B/MaCvkEceOlvY3jzEBJu2cl0ZxmdKEaitva/uAr/mXrCtZPkStFuP/GSipwrHoH97yi8StefC7K8VcJCARnA2bYI6t/BxkD+Z1u4f1lKj/4dVz0zuUHjIlygLCGh3cCXAWVlvBiNhE7vlxGteqjzQrRHWNRS6fNBdjfapETAedKlf0Ifa7GKUoB3cDptMqIfYxqrT2KDBp50SC4TNYg+7YG2b4uDfAzAhMJ5LfhUcT+mBdO0iqINgggELxy4/ojZGjPUD3zIQDO+IEluai4QaP8Y/xILG+rsbMOD08arIsghBEcSvil2hTcxzgMBk1x1+GPCnzDU+uz71RwUTM7cIBfZXM+cJr4gkvQRopJu79AtS7WE+dNlVgwXg2YQjMy3XUTqi43YELa1etk4zpZE+cS5U5Sg62AKjY8l/a48UqBAXvgS25DxefyOQuIDomIrgTDkxztf4h5mxEE+9+5YBfs+mMhJpr8/DgbKbTvIoE1OTHHHuOMtxboPoQ0vmHGdQMe8NSDHPBtsQVZDiwAwsgs3+nfxn2Px5oeiEw4ONt+8ON7R49cukJJmgbLZvT8O9bXHIFBcNUuUP/JIq+3tOhxD0X8JxZ2mgQmZNjyeUnNx7s+Q1dw=
+matrix:
+  include:
+  - go: 1.2.2
+    env: OPTIONS="" GOVER="1.2"
+  - go: 1.3.3
+    env: OPTIONS="-race" GOVER="1.3"
+  - go: 1.4.2
+    env: COVERAGE="true" GOVER="1.4"
+before_script:
+- if [[ "$GOVER" = "1.4" ]] ; then go get golang.org/x/tools/cmd/vet; fi
+- if [[ "$GOVER" = "1.4" ]] ; then go get golang.org/x/tools/cmd/cover; fi
+- if [[ "$GOVER" != "1.4" ]] ; then go get code.google.com/p/go.tools/cmd/cover; fi
+- if [[ "$GOVER" != "1.4" ]] ; then go get code.google.com/p/go.tools/cmd/vet; fi
+- bash .travis-fork-fix
+script:
+- go fmt ./... | wc -l | grep 0
+- go vet ./...
+- go test -v $OPTIONS ./...
+- if [[ -n "$COVERAGE" ]]; then bash .travis-coverage; fi
