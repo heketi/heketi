@@ -22,8 +22,8 @@ import (
 	"github.com/lpabon/heketi/utils"
 )
 
-type Volume struct {
-	volume *requests.VolumeInfoResp
+type VolumeDB struct {
+	Volume *requests.VolumeInfoResp
 }
 
 func (m *GlusterFSPlugin) VolumeCreate(v *requests.VolumeCreateRequest) (*requests.VolumeInfoResp, error) {
@@ -38,8 +38,8 @@ func (m *GlusterFSPlugin) VolumeCreate(v *requests.VolumeCreateRequest) (*reques
 		return nil, err
 	}
 
-	volume := &Volume{
-		volume: info,
+	volume := &VolumeDB{
+		Volume: info,
 	}
 
 	m.db.volumes[info.Id] = volume
@@ -60,7 +60,7 @@ func (m *GlusterFSPlugin) VolumeDelete(id string) error {
 func (m *GlusterFSPlugin) VolumeInfo(id string) (*requests.VolumeInfoResp, error) {
 	if volume, ok := m.db.volumes[id]; ok {
 		info := &requests.VolumeInfoResp{}
-		*info = *volume.volume
+		*info = *volume.Volume
 		return info, nil
 	} else {
 		return nil, errors.New("Id not found")

@@ -24,13 +24,13 @@ import (
 )
 
 type GlusterFSDbOnDisk struct {
-	Nodes   map[string]*Node
-	Volumes map[string]*Volume
+	Nodes   map[string]*NodeDB
+	Volumes map[string]*VolumeDB
 }
 
 type GlusterFSDB struct {
-	nodes      map[string]*Node
-	volumes    map[string]*Volume
+	nodes      map[string]*NodeDB
+	volumes    map[string]*VolumeDB
 	dbfilename string
 }
 
@@ -56,13 +56,13 @@ func dbDecode(e interface{}, buffer []byte) error {
 	return nil
 }
 
-func NewGlusterFSDB() *GlusterFSDB {
+func NewGlusterFSDB(dbfile string) *GlusterFSDB {
 
 	gfsdb := &GlusterFSDB{}
 
-	gfsdb.nodes = make(map[string]*Node)
-	gfsdb.volumes = make(map[string]*Volume)
-	gfsdb.dbfilename = "heketi.db"
+	gfsdb.nodes = make(map[string]*NodeDB)
+	gfsdb.volumes = make(map[string]*VolumeDB)
+	gfsdb.dbfilename = dbfile
 
 	// Load db
 	if _, err := os.Stat(gfsdb.dbfilename); err == nil {
@@ -93,8 +93,6 @@ func (g *GlusterFSDB) Commit() error {
 		return err
 	}
 
-	fmt.Println("Committed...")
-
 	return nil
 }
 
@@ -103,7 +101,6 @@ func (g *GlusterFSDB) Load() error {
 
 	fi, err := os.Open(g.dbfilename)
 	if err != nil {
-		fmt.Printf("Failed to open: %v\n", err)
 		return err
 	}
 	defer fi.Close()
@@ -111,7 +108,6 @@ func (g *GlusterFSDB) Load() error {
 	decoder := gob.NewDecoder(fi)
 	err = decoder.Decode(&ondisk)
 	if err != nil {
-		fmt.Printf("Failed to load: %v\n", err)
 		return err
 	}
 

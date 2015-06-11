@@ -22,8 +22,8 @@ import (
 	"github.com/lpabon/heketi/utils"
 )
 
-type Node struct {
-	node *requests.NodeInfoResp
+type NodeDB struct {
+	Node *requests.NodeInfoResp
 }
 
 func (m *GlusterFSPlugin) NodeAdd(v *requests.NodeAddRequest) (*requests.NodeInfoResp, error) {
@@ -49,8 +49,8 @@ func (m *GlusterFSPlugin) NodeAdd(v *requests.NodeAddRequest) (*requests.NodeInf
 	}
 
 	// Create struct to save on the DB
-	node := &Node{
-		node: info,
+	node := &NodeDB{
+		Node: info,
 	}
 
 	// Save to the db
@@ -59,7 +59,7 @@ func (m *GlusterFSPlugin) NodeAdd(v *requests.NodeAddRequest) (*requests.NodeInf
 	// Save db to persistent storage
 	m.db.Commit()
 
-	return node.node, nil
+	return node.Node, nil
 }
 
 func (m *GlusterFSPlugin) NodeList() (*requests.NodeListResponse, error) {
@@ -71,7 +71,7 @@ func (m *GlusterFSPlugin) NodeList() (*requests.NodeListResponse, error) {
 	list.Nodes = make([]requests.NodeInfoResp, 0)
 
 	for _, info := range m.db.nodes {
-		list.Nodes = append(list.Nodes, *info.node)
+		list.Nodes = append(list.Nodes, *info.Node)
 	}
 
 	return list, nil
@@ -102,7 +102,7 @@ func (m *GlusterFSPlugin) NodeInfo(id string) (*requests.NodeInfoResp, error) {
 	defer m.rwlock.RUnlock()
 
 	if node, ok := m.db.nodes[id]; ok {
-		return node.node, nil
+		return node.Node, nil
 	} else {
 		return nil, errors.New("Id not found")
 	}

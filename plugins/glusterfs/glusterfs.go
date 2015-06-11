@@ -30,7 +30,7 @@ type GlusterFSPlugin struct {
 
 func NewGlusterFSPlugin() *GlusterFSPlugin {
 	m := &GlusterFSPlugin{}
-	m.db = NewGlusterFSDB()
+	m.db = NewGlusterFSDB("heketi.db")
 
 	// Just for now, it will work wih https://github.com/lpabon/vagrant-gfsm
 	m.sshexec = ssh.NewSshExecWithKeyFile("vagrant", "insecure_private_key")
