@@ -84,14 +84,12 @@ func (m *GlusterFSPlugin) NodeRemove(id string) error {
 
 	if _, ok := m.db.nodes[id]; ok {
 		delete(m.db.nodes, id)
-		return nil
 	} else {
 		return errors.New("Id not found")
 	}
 
 	// Save db to persistent storage
 	m.db.Commit()
-
 	return nil
 
 }
