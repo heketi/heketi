@@ -45,8 +45,8 @@ func (n *NodeServer) NodeRoutes() Routes {
 	var nodeRoutes = Routes{
 		Route{"NodeList", "GET", "/nodes", n.NodeListHandler},
 		Route{"NodeAdd", "POST", "/nodes", n.NodeAddHandler},
-		Route{"NodeInfo", "GET", "/nodes/{id}", n.NodeInfoHandler},
-		Route{"NodeDelete", "DELETE", "/nodes/{id}", n.NodeDeleteHandler},
+		Route{"NodeInfo", "GET", "/nodes/{id:[A-Fa-f0-9]+}", n.NodeInfoHandler},
+		Route{"NodeDelete", "DELETE", "/nodes/{id:[A-Fa-f0-9]+}", n.NodeDeleteHandler},
 	}
 
 	return nodeRoutes
