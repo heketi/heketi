@@ -85,7 +85,7 @@ func (m *GlusterFSPlugin) NodeList() (*requests.NodeListResponse, error) {
 	list := &requests.NodeListResponse{}
 	list.Nodes = make([]requests.NodeInfoResp, 0)
 
-	for id, _ := range m.db.nodes {
+	for id, _ := range m.db.Nodes() {
 		info, err := m.NodeInfo(id)
 		if err != nil {
 			return nil, err

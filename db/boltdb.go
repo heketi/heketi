@@ -18,6 +18,7 @@ package db
 import (
 	"github.com/boltdb/bolt"
 	"github.com/lpabon/godbc"
+	"time"
 )
 
 type BoltDB struct {
@@ -30,7 +31,7 @@ func NewBoltDB(dbpath string) *BoltDB {
 
 	db := &BoltDB{}
 
-	db.db, err = bolt.Open(dbpath, 0600, nil)
+	db.db, err = bolt.Open(dbpath, 0600, &bolt.Options{Timeout: 3 * time.Second})
 	godbc.Check(err == nil)
 
 	err = db.db.Update(func(tx *bolt.Tx) error {
