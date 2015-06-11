@@ -47,22 +47,22 @@ func (c *BoltDB) Close() {
 	c.db.Close()
 }
 
-func (c *BoltDB) Put(key, val []byte, index uint64) (err error) {
+func (c *BoltDB) Put(key, val []byte) (err error) {
 	err = c.db.Update(func(tx *bolt.Tx) error {
 		return tx.Bucket([]byte("heketi")).Put(key, val)
 	})
 	return
 }
 
-func (c *BoltDB) Get(key, val []byte, index uint64) (err error) {
+func (c *BoltDB) Get(key []byte) (val []byte, err error) {
 	err = c.db.View(func(tx *bolt.Tx) error {
-		copy(val, tx.Bucket([]byte("heketi")).Get(key))
+		val = tx.Bucket([]byte("heketi")).Get(key)
 		return nil
 	})
 	return
 }
 
-func (c *BoltDB) Delete(key []byte, index uint64) (err error) {
+func (c *BoltDB) Delete(key []byte) (err error) {
 	err = c.db.Update(func(tx *bolt.Tx) error {
 		return tx.Bucket([]byte("heketi")).Delete(key)
 	})

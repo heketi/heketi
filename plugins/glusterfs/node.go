@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/lpabon/heketi/requests"
+	"github.com/lpabon/heketi/utils"
 	"strconv"
 	"strings"
 )
@@ -65,14 +66,16 @@ func (m *GlusterFSPlugin) NodeAdd(v *requests.NodeAddRequest) (*requests.NodeInf
 		return nil, err
 	}
 
-	m.db.current_id++
-	info.Id = m.db.current_id
+	info.Id, err = utils.GenUUID()
+	if err != nil {
+		return nil, err
+	}
 
 	node := &Node{
 		node: info,
 	}
 
-	m.db.nodes[m.db.current_id] = node
+	m.db.nodes[info.Id] = node
 
 	return m.NodeInfo(info.Id)
 }
@@ -93,7 +96,7 @@ func (m *GlusterFSPlugin) NodeList() (*requests.NodeListResponse, error) {
 	return list, nil
 }
 
-func (m *GlusterFSPlugin) NodeRemove(id uint64) error {
+func (m *GlusterFSPlugin) NodeRemove(id string) error {
 
 	if _, ok := m.db.nodes[id]; ok {
 		delete(m.db.nodes, id)
@@ -104,7 +107,7 @@ func (m *GlusterFSPlugin) NodeRemove(id uint64) error {
 
 }
 
-func (m *GlusterFSPlugin) NodeInfo(id uint64) (*requests.NodeInfoResp, error) {
+func (m *GlusterFSPlugin) NodeInfo(id string) (*requests.NodeInfoResp, error) {
 
 	if node, ok := m.db.nodes[id]; ok {
 		info := &requests.NodeInfoResp{}

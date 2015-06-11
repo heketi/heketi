@@ -17,12 +17,15 @@
 package main
 
 import (
+	"fmt"
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
 	"github.com/lpabon/heketi/handlers"
 	"github.com/lpabon/heketi/plugins"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 )
 
 func main() {
@@ -56,6 +59,19 @@ func main() {
 	// Negroni
 	n := negroni.New(negroni.NewRecovery(), negroni.NewLogger())
 	n.UseHandler(router)
+
+	// Shutdown on CTRL-C signal
+	// For a better cleanup, we should shutdown the server and
+	signalch := make(chan os.Signal, 1)
+	signal.Notify(signalch, os.Interrupt)
+	go func() {
+		select {
+		case <-signalch:
+			fmt.Printf("Shutting down...")
+			plugin.Close()
+			os.Exit(0)
+		}
+	}()
 
 	// Start the server.
 	log.Fatal(http.ListenAndServe(":8080", n))

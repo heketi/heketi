@@ -25,15 +25,16 @@ import (
 // Volume interface for plugins
 type Plugin interface {
 	VolumeCreate(v *requests.VolumeCreateRequest) (*requests.VolumeInfoResp, error)
-	VolumeDelete(id uint64) error
-	VolumeInfo(id uint64) (*requests.VolumeInfoResp, error)
-	VolumeResize(id uint64) (*requests.VolumeInfoResp, error)
+	VolumeDelete(id string) error
+	VolumeInfo(id string) (*requests.VolumeInfoResp, error)
+	VolumeResize(id string) (*requests.VolumeInfoResp, error)
 	VolumeList() (*requests.VolumeListResponse, error)
 
 	NodeAdd(v *requests.NodeAddRequest) (*requests.NodeInfoResp, error)
-	NodeRemove(id uint64) error
-	NodeInfo(id uint64) (*requests.NodeInfoResp, error)
+	NodeRemove(id string) error
+	NodeInfo(id string) (*requests.NodeInfoResp, error)
 	NodeList() (*requests.NodeListResponse, error)
+	Close()
 }
 
 func NewPlugin(name string) Plugin {

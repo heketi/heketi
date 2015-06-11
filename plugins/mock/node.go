@@ -19,6 +19,7 @@ package mock
 import (
 	"errors"
 	"github.com/lpabon/heketi/requests"
+	"github.com/lpabon/heketi/utils"
 )
 
 type Node struct {
@@ -26,18 +27,22 @@ type Node struct {
 }
 
 func (m *MockPlugin) NodeAdd(v *requests.NodeAddRequest) (*requests.NodeInfoResp, error) {
-	m.db.current_id++
+
+	var err error
 
 	info := &requests.NodeInfoResp{}
 	info.Name = v.Name
 	info.Zone = v.Zone
-	info.Id = m.db.current_id
+	info.Id, err = utils.GenUUID()
+	if err != nil {
+		return nil, err
+	}
 
 	node := &Node{
 		node: info,
 	}
 
-	m.db.nodes[m.db.current_id] = node
+	m.db.nodes[info.Id] = node
 
 	return m.NodeInfo(info.Id)
 }
@@ -58,7 +63,7 @@ func (m *MockPlugin) NodeList() (*requests.NodeListResponse, error) {
 	return list, nil
 }
 
-func (m *MockPlugin) NodeRemove(id uint64) error {
+func (m *MockPlugin) NodeRemove(id string) error {
 
 	if _, ok := m.db.nodes[id]; ok {
 		delete(m.db.nodes, id)
@@ -69,7 +74,7 @@ func (m *MockPlugin) NodeRemove(id uint64) error {
 
 }
 
-func (m *MockPlugin) NodeInfo(id uint64) (*requests.NodeInfoResp, error) {
+func (m *MockPlugin) NodeInfo(id string) (*requests.NodeInfoResp, error) {
 
 	if node, ok := m.db.nodes[id]; ok {
 		info := &requests.NodeInfoResp{}

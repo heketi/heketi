@@ -25,7 +25,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"strconv"
 )
 
 type VolumeServer struct {
@@ -46,8 +45,8 @@ func (v *VolumeServer) VolumeRoutes() Routes {
 
 		Route{"VolumeList", "GET", "/volumes", v.VolumeListHandler},
 		Route{"VolumeCreate", "POST", "/volumes", v.VolumeCreateHandler},
-		Route{"VolumeInfo", "GET", "/volumes/{id:[0-9]+}", v.VolumeInfoHandler},
-		Route{"VolumeDelete", "DELETE", "/volumes/{id:[0-9]+}", v.VolumeDeleteHandler},
+		Route{"VolumeInfo", "GET", "/volumes/{id:[A-Fa-f0-9]+}", v.VolumeInfoHandler},
+		Route{"VolumeDelete", "DELETE", "/volumes/{id:[A-Fa-f0-9]+}", v.VolumeDeleteHandler},
 	}
 
 	return volumeRoutes
@@ -109,11 +108,7 @@ func (v *VolumeServer) VolumeInfoHandler(w http.ResponseWriter, r *http.Request)
 
 	// Get the id from the URL
 	vars := mux.Vars(r)
-	id, err := strconv.ParseUint(vars["id"], 10, 64)
-	if err != nil {
-		http.Error(w, "id unable to be parsed", 422)
-		return
-	}
+	id := vars["id"]
 
 	// Get info from the plugin
 	info, err := v.plugin.VolumeInfo(id)
@@ -137,15 +132,9 @@ func (v *VolumeServer) VolumeDeleteHandler(w http.ResponseWriter, r *http.Reques
 
 	// Get the id from the URL
 	vars := mux.Vars(r)
+	id := vars["id"]
 
-	// Get the id from the URL
-	id, err := strconv.ParseUint(vars["id"], 10, 64)
-	if err != nil {
-		w.WriteHeader(422) // unprocessable entity
-		return
-	}
-
-	err = v.plugin.VolumeDelete(id)
+	err := v.plugin.VolumeDelete(id)
 	if err != nil {
 		// Let's guess here and pretend that it failed because
 		// it was not found.

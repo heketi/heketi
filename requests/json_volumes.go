@@ -20,7 +20,7 @@ package requests
 type VolumeInfoResp struct {
 	Name string `json:"name"`
 	Size uint64 `json:"size"`
-	Id   uint64 `json:"id"`
+	Id   string `json:"id"`
 }
 
 type VolumeCreateRequest struct {

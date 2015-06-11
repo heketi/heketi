@@ -26,7 +26,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"strconv"
 )
 
 type NodeServer struct {
@@ -46,8 +45,8 @@ func (n *NodeServer) NodeRoutes() Routes {
 	var nodeRoutes = Routes{
 		Route{"NodeList", "GET", "/nodes", n.NodeListHandler},
 		Route{"NodeAdd", "POST", "/nodes", n.NodeAddHandler},
-		Route{"NodeInfo", "GET", "/nodes/{id:[0-9]+}", n.NodeInfoHandler},
-		Route{"NodeDelete", "DELETE", "/nodes/{id:[0-9]+}", n.NodeDeleteHandler},
+		Route{"NodeInfo", "GET", "/nodes/{id}", n.NodeInfoHandler},
+		Route{"NodeDelete", "DELETE", "/nodes/{id}", n.NodeDeleteHandler},
 	}
 
 	return nodeRoutes
@@ -110,11 +109,7 @@ func (n *NodeServer) NodeInfoHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get the id from the URL
 	vars := mux.Vars(r)
-	id, err := strconv.ParseUint(vars["id"], 10, 64)
-	if err != nil {
-		http.Error(w, "id unable to be parsed", 422)
-		return
-	}
+	id := vars["id"]
 
 	// Call plugin
 	info, err := n.plugin.NodeInfo(id)
@@ -140,14 +135,10 @@ func (n *NodeServer) NodeDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	// Get the id from the URL
-	id, err := strconv.ParseUint(vars["id"], 10, 64)
-	if err != nil {
-		http.Error(w, "id unable to be parsed", 422)
-		return
-	}
+	id := vars["id"]
 
 	// Remove node
-	err = n.plugin.NodeRemove(id)
+	err := n.plugin.NodeRemove(id)
 	if err != nil {
 		// Let's guess here and pretend that it failed because
 		// it was not found.

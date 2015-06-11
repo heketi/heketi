@@ -17,9 +17,8 @@
 package mock
 
 type MockDB struct {
-	nodes      map[uint64]*Node
-	volumes    map[uint64]*Volume
-	current_id uint64
+	nodes   map[string]*Node
+	volumes map[string]*Volume
 }
 
 type MockPlugin struct {
@@ -28,8 +27,12 @@ type MockPlugin struct {
 
 func NewMockPlugin() *MockPlugin {
 	m := &MockPlugin{}
-	m.db.nodes = make(map[uint64]*Node)
-	m.db.volumes = make(map[uint64]*Volume)
+	m.db.nodes = make(map[string]*Node)
+	m.db.volumes = make(map[string]*Volume)
 
 	return m
+}
+
+func (m *MockPlugin) Close() {
+
 }

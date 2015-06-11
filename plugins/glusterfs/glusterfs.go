@@ -21,25 +21,22 @@ import (
 	"github.com/lpabon/heketi/utils/ssh"
 )
 
-type GlusterFSDB struct {
-	nodes      map[uint64]*Node
-	volumes    map[uint64]*Volume
-	current_id uint64
-}
-
 type GlusterFSPlugin struct {
-	db      GlusterFSDB
+	db      *GlusterFSDB
 	sshexec *ssh.SshExec
 }
 
 func NewGlusterFSPlugin() *GlusterFSPlugin {
 	m := &GlusterFSPlugin{}
-	m.db.nodes = make(map[uint64]*Node)
-	m.db.volumes = make(map[uint64]*Volume)
+	m.db = NewGlusterFSDB()
 
 	// Just for now, it will work wih https://github.com/lpabon/vagrant-gfsm
 	m.sshexec = ssh.NewSshExecWithKeyFile("vagrant", "insecure_private_key")
 	godbc.Check(m.sshexec != nil)
 
 	return m
+}
+
+func (g *GlusterFSPlugin) Close() {
+	g.db.Close()
 }

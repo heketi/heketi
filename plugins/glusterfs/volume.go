@@ -19,6 +19,7 @@ package glusterfs
 import (
 	"errors"
 	"github.com/lpabon/heketi/requests"
+	"github.com/lpabon/heketi/utils"
 )
 
 type Volume struct {
@@ -26,23 +27,27 @@ type Volume struct {
 }
 
 func (m *GlusterFSPlugin) VolumeCreate(v *requests.VolumeCreateRequest) (*requests.VolumeInfoResp, error) {
-	m.db.current_id++
+
+	var err error
 
 	info := &requests.VolumeInfoResp{}
 	info.Name = v.Name
 	info.Size = v.Size
-	info.Id = m.db.current_id
+	info.Id, err = utils.GenUUID()
+	if err != nil {
+		return nil, err
+	}
 
 	volume := &Volume{
 		volume: info,
 	}
 
-	m.db.volumes[m.db.current_id] = volume
+	m.db.volumes[info.Id] = volume
 
 	return m.VolumeInfo(info.Id)
 }
 
-func (m *GlusterFSPlugin) VolumeDelete(id uint64) error {
+func (m *GlusterFSPlugin) VolumeDelete(id string) error {
 
 	if _, ok := m.db.volumes[id]; ok {
 		delete(m.db.volumes, id)
@@ -52,7 +57,7 @@ func (m *GlusterFSPlugin) VolumeDelete(id uint64) error {
 	}
 }
 
-func (m *GlusterFSPlugin) VolumeInfo(id uint64) (*requests.VolumeInfoResp, error) {
+func (m *GlusterFSPlugin) VolumeInfo(id string) (*requests.VolumeInfoResp, error) {
 	if volume, ok := m.db.volumes[id]; ok {
 		info := &requests.VolumeInfoResp{}
 		*info = *volume.volume
@@ -62,7 +67,7 @@ func (m *GlusterFSPlugin) VolumeInfo(id uint64) (*requests.VolumeInfoResp, error
 	}
 }
 
-func (m *GlusterFSPlugin) VolumeResize(id uint64) (*requests.VolumeInfoResp, error) {
+func (m *GlusterFSPlugin) VolumeResize(id string) (*requests.VolumeInfoResp, error) {
 	return m.VolumeInfo(id)
 }
 

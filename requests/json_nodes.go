@@ -30,7 +30,7 @@ type LvmVolumeGroup struct {
 // Structs for messages
 type NodeInfoResp struct {
 	Name    string      `json:"hostname"`
-	Id      uint64      `json:"id"`
+	Id      string      `json:"id"`
 	Zone    string      `json:"zone"`
 	Storage StorageSize `json:"storage"`
 
