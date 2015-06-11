@@ -19,24 +19,19 @@ package glusterfs
 import (
 	"bytes"
 	"encoding/gob"
-	"github.com/lpabon/godbc"
-	"github.com/lpabon/heketi/db"
-	"github.com/lpabon/heketi/requests"
+	"fmt"
+	"os"
 )
 
+type GlusterFSDbOnDisk struct {
+	Nodes   map[string]*Node
+	Volumes map[string]*Volume
+}
+
 type GlusterFSDB struct {
-	nodes    map[string]*Node
-	volumes  map[string]*Volume
-	db       db.HeketiDB
-	nodelist ModelNodeList
-}
-
-type ModelNode struct {
-	Resp *requests.NodeInfoResp
-}
-
-type ModelNodeList struct {
-	Nodes map[string]bool
+	nodes      map[string]*Node
+	volumes    map[string]*Volume
+	dbfilename string
 }
 
 func dbEncode(e interface{}) ([]byte, error) {
@@ -65,17 +60,15 @@ func NewGlusterFSDB() *GlusterFSDB {
 
 	gfsdb := &GlusterFSDB{}
 
-	gfsdb.db = db.NewBoltDB("heketi.db")
 	gfsdb.nodes = make(map[string]*Node)
 	gfsdb.volumes = make(map[string]*Volume)
-	gfsdb.nodelist.Nodes = make(map[string]bool)
-	godbc.Check(gfsdb != nil)
+	gfsdb.dbfilename = "heketi.db"
 
-	// load node list
-	buf, err := gfsdb.db.Get([]byte("nodelist"))
-	if len(buf) > 0 && err == nil {
-		err = dbDecode(&gfsdb.nodelist, buf)
+	// Load db
+	if _, err := os.Stat(gfsdb.dbfilename); err == nil {
+		err := gfsdb.Load()
 		if err != nil {
+			fmt.Printf("Unable to load metadata: %s", err)
 			return nil
 		}
 	}
@@ -83,52 +76,51 @@ func NewGlusterFSDB() *GlusterFSDB {
 	return gfsdb
 }
 
-func (g *GlusterFSDB) Close() {
-	g.db.Close()
-}
+func (g *GlusterFSDB) Commit() error {
+	ondisk := &GlusterFSDbOnDisk{
+		Nodes:   g.nodes,
+		Volumes: g.volumes,
+	}
+	fi, err := os.Create(g.dbfilename)
+	if err != nil {
+		return err
+	}
+	defer fi.Close()
 
-func (g *GlusterFSDB) SaveNode(node *ModelNode) error {
-
-	buffer, err := dbEncode(node)
+	encoder := gob.NewEncoder(fi)
+	err = encoder.Encode(&ondisk)
 	if err != nil {
 		return err
 	}
 
-	err = g.db.Put([]byte(node.Resp.Id), buffer)
-	if err != nil {
-		return err
-	}
-
-	g.nodelist.Nodes[node.Resp.Id] = true
-	buffer, err = dbEncode(&g.nodelist)
-	if err != nil {
-		return err
-	}
-
-	err = g.db.Put([]byte("nodelist"), buffer)
-	if err != nil {
-		return err
-	}
+	fmt.Println("Committed...")
 
 	return nil
 }
 
-func (g *GlusterFSDB) Node(id string) (*ModelNode, error) {
+func (g *GlusterFSDB) Load() error {
+	ondisk := &GlusterFSDbOnDisk{}
 
-	buf, err := g.db.Get([]byte(id))
+	fi, err := os.Open(g.dbfilename)
 	if err != nil {
-		return nil, err
+		fmt.Printf("Failed to open: %v\n", err)
+		return err
+	}
+	defer fi.Close()
+
+	decoder := gob.NewDecoder(fi)
+	err = decoder.Decode(&ondisk)
+	if err != nil {
+		fmt.Printf("Failed to load: %v\n", err)
+		return err
 	}
 
-	node := &ModelNode{}
-	err = dbDecode(&node, buf)
-	if err != nil {
-		return nil, err
-	}
+	g.nodes = ondisk.Nodes
+	g.volumes = ondisk.Volumes
 
-	return node, nil
+	return nil
 }
 
-func (g *GlusterFSDB) Nodes() map[string]bool {
-	return g.nodelist.Nodes
+func (g *GlusterFSDB) Close() {
+	// Nothing to do since we commit on every change
 }

@@ -17,28 +17,31 @@
 package glusterfs
 
 import (
-	"github.com/lpabon/godbc"
-	"github.com/lpabon/heketi/utils/ssh"
-	"sync"
+	"errors"
+	"fmt"
+	"strconv"
+	"strings"
 )
 
-type GlusterFSPlugin struct {
-	db      *GlusterFSDB
-	sshexec *ssh.SshExec
-	rwlock  sync.RWMutex
-}
+func (m *GlusterFSPlugin) vgSize(host string, vg string) (uint64, error) {
 
-func NewGlusterFSPlugin() *GlusterFSPlugin {
-	m := &GlusterFSPlugin{}
-	m.db = NewGlusterFSDB()
+	commands := []string{
+		fmt.Sprintf("sudo vgdisplay -c %v", vg),
+	}
 
-	// Just for now, it will work wih https://github.com/lpabon/vagrant-gfsm
-	m.sshexec = ssh.NewSshExecWithKeyFile("vagrant", "insecure_private_key")
-	godbc.Check(m.sshexec != nil)
+	b, err := m.sshexec.ConnectAndExec(host+":22", commands, nil)
+	if err != nil {
+		return 0, err
+	}
+	for k, v := range b {
+		fmt.Printf("[%v] ==\n%v\n", k, v)
+	}
 
-	return m
-}
+	vginfo := strings.Split(b[0], ":")
+	if len(vginfo) < 12 {
+		return 0, errors.New("vgdisplay returned an invalid string")
+	}
 
-func (g *GlusterFSPlugin) Close() {
-	g.db.Close()
+	return strconv.ParseUint(vginfo[11], 10, 64)
+
 }

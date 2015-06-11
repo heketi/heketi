@@ -12,33 +12,25 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
 
-package glusterfs
+package utils
+
+// From http://www.ashishbanerjee.com/home/go/go-generate-uuid
 
 import (
-	"github.com/lpabon/godbc"
-	"github.com/lpabon/heketi/utils/ssh"
-	"sync"
+	"crypto/rand"
+	"encoding/hex"
 )
 
-type GlusterFSPlugin struct {
-	db      *GlusterFSDB
-	sshexec *ssh.SshExec
-	rwlock  sync.RWMutex
-}
+func GenUUID() (string, error) {
+	uuid := make([]byte, 16)
+	n, err := rand.Read(uuid)
+	if n != len(uuid) || err != nil {
+		return "", err
+	}
+	// TODO: verify the two lines implement RFC 4122 correctly
+	uuid[8] = 0x80 // variant bits see page 5
+	uuid[4] = 0x40 // version 4 Pseudo Random, see page 7
 
-func NewGlusterFSPlugin() *GlusterFSPlugin {
-	m := &GlusterFSPlugin{}
-	m.db = NewGlusterFSDB()
-
-	// Just for now, it will work wih https://github.com/lpabon/vagrant-gfsm
-	m.sshexec = ssh.NewSshExecWithKeyFile("vagrant", "insecure_private_key")
-	godbc.Check(m.sshexec != nil)
-
-	return m
-}
-
-func (g *GlusterFSPlugin) Close() {
-	g.db.Close()
+	return hex.EncodeToString(uuid), nil
 }
