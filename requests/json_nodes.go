@@ -16,6 +16,7 @@
 
 package requests
 
+// Storage values in KB
 type StorageSize struct {
 	Total uint64 `json:"total"`
 	Free  uint64 `json:"free"`
@@ -23,8 +24,8 @@ type StorageSize struct {
 }
 
 type LvmVolumeGroup struct {
-	Name string      `json:"name"`
-	Size StorageSize `json:"storage"`
+	Name string `json:"name"`
+	StorageSize
 }
 
 // Structs for messages
@@ -38,8 +39,9 @@ type NodeInfoResp struct {
 	VolumeGroups []LvmVolumeGroup `json:"volumegroups,omitempty"`
 }
 
-type NodeLvm struct {
-	VolumeGroup string `json:"volumegroup"`
+type Storage struct {
+	Disks        []string `json:"disks,omitempty"`
+	VolumeGroups []string `json:"vgs,omitempty"`
 }
 
 type NodeAddRequest struct {
@@ -47,9 +49,8 @@ type NodeAddRequest struct {
 	Zone string `json:"zone"`
 
 	// ----- Optional Values ------
-
-	// When Adding VGs
-	Lvm NodeLvm `json:"lvm,omitempty"`
+	// When Adding Disks
+	Storage
 }
 
 type NodeListResponse struct {

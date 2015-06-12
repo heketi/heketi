@@ -31,9 +31,8 @@ type Brick struct {
 }
 
 func NewBrick(size uint64) *Brick {
-	id, _ := utils.GenUUID()
 	return &Brick{
-		Id:   id,
+		Id:   utils.GenUUID(),
 		Size: size,
 	}
 }

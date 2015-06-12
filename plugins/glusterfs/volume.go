@@ -54,7 +54,7 @@ func NewVolumeDB(v *requests.VolumeCreateRequest) *VolumeDB {
 	vol.Replica = v.Replica
 	vol.Info.Name = v.Name
 	vol.Info.Size = v.Size
-	vol.Info.Id, err = utils.GenUUID()
+	vol.Info.Id = utils.GenUUID()
 	godbc.Check(err != nil)
 
 	return vol

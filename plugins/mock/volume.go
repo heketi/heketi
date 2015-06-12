@@ -33,7 +33,7 @@ func (m *MockPlugin) VolumeCreate(v *requests.VolumeCreateRequest) (*requests.Vo
 	info := &requests.VolumeInfoResp{}
 	info.Name = v.Name
 	info.Size = v.Size
-	info.Id, err = utils.GenUUID()
+	info.Id = utils.GenUUID()
 	if err != nil {
 		return nil, err
 	}

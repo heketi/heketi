@@ -17,24 +17,17 @@
 package glusterfs
 
 import (
-	"github.com/lpabon/godbc"
-	"github.com/lpabon/heketi/utils/ssh"
 	"sync"
 )
 
 type GlusterFSPlugin struct {
-	db      *GlusterFSDB
-	sshexec *ssh.SshExec
-	rwlock  sync.RWMutex
+	db     *GlusterFSDB
+	rwlock sync.RWMutex
 }
 
 func NewGlusterFSPlugin() *GlusterFSPlugin {
 	m := &GlusterFSPlugin{}
 	m.db = NewGlusterFSDB("heketi.db")
-
-	// Just for now, it will work wih https://github.com/lpabon/vagrant-gfsm
-	m.sshexec = ssh.NewSshExecWithKeyFile("vagrant", "insecure_private_key")
-	godbc.Check(m.sshexec != nil)
 
 	return m
 }

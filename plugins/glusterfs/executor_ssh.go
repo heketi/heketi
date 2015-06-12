@@ -15,33 +15,3 @@
 //
 
 package glusterfs
-
-import (
-	"errors"
-	"fmt"
-	"strconv"
-	"strings"
-)
-
-func (m *GlusterFSPlugin) vgSize(host string, vg string) (uint64, error) {
-
-	commands := []string{
-		fmt.Sprintf("sudo vgdisplay -c %v", vg),
-	}
-
-	b, err := m.sshexec.ConnectAndExec(host+":22", commands, nil)
-	if err != nil {
-		return 0, err
-	}
-	for k, v := range b {
-		fmt.Printf("[%v] ==\n%v\n", k, v)
-	}
-
-	vginfo := strings.Split(b[0], ":")
-	if len(vginfo) < 12 {
-		return 0, errors.New("vgdisplay returned an invalid string")
-	}
-
-	return strconv.ParseUint(vginfo[11], 10, 64)
-
-}

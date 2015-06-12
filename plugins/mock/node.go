@@ -33,7 +33,7 @@ func (m *MockPlugin) NodeAdd(v *requests.NodeAddRequest) (*requests.NodeInfoResp
 	info := &requests.NodeInfoResp{}
 	info.Name = v.Name
 	info.Zone = v.Zone
-	info.Id, err = utils.GenUUID()
+	info.Id = utils.GenUUID()
 	if err != nil {
 		return nil, err
 	}

@@ -19,43 +19,37 @@ package glusterfs
 import (
 	"errors"
 	"github.com/lpabon/heketi/requests"
-	"github.com/lpabon/heketi/utils"
+	"net"
+	"time"
 )
 
 func (m *GlusterFSPlugin) NodeAdd(v *requests.NodeAddRequest) (*requests.NodeInfoResp, error) {
 
+	// Check host is available
+	conn, err := net.DialTimeout("tcp", v.Name+":22", time.Second*2)
+	if err != nil {
+		return nil, err
+	}
+	conn.Close()
+
+	node := NewNodeDB(v)
+	/*
+		err := node.GetVgSizeFromNode()
+		if err != nil {
+			return nil, err
+		}
+	*/
+
 	m.rwlock.Lock()
 	defer m.rwlock.Unlock()
 
-	var err error
-
-	info := &requests.NodeInfoResp{}
-	info.Name = v.Name
-	info.Zone = v.Zone
-
-	// in kb
-	info.Storage.Total, err = m.vgSize(v.Name, v.Lvm.VolumeGroup)
-	if err != nil {
-		return nil, err
-	}
-
-	info.Id, err = utils.GenUUID()
-	if err != nil {
-		return nil, err
-	}
-
-	// Create struct to save on the DB
-	node := &NodeDB{
-		Node: info,
-	}
-
 	// Save to the db
-	m.db.nodes[info.Id] = node
+	m.db.nodes[node.Info.Id] = node
 
 	// Save db to persistent storage
 	m.db.Commit()
 
-	return node.Node, nil
+	return &node.Info, nil
 }
 
 func (m *GlusterFSPlugin) NodeList() (*requests.NodeListResponse, error) {
@@ -67,7 +61,7 @@ func (m *GlusterFSPlugin) NodeList() (*requests.NodeListResponse, error) {
 	list.Nodes = make([]requests.NodeInfoResp, 0)
 
 	for _, info := range m.db.nodes {
-		list.Nodes = append(list.Nodes, *info.Node)
+		list.Nodes = append(list.Nodes, info.Info)
 	}
 
 	return list, nil
@@ -96,7 +90,7 @@ func (m *GlusterFSPlugin) NodeInfo(id string) (*requests.NodeInfoResp, error) {
 	defer m.rwlock.RUnlock()
 
 	if node, ok := m.db.nodes[id]; ok {
-		return node.Node, nil
+		return &node.Info, nil
 	} else {
 		return nil, errors.New("Id not found")
 	}
