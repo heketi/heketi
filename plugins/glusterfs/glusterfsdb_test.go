@@ -35,7 +35,7 @@ func TestGlusterFSDBFileLoad(t *testing.T) {
 		},
 	}
 	db.volumes["a"] = &VolumeDB{
-		Volume: &requests.VolumeInfoResp{
+		Info: requests.VolumeInfoResp{
 			Name: "volumetest",
 		},
 	}
@@ -47,5 +47,5 @@ func TestGlusterFSDBFileLoad(t *testing.T) {
 	tests.Assert(t, newdb != nil)
 
 	tests.Assert(t, newdb.nodes["one"].Node.Name == db.nodes["one"].Node.Name)
-	tests.Assert(t, newdb.volumes["a"].Volume.Name == db.volumes["a"].Volume.Name)
+	tests.Assert(t, newdb.volumes["a"].Info.Name == db.volumes["a"].Info.Name)
 }

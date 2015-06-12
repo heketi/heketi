@@ -17,9 +17,42 @@
 package glusterfs
 
 import (
-	"github.com/lpabon/heketi/requests"
+	"fmt"
+	"github.com/lpabon/godbc"
+	"github.com/lpabon/heketi/utils"
 )
 
-type NodeDB struct {
-	Node *requests.NodeInfoResp
+type Brick struct {
+	Id     string
+	Path   string
+	NodeId string
+	Online bool
+	Size   uint64
+}
+
+func NewBrick(size uint64) *Brick {
+	id, _ := utils.GenUUID()
+	return &Brick{
+		Id:   id,
+		Size: size,
+	}
+}
+
+func (b *Brick) Create() error {
+	godbc.Require(b.NodeId != "")
+
+	// SSH into node and create brick
+	b.Online = true
+	b.Path = fmt.Sprintf("/fake/node/path/%v", b.Id)
+	return nil
+}
+
+func (b *Brick) Destroy() error {
+	godbc.Require(b.NodeId != "")
+	godbc.Require(b.Path != "")
+
+	// SSH into node and destroy the brick,
+	b.Path = ""
+	b.Online = false
+	return nil
 }

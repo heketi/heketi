@@ -17,40 +17,19 @@
 package glusterfs
 
 import (
-	"errors"
-	"fmt"
+	"github.com/lpabon/godbc"
 	"github.com/lpabon/heketi/requests"
 	"github.com/lpabon/heketi/utils"
 	//goon "github.com/shurcooL/go-goon"
 )
 
-type Brick struct {
-	Id     string
-	Path   string
-	NodeId string
-	Online bool
-	Size   uint64
-}
-
-type VolumeDB struct {
-	Volume *requests.VolumeInfoResp
-	Bricks []*Brick
-}
-
-func numBricks(v *requests.VolumeCreateRequest) (int, uint64, error) {
-	return 2, v.Size / 2, nil
-}
-
 func createBricks(num_bricks int, size uint64, replicas int) ([]*Brick, error) {
 	bricks := make([]*Brick, 0)
 	for i := 0; i < replicas*num_bricks; i++ {
-		id, _ := utils.GenUUID()
-		brick := &Brick{
-			Id:     id,
-			Path:   fmt.Sprintf("/fake/path/%v", id),
-			NodeId: "asdf",
-			Online: true,
-			Size:   size,
+		brick := NewBrick(size)
+		err := brick.Create()
+		if err != nil {
+			return nil, err
 		}
 		bricks = append(bricks, brick)
 	}
@@ -58,100 +37,79 @@ func createBricks(num_bricks int, size uint64, replicas int) ([]*Brick, error) {
 	return bricks, nil
 }
 
-func createGlusterVolume(bricks []*Brick, replica int) error {
+type VolumeDB struct {
+	Info    requests.VolumeInfoResp
+	Bricks  []*Brick
+	Started bool
+	Created bool
+	Replica int
+}
+
+func NewVolumeDB(v *requests.VolumeCreateRequest) *VolumeDB {
+
+	var err error
+
+	// Save volume information
+	vol := &VolumeDB{}
+	vol.Replica = v.Replica
+	vol.Info.Name = v.Name
+	vol.Info.Size = v.Size
+	vol.Info.Id, err = utils.GenUUID()
+	godbc.Check(err != nil)
+
+	return vol
+}
+
+func (v *VolumeDB) Destroy() error {
+
+	// Stop glusterfs volume
+
+	// Destroy glusterfs volume
+
+	// Destroy bricks
+	for brick := range v.Bricks {
+		// :TODO: Log the eror
+		v.Bricks[brick].Destroy()
+	}
+
 	return nil
 }
 
-func (m *GlusterFSPlugin) VolumeCreate(v *requests.VolumeCreateRequest) (*requests.VolumeInfoResp, error) {
-
+func (v *VolumeDB) Create() error {
 	// Get number of bricks we need to satisfy this request
-	bricks_num, brick_size, err := numBricks(v)
+	bricks_num, brick_size, err := v.numBricksNeeded()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Get the nodes and storage for these bricks
 	// and Create the bricks
-	bricks, err := createBricks(bricks_num, brick_size, 2)
+	replica := v.Replica
+	if v.Replica == 0 {
+		replica = 2
+	}
+
+	v.Bricks, err = createBricks(bricks_num, brick_size, replica)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Setup the glusterfs volume
-	err = createGlusterVolume(bricks, 2)
+	err = v.createGlusterVolume()
 	if err != nil {
-		return nil, err
+		v.Destroy()
+		return err
 	}
 
-	m.rwlock.Lock()
-	defer m.rwlock.Unlock()
-
-	// Save volume information
-	info := &requests.VolumeInfoResp{}
-	info.Name = v.Name
-	info.Size = v.Size
-	info.Id, err = utils.GenUUID()
-	if err != nil {
-		return nil, err
-	}
-
-	volume := &VolumeDB{
-		Volume: info,
-		Bricks: bricks,
-	}
-
-	m.db.volumes[info.Id] = volume
-
-	m.db.Commit()
-
-	return volume.Volume, nil
-}
-
-func (m *GlusterFSPlugin) VolumeDelete(id string) error {
-
-	m.rwlock.Lock()
-	defer m.rwlock.Unlock()
-
-	if _, ok := m.db.volumes[id]; ok {
-		delete(m.db.volumes, id)
-	} else {
-		return errors.New("Id not found")
-	}
-
-	m.db.Commit()
 	return nil
+
 }
 
-func (m *GlusterFSPlugin) VolumeInfo(id string) (*requests.VolumeInfoResp, error) {
-
-	m.rwlock.RLock()
-	defer m.rwlock.RUnlock()
-
-	if volume, ok := m.db.volumes[id]; ok {
-		return volume.Volume, nil
-	} else {
-		return nil, errors.New("Id not found")
-	}
+// return numbricks, size of each brick, error
+func (v *VolumeDB) numBricksNeeded() (int, uint64, error) {
+	return 2, v.Info.Size / 2, nil
 }
 
-func (m *GlusterFSPlugin) VolumeResize(id string) (*requests.VolumeInfoResp, error) {
-	m.rwlock.RLock()
-	defer m.rwlock.RUnlock()
-
-	return m.VolumeInfo(id)
-}
-
-func (m *GlusterFSPlugin) VolumeList() (*requests.VolumeListResponse, error) {
-
-	m.rwlock.RLock()
-	defer m.rwlock.RUnlock()
-
-	list := &requests.VolumeListResponse{}
-	list.Volumes = make([]requests.VolumeInfoResp, 0)
-
-	for _, info := range m.db.volumes {
-		list.Volumes = append(list.Volumes, *info.Volume)
-	}
-
-	return list, nil
+func (v *VolumeDB) createGlusterVolume() error {
+	return nil
 }
