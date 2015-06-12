@@ -30,7 +30,7 @@ func TestGlusterFSDBFileLoad(t *testing.T) {
 	db := NewGlusterFSDB(tmpfile)
 
 	db.nodes["one"] = &NodeDB{
-		Node: &requests.NodeInfoResp{
+		Info: requests.NodeInfoResp{
 			Name: "nodetest",
 		},
 	}
@@ -46,6 +46,6 @@ func TestGlusterFSDBFileLoad(t *testing.T) {
 	newdb := NewGlusterFSDB(tmpfile)
 	tests.Assert(t, newdb != nil)
 
-	tests.Assert(t, newdb.nodes["one"].Node.Name == db.nodes["one"].Node.Name)
+	tests.Assert(t, newdb.nodes["one"].Info.Name == db.nodes["one"].Info.Name)
 	tests.Assert(t, newdb.volumes["a"].Info.Name == db.volumes["a"].Info.Name)
 }
