@@ -24,8 +24,15 @@ type VolumeInfoResp struct {
 }
 
 type VolumeCreateRequest struct {
+
+	// Name of volume to create
 	Name string `json:"name"`
+
+	// Size in KB
 	Size uint64 `json:"size"`
+
+	// If possible, number of replicas requested
+	Replica int `json:"replica,omitempty"`
 }
 
 type VolumeListResponse struct {
