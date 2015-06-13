@@ -37,7 +37,6 @@ const (
 
 type NodeDB struct {
 	Info requests.NodeInfoResp
-	requests.Storage
 }
 
 func NewNodeDB(v *requests.NodeAddRequest) *NodeDB {
@@ -46,21 +45,31 @@ func NewNodeDB(v *requests.NodeAddRequest) *NodeDB {
 	node.Info.Id = utils.GenUUID()
 	node.Info.Name = v.Name
 	node.Info.Zone = v.Zone
-	node.Info.VolumeGroups = make([]requests.LvmVolumeGroup, 0)
-	node.Disks = v.Disks
-	node.VolumeGroups = v.VolumeGroups
+	node.Info.Devices = make(map[string]*requests.DeviceResponse)
 
 	return node
 }
 
-func (n *NodeDB) GetVgSizeFromNode() error {
+func (n *NodeDB) DeviceAdd(req *requests.DeviceRequest) error {
+	// Setup device object
+	dev := &requests.DeviceResponse{}
+	dev.Name = req.Name
+	dev.Weight = req.Weight
+	dev.Id = utils.GenUUID()
+
+	n.Info.Devices[dev.Id] = dev
+
+	return nil
+}
+
+func (n *NodeDB) getVgSizeFromNode(storage *requests.StorageSize, device string) error {
 
 	// Just for now, it will work wih https://github.com/lpabon/vagrant-gfsm
 	sshexec := ssh.NewSshExecWithKeyFile("vagrant", "insecure_private_key")
 	godbc.Check(sshexec != nil)
 
 	commands := []string{
-		fmt.Sprintf("sudo vgdisplay -c %v", n.VolumeGroups[0]),
+		fmt.Sprintf("sudo vgdisplay -c %v", "XXXXXXX - FIX ME"),
 	}
 
 	b, err := sshexec.ConnectAndExec(n.Info.Name+":22", commands, nil)
@@ -68,17 +77,13 @@ func (n *NodeDB) GetVgSizeFromNode() error {
 		return err
 	}
 
+	// Example:
+	// gfsm:r/w:772:-1:0:0:0:-1:0:4:4:2097135616:4096:511996:0:511996:rJ0bIG-3XNc-NoS0-fkKm-batK-dFyX-xbxHym
 	vginfo := strings.Split(b[0], ":")
 
 	// See vgdisplay manpage
 	if len(vginfo) < 17 {
 		return errors.New("vgdisplay returned an invalid string")
-	}
-
-	n.Info.Storage.Total, err =
-		strconv.ParseUint(vginfo[VGDISPLAY_SIZE_KB], 10, 64)
-	if err != nil {
-		return err
 	}
 
 	extent_size, err :=
@@ -99,8 +104,13 @@ func (n *NodeDB) GetVgSizeFromNode() error {
 		return err
 	}
 
-	n.Info.Storage.Free = free_extents * extent_size
-	n.Info.Storage.Used = alloc_extents * extent_size
+	storage.Free = free_extents * extent_size
+	storage.Used = alloc_extents * extent_size
+	storage.Total, err =
+		strconv.ParseUint(vginfo[VGDISPLAY_SIZE_KB], 10, 64)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

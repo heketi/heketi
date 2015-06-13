@@ -30,13 +30,11 @@ type LvmVolumeGroup struct {
 
 // Structs for messages
 type NodeInfoResp struct {
-	Name    string      `json:"hostname"`
-	Id      string      `json:"id"`
-	Zone    string      `json:"zone"`
-	Storage StorageSize `json:"storage"`
-
-	// -- optional values --
-	VolumeGroups []LvmVolumeGroup `json:"volumegroups,omitempty"`
+	Name    string                     `json:"hostname"`
+	Id      string                     `json:"id"`
+	Zone    string                     `json:"zone"`
+	Storage StorageSize                `json:"storage"`
+	Devices map[string]*DeviceResponse `json:"devices"`
 }
 
 type Storage struct {
@@ -47,12 +45,23 @@ type Storage struct {
 type NodeAddRequest struct {
 	Name string `json:"name"`
 	Zone string `json:"zone"`
-
-	// ----- Optional Values ------
-	// When Adding Disks
-	Storage
 }
 
 type NodeListResponse struct {
 	Nodes []NodeInfoResp `json:"nodes"`
+}
+
+type DeviceRequest struct {
+	Name   string `json:"name"`
+	Weight int    `json:"weight"`
+}
+
+type DeviceResponse struct {
+	DeviceRequest
+	StorageSize
+	Id string `json:"id"`
+}
+
+type DeviceAddRequest struct {
+	Devices []DeviceRequest `json:"devices"`
 }

@@ -23,6 +23,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/lpabon/heketi/plugins"
 	"github.com/lpabon/heketi/requests"
+	"github.com/lpabon/heketi/utils"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -47,9 +48,35 @@ func (n *NodeServer) NodeRoutes() Routes {
 		Route{"NodeAdd", "POST", "/nodes", n.NodeAddHandler},
 		Route{"NodeInfo", "GET", "/nodes/{id:[A-Fa-f0-9]+}", n.NodeInfoHandler},
 		Route{"NodeDelete", "DELETE", "/nodes/{id:[A-Fa-f0-9]+}", n.NodeDeleteHandler},
+		Route{"NodeAddDevice", "POST", "/nodes/{id:[A-Fa-f0-9]+}/devices", n.NodeAddDeviceHandler},
+		//Route{"NodeDeleteDevice", "DELETE", "/nodes/{id:[A-Fa-f0-9]+}/devices/{devid:[A-Fa-f0-9]+}", n.NodeDeleteDeviceHandler},
 	}
 
 	return nodeRoutes
+}
+
+func (n *NodeServer) NodeAddDeviceHandler(w http.ResponseWriter, r *http.Request) {
+
+	// Get list
+	var req requests.DeviceAddRequest
+
+	err := utils.GetJsonFromRequest(r, &req)
+	if err != nil {
+		http.Error(w, "request unable to be parsed", 422)
+		return
+	}
+
+	// Get the id from the URL
+	vars := mux.Vars(r)
+
+	// Get the id from the URL
+	id := vars["id"]
+
+	// Call plugin
+	n.plugin.NodeAddDevice(id, &req)
+
+	// Write msg
+	w.WriteHeader(http.StatusCreated)
 }
 
 func (n *NodeServer) NodeListHandler(w http.ResponseWriter, r *http.Request) {

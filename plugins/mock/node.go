@@ -26,6 +26,26 @@ type Node struct {
 	node *requests.NodeInfoResp
 }
 
+func (m *MockPlugin) NodeAddDevice(id string, req *requests.DeviceAddRequest) error {
+
+	if node, ok := m.db.nodes[id]; ok {
+
+		for device := range req.Devices {
+			dev := &requests.DeviceResponse{}
+			dev.Name = req.Devices[device].Name
+			dev.Weight = req.Devices[device].Weight
+			dev.Id = utils.GenUUID()
+
+			node.node.Devices[dev.Id] = dev
+		}
+
+	} else {
+		return errors.New("Node not found")
+	}
+
+	return nil
+}
+
 func (m *MockPlugin) NodeAdd(v *requests.NodeAddRequest) (*requests.NodeInfoResp, error) {
 
 	var err error

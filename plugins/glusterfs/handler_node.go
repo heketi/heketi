@@ -18,27 +18,49 @@ package glusterfs
 
 import (
 	"errors"
+	//"fmt"
 	"github.com/lpabon/heketi/requests"
-	"net"
-	"time"
+	//"net"
+	//"time"
 )
+
+func (m *GlusterFSPlugin) NodeAddDevice(id string, req *requests.DeviceAddRequest) error {
+
+	m.rwlock.Lock()
+	defer m.rwlock.Unlock()
+
+	if node, ok := m.db.nodes[id]; ok {
+
+		for device := range req.Devices {
+			err := node.DeviceAdd(&req.Devices[device])
+			if err != nil {
+				return err
+			}
+		}
+
+	} else {
+		return errors.New("Node not found")
+	}
+
+	// Save db to persistent storage
+	m.db.Commit()
+
+	return nil
+}
 
 func (m *GlusterFSPlugin) NodeAdd(v *requests.NodeAddRequest) (*requests.NodeInfoResp, error) {
 
 	// Check host is available
-	conn, err := net.DialTimeout("tcp", v.Name+":22", time.Second*2)
-	if err != nil {
-		return nil, err
-	}
-	conn.Close()
-
-	node := NewNodeDB(v)
 	/*
-		err := node.GetVgSizeFromNode()
+		conn, err := net.DialTimeout("tcp", v.Name+":22", time.Second*2)
 		if err != nil {
+			fmt.Printf("Unable to connect to %s\n", v.Name)
 			return nil, err
 		}
+		conn.Close()
 	*/
+
+	node := NewNodeDB(v)
 
 	m.rwlock.Lock()
 	defer m.rwlock.Unlock()

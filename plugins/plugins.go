@@ -34,6 +34,8 @@ type Plugin interface {
 	NodeRemove(id string) error
 	NodeInfo(id string) (*requests.NodeInfoResp, error)
 	NodeList() (*requests.NodeListResponse, error)
+
+	NodeAddDevice(id string, req *requests.DeviceAddRequest) error
 	Close()
 }
 
