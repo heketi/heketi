@@ -14,13 +14,11 @@ matrix:
   - go: 1.4.2
     env: COVERAGE="true" GOVER="1.4"
 before_script:
-- if [[ "$GOVER" = "1.4" ]] ; then go get golang.org/x/tools/cmd/vet; fi
-- if [[ "$GOVER" = "1.4" ]] ; then go get golang.org/x/tools/cmd/cover; fi
 - if [[ "$GOVER" != "1.4" ]] ; then go get code.google.com/p/go.tools/cmd/cover; fi
 - if [[ "$GOVER" != "1.4" ]] ; then go get code.google.com/p/go.tools/cmd/vet; fi
 - bash .travis-fork-fix
 script:
-- go fmt ./... | wc -l | grep 0
-- go vet ./...
+- if [[ "GOVER" = "1.4" ]] ; then go fmt ./... | wc -l | grep 0 ; fi
+- if [[ "GOVER" = "1.4" ]] ; then go vet ./... ; fi
 - go test -v $OPTIONS ./...
 - if [[ -n "$COVERAGE" ]]; then bash .travis-coverage; fi
