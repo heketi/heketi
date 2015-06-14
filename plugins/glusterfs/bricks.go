@@ -23,12 +23,11 @@ import (
 )
 
 type Brick struct {
-	Id       string
-	Path     string
-	NodeId   string
-	DeviceId string
-	Online   bool
-	Size     uint64
+	Id       string `json:"id"`
+	Path     string `json:"path"`
+	NodeId   string `json:"node_id"`
+	DeviceId string `json:"device_id"`
+	Size     uint64 `json:"size"`
 }
 
 func NewBrick(size uint64) *Brick {
@@ -42,7 +41,6 @@ func (b *Brick) Create() error {
 	godbc.Require(b.NodeId != "")
 
 	// SSH into node and create brick
-	b.Online = true
 	b.Path = fmt.Sprintf("/fake/node/path/%v", b.Id)
 	return nil
 }
@@ -53,6 +51,5 @@ func (b *Brick) Destroy() error {
 
 	// SSH into node and destroy the brick,
 	b.Path = ""
-	b.Online = false
 	return nil
 }

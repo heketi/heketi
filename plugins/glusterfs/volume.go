@@ -22,22 +22,27 @@ import (
 	//goon "github.com/shurcooL/go-goon"
 )
 
-type VolumeDB struct {
-	Info    requests.VolumeInfoResp
-	Bricks  []*Brick
-	Started bool
-	Created bool
-	Replica int
+type VolumeStateResponse struct {
+	Bricks  []*Brick `json:"bricks"`
+	Started bool     `json:"started"`
+	Created bool     `json:"created"`
+	Replica int      `json:"replica"`
 }
 
-func NewVolumeDB(v *requests.VolumeCreateRequest) *VolumeDB {
+type VolumeDB struct {
+	Info  requests.VolumeInfoResp
+	State VolumeStateResponse
+}
+
+func NewVolumeDB(v *requests.VolumeCreateRequest, bricks []*Brick, replica int) *VolumeDB {
 
 	// Save volume information
 	vol := &VolumeDB{}
-	vol.Replica = v.Replica
 	vol.Info.Name = v.Name
 	vol.Info.Size = v.Size
 	vol.Info.Id = utils.GenUUID()
+	vol.State.Bricks = bricks
+	vol.State.Replica = replica
 
 	return vol
 }
@@ -49,14 +54,23 @@ func (v *VolumeDB) Destroy() error {
 	// Destroy glusterfs volume
 
 	// Destroy bricks
-	for brick := range v.Bricks {
+	for brick := range v.State.Bricks {
 		// :TODO: Log the eror
-		v.Bricks[brick].Destroy()
+		v.State.Bricks[brick].Destroy()
 	}
 
 	return nil
 }
 
+func (v *VolumeDB) InfoResponse() *requests.VolumeInfoResp {
+	info := &requests.VolumeInfoResp{}
+	*info = v.Info
+	info.Plugin = v.State
+	return info
+}
+
 func (v *VolumeDB) CreateGlusterVolume() error {
+	v.State.Created = true
+	v.State.Started = true
 	return nil
 }

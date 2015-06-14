@@ -139,8 +139,11 @@ func (m *GlusterFSPlugin) VolumeCreate(v *requests.VolumeCreateRequest) (*reques
 	}
 
 	// Create volume object
-	volume := NewVolumeDB(v)
-	volume.Bricks = bricks
+	volume := NewVolumeDB(v, bricks, replica)
+	err = volume.CreateGlusterVolume()
+	if err != nil {
+		return nil, err
+	}
 
 	// Save volume information on the DB
 	m.db.volumes[volume.Info.Id] = volume
@@ -148,7 +151,7 @@ func (m *GlusterFSPlugin) VolumeCreate(v *requests.VolumeCreateRequest) (*reques
 	// Save changes to the DB
 	m.db.Commit()
 
-	return &volume.Info, nil
+	return volume.InfoResponse(), nil
 }
 
 func (m *GlusterFSPlugin) VolumeDelete(id string) error {
@@ -191,8 +194,7 @@ func (m *GlusterFSPlugin) VolumeList() (*requests.VolumeListResponse, error) {
 	list.Volumes = make([]requests.VolumeInfoResp, 0)
 
 	for _, volume := range m.db.volumes {
-		volume.Info.Plugin = volume.Bricks
-		list.Volumes = append(list.Volumes, volume.Info)
+		list.Volumes = append(list.Volumes, *volume.InfoResponse())
 	}
 
 	return list, nil
