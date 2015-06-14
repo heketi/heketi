@@ -8,17 +8,17 @@ env:
 matrix:
   include:
   - go: 1.2.2
-    env: OPTIONS="" GOVER="1.2"
+    env: OPTIONS=""
   - go: 1.3.3
-    env: OPTIONS="-race" GOVER="1.3"
+    env: OPTIONS="-race"
   - go: 1.4.2
-    env: COVERAGE="true" GOVER="1.4"
+    env: COVERAGE="true" GOTOOLS="yes"
 before_script:
-- if [[ "$GOVER" != "1.4" ]] ; then go get code.google.com/p/go.tools/cmd/cover; fi
-- if [[ "$GOVER" != "1.4" ]] ; then go get code.google.com/p/go.tools/cmd/vet; fi
+- if [[ "$GOTOOLS" = "yes" ]] ; then go get golang.org/x/tools/cmd/vet; fi
+- if [[ "$GOTOOLS" = "yes" ]] ; then go get golang.org/x/tools/cmd/cover; fi
 - bash .travis-fork-fix
 script:
-- if [[ "GOVER" = "1.4" ]] ; then go fmt ./... | wc -l | grep 0 ; fi
-- if [[ "GOVER" = "1.4" ]] ; then go vet ./... ; fi
+- if [[ "GOTOOLS" = "yes" ]] ; then go fmt ./... | wc -l | grep 0 ; fi
+- if [[ "GOTOOLS" = "yes" ]] ; then go vet ./... ; fi
 - go test -v $OPTIONS ./...
 - if [[ -n "$COVERAGE" ]]; then bash .travis-coverage; fi
