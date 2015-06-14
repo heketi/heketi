@@ -18,9 +18,10 @@ package requests
 
 // Structs for messages
 type VolumeInfoResp struct {
-	Name string `json:"name"`
-	Size uint64 `json:"size"`
-	Id   string `json:"id"`
+	Name   string `json:"name"`
+	Size   uint64 `json:"size"`
+	Id     string `json:"id"`
+	Plugin interface{}
 }
 
 type VolumeCreateRequest struct {

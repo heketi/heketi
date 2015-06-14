@@ -23,11 +23,12 @@ import (
 )
 
 type Brick struct {
-	Id     string
-	Path   string
-	NodeId string
-	Online bool
-	Size   uint64
+	Id       string
+	Path     string
+	NodeId   string
+	DeviceId string
+	Online   bool
+	Size     uint64
 }
 
 func NewBrick(size uint64) *Brick {

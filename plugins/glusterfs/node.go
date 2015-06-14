@@ -57,6 +57,10 @@ func (n *NodeDB) DeviceAdd(req *requests.DeviceRequest) error {
 	dev.Weight = req.Weight
 	dev.Id = utils.GenUUID()
 
+	// Add fake info for now
+	dev.Free = 10000
+	dev.Total = dev.Free
+
 	n.Info.Devices[dev.Id] = dev
 
 	return nil

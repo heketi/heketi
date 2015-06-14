@@ -22,16 +22,125 @@ import (
 	//goon "github.com/shurcooL/go-goon"
 )
 
+type BrickNode struct {
+	node, device string
+}
+
+type BrickNodes []BrickNode
+
+// return numbricks, size of each brick, error
+func (m *GlusterFSPlugin) numBricksNeeded(size uint64) (int, uint64, error) {
+	return 2, size / 2, nil
+}
+
+func (m *GlusterFSPlugin) getBrickNodes(brick *Brick, replicas int) BrickNodes {
+	// Get info from swift ring
+
+	// Check it has enough space, if not .. go to next device
+
+	nodelist := make(BrickNodes, 0)
+
+	for nodeid, node := range m.db.nodes {
+		for deviceid, _ := range node.Info.Devices {
+			replicas -= 1
+			nodelist = append(nodelist, BrickNode{device: deviceid, node: nodeid})
+			if replicas == 0 {
+				return nodelist
+			}
+		}
+	}
+
+	return nodelist
+}
+
+func (m *GlusterFSPlugin) allocBricks(num_bricks, replicas int, size uint64) ([]*Brick, error) {
+
+	bricks := make([]*Brick, 0)
+
+	for brick_num := 0; brick_num < num_bricks; brick_num++ {
+
+		var brick *Brick
+
+		brick = NewBrick(size)
+		nodelist := m.getBrickNodes(brick, replicas)
+		for i := 0; i < replicas; i++ {
+
+			// XXX This is bad, but ok for now
+			if replicas > 1 {
+				brick = NewBrick(size)
+			}
+
+			// This could be a function
+			for enough_space := false; !enough_space; {
+
+				// Could ask for more than just the replicas
+				if len(nodelist) < 1 {
+					return nil, errors.New("No space")
+				}
+
+				var bricknode BrickNode
+
+				// Should check list size
+				bricknode, nodelist = nodelist[len(nodelist)-1], nodelist[:len(nodelist)-1]
+
+				// Probably should be an accessor
+				if m.db.nodes[bricknode.node].Info.Devices[bricknode.device].Free > size {
+					enough_space = true
+					brick.NodeId = bricknode.node
+					brick.DeviceId = bricknode.device
+
+					m.db.nodes[bricknode.node].Info.Devices[bricknode.device].Used += size
+					m.db.nodes[bricknode.node].Info.Devices[bricknode.device].Free -= size
+				}
+			}
+
+			// Create a brick object
+			bricks = append(bricks, brick)
+
+		}
+	}
+
+	return bricks, nil
+
+}
+
+func (m *GlusterFSPlugin) createBricks(bricks []*Brick) error {
+	return nil
+}
+
 func (m *GlusterFSPlugin) VolumeCreate(v *requests.VolumeCreateRequest) (*requests.VolumeInfoResp, error) {
 
 	m.rwlock.Lock()
 	defer m.rwlock.Unlock()
 
-	volume := NewVolumeDB(v)
-	err := volume.Create()
+	// Determine number of bricks needed
+	bricks_num, brick_size, err := m.numBricksNeeded(v.Size)
 	if err != nil {
 		return nil, err
 	}
+
+	// Get the nodes and storage for these bricks
+	// and Create the bricks
+	replica := v.Replica
+	if v.Replica == 0 {
+		replica = 2
+	}
+
+	// Allocate bricks in the cluster
+	bricks, err := m.allocBricks(bricks_num, replica, brick_size)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create bricks
+	err = m.createBricks(bricks)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create volume object
+	volume := NewVolumeDB(v)
+	volume.Bricks = bricks
 
 	// Save volume information on the DB
 	m.db.volumes[volume.Info.Id] = volume
@@ -82,6 +191,7 @@ func (m *GlusterFSPlugin) VolumeList() (*requests.VolumeListResponse, error) {
 	list.Volumes = make([]requests.VolumeInfoResp, 0)
 
 	for _, volume := range m.db.volumes {
+		volume.Info.Plugin = volume.Bricks
 		list.Volumes = append(list.Volumes, volume.Info)
 	}
 
