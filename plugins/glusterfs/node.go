@@ -57,23 +57,42 @@ func (n *NodeDB) DeviceAdd(req *requests.DeviceRequest) error {
 	dev.Weight = req.Weight
 	dev.Id = utils.GenUUID()
 
-	// Add fake info for now
-	dev.Free = 10000
-	dev.Total = dev.Free
-
-	n.Info.Devices[dev.Id] = dev
-
-	return nil
-}
-
-func (n *NodeDB) getVgSizeFromNode(storage *requests.StorageSize, device string) error {
+	// Setup --
 
 	// Just for now, it will work wih https://github.com/lpabon/vagrant-gfsm
 	sshexec := ssh.NewSshExecWithKeyFile("vagrant", "insecure_private_key")
 	godbc.Check(sshexec != nil)
 
 	commands := []string{
-		fmt.Sprintf("sudo vgdisplay -c %v", "XXXXXXX - FIX ME"),
+		fmt.Sprintf("sudo pvcreate %v", dev.Name),
+		fmt.Sprintf("sudo vgcreate vg_%v %v", dev.Id, dev.Name),
+	}
+
+	_, err := sshexec.ConnectAndExec(n.Info.Name+":22", commands, nil)
+	if err != nil {
+		return err
+	}
+
+	// Vg info
+	err = n.getVgSizeFromNode(dev)
+	if err != nil {
+		return err
+	}
+
+	// Add to db
+	n.Info.Devices[dev.Id] = dev
+
+	return nil
+}
+
+func (n *NodeDB) getVgSizeFromNode(device *requests.DeviceResponse) error {
+
+	// Just for now, it will work wih https://github.com/lpabon/vagrant-gfsm
+	sshexec := ssh.NewSshExecWithKeyFile("vagrant", "insecure_private_key")
+	godbc.Check(sshexec != nil)
+
+	commands := []string{
+		fmt.Sprintf("sudo vgdisplay -c vg_%v", device.Id),
 	}
 
 	b, err := sshexec.ConnectAndExec(n.Info.Name+":22", commands, nil)
@@ -108,13 +127,16 @@ func (n *NodeDB) getVgSizeFromNode(storage *requests.StorageSize, device string)
 		return err
 	}
 
-	storage.Free = free_extents * extent_size
-	storage.Used = alloc_extents * extent_size
-	storage.Total, err =
-		strconv.ParseUint(vginfo[VGDISPLAY_SIZE_KB], 10, 64)
+	device.Free = free_extents * extent_size
+	device.Used = alloc_extents * extent_size
+	device.Total, err = strconv.ParseUint(vginfo[VGDISPLAY_SIZE_KB], 10, 64)
 	if err != nil {
 		return err
 	}
+
+	n.Info.Storage.Free += device.Free
+	n.Info.Storage.Used += device.Used
+	n.Info.Storage.Total += device.Total
 
 	return nil
 }
