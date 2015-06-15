@@ -21,6 +21,7 @@ type VolumeInfoResp struct {
 	Name   string      `json:"name"`
 	Size   uint64      `json:"size"`
 	Id     string      `json:"id"`
+	Mount  string      `json:"mount"`
 	Plugin interface{} `json:"plugin"`
 }
 

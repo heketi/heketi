@@ -17,8 +17,11 @@
 package glusterfs
 
 import (
+	"fmt"
+	"github.com/lpabon/godbc"
 	"github.com/lpabon/heketi/requests"
 	"github.com/lpabon/heketi/utils"
+	"github.com/lpabon/heketi/utils/ssh"
 	//goon "github.com/shurcooL/go-goon"
 )
 
@@ -38,11 +41,16 @@ func NewVolumeDB(v *requests.VolumeCreateRequest, bricks []*Brick, replica int) 
 
 	// Save volume information
 	vol := &VolumeDB{}
-	vol.Info.Name = v.Name
 	vol.Info.Size = v.Size
 	vol.Info.Id = utils.GenUUID()
 	vol.State.Bricks = bricks
 	vol.State.Replica = replica
+
+	if v.Name != "" {
+		vol.Info.Name = v.Name
+	} else {
+		vol.Info.Name = vol.Info.Id
+	}
 
 	return vol
 }
@@ -69,8 +77,74 @@ func (v *VolumeDB) InfoResponse() *requests.VolumeInfoResp {
 	return info
 }
 
+func (v *VolumeDB) peerProbe() error {
+
+	// Just for now, it will work wih https://github.com/lpabon/vagrant-gfsm
+	sshexec := ssh.NewSshExecWithKeyFile("vagrant", "insecure_private_key")
+	godbc.Check(sshexec != nil)
+
+	// Create a 'set' of the hosts, so that we can create the commands
+	nodes := make(map[string]string)
+	for brick := range v.State.Bricks {
+		nodes[v.State.Bricks[brick].NodeId] = v.State.Bricks[brick].nodedb.Info.Name
+	}
+	delete(nodes, v.State.Bricks[0].NodeId)
+
+	// create the commands
+	commands := make([]string, 0)
+	for _, node := range nodes {
+		commands = append(commands, fmt.Sprintf("sudo gluster peer probe %v", node))
+	}
+
+	_, err := sshexec.ConnectAndExec(v.State.Bricks[0].nodedb.Info.Name+":22", commands, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+
+}
+
 func (v *VolumeDB) CreateGlusterVolume() error {
+
+	// Setup peer
+	err := v.peerProbe()
+	if err != nil {
+		return err
+	}
+
+	// Create gluster volume
+	cmd := fmt.Sprintf("sudo gluster volume create vol_%v replica %v ",
+		v.Info.Name, v.State.Replica)
+	for brick := range v.State.Bricks {
+		cmd += fmt.Sprintf("%v:/gluster/brick_%v/brick ",
+			v.State.Bricks[brick].nodedb.Info.Name, v.State.Bricks[brick].Id)
+	}
+
+	// :TODO: Add force for now.  It will allow silly bricks on the same systems
+	// to work.  Please remove once we add the intelligent ring
+	cmd += " force"
+
+	// Just for now, it will work wih https://github.com/lpabon/vagrant-gfsm
+	sshexec := ssh.NewSshExecWithKeyFile("vagrant", "insecure_private_key")
+	godbc.Check(sshexec != nil)
+
+	commands := []string{
+		cmd,
+		fmt.Sprintf("gluster volume start vol_%v", v.Info.Name),
+	}
+
+	_, err = sshexec.ConnectAndExec(v.State.Bricks[0].nodedb.Info.Name+":22", commands, nil)
+	if err != nil {
+		return err
+	}
+
+	// Setup mount point
+	v.Info.Mount = fmt.Sprintf("%v:vol_%v", v.State.Bricks[0].nodedb.Info.Name, v.Info.Name)
+
+	// State
 	v.State.Created = true
 	v.State.Started = true
+
 	return nil
 }

@@ -70,10 +70,10 @@ func (b *Brick) Create() error {
 			// Logical Vol name
 			b.Id),
 		fmt.Sprintf("sudo mkfs.xfs -i size=512 /dev/vg_%v/brick_%v", b.DeviceId, b.Id),
-		"[ -d /gluster ] || sudo mkdir /gluster",
 		fmt.Sprintf("sudo mkdir /gluster/brick_%v", b.Id),
 		fmt.Sprintf("sudo mount /dev/vg_%v/brick_%v /gluster/brick_%v",
 			b.DeviceId, b.Id, b.Id),
+		fmt.Sprintf("sudo mkdir /gluster/brick_%v/brick", b.Id),
 	}
 
 	_, err := sshexec.ConnectAndExec(b.nodedb.Info.Name+":22", commands, nil)
