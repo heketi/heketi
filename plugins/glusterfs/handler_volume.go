@@ -20,6 +20,16 @@ import (
 	"errors"
 	"github.com/lpabon/heketi/requests"
 	//goon "github.com/shurcooL/go-goon"
+	"sync"
+)
+
+const (
+	KB             = 1
+	MB             = KB * 1024
+	GB             = MB * 1024
+	TB             = GB * 1024
+	BRICK_MIN_SIZE = 2 * GB
+	BRICK_MAX_SIZE = 2 * TB
 )
 
 type BrickNode struct {
@@ -42,11 +52,7 @@ func (m *GlusterFSPlugin) getBrickNodes(brick *Brick, replicas int) BrickNodes {
 
 	for nodeid, node := range m.db.nodes {
 		for deviceid, _ := range node.Info.Devices {
-			replicas -= 1
 			nodelist = append(nodelist, BrickNode{device: deviceid, node: nodeid})
-			if replicas == 0 {
-				return nodelist
-			}
 		}
 	}
 
@@ -66,7 +72,7 @@ func (m *GlusterFSPlugin) allocBricks(num_bricks, replicas int, size uint64) ([]
 		for i := 0; i < replicas; i++ {
 
 			// XXX This is bad, but ok for now
-			if replicas > 1 {
+			if i > 0 {
 				brick = NewBrick(size)
 			}
 
@@ -83,14 +89,21 @@ func (m *GlusterFSPlugin) allocBricks(num_bricks, replicas int, size uint64) ([]
 				// Should check list size
 				bricknode, nodelist = nodelist[len(nodelist)-1], nodelist[:len(nodelist)-1]
 
+				// Allocate size for the brick plus the snapshot
+				tpsize := uint64(float64(size) * THINP_SNAPSHOT_FACTOR)
+
 				// Probably should be an accessor
-				if m.db.nodes[bricknode.node].Info.Devices[bricknode.device].Free > size {
+				if m.db.nodes[bricknode.node].Info.Devices[bricknode.device].Free > tpsize {
 					enough_space = true
 					brick.NodeId = bricknode.node
 					brick.DeviceId = bricknode.device
+					brick.nodedb = m.db.nodes[bricknode.node]
 
-					m.db.nodes[bricknode.node].Info.Devices[bricknode.device].Used += size
-					m.db.nodes[bricknode.node].Info.Devices[bricknode.device].Free -= size
+					m.db.nodes[bricknode.node].Info.Devices[bricknode.device].Used += tpsize
+					m.db.nodes[bricknode.node].Info.Devices[bricknode.device].Free -= tpsize
+
+					m.db.nodes[bricknode.node].Info.Storage.Used += tpsize
+					m.db.nodes[bricknode.node].Info.Storage.Free -= tpsize
 				}
 			}
 
@@ -105,6 +118,19 @@ func (m *GlusterFSPlugin) allocBricks(num_bricks, replicas int, size uint64) ([]
 }
 
 func (m *GlusterFSPlugin) createBricks(bricks []*Brick) error {
+	var wg sync.WaitGroup
+	for brick := range bricks {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if false {
+				bricks[brick].Create()
+			}
+		}()
+	}
+
+	wg.Wait()
+
 	return nil
 }
 
@@ -113,17 +139,17 @@ func (m *GlusterFSPlugin) VolumeCreate(v *requests.VolumeCreateRequest) (*reques
 	m.rwlock.Lock()
 	defer m.rwlock.Unlock()
 
-	// Determine number of bricks needed
-	bricks_num, brick_size, err := m.numBricksNeeded(v.Size)
-	if err != nil {
-		return nil, err
-	}
-
 	// Get the nodes and storage for these bricks
 	// and Create the bricks
 	replica := v.Replica
 	if v.Replica == 0 {
 		replica = 2
+	}
+
+	// Determine number of bricks needed
+	bricks_num, brick_size, err := m.numBricksNeeded(v.Size)
+	if err != nil {
+		return nil, err
 	}
 
 	// Allocate bricks in the cluster

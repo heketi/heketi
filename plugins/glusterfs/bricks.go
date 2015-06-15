@@ -20,6 +20,11 @@ import (
 	"fmt"
 	"github.com/lpabon/godbc"
 	"github.com/lpabon/heketi/utils"
+	"github.com/lpabon/heketi/utils/ssh"
+)
+
+const (
+	THINP_SNAPSHOT_FACTOR = 1.5
 )
 
 type Brick struct {
@@ -28,6 +33,9 @@ type Brick struct {
 	NodeId   string `json:"node_id"`
 	DeviceId string `json:"device_id"`
 	Size     uint64 `json:"size"`
+
+	// private
+	nodedb *NodeDB
 }
 
 func NewBrick(size uint64) *Brick {
@@ -38,10 +46,44 @@ func NewBrick(size uint64) *Brick {
 }
 
 func (b *Brick) Create() error {
-	godbc.Require(b.NodeId != "")
+	godbc.Require(b.nodedb != nil)
+	godbc.Require(b.DeviceId != "")
+
+	// Just for now, it will work wih https://github.com/lpabon/vagrant-gfsm
+	sshexec := ssh.NewSshExecWithKeyFile("vagrant", "insecure_private_key")
+	godbc.Check(sshexec != nil)
+
+	commands := []string{
+		fmt.Sprintf("sudo lvcreate -L %vKiB -T vg_%v/tp_%v -V %vKiB -n brick_%v",
+			//Thin Pool Size
+			uint64(float64(b.Size)*THINP_SNAPSHOT_FACTOR),
+
+			// volume group
+			b.DeviceId,
+
+			// ThinP name
+			b.Id,
+
+			// Volume size
+			b.Size,
+
+			// Logical Vol name
+			b.Id),
+		fmt.Sprintf("sudo mkfs.xfs -i size=512 /dev/vg_%v/brick_%v", b.DeviceId, b.Id),
+		"[ -d /gluster ] || mkdir /gluster",
+		fmt.Sprintf("[ -d /gluster ] || sudo mkdir /gluster"),
+		fmt.Sprintf("sudo mkdir /gluster/brick_%v", b.Id),
+		fmt.Sprintf("sudo mount /dev/vg_%v/brick_%v /gluster/brick_%v",
+			b.DeviceId, b.Id, b.Id),
+	}
+
+	_, err := sshexec.ConnectAndExec(b.nodedb.Info.Name+":22", commands, nil)
+	if err != nil {
+		return err
+	}
 
 	// SSH into node and create brick
-	b.Path = fmt.Sprintf("/fake/node/path/%v", b.Id)
+	b.Path = fmt.Sprintf("/gluster/brick_%v", b.Id)
 	return nil
 }
 

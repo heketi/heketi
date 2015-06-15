@@ -17,7 +17,6 @@
 package glusterfs
 
 import (
-	"bytes"
 	"encoding/gob"
 	"fmt"
 	"os"
@@ -32,28 +31,6 @@ type GlusterFSDB struct {
 	nodes      map[string]*NodeDB
 	volumes    map[string]*VolumeDB
 	dbfilename string
-}
-
-func dbEncode(e interface{}) ([]byte, error) {
-	var buffer bytes.Buffer
-
-	enc := gob.NewEncoder(&buffer)
-	err := enc.Encode(e)
-	if err != nil {
-		return nil, err
-	}
-
-	return buffer.Bytes(), nil
-}
-
-func dbDecode(e interface{}, buffer []byte) error {
-
-	dec := gob.NewDecoder(bytes.NewBuffer(buffer))
-	err := dec.Decode(e)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func NewGlusterFSDB(dbfile string) *GlusterFSDB {
@@ -74,6 +51,14 @@ func NewGlusterFSDB(dbfile string) *GlusterFSDB {
 	}
 
 	return gfsdb
+}
+
+func (g *GlusterFSDB) Node(id string) *NodeDB {
+	return g.nodes[id]
+}
+
+func (g *GlusterFSDB) Volume(id string) *VolumeDB {
+	return g.volumes[id]
 }
 
 func (g *GlusterFSDB) Commit() error {

@@ -62,7 +62,7 @@ func (v *VolumeServer) VolumeListHandler(w http.ResponseWriter, r *http.Request)
 	// Get list
 	list, err := v.plugin.VolumeList()
 	if err != nil {
-		http.Error(w, "unable to get volume list", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -92,7 +92,7 @@ func (v *VolumeServer) VolumeCreateHandler(w http.ResponseWriter, r *http.Reques
 	// Create volume here
 	result, err := v.plugin.VolumeCreate(&request)
 	if err != nil {
-		http.Error(w, "unable to create volume", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -116,7 +116,7 @@ func (v *VolumeServer) VolumeInfoHandler(w http.ResponseWriter, r *http.Request)
 		// Let's guess here and pretend that it failed because
 		// it was not found.
 		// There probably should be a table of err to http status codes
-		http.Error(w, "id not found", http.StatusNotFound)
+		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
@@ -139,7 +139,7 @@ func (v *VolumeServer) VolumeDeleteHandler(w http.ResponseWriter, r *http.Reques
 		// Let's guess here and pretend that it failed because
 		// it was not found.
 		// There probably should be a table of err to http status codes
-		http.Error(w, "id not found", http.StatusNotFound)
+		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 

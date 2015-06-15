@@ -86,7 +86,7 @@ func (n *NodeServer) NodeListHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Must be a server error if we could not get a list
 	if err != nil {
-		http.Error(w, "unable to get node list", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -120,7 +120,7 @@ func (n *NodeServer) NodeAddHandler(w http.ResponseWriter, r *http.Request) {
 	// Depending on the error returned here,
 	// we should return the correct error code
 	if err != nil {
-		http.Error(w, "Unable to add the node", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -170,7 +170,7 @@ func (n *NodeServer) NodeDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		// Let's guess here and pretend that it failed because
 		// it was not found.
 		// There probably should be a table of err to http status codes
-		http.Error(w, "id not found", http.StatusNotFound)
+		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 

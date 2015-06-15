@@ -50,6 +50,10 @@ func NewNodeDB(v *requests.NodeAddRequest) *NodeDB {
 	return node
 }
 
+func (n *NodeDB) Device(id string) *requests.DeviceResponse {
+	return n.Info.Devices[id]
+}
+
 func (n *NodeDB) DeviceAdd(req *requests.DeviceRequest) error {
 	// Setup device object
 	dev := &requests.DeviceResponse{}
