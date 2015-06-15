@@ -20,16 +20,21 @@ import (
 	"errors"
 	"github.com/lpabon/heketi/requests"
 	//goon "github.com/shurcooL/go-goon"
+	"fmt"
 	"sync"
 )
 
 const (
-	KB             = 1
-	MB             = KB * 1024
-	GB             = MB * 1024
-	TB             = GB * 1024
-	BRICK_MIN_SIZE = 2 * GB
-	BRICK_MAX_SIZE = 2 * TB
+	KB = 1
+	MB = KB * 1024
+	GB = MB * 1024
+	TB = GB * 1024
+)
+
+var (
+	BRICK_MIN_SIZE = uint64(1 * GB)
+	BRICK_MAX_SIZE = uint64(4 * TB)
+	ErrNoSpace     = errors.New("No space")
 )
 
 type BrickNode struct {
@@ -38,9 +43,17 @@ type BrickNode struct {
 
 type BrickNodes []BrickNode
 
-// return numbricks, size of each brick, error
-func (m *GlusterFSPlugin) numBricksNeeded(size uint64) (int, uint64, error) {
-	return 2, size / 2, nil
+// return size of each brick, error
+func (m *GlusterFSPlugin) numBricksNeeded(size uint64) (uint64, error) {
+	brick_size := size / 2
+
+	if brick_size < BRICK_MIN_SIZE {
+		return 0, errors.New("Minimum brick size limit reached.  Out of space.")
+	} else if brick_size > BRICK_MAX_SIZE {
+		return m.numBricksNeeded(brick_size)
+	}
+
+	return brick_size, nil
 }
 
 func (m *GlusterFSPlugin) getBrickNodes(brick *Brick, replicas int) BrickNodes {
@@ -63,6 +76,9 @@ func (m *GlusterFSPlugin) allocBricks(num_bricks, replicas int, size uint64) ([]
 
 	bricks := make([]*Brick, 0)
 
+	// Allocate size for the brick plus the snapshot
+	tpsize := uint64(float64(size) * THINP_SNAPSHOT_FACTOR)
+
 	for brick_num := 0; brick_num < num_bricks; brick_num++ {
 
 		var brick *Brick
@@ -81,16 +97,23 @@ func (m *GlusterFSPlugin) allocBricks(num_bricks, replicas int, size uint64) ([]
 
 				// Could ask for more than just the replicas
 				if len(nodelist) < 1 {
-					return nil, errors.New("No space")
+					// unable to satisfy request.  Give back the data
+					for brick := range bricks {
+						bricks[brick].nodedb.Info.Devices[bricks[brick].DeviceId].Used -= tpsize
+						bricks[brick].nodedb.Info.Devices[bricks[brick].DeviceId].Free += tpsize
+
+						bricks[brick].nodedb.Info.Storage.Used -= tpsize
+						bricks[brick].nodedb.Info.Storage.Free += tpsize
+					}
+					return nil, ErrNoSpace
+				} else {
+					fmt.Printf("nodelist: %v ", len(nodelist))
 				}
 
 				var bricknode BrickNode
 
 				// Should check list size
 				bricknode, nodelist = nodelist[len(nodelist)-1], nodelist[:len(nodelist)-1]
-
-				// Allocate size for the brick plus the snapshot
-				tpsize := uint64(float64(size) * THINP_SNAPSHOT_FACTOR)
 
 				// Probably should be an accessor
 				if m.db.nodes[bricknode.node].Info.Devices[bricknode.device].Free > tpsize {
@@ -99,11 +122,15 @@ func (m *GlusterFSPlugin) allocBricks(num_bricks, replicas int, size uint64) ([]
 					brick.DeviceId = bricknode.device
 					brick.nodedb = m.db.nodes[bricknode.node]
 
-					m.db.nodes[bricknode.node].Info.Devices[bricknode.device].Used += tpsize
-					m.db.nodes[bricknode.node].Info.Devices[bricknode.device].Free -= tpsize
+					brick.nodedb.Info.Devices[brick.DeviceId].Used += tpsize
+					brick.nodedb.Info.Devices[brick.DeviceId].Free -= tpsize
 
-					m.db.nodes[bricknode.node].Info.Storage.Used += tpsize
-					m.db.nodes[bricknode.node].Info.Storage.Free -= tpsize
+					brick.nodedb.Info.Storage.Used += tpsize
+					brick.nodedb.Info.Storage.Free -= tpsize
+
+					fmt.Println("+")
+				} else {
+					fmt.Printf("- F[%v] < TP[%v]\n", m.db.nodes[bricknode.node].Info.Devices[bricknode.device].Free, tpsize)
 				}
 			}
 
@@ -146,26 +173,39 @@ func (m *GlusterFSPlugin) VolumeCreate(v *requests.VolumeCreateRequest) (*reques
 		replica = 2
 	}
 
-	// Determine number of bricks needed
-	bricks_num, brick_size, err := m.numBricksNeeded(v.Size)
-	if err != nil {
-		return nil, err
-	}
+	var bricklist []*Brick
+	size := v.Size
+	for {
+		// Determine number of bricks needed
+		brick_size, err := m.numBricksNeeded(size)
+		if err != nil {
+			fmt.Printf("Failed for size: %v\n", size)
+			return nil, err
+		}
+		num_bricks := int(v.Size / brick_size)
 
-	// Allocate bricks in the cluster
-	bricks, err := m.allocBricks(bricks_num, replica, brick_size)
-	if err != nil {
-		return nil, err
+		// Allocate bricks in the cluster
+		bricklist, err = m.allocBricks(num_bricks, replica, brick_size)
+		if err == ErrNoSpace {
+			fmt.Printf("Failed for size: %v, retrying\n", brick_size)
+			size /= 2
+			continue
+		}
+		if err != nil {
+			return nil, err
+		} else {
+			break
+		}
 	}
 
 	// Create bricks
-	err = m.createBricks(bricks)
+	err := m.createBricks(bricklist)
 	if err != nil {
 		return nil, err
 	}
 
 	// Create volume object
-	volume := NewVolumeDB(v, bricks, replica)
+	volume := NewVolumeDB(v, bricklist, replica)
 	err = volume.CreateGlusterVolume()
 	if err != nil {
 		return nil, err
