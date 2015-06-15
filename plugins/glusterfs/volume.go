@@ -18,10 +18,10 @@ package glusterfs
 
 import (
 	"fmt"
+	"github.com/heketi/heketi/requests"
+	"github.com/heketi/heketi/utils"
+	"github.com/heketi/heketi/utils/ssh"
 	"github.com/lpabon/godbc"
-	"github.com/lpabon/heketi/requests"
-	"github.com/lpabon/heketi/utils"
-	"github.com/lpabon/heketi/utils/ssh"
 	// goon "github.com/shurcooL/go-goon"
 	"sync"
 )

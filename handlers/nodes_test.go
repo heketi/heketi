@@ -18,10 +18,10 @@ package handlers
 
 import (
 	"bytes"
-	"github.com/lpabon/heketi/plugins/mock"
-	"github.com/lpabon/heketi/requests"
-	"github.com/lpabon/heketi/tests"
-	"github.com/lpabon/heketi/utils"
+	"github.com/heketi/heketi/plugins/mock"
+	"github.com/heketi/heketi/requests"
+	"github.com/heketi/heketi/tests"
+	"github.com/heketi/heketi/utils"
 	"net/http"
 	"net/http/httptest"
 	"testing"

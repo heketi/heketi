@@ -18,7 +18,7 @@ package glusterfs
 
 import (
 	"errors"
-	"github.com/lpabon/heketi/requests"
+	"github.com/heketi/heketi/requests"
 	//goon "github.com/shurcooL/go-goon"
 	"sync"
 )

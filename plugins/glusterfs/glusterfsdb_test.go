@@ -17,8 +17,8 @@
 package glusterfs
 
 import (
-	"github.com/lpabon/heketi/requests"
-	"github.com/lpabon/heketi/tests"
+	"github.com/heketi/heketi/requests"
+	"github.com/heketi/heketi/tests"
 	"os"
 	"testing"
 )

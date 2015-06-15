@@ -21,9 +21,9 @@ package handlers
 import (
 	"encoding/json"
 	"github.com/gorilla/mux"
-	"github.com/lpabon/heketi/plugins"
-	"github.com/lpabon/heketi/requests"
-	"github.com/lpabon/heketi/utils"
+	"github.com/heketi/heketi/plugins"
+	"github.com/heketi/heketi/requests"
+	"github.com/heketi/heketi/utils"
 	"io"
 	"io/ioutil"
 	"net/http"

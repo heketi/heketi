@@ -17,9 +17,9 @@
 package plugins
 
 import (
-	"github.com/lpabon/heketi/plugins/glusterfs"
-	"github.com/lpabon/heketi/plugins/mock"
-	"github.com/lpabon/heketi/requests"
+	"github.com/heketi/heketi/plugins/glusterfs"
+	"github.com/heketi/heketi/plugins/mock"
+	"github.com/heketi/heketi/requests"
 )
 
 // Volume interface for plugins

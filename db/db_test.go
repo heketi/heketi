@@ -16,7 +16,7 @@
 package db
 
 import (
-	"github.com/lpabon/heketi/tests"
+	"github.com/heketi/heketi/tests"
 	"os"
 	"testing"
 )

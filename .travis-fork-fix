@@ -5,7 +5,7 @@
 # from pblcache repo and not from the fork.  This program
 # will fix the issue.
 
-PBLREPO="github.com/lpabon/heketi"
+PBLREPO="github.com/heketi/heketi"
 PBLCACHEDIR="../../lpabon/heketi"
 
 if ! git remote -v | grep origin | grep ${PBLREPO} ; then

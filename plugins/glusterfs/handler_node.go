@@ -19,7 +19,7 @@ package glusterfs
 import (
 	"errors"
 	//"fmt"
-	"github.com/lpabon/heketi/requests"
+	"github.com/heketi/heketi/requests"
 	//"net"
 	//"time"
 )

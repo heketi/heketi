@@ -18,9 +18,9 @@ package glusterfs
 
 import (
 	"fmt"
+	"github.com/heketi/heketi/utils"
+	"github.com/heketi/heketi/utils/ssh"
 	"github.com/lpabon/godbc"
-	"github.com/lpabon/heketi/utils"
-	"github.com/lpabon/heketi/utils/ssh"
 )
 
 const (

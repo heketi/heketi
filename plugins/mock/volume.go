@@ -18,8 +18,8 @@ package mock
 
 import (
 	"errors"
-	"github.com/lpabon/heketi/requests"
-	"github.com/lpabon/heketi/utils"
+	"github.com/heketi/heketi/requests"
+	"github.com/heketi/heketi/utils"
 )
 
 type Volume struct {
