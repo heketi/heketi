@@ -50,6 +50,10 @@ func NewNodeDB(v *requests.NodeAddRequest) *NodeDB {
 	return node
 }
 
+func (n *NodeDB) Load(db *GlusterFSDB) {
+
+}
+
 func (n *NodeDB) Device(id string) *requests.DeviceResponse {
 	return n.Info.Devices[id]
 }

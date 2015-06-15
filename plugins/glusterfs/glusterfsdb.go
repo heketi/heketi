@@ -99,6 +99,14 @@ func (g *GlusterFSDB) Load() error {
 	g.nodes = ondisk.Nodes
 	g.volumes = ondisk.Volumes
 
+	for _, node := range g.nodes {
+		node.Load(g)
+	}
+
+	for _, volume := range g.volumes {
+		volume.Load(g)
+	}
+
 	return nil
 }
 

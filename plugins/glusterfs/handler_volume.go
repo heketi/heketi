@@ -20,7 +20,6 @@ import (
 	"errors"
 	"github.com/lpabon/heketi/requests"
 	//goon "github.com/shurcooL/go-goon"
-	"fmt"
 	"sync"
 )
 
@@ -106,8 +105,6 @@ func (m *GlusterFSPlugin) allocBricks(num_bricks, replicas int, size uint64) ([]
 						bricks[brick].nodedb.Info.Storage.Free += tpsize
 					}
 					return nil, ErrNoSpace
-				} else {
-					fmt.Printf("nodelist: %v ", len(nodelist))
 				}
 
 				var bricknode BrickNode
@@ -122,15 +119,12 @@ func (m *GlusterFSPlugin) allocBricks(num_bricks, replicas int, size uint64) ([]
 					brick.DeviceId = bricknode.device
 					brick.nodedb = m.db.nodes[bricknode.node]
 
+					// This really needs to be cleaned up
 					brick.nodedb.Info.Devices[brick.DeviceId].Used += tpsize
 					brick.nodedb.Info.Devices[brick.DeviceId].Free -= tpsize
 
 					brick.nodedb.Info.Storage.Used += tpsize
 					brick.nodedb.Info.Storage.Free -= tpsize
-
-					fmt.Println("+")
-				} else {
-					fmt.Printf("- F[%v] < TP[%v]\n", m.db.nodes[bricknode.node].Info.Devices[bricknode.device].Free, tpsize)
 				}
 			}
 
@@ -177,7 +171,6 @@ func (m *GlusterFSPlugin) VolumeCreate(v *requests.VolumeCreateRequest) (*reques
 		// Determine number of bricks needed
 		brick_size, err := m.numBricksNeeded(size)
 		if err != nil {
-			fmt.Printf("Failed for size: %v\n", size)
 			return nil, err
 		}
 		num_bricks := int(v.Size / brick_size)
@@ -185,7 +178,6 @@ func (m *GlusterFSPlugin) VolumeCreate(v *requests.VolumeCreateRequest) (*reques
 		// Allocate bricks in the cluster
 		bricklist, err = m.allocBricks(num_bricks, replica, brick_size)
 		if err == ErrNoSpace {
-			fmt.Printf("Failed for size: %v, retrying\n", brick_size)
 			size /= 2
 			continue
 		}
@@ -223,10 +215,11 @@ func (m *GlusterFSPlugin) VolumeDelete(id string) error {
 	m.rwlock.Lock()
 	defer m.rwlock.Unlock()
 
-	if _, ok := m.db.volumes[id]; ok {
+	if v, ok := m.db.volumes[id]; ok {
+		v.Destroy()
 		delete(m.db.volumes, id)
 	} else {
-		return errors.New("Id not found")
+		return errors.New("Volume id not found")
 	}
 
 	m.db.Commit()
@@ -239,7 +232,7 @@ func (m *GlusterFSPlugin) VolumeInfo(id string) (*requests.VolumeInfoResp, error
 	defer m.rwlock.RUnlock()
 
 	if volume, ok := m.db.volumes[id]; ok {
-		return &volume.Info, nil
+		return volume.InfoResponse(), nil
 	} else {
 		return nil, errors.New("Id not found")
 	}

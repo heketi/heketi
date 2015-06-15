@@ -45,6 +45,10 @@ func NewBrick(size uint64) *Brick {
 	}
 }
 
+func (b *Brick) Load(db *GlusterFSDB) {
+	b.nodedb = db.nodes[b.NodeId]
+}
+
 func (b *Brick) Create() error {
 	godbc.Require(b.nodedb != nil)
 	godbc.Require(b.DeviceId != "")
@@ -90,7 +94,22 @@ func (b *Brick) Destroy() error {
 	godbc.Require(b.NodeId != "")
 	godbc.Require(b.Path != "")
 
-	// SSH into node and destroy the brick,
-	b.Path = ""
+	// Just for now, it will work wih https://github.com/lpabon/vagrant-gfsm
+	sshexec := ssh.NewSshExecWithKeyFile("vagrant", "insecure_private_key")
+	godbc.Check(sshexec != nil)
+
+	commands := []string{
+		fmt.Sprintf("sudo umount /gluster/brick_%v", b.Id),
+		fmt.Sprintf("sudo lvremove -f vg_%v/tp_%v", b.DeviceId, b.Id),
+		fmt.Sprintf("sudo rmdir /gluster/brick_%v", b.Id),
+	}
+
+	_, err := sshexec.ConnectAndExec(b.nodedb.Info.Name+":22", commands, nil)
+	if err != nil {
+		return err
+	}
+
+	// SSH into node and create brick
 	return nil
+
 }

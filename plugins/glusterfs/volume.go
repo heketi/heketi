@@ -22,7 +22,8 @@ import (
 	"github.com/lpabon/heketi/requests"
 	"github.com/lpabon/heketi/utils"
 	"github.com/lpabon/heketi/utils/ssh"
-	//goon "github.com/shurcooL/go-goon"
+	// goon "github.com/shurcooL/go-goon"
+	"sync"
 )
 
 type VolumeStateResponse struct {
@@ -55,16 +56,48 @@ func NewVolumeDB(v *requests.VolumeCreateRequest, bricks []*Brick, replica int) 
 	return vol
 }
 
+func (v *VolumeDB) Load(db *GlusterFSDB) {
+
+	for brick := range v.State.Bricks {
+		v.State.Bricks[brick].Load(db)
+	}
+
+}
+
 func (v *VolumeDB) Destroy() error {
+	sshexec := ssh.NewSshExecWithKeyFile("vagrant", "insecure_private_key")
+	godbc.Check(sshexec != nil)
 
-	// Stop glusterfs volume
+	commands := []string{
+		// stop gluster volume
+		fmt.Sprintf("yes | sudo gluster volume stop vol_%v force", v.Info.Name),
+		fmt.Sprintf("yes | sudo gluster volume delete vol_%v", v.Info.Name),
+	}
 
-	// Destroy glusterfs volume
+	_, err := sshexec.ConnectAndExec(v.State.Bricks[0].nodedb.Info.Name+":22", commands, nil)
+	if err != nil {
+		return err
+	}
 
 	// Destroy bricks
+	var wg sync.WaitGroup
 	for brick := range v.State.Bricks {
-		// :TODO: Log the eror
-		v.State.Bricks[brick].Destroy()
+		wg.Add(1)
+		go func(b int) {
+			defer wg.Done()
+			v.State.Bricks[b].Destroy()
+		}(brick)
+	}
+	wg.Wait()
+
+	// Update storage status
+	tpsize := uint64(float64(v.State.Bricks[0].Size) * THINP_SNAPSHOT_FACTOR)
+	for brick := range v.State.Bricks {
+		v.State.Bricks[brick].nodedb.Info.Devices[v.State.Bricks[brick].DeviceId].Used -= tpsize
+		v.State.Bricks[brick].nodedb.Info.Devices[v.State.Bricks[brick].DeviceId].Free += tpsize
+
+		v.State.Bricks[brick].nodedb.Info.Storage.Used -= tpsize
+		v.State.Bricks[brick].nodedb.Info.Storage.Free += tpsize
 	}
 
 	return nil
@@ -131,7 +164,7 @@ func (v *VolumeDB) CreateGlusterVolume() error {
 
 	commands := []string{
 		cmd,
-		fmt.Sprintf("gluster volume start vol_%v", v.Info.Name),
+		fmt.Sprintf("sudo gluster volume start vol_%v", v.Info.Name),
 	}
 
 	_, err = sshexec.ConnectAndExec(v.State.Bricks[0].nodedb.Info.Name+":22", commands, nil)
