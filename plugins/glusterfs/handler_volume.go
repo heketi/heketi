@@ -148,12 +148,10 @@ func (m *GlusterFSPlugin) createBricks(bricks []*Brick) error {
 	var wg sync.WaitGroup
 	for brick := range bricks {
 		wg.Add(1)
-		go func() {
+		go func(b int) {
 			defer wg.Done()
-			if false {
-				bricks[brick].Create()
-			}
-		}()
+			bricks[b].Create()
+		}(brick)
 	}
 
 	wg.Wait()
