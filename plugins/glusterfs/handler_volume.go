@@ -36,12 +36,6 @@ var (
 	ErrNoSpace     = errors.New("No space")
 )
 
-type BrickNode struct {
-	node, device string
-}
-
-type BrickNodes []BrickNode
-
 // return size of each brick, error
 func (m *GlusterFSPlugin) numBricksNeeded(size uint64) (uint64, error) {
 	brick_size := size / 2
@@ -54,6 +48,8 @@ func (m *GlusterFSPlugin) numBricksNeeded(size uint64) (uint64, error) {
 
 	return brick_size, nil
 }
+
+/*
 
 func (m *GlusterFSPlugin) getBrickNodes(brick *Brick, replicas int) BrickNodes {
 	// Get info from swift ring
@@ -70,6 +66,7 @@ func (m *GlusterFSPlugin) getBrickNodes(brick *Brick, replicas int) BrickNodes {
 
 	return nodelist
 }
+*/
 
 func (m *GlusterFSPlugin) allocBricks(num_bricks, replicas int, size uint64) ([]*Brick, error) {
 
@@ -83,7 +80,10 @@ func (m *GlusterFSPlugin) allocBricks(num_bricks, replicas int, size uint64) ([]
 		var brick *Brick
 
 		brick = NewBrick(size)
-		nodelist := m.getBrickNodes(brick, replicas)
+		nodelist, err := m.ring.GetNodes(brick)
+		if err != nil {
+			return nil, err
+		}
 		for i := 0; i < replicas; i++ {
 
 			// XXX This is bad, but ok for now
