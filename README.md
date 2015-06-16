@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/heketi/heketi.svg?branch=master)](https://travis-ci.org/heketi/heketi)
-[![Coverage Status](https://coveralls.io/repos/lpabon/heketi/badge.svg?branch=master)](https://coveralls.io/r/lpabon/heketi?branch=master)
+[![Coverage Status](https://coveralls.io/repos/heketi/heketi/badge.svg)](https://coveralls.io/r/heketi/heketi)
 [![Join the chat at https://gitter.im/heketi/heketi](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/heketi/heketi?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 # Heketi
