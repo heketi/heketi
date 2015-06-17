@@ -48,7 +48,7 @@ func NewVolumeDB(v *requests.VolumeCreateRequest, bricks []*Brick, replica int) 
 	vol.State.Replica = replica
 
 	if v.Name != "" {
-		vol.Info.Name = v.Name
+		vol.Info.Name = "vol_" + v.Name
 	} else {
 		vol.Info.Name = vol.Info.Id
 	}

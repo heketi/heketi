@@ -110,7 +110,7 @@ func (m *GlusterFSPlugin) allocBricks(num_bricks, replicas int, size uint64) ([]
 				var bricknode BrickNode
 
 				// Should check list size
-				bricknode, nodelist = nodelist[len(nodelist)-1], nodelist[:len(nodelist)-1]
+				bricknode, nodelist = nodelist[0], nodelist[1:len(nodelist)]
 
 				// Probably should be an accessor
 				if m.db.nodes[bricknode.NodeId].Info.Devices[bricknode.DeviceId].Free > tpsize {

@@ -105,7 +105,5 @@ func (g *GlusterRing) GetNodes(brick *Brick) (BrickNodes, error) {
 		return nil, err
 	}
 
-	fmt.Printf("%+v\n", nodes.Nodes)
-
 	return nodes.Nodes, nil
 }
