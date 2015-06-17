@@ -24,18 +24,18 @@ type StorageSize struct {
 }
 
 // Structs for messages
+type NodeAddRequest struct {
+	Name string `json:"name"`
+	Zone int    `json:"zone"`
+}
+
 type NodeInfoResp struct {
-	Name    string                     `json:"hostname"`
+	Name    string                     `json:"name"`
+	Zone    int                        `json:"zone"`
 	Id      string                     `json:"id"`
-	Zone    string                     `json:"zone"`
 	Storage StorageSize                `json:"storage"`
 	Devices map[string]*DeviceResponse `json:"devices"`
 	Plugin  interface{}                `json:"plugin,omitempty"`
-}
-
-type NodeAddRequest struct {
-	Name string `json:"name"`
-	Zone string `json:"zone"`
 }
 
 type NodeListResponse struct {
