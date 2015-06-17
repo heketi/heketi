@@ -37,6 +37,7 @@ func TestNodeListHandlerEmpty(t *testing.T) {
 
 	// Request
 	r, err := http.Get(ts.URL)
+	tests.Assert(t, r.StatusCode == http.StatusOK)
 	tests.Assert(t, err == nil)
 
 	// Check body
@@ -54,10 +55,7 @@ func TestNodeAddHandler(t *testing.T) {
 	// create the JSON message as a string to test the handler
 	request := []byte(`{
         "name" : "test_name",
-        "zone" : "test_zone",
-        "lvm" : {
-            "volumegroup" : "test_vg"
-        }
+        "zone" : 12345
     }`)
 
 	n := NewNodeServer(mock.NewMockPlugin())
@@ -66,6 +64,7 @@ func TestNodeAddHandler(t *testing.T) {
 
 	// Request
 	r, err := http.Post(ts.URL, "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, r.StatusCode == http.StatusCreated)
 	tests.Assert(t, err == nil)
 
 	// Check body
@@ -73,9 +72,5 @@ func TestNodeAddHandler(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	tests.Assert(t, msg.Name == "test_name")
-	tests.Assert(t, msg.Zone == "test_zone")
-	/* Add when vgs are supported
-	tests.Assert(t, len(msg.VolumeGroups) == 1)
-	tests.Assert(t, msg.VolumeGroups[0].Name == "test_vg")
-	*/
+	tests.Assert(t, msg.Zone == 12345)
 }
