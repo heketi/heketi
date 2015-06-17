@@ -22,7 +22,7 @@ type VolumeInfoResp struct {
 	Size   uint64      `json:"size"`
 	Id     string      `json:"id"`
 	Mount  string      `json:"mount"`
-	Plugin interface{} `json:"plugin"`
+	Plugin interface{} `json:"plugin,omitempty"`
 }
 
 type VolumeCreateRequest struct {

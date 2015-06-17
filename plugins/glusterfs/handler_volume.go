@@ -31,9 +31,12 @@ const (
 )
 
 var (
+
+	// :TODO: Need to add what the maximum number of volumes is
 	BRICK_MIN_SIZE = uint64(1 * GB)
 	BRICK_MAX_SIZE = uint64(4 * TB)
-	ErrNoSpace     = errors.New("No space")
+
+	ErrNoSpace = errors.New("No space")
 )
 
 // return size of each brick, error

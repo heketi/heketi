@@ -23,11 +23,6 @@ type StorageSize struct {
 	Used  uint64 `json:"used"`
 }
 
-type LvmVolumeGroup struct {
-	Name string `json:"name"`
-	StorageSize
-}
-
 // Structs for messages
 type NodeAddRequest struct {
 	Name string `json:"name"`
@@ -40,11 +35,7 @@ type NodeInfoResp struct {
 	Id      string                     `json:"id"`
 	Storage StorageSize                `json:"storage"`
 	Devices map[string]*DeviceResponse `json:"devices"`
-}
-
-type Storage struct {
-	Disks        []string `json:"disks,omitempty"`
-	VolumeGroups []string `json:"vgs,omitempty"`
+	Plugin  interface{}                `json:"plugin,omitempty"`
 }
 
 type NodeListResponse struct {

@@ -16,49 +16,19 @@
 
 package ssh
 
+// :TODO: This file needs logging
+
 import (
 	"bytes"
 	"fmt"
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 	"io/ioutil"
 	"log"
 	"net"
 	"os"
 	"sync"
-
-	"golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/agent"
 )
-
-/*
-func main() {
-	fmt.Println("Hello")
-	s := NewSshExecWithKeyFile("vagrant", "insecure_private_key")
-	if s == nil {
-		fmt.Println("failed")
-		os.Exit(1)
-	} else {
-		fmt.Println("worked")
-	}
-
-	var wg sync.WaitGroup
-
-	commands := []string{
-		"ls -al",
-	}
-	wg.Add(1)
-	b, err := s.ConnectAndExec("192.168.10.100:22", commands, &wg)
-	wg.Wait()
-	if err != nil {
-		fmt.Println("cmd failed")
-		fmt.Print(err)
-		os.Exit(1)
-	} else {
-		fmt.Println("cmd worked")
-	}
-
-	fmt.Printf("Out: %s\n", b)
-}
-*/
 
 type SshExec struct {
 	clientConfig *ssh.ClientConfig
@@ -138,6 +108,7 @@ func (s *SshExec) ConnectAndExec(host string, commands []string, wg *sync.WaitGr
 
 	buffers := make([]string, len(commands))
 
+	// :TODO: Will need a timeout here in case the server does not respond
 	client, err := ssh.Dial("tcp", host, s.clientConfig)
 	if err != nil {
 		//logStderr(host, fmt.Sprintf("failed to create SSH connection: %s\n", err))
