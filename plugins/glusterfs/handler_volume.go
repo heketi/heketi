@@ -113,11 +113,11 @@ func (m *GlusterFSPlugin) allocBricks(num_bricks, replicas int, size uint64) ([]
 				bricknode, nodelist = nodelist[len(nodelist)-1], nodelist[:len(nodelist)-1]
 
 				// Probably should be an accessor
-				if m.db.nodes[bricknode.node].Info.Devices[bricknode.device].Free > tpsize {
+				if m.db.nodes[bricknode.NodeId].Info.Devices[bricknode.DeviceId].Free > tpsize {
 					enough_space = true
-					brick.NodeId = bricknode.node
-					brick.DeviceId = bricknode.device
-					brick.nodedb = m.db.nodes[bricknode.node]
+					brick.NodeId = bricknode.NodeId
+					brick.DeviceId = bricknode.DeviceId
+					brick.nodedb = m.db.nodes[bricknode.NodeId]
 
 					// This really needs to be cleaned up
 					brick.nodedb.Info.Devices[brick.DeviceId].Used += tpsize

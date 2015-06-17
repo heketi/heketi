@@ -26,14 +26,14 @@ import (
 )
 
 type BrickNode struct {
-	node   string `json:"meta"`
-	device string `json:"device"`
+	NodeId   string `json:"meta"`
+	DeviceId string `json:"device"`
 }
 type BrickNodes []BrickNode
 
 type RingOutput struct {
-	nodes     BrickNodes `json:"nodes"`
-	partition int        `json:"partition"`
+	Nodes     BrickNodes `json:"nodes"`
+	Partition int        `json:"partition"`
 }
 
 type GlusterRing struct {
@@ -105,5 +105,7 @@ func (g *GlusterRing) GetNodes(brick *Brick) (BrickNodes, error) {
 		return nil, err
 	}
 
-	return nodes.nodes, nil
+	fmt.Printf("%+v\n", nodes.Nodes)
+
+	return nodes.Nodes, nil
 }
