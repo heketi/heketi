@@ -24,8 +24,6 @@ import (
 	"github.com/heketi/heketi/plugins"
 	"github.com/heketi/heketi/requests"
 	"github.com/heketi/heketi/utils"
-	"io"
-	"io/ioutil"
 	"net/http"
 )
 
@@ -101,14 +99,8 @@ func (n *NodeServer) NodeListHandler(w http.ResponseWriter, r *http.Request) {
 func (n *NodeServer) NodeAddHandler(w http.ResponseWriter, r *http.Request) {
 	var msg requests.NodeAddRequest
 
-	body, err := ioutil.ReadAll(io.LimitReader(r.Body, r.ContentLength))
+	err := utils.GetJsonFromRequest(r, &msg)
 	if err != nil {
-		panic(err)
-	}
-	if err := r.Body.Close(); err != nil {
-		panic(err)
-	}
-	if err := json.Unmarshal(body, &msg); err != nil {
 		http.Error(w, "request unable to be parsed", 422)
 		return
 	}

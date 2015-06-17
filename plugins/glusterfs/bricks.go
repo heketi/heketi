@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	THINP_SNAPSHOT_FACTOR = 1.5
+	THINP_SNAPSHOT_FACTOR = 1.25
 )
 
 type Brick struct {

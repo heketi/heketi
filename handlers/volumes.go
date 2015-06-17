@@ -22,8 +22,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/plugins"
 	"github.com/heketi/heketi/requests"
-	"io"
-	"io/ioutil"
+	"github.com/heketi/heketi/utils"
 	"net/http"
 )
 
@@ -56,9 +55,6 @@ func (v *VolumeServer) VolumeRoutes() Routes {
 
 func (v *VolumeServer) VolumeListHandler(w http.ResponseWriter, r *http.Request) {
 
-	// Set JSON header
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-
 	// Get list
 	list, err := v.plugin.VolumeList()
 	if err != nil {
@@ -77,15 +73,9 @@ func (v *VolumeServer) VolumeListHandler(w http.ResponseWriter, r *http.Request)
 func (v *VolumeServer) VolumeCreateHandler(w http.ResponseWriter, r *http.Request) {
 	var request requests.VolumeCreateRequest
 
-	body, err := ioutil.ReadAll(io.LimitReader(r.Body, r.ContentLength))
+	err := utils.GetJsonFromRequest(r, &request)
 	if err != nil {
-		panic(err)
-	}
-	if err := r.Body.Close(); err != nil {
-		panic(err)
-	}
-	if err := json.Unmarshal(body, &request); err != nil {
-		http.Error(w, "volume create json request unable to be parsed", 422)
+		http.Error(w, "request unable to be parsed", 422)
 		return
 	}
 

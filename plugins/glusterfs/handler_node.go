@@ -18,10 +18,7 @@ package glusterfs
 
 import (
 	"errors"
-	//"fmt"
 	"github.com/heketi/heketi/requests"
-	//"net"
-	//"time"
 )
 
 func (m *GlusterFSPlugin) NodeAddDevice(id string, req *requests.DeviceAddRequest) error {
@@ -55,16 +52,6 @@ func (m *GlusterFSPlugin) NodeAddDevice(id string, req *requests.DeviceAddReques
 }
 
 func (m *GlusterFSPlugin) NodeAdd(v *requests.NodeAddRequest) (*requests.NodeInfoResp, error) {
-
-	// Check host is available
-	/*
-		conn, err := net.DialTimeout("tcp", v.Name+":22", time.Second*2)
-		if err != nil {
-			fmt.Printf("Unable to connect to %s\n", v.Name)
-			return nil, err
-		}
-		conn.Close()
-	*/
 
 	node := NewNodeDB(v)
 
@@ -100,11 +87,17 @@ func (m *GlusterFSPlugin) NodeRemove(id string) error {
 	m.rwlock.Lock()
 	defer m.rwlock.Unlock()
 
+	// :TODO: What happens when we remove a node that has
+	// brick in use?
+
 	if _, ok := m.db.nodes[id]; ok {
 		delete(m.db.nodes, id)
 	} else {
 		return errors.New("Id not found")
 	}
+
+	// Create a new ring
+	m.ring.CreateRing()
 
 	// Save db to persistent storage
 	m.db.Commit()
