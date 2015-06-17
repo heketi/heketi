@@ -89,12 +89,17 @@ func (g *GlusterRing) CreateRing() error {
 	return exec.Command("swift-ring-builder", "heketi.builder", "rebalance").Run()
 }
 
-func (g *GlusterRing) GetNodes(brick *Brick) (BrickNodes, error) {
+func (g *GlusterRing) GetNodes(brick_num int, id string) (BrickNodes, error) {
 
 	var out bytes.Buffer
 	var nodes RingOutput
 
-	cmd := exec.Command("./ring.py", brick.Id)
+	args := []string{
+		fmt.Sprintf("%v", brick_num),
+		id,
+	}
+
+	cmd := exec.Command("./ring.py", args...)
 	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {

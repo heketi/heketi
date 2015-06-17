@@ -49,25 +49,6 @@ func (m *GlusterFSPlugin) numBricksNeeded(size uint64) (uint64, error) {
 	return brick_size, nil
 }
 
-/*
-
-func (m *GlusterFSPlugin) getBrickNodes(brick *Brick, replicas int) BrickNodes {
-	// Get info from swift ring
-
-	// Check it has enough space, if not .. go to next device
-
-	nodelist := make(BrickNodes, 0)
-
-	for nodeid, node := range m.db.nodes {
-		for deviceid, _ := range node.Info.Devices {
-			nodelist = append(nodelist, BrickNode{device: deviceid, node: nodeid})
-		}
-	}
-
-	return nodelist
-}
-*/
-
 func (m *GlusterFSPlugin) allocBricks(num_bricks, replicas int, size uint64) ([]*Brick, error) {
 
 	bricks := make([]*Brick, 0)
@@ -80,13 +61,12 @@ func (m *GlusterFSPlugin) allocBricks(num_bricks, replicas int, size uint64) ([]
 		var brick *Brick
 
 		brick = NewBrick(size)
-		nodelist, err := m.ring.GetNodes(brick)
+		nodelist, err := m.ring.GetNodes(brick_num, brick.Id)
 		if err != nil {
 			return nil, err
 		}
 		for i := 0; i < replicas; i++ {
 
-			// XXX This is bad, but ok for now
 			if i > 0 {
 				brick = NewBrick(size)
 			}
