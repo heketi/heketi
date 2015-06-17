@@ -22,12 +22,14 @@ import (
 
 type GlusterFSPlugin struct {
 	db     *GlusterFSDB
+	ring   *GlusterRing
 	rwlock sync.RWMutex
 }
 
 func NewGlusterFSPlugin() *GlusterFSPlugin {
 	m := &GlusterFSPlugin{}
 	m.db = NewGlusterFSDB("heketi.db")
+	m.ring = NewGlusterRing(m.db)
 
 	return m
 }

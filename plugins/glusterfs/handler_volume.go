@@ -36,12 +36,6 @@ var (
 	ErrNoSpace     = errors.New("No space")
 )
 
-type BrickNode struct {
-	node, device string
-}
-
-type BrickNodes []BrickNode
-
 // return size of each brick, error
 func (m *GlusterFSPlugin) numBricksNeeded(size uint64) (uint64, error) {
 	brick_size := size / 2
@@ -53,22 +47,6 @@ func (m *GlusterFSPlugin) numBricksNeeded(size uint64) (uint64, error) {
 	}
 
 	return brick_size, nil
-}
-
-func (m *GlusterFSPlugin) getBrickNodes(brick *Brick, replicas int) BrickNodes {
-	// Get info from swift ring
-
-	// Check it has enough space, if not .. go to next device
-
-	nodelist := make(BrickNodes, 0)
-
-	for nodeid, node := range m.db.nodes {
-		for deviceid, _ := range node.Info.Devices {
-			nodelist = append(nodelist, BrickNode{device: deviceid, node: nodeid})
-		}
-	}
-
-	return nodelist
 }
 
 func (m *GlusterFSPlugin) allocBricks(num_bricks, replicas int, size uint64) ([]*Brick, error) {
@@ -83,10 +61,12 @@ func (m *GlusterFSPlugin) allocBricks(num_bricks, replicas int, size uint64) ([]
 		var brick *Brick
 
 		brick = NewBrick(size)
-		nodelist := m.getBrickNodes(brick, replicas)
+		nodelist, err := m.ring.GetNodes(brick_num, brick.Id)
+		if err != nil {
+			return nil, err
+		}
 		for i := 0; i < replicas; i++ {
 
-			// XXX This is bad, but ok for now
 			if i > 0 {
 				brick = NewBrick(size)
 			}
@@ -110,14 +90,14 @@ func (m *GlusterFSPlugin) allocBricks(num_bricks, replicas int, size uint64) ([]
 				var bricknode BrickNode
 
 				// Should check list size
-				bricknode, nodelist = nodelist[len(nodelist)-1], nodelist[:len(nodelist)-1]
+				bricknode, nodelist = nodelist[0], nodelist[1:len(nodelist)]
 
 				// Probably should be an accessor
-				if m.db.nodes[bricknode.node].Info.Devices[bricknode.device].Free > tpsize {
+				if m.db.nodes[bricknode.NodeId].Info.Devices[bricknode.DeviceId].Free > tpsize {
 					enough_space = true
-					brick.NodeId = bricknode.node
-					brick.DeviceId = bricknode.device
-					brick.nodedb = m.db.nodes[bricknode.node]
+					brick.NodeId = bricknode.NodeId
+					brick.DeviceId = bricknode.DeviceId
+					brick.nodedb = m.db.nodes[bricknode.NodeId]
 
 					// This really needs to be cleaned up
 					brick.nodedb.Info.Devices[brick.DeviceId].Used += tpsize

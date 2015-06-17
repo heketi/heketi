@@ -50,7 +50,7 @@ func NewVolumeDB(v *requests.VolumeCreateRequest, bricks []*Brick, replica int) 
 	if v.Name != "" {
 		vol.Info.Name = v.Name
 	} else {
-		vol.Info.Name = vol.Info.Id
+		vol.Info.Name = "vol_" + vol.Info.Id
 	}
 
 	return vol
@@ -70,8 +70,8 @@ func (v *VolumeDB) Destroy() error {
 
 	commands := []string{
 		// stop gluster volume
-		fmt.Sprintf("yes | sudo gluster volume stop vol_%v force", v.Info.Name),
-		fmt.Sprintf("yes | sudo gluster volume delete vol_%v", v.Info.Name),
+		fmt.Sprintf("yes | sudo gluster volume stop %v force", v.Info.Name),
+		fmt.Sprintf("yes | sudo gluster volume delete %v", v.Info.Name),
 	}
 
 	_, err := sshexec.ConnectAndExec(v.State.Bricks[0].nodedb.Info.Name+":22", commands, nil)
@@ -147,7 +147,7 @@ func (v *VolumeDB) CreateGlusterVolume() error {
 	}
 
 	// Create gluster volume
-	cmd := fmt.Sprintf("sudo gluster volume create vol_%v replica %v ",
+	cmd := fmt.Sprintf("sudo gluster volume create %v replica %v ",
 		v.Info.Name, v.State.Replica)
 	for brick := range v.State.Bricks {
 		cmd += fmt.Sprintf("%v:/gluster/brick_%v/brick ",
@@ -164,7 +164,7 @@ func (v *VolumeDB) CreateGlusterVolume() error {
 
 	commands := []string{
 		cmd,
-		fmt.Sprintf("sudo gluster volume start vol_%v", v.Info.Name),
+		fmt.Sprintf("sudo gluster volume start %v", v.Info.Name),
 	}
 
 	_, err = sshexec.ConnectAndExec(v.State.Bricks[0].nodedb.Info.Name+":22", commands, nil)
@@ -173,7 +173,7 @@ func (v *VolumeDB) CreateGlusterVolume() error {
 	}
 
 	// Setup mount point
-	v.Info.Mount = fmt.Sprintf("%v:vol_%v", v.State.Bricks[0].nodedb.Info.Name, v.Info.Name)
+	v.Info.Mount = fmt.Sprintf("%v:%v", v.State.Bricks[0].nodedb.Info.Name, v.Info.Name)
 
 	// State
 	v.State.Created = true

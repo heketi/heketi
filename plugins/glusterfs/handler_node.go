@@ -42,6 +42,12 @@ func (m *GlusterFSPlugin) NodeAddDevice(id string, req *requests.DeviceAddReques
 		return errors.New("Node not found")
 	}
 
+	// Create a new ring
+	err := m.ring.CreateRing()
+	if err != nil {
+		return nil
+	}
+
 	// Save db to persistent storage
 	m.db.Commit()
 
