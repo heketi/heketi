@@ -31,7 +31,7 @@ import (
 func main() {
 
 	// Get a mock node server
-	plugin := plugins.NewPlugin("glusterfs")
+	plugin := plugins.NewPlugin("mock")
 
 	//
 	nodeserver := handlers.NewNodeServer(plugin)
