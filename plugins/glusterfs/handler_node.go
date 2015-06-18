@@ -18,8 +18,49 @@ package glusterfs
 
 import (
 	"errors"
+	"fmt"
 	"github.com/heketi/heketi/requests"
+	"github.com/heketi/heketi/utils/ssh"
+	"github.com/lpabon/godbc"
 )
+
+func (m *GlusterFSPlugin) peerDetach(name string) error {
+
+	// Just for now, it will work wih https://github.com/lpabon/vagrant-gfsm
+	sshexec := ssh.NewSshExecWithKeyFile("vagrant", "insecure_private_key")
+	godbc.Check(sshexec != nil)
+
+	// create the commands
+	commands := []string{
+		fmt.Sprintf("sudo gluster peer detach %v", name),
+	}
+
+	_, err := sshexec.ConnectAndExec(m.peerHost+":22", commands, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *GlusterFSPlugin) peerProbe(name string) error {
+
+	// Just for now, it will work wih https://github.com/lpabon/vagrant-gfsm
+	sshexec := ssh.NewSshExecWithKeyFile("vagrant", "insecure_private_key")
+	godbc.Check(sshexec != nil)
+
+	// create the commands
+	commands := []string{
+		fmt.Sprintf("sudo gluster peer probe %v", name),
+	}
+
+	_, err := sshexec.ConnectAndExec(m.peerHost+":22", commands, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func (m *GlusterFSPlugin) NodeAddDevice(id string, req *requests.DeviceAddRequest) error {
 
@@ -58,6 +99,16 @@ func (m *GlusterFSPlugin) NodeAdd(v *requests.NodeAddRequest) (*requests.NodeInf
 	m.rwlock.Lock()
 	defer m.rwlock.Unlock()
 
+	// Add to the cluster
+	if m.peerHost == "" {
+		m.peerHost = node.Info.Name
+	} else {
+		err := m.peerProbe(node.Info.Name)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// Save to the db
 	m.db.nodes[node.Info.Id] = node
 
@@ -87,10 +138,12 @@ func (m *GlusterFSPlugin) NodeRemove(id string) error {
 	m.rwlock.Lock()
 	defer m.rwlock.Unlock()
 
-	// :TODO: What happens when we remove a node that has
-	// brick in use?
-
 	if _, ok := m.db.nodes[id]; ok {
+		// :TODO: Need to unattach!!!
+
+		// :TODO: What happens when we remove a node that has
+		// brick in use?
+
 		delete(m.db.nodes, id)
 	} else {
 		return errors.New("Id not found")

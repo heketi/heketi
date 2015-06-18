@@ -17,12 +17,12 @@
 package glusterfs
 
 import (
-	"fmt"
 	"github.com/heketi/heketi/requests"
 	"github.com/heketi/heketi/utils"
+	// goon "github.com/shurcooL/go-goon"
+	"fmt"
 	"github.com/heketi/heketi/utils/ssh"
 	"github.com/lpabon/godbc"
-	// goon "github.com/shurcooL/go-goon"
 	"sync"
 )
 
@@ -110,41 +110,7 @@ func (v *VolumeDB) InfoResponse() *requests.VolumeInfoResp {
 	return info
 }
 
-func (v *VolumeDB) peerProbe() error {
-
-	// Just for now, it will work wih https://github.com/lpabon/vagrant-gfsm
-	sshexec := ssh.NewSshExecWithKeyFile("vagrant", "insecure_private_key")
-	godbc.Check(sshexec != nil)
-
-	// Create a 'set' of the hosts, so that we can create the commands
-	nodes := make(map[string]string)
-	for brick := range v.State.Bricks {
-		nodes[v.State.Bricks[brick].NodeId] = v.State.Bricks[brick].nodedb.Info.Name
-	}
-	delete(nodes, v.State.Bricks[0].NodeId)
-
-	// create the commands
-	commands := make([]string, 0)
-	for _, node := range nodes {
-		commands = append(commands, fmt.Sprintf("sudo gluster peer probe %v", node))
-	}
-
-	_, err := sshexec.ConnectAndExec(v.State.Bricks[0].nodedb.Info.Name+":22", commands, nil)
-	if err != nil {
-		return err
-	}
-
-	return nil
-
-}
-
 func (v *VolumeDB) CreateGlusterVolume() error {
-
-	// Setup peer
-	err := v.peerProbe()
-	if err != nil {
-		return err
-	}
 
 	// Create gluster volume
 	cmd := fmt.Sprintf("sudo gluster volume create %v replica %v ",
@@ -167,7 +133,7 @@ func (v *VolumeDB) CreateGlusterVolume() error {
 		fmt.Sprintf("sudo gluster volume start %v", v.Info.Name),
 	}
 
-	_, err = sshexec.ConnectAndExec(v.State.Bricks[0].nodedb.Info.Name+":22", commands, nil)
+	_, err := sshexec.ConnectAndExec(v.State.Bricks[0].nodedb.Info.Name+":22", commands, nil)
 	if err != nil {
 		return err
 	}

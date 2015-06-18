@@ -24,6 +24,8 @@ type GlusterFSPlugin struct {
 	db     *GlusterFSDB
 	ring   *GlusterRing
 	rwlock sync.RWMutex
+
+	peerHost string
 }
 
 func NewGlusterFSPlugin() *GlusterFSPlugin {
