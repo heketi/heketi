@@ -54,6 +54,7 @@ func (m *MockPlugin) NodeAdd(v *requests.NodeAddRequest) (*requests.NodeInfoResp
 	info.Name = v.Name
 	info.Zone = v.Zone
 	info.Id = utils.GenUUID()
+	info.Devices = make(map[string]*requests.DeviceResponse)
 	if err != nil {
 		return nil, err
 	}
