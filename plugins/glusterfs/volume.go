@@ -33,15 +33,15 @@ type VolumeStateResponse struct {
 	Replica int      `json:"replica"`
 }
 
-type VolumeDB struct {
+type VolumeEntry struct {
 	Info  requests.VolumeInfoResp
 	State VolumeStateResponse
 }
 
-func NewVolumeDB(v *requests.VolumeCreateRequest, bricks []*Brick, replica int) *VolumeDB {
+func NewVolumeEntry(v *requests.VolumeCreateRequest, bricks []*Brick, replica int) *VolumeEntry {
 
 	// Save volume information
-	vol := &VolumeDB{}
+	vol := &VolumeEntry{}
 	vol.Info.Size = v.Size
 	vol.Info.Id = utils.GenUUID()
 	vol.State.Bricks = bricks
@@ -56,7 +56,14 @@ func NewVolumeDB(v *requests.VolumeCreateRequest, bricks []*Brick, replica int) 
 	return vol
 }
 
-func (v *VolumeDB) Load(db *GlusterFSDB) {
+func (v *VolumeEntry) Copy() *VolumeEntry {
+
+	vc := &VolumeEntry{}
+	*vc = *v
+	return vc
+}
+
+func (v *VolumeEntry) Load(db *GlusterFSDB) {
 
 	for brick := range v.State.Bricks {
 		v.State.Bricks[brick].Load(db)
@@ -64,7 +71,7 @@ func (v *VolumeDB) Load(db *GlusterFSDB) {
 
 }
 
-func (v *VolumeDB) Destroy() error {
+func (v *VolumeEntry) Destroy() error {
 	sshexec := ssh.NewSshExecWithKeyFile("vagrant", "insecure_private_key")
 	godbc.Check(sshexec != nil)
 
@@ -103,14 +110,11 @@ func (v *VolumeDB) Destroy() error {
 	return nil
 }
 
-func (v *VolumeDB) InfoResponse() *requests.VolumeInfoResp {
-	info := &requests.VolumeInfoResp{}
-	*info = v.Info
-	info.Plugin = v.State
-	return info
+func (v *VolumeEntry) InfoResponse() *requests.VolumeInfoResp {
+	return &v.Copy().Info
 }
 
-func (v *VolumeDB) CreateGlusterVolume() error {
+func (v *VolumeEntry) CreateGlusterVolume() error {
 
 	// Create gluster volume
 	cmd := fmt.Sprintf("sudo gluster volume create %v replica %v ",

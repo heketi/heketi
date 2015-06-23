@@ -29,12 +29,12 @@ func TestGlusterFSDBFileLoad(t *testing.T) {
 
 	db := NewGlusterFSDB(tmpfile)
 
-	db.nodes["one"] = &NodeDB{
+	db.nodes["one"] = &NodeEntry{
 		Info: requests.NodeInfoResp{
 			Name: "nodetest",
 		},
 	}
-	db.volumes["a"] = &VolumeDB{
+	db.volumes["a"] = &VolumeEntry{
 		Info: requests.VolumeInfoResp{
 			Name: "volumetest",
 		},

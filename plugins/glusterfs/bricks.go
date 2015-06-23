@@ -35,7 +35,7 @@ type Brick struct {
 	Size     uint64 `json:"size"`
 
 	// private
-	nodedb *NodeDB
+	nodedb *NodeEntry
 }
 
 func NewBrick(size uint64) *Brick {

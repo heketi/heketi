@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"sync"
 	"time"
 )
 
@@ -40,6 +41,7 @@ type RingOutput struct {
 type GlusterRing struct {
 	db           *GlusterFSDB
 	ringCreateCh chan bool
+	lock         sync.Mutex
 }
 
 func (g *GlusterRing) createServer() {
@@ -92,30 +94,40 @@ func (g *GlusterRing) createRing() error {
 		"1",
 	}
 
+	g.lock.Lock()
+	defer g.lock.Unlock()
+
 	// Create new ring
 	err := exec.Command("swift-ring-builder", args...).Run()
 	if err != nil {
 		return errors.New("Unable to create brick placement db")
 	}
 
-	// Add all devices
-	for nodeid, node := range g.db.nodes {
-		for devid, dev := range node.Info.Devices {
-			args := []string{
-				"heketi.builder",
-				"add",
-				fmt.Sprintf("r1z%v-%v:80/%v_%v",
-					node.Info.Zone,
-					node.Info.Name,
-					devid,
-					nodeid),
-				fmt.Sprintf("%v", dev.Weight),
-			}
-			err := exec.Command("swift-ring-builder", args...).Run()
-			if err != nil {
-				return err
+	err = g.db.Reader(func() error {
+		// Add all devices
+		for nodeid, node := range g.db.nodes {
+			for devid, dev := range node.Info.Devices {
+				args := []string{
+					"heketi.builder",
+					"add",
+					fmt.Sprintf("r1z%v-%v:80/%v_%v",
+						node.Info.Zone,
+						node.Info.Name,
+						devid,
+						nodeid),
+					fmt.Sprintf("%v", dev.Weight),
+				}
+				err := exec.Command("swift-ring-builder", args...).Run()
+				if err != nil {
+					return err
+				}
 			}
 		}
+
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	// Rebalance
@@ -126,6 +138,9 @@ func (g *GlusterRing) GetNodes(brick_num int, id string) (BrickNodes, error) {
 
 	var out bytes.Buffer
 	var nodes RingOutput
+
+	g.lock.Lock()
+	defer g.lock.Unlock()
 
 	args := []string{
 		fmt.Sprintf("%v", brick_num),

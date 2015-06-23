@@ -20,25 +20,27 @@ import (
 	"encoding/gob"
 	"fmt"
 	"os"
+	"sync"
 )
 
 type GlusterFSDbOnDisk struct {
-	Nodes   map[string]*NodeDB
-	Volumes map[string]*VolumeDB
+	Nodes   map[string]*NodeEntry
+	Volumes map[string]*VolumeEntry
 }
 
 type GlusterFSDB struct {
-	nodes      map[string]*NodeDB
-	volumes    map[string]*VolumeDB
+	nodes      map[string]*NodeEntry
+	volumes    map[string]*VolumeEntry
 	dbfilename string
+	rwlock     sync.RWMutex
 }
 
 func NewGlusterFSDB(dbfile string) *GlusterFSDB {
 
 	gfsdb := &GlusterFSDB{}
 
-	gfsdb.nodes = make(map[string]*NodeDB)
-	gfsdb.volumes = make(map[string]*VolumeDB)
+	gfsdb.nodes = make(map[string]*NodeEntry)
+	gfsdb.volumes = make(map[string]*VolumeEntry)
 	gfsdb.dbfilename = dbfile
 
 	// Load db
@@ -53,11 +55,34 @@ func NewGlusterFSDB(dbfile string) *GlusterFSDB {
 	return gfsdb
 }
 
-func (g *GlusterFSDB) Node(id string) *NodeDB {
+func (g *GlusterFSDB) Writer(closure func() error) error {
+
+	g.rwlock.Lock()
+	defer g.rwlock.Unlock()
+
+	err := closure()
+	if err != nil {
+		return err
+	}
+
+	g.Commit()
+
+	return nil
+}
+
+func (g *GlusterFSDB) Reader(closure func() error) error {
+
+	g.rwlock.RLock()
+	defer g.rwlock.RUnlock()
+
+	return closure()
+}
+
+func (g *GlusterFSDB) Node(id string) *NodeEntry {
 	return g.nodes[id]
 }
 
-func (g *GlusterFSDB) Volume(id string) *VolumeDB {
+func (g *GlusterFSDB) Volume(id string) *VolumeEntry {
 	return g.volumes[id]
 }
 
