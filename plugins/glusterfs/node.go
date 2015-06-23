@@ -37,9 +37,12 @@ const (
 
 type NodeEntry struct {
 	Info requests.NodeInfoResp
+
+	// private
+	db *GlusterFSDB
 }
 
-func NewNodeEntry(v *requests.NodeAddRequest) *NodeEntry {
+func NewNodeEntry(v *requests.NodeAddRequest, db *GlusterFSDB) *NodeEntry {
 
 	node := &NodeEntry{}
 	node.Info.Id = utils.GenUUID()
@@ -57,7 +60,7 @@ func (n *NodeEntry) Copy() *NodeEntry {
 }
 
 func (n *NodeEntry) Load(db *GlusterFSDB) {
-
+	n.db = db
 }
 
 func (n *NodeEntry) Device(id string) *requests.DeviceResponse {

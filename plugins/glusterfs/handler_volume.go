@@ -63,61 +63,47 @@ func (m *GlusterFSPlugin) allocBricks(num_bricks, replicas int, size uint64) ([]
 
 		var brick *Brick
 
-		brick = NewBrick(size)
+		brick = NewBrick(size, m.db)
 		nodelist, err := m.ring.GetNodes(brick_num, brick.Id)
 		if err != nil {
 			return nil, err
 		}
+
+		var nodeid, deviceid string
 		for i := 0; i < replicas; i++ {
 
 			if i > 0 {
-				brick = NewBrick(size)
+				brick = NewBrick(size, m.db)
 			}
 
-			err := m.db.Writer(func() error {
+			// This could be a function
+			for enough_space := false; !enough_space; {
 
-				// This could be a function
-				for enough_space := false; !enough_space; {
-
-					// Could ask for more than just the replicas
-					if len(nodelist) < 1 {
-						// unable to satisfy request.  Give back the data
-						for brick := range bricks {
-							bricks[brick].nodedb.Info.Devices[bricks[brick].DeviceId].Used -= tpsize
-							bricks[brick].nodedb.Info.Devices[bricks[brick].DeviceId].Free += tpsize
-
-							bricks[brick].nodedb.Info.Storage.Used -= tpsize
-							bricks[brick].nodedb.Info.Storage.Free += tpsize
-						}
-						return ErrNoSpace
+				// Could ask for more than just the replicas
+				if len(nodelist) < 1 {
+					// unable to satisfy request.  Give back the data
+					for brick := range bricks {
+						bricks[brick].FreeStorage()
 					}
-
-					var bricknode BrickNode
-
-					// Should check list size
-					bricknode, nodelist = nodelist[0], nodelist[1:len(nodelist)]
-
-					// Probably should be an accessor
-					if m.db.nodes[bricknode.NodeId].Info.Devices[bricknode.DeviceId].Free > tpsize {
-						enough_space = true
-						brick.NodeId = bricknode.NodeId
-						brick.DeviceId = bricknode.DeviceId
-						brick.nodedb = m.db.nodes[bricknode.NodeId]
-
-						// This really needs to be cleaned up
-						brick.nodedb.Info.Devices[brick.DeviceId].Used += tpsize
-						brick.nodedb.Info.Devices[brick.DeviceId].Free -= tpsize
-
-						brick.nodedb.Info.Storage.Used += tpsize
-						brick.nodedb.Info.Storage.Free -= tpsize
-					}
+					return nil, ErrNoSpace
 				}
 
-				return nil
-			})
-			if err != nil {
-				return nil, err
+				var bricknode BrickNode
+
+				// Should check list size
+				bricknode, nodelist = nodelist[0], nodelist[1:len(nodelist)]
+
+				m.db.Reader(func() error {
+					if m.db.nodes[bricknode.NodeId].Info.Devices[bricknode.DeviceId].Free > tpsize {
+						enough_space = true
+						nodeid, deviceid = bricknode.NodeId, bricknode.DeviceId
+					}
+					return nil
+				})
+
 			}
+
+			brick.AllocateStorage(nodeid, deviceid)
 
 			// Create a brick object
 			bricks = append(bricks, brick)
@@ -183,7 +169,7 @@ func (m *GlusterFSPlugin) VolumeCreate(v *requests.VolumeCreateRequest) (*reques
 	}
 
 	// Create volume object
-	volume := NewVolumeEntry(v, bricklist, replica)
+	volume := NewVolumeEntry(v, bricklist, replica, m.db)
 	err = volume.CreateGlusterVolume()
 	if err != nil {
 		return nil, err
@@ -199,7 +185,7 @@ func (m *GlusterFSPlugin) VolumeCreate(v *requests.VolumeCreateRequest) (*reques
 		return nil, err
 	}
 
-	return volume.InfoResponse(), nil
+	return &volume.Copy().Info, nil
 }
 
 func (m *GlusterFSPlugin) VolumeDelete(id string) error {

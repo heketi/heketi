@@ -41,7 +41,7 @@ type RingOutput struct {
 type GlusterRing struct {
 	db           *GlusterFSDB
 	ringCreateCh chan bool
-	lock         sync.Mutex
+	lock         sync.RWMutex
 }
 
 func (g *GlusterRing) createServer() {
@@ -50,6 +50,8 @@ func (g *GlusterRing) createServer() {
 		// Wait for a command to start creating the ring
 		select {
 		case <-g.ringCreateCh:
+			// This is not very efficient, but it works for now
+			g.lock.Lock()
 		}
 
 		// Once we get the ring command.  Wait a maximum
@@ -64,6 +66,7 @@ func (g *GlusterRing) createServer() {
 				g.createRing()
 			}
 		}
+		g.lock.Unlock()
 	}
 }
 
@@ -126,9 +129,6 @@ func (g *GlusterRing) createRing() error {
 
 		return nil
 	})
-	if err != nil {
-		return err
-	}
 
 	// Rebalance
 	return exec.Command("swift-ring-builder", "heketi.builder", "rebalance").Run()
@@ -139,8 +139,8 @@ func (g *GlusterRing) GetNodes(brick_num int, id string) (BrickNodes, error) {
 	var out bytes.Buffer
 	var nodes RingOutput
 
-	g.lock.Lock()
-	defer g.lock.Unlock()
+	g.lock.RLock()
+	defer g.lock.RUnlock()
 
 	args := []string{
 		fmt.Sprintf("%v", brick_num),

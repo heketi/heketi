@@ -94,7 +94,7 @@ func (m *GlusterFSPlugin) NodeAddDevice(id string, req *requests.DeviceAddReques
 
 func (m *GlusterFSPlugin) NodeAdd(v *requests.NodeAddRequest) (*requests.NodeInfoResp, error) {
 
-	node := NewNodeEntry(v)
+	node := NewNodeEntry(v, m.db)
 
 	// Add to the cluster
 	if m.peerHost == "" {
