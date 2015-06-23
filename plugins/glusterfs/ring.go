@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"time"
 )
 
 type BrickNode struct {
@@ -37,16 +38,48 @@ type RingOutput struct {
 }
 
 type GlusterRing struct {
-	db *GlusterFSDB
+	db           *GlusterFSDB
+	ringCreateCh chan bool
 }
 
-func NewGlusterRing(db *GlusterFSDB) *GlusterRing {
-	return &GlusterRing{
-		db: db,
+func (g *GlusterRing) createServer() {
+
+	for {
+		// Wait for a command to start creating the ring
+		select {
+		case <-g.ringCreateCh:
+		}
+
+		// Once we get the ring command.  Wait a maximum
+		// of 5 seconds for more requests.  That way we only
+		// do it once
+		for {
+			timeout := time.After(time.Second * 5)
+			select {
+			case <-g.ringCreateCh:
+				continue
+			case <-timeout:
+				g.createRing()
+			}
+		}
 	}
 }
 
-func (g *GlusterRing) CreateRing() error {
+func NewGlusterRing(db *GlusterFSDB) *GlusterRing {
+	g := &GlusterRing{
+		db:           db,
+		ringCreateCh: make(chan bool),
+	}
+
+	go g.createServer()
+	return g
+}
+
+func (g *GlusterRing) CreateRing() {
+	g.ringCreateCh <- true
+}
+
+func (g *GlusterRing) createRing() error {
 
 	os.Remove("heketi.builder")
 	os.Remove("heketi.ring.gz")
