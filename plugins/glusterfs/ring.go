@@ -57,15 +57,24 @@ func (g *GlusterRing) createServer() {
 		// Once we get the ring command.  Wait a maximum
 		// of 5 seconds for more requests.  That way we only
 		// do it once
-		for {
+		for created := false; !created; {
 			timeout := time.After(time.Second * 5)
 			select {
 			case <-g.ringCreateCh:
 				continue
 			case <-timeout:
-				g.createRing()
+				err := g.createRing()
+
+				// :TODO: Log
+				if err != nil {
+					fmt.Println(err)
+				} else {
+					fmt.Println("Success")
+				}
+				created = true
 			}
 		}
+
 		g.lock.Unlock()
 	}
 }
@@ -97,9 +106,6 @@ func (g *GlusterRing) createRing() error {
 		"1",
 	}
 
-	g.lock.Lock()
-	defer g.lock.Unlock()
-
 	// Create new ring
 	err := exec.Command("swift-ring-builder", args...).Run()
 	if err != nil {
@@ -129,6 +135,9 @@ func (g *GlusterRing) createRing() error {
 
 		return nil
 	})
+	if err != nil {
+		return nil
+	}
 
 	// Rebalance
 	return exec.Command("swift-ring-builder", "heketi.builder", "rebalance").Run()
