@@ -195,19 +195,30 @@ func (m *GlusterFSPlugin) VolumeCreate(v *requests.VolumeCreateRequest) (*reques
 
 func (m *GlusterFSPlugin) VolumeDelete(id string) error {
 
-	return m.db.Writer(func() error {
+	var volume *VolumeEntry
+
+	// Remove from database, then destroy the volume
+	err := m.db.Writer(func() error {
 		if v, ok := m.db.volumes[id]; ok {
-
-			// :TODO: This can probably be done outside the transaction
-			v.Destroy()
-
+			volume = v
 			delete(m.db.volumes, id)
 		} else {
 			return errors.New("Volume id not found")
 		}
-
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	// Destroy volume
+	err = volume.Destroy()
+	if err != nil {
+		// :TODO: Add back to database with a Zombie state
+		return err
+	}
+
+	return nil
 
 }
 
