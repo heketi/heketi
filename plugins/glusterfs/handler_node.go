@@ -64,40 +64,37 @@ func (m *GlusterFSPlugin) peerProbe(name string) error {
 
 func (m *GlusterFSPlugin) NodeAddDevice(id string, req *requests.DeviceAddRequest) error {
 
-	m.rwlock.Lock()
-	defer m.rwlock.Unlock()
+	err := m.db.Writer(func() error {
+		if node, ok := m.db.nodes[id]; ok {
 
-	if node, ok := m.db.nodes[id]; ok {
+			for device := range req.Devices {
 
-		for device := range req.Devices {
-			err := node.DeviceAdd(&req.Devices[device])
-			if err != nil {
-				return err
+				// :TODO: This should be done in parallel
+				err := node.DeviceAdd(&req.Devices[device])
+				if err != nil {
+					return err
+				}
 			}
+
+		} else {
+			return errors.New("Node not found")
 		}
 
-	} else {
-		return errors.New("Node not found")
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	// Create a new ring
-	err := m.ring.CreateRing()
-	if err != nil {
-		return nil
-	}
-
-	// Save db to persistent storage
-	m.db.Commit()
+	m.ring.CreateRing()
 
 	return nil
 }
 
 func (m *GlusterFSPlugin) NodeAdd(v *requests.NodeAddRequest) (*requests.NodeInfoResp, error) {
 
-	node := NewNodeDB(v)
-
-	m.rwlock.Lock()
-	defer m.rwlock.Unlock()
+	node := NewNodeEntry(v, m.db)
 
 	// Add to the cluster
 	if m.peerHost == "" {
@@ -109,25 +106,32 @@ func (m *GlusterFSPlugin) NodeAdd(v *requests.NodeAddRequest) (*requests.NodeInf
 		}
 	}
 
-	// Save to the db
-	m.db.nodes[node.Info.Id] = node
+	err := m.db.Writer(func() error {
+		// Save to the db
+		m.db.nodes[node.Info.Id] = node
 
-	// Save db to persistent storage
-	m.db.Commit()
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	return &node.Info, nil
 }
 
 func (m *GlusterFSPlugin) NodeList() (*requests.NodeListResponse, error) {
 
-	m.rwlock.RLock()
-	defer m.rwlock.RUnlock()
-
 	list := &requests.NodeListResponse{}
 	list.Nodes = make([]requests.NodeInfoResp, 0)
 
-	for _, info := range m.db.nodes {
-		list.Nodes = append(list.Nodes, info.Info)
+	err := m.db.Reader(func() error {
+		for _, info := range m.db.nodes {
+			list.Nodes = append(list.Nodes, info.Info)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return list, nil
@@ -135,38 +139,49 @@ func (m *GlusterFSPlugin) NodeList() (*requests.NodeListResponse, error) {
 
 func (m *GlusterFSPlugin) NodeRemove(id string) error {
 
-	m.rwlock.Lock()
-	defer m.rwlock.Unlock()
+	err := m.db.Writer(func() error {
+		if _, ok := m.db.nodes[id]; ok {
+			// :TODO: Need to unattach!!!
 
-	if _, ok := m.db.nodes[id]; ok {
-		// :TODO: Need to unattach!!!
+			// :TODO: What happens when we remove a node that has
+			// brick in use?
 
-		// :TODO: What happens when we remove a node that has
-		// brick in use?
+			delete(m.db.nodes, id)
+		} else {
+			return errors.New("Id not found")
+		}
 
-		delete(m.db.nodes, id)
-	} else {
-		return errors.New("Id not found")
+		return nil
+	})
+
+	if err != nil {
+		return err
 	}
 
 	// Create a new ring
 	m.ring.CreateRing()
 
-	// Save db to persistent storage
-	m.db.Commit()
 	return nil
 
 }
 
 func (m *GlusterFSPlugin) NodeInfo(id string) (*requests.NodeInfoResp, error) {
 
-	m.rwlock.RLock()
-	defer m.rwlock.RUnlock()
+	var node_copy *NodeEntry
 
-	if node, ok := m.db.nodes[id]; ok {
-		return &node.Info, nil
-	} else {
-		return nil, errors.New("Id not found")
+	err := m.db.Reader(func() error {
+		if node, ok := m.db.nodes[id]; ok {
+			node_copy = node.Copy()
+			return nil
+		} else {
+			return errors.New("Id not found")
+		}
+	})
+
+	if err != nil {
+		return nil, err
 	}
+
+	return &node_copy.Info, nil
 
 }

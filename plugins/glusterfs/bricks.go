@@ -24,6 +24,9 @@ import (
 )
 
 const (
+
+	// :TODO: This should be saved on the brick object so that on upgrades
+	// or changes it still has the correct older value
 	THINP_SNAPSHOT_FACTOR = 1.25
 )
 
@@ -35,27 +38,34 @@ type Brick struct {
 	Size     uint64 `json:"size"`
 
 	// private
-	nodedb *NodeDB
+	db *GlusterFSDB
 }
 
-func NewBrick(size uint64) *Brick {
+func NewBrick(size uint64, db *GlusterFSDB) *Brick {
 	return &Brick{
 		Id:   utils.GenUUID(),
 		Size: size,
+		db:   db,
 	}
 }
 
 func (b *Brick) Load(db *GlusterFSDB) {
-	b.nodedb = db.nodes[b.NodeId]
+	b.db = db
 }
 
 func (b *Brick) Create() error {
-	godbc.Require(b.nodedb != nil)
+	godbc.Require(b.db != nil)
 	godbc.Require(b.DeviceId != "")
 
 	// Just for now, it will work wih https://github.com/lpabon/vagrant-gfsm
 	sshexec := ssh.NewSshExecWithKeyFile("vagrant", "insecure_private_key")
 	godbc.Check(sshexec != nil)
+
+	var nodename string
+	err := b.db.Reader(func() error {
+		nodename = b.db.nodes[b.NodeId].Info.Name
+		return nil
+	})
 
 	commands := []string{
 		fmt.Sprintf("sudo lvcreate -L %vKiB -T vg_%v/tp_%v -V %vKiB -n brick_%v",
@@ -80,7 +90,7 @@ func (b *Brick) Create() error {
 		fmt.Sprintf("sudo mkdir /gluster/brick_%v/brick", b.Id),
 	}
 
-	_, err := sshexec.ConnectAndExec(b.nodedb.Info.Name+":22", commands, nil)
+	_, err = sshexec.ConnectAndExec(nodename+":22", commands, nil)
 	if err != nil {
 		return err
 	}
@@ -93,23 +103,62 @@ func (b *Brick) Create() error {
 func (b *Brick) Destroy() error {
 	godbc.Require(b.NodeId != "")
 	godbc.Require(b.Path != "")
+	godbc.Require(b.db != nil)
 
 	// Just for now, it will work wih https://github.com/lpabon/vagrant-gfsm
 	sshexec := ssh.NewSshExecWithKeyFile("vagrant", "insecure_private_key")
 	godbc.Check(sshexec != nil)
 
+	// Get node name
+	var nodename string
+	err := b.db.Reader(func() error {
+		nodename = b.db.nodes[b.NodeId].Info.Name
+		return nil
+	})
+
+	// Delete brick storage
 	commands := []string{
 		fmt.Sprintf("sudo umount /gluster/brick_%v", b.Id),
 		fmt.Sprintf("sudo lvremove -f vg_%v/tp_%v", b.DeviceId, b.Id),
 		fmt.Sprintf("sudo rmdir /gluster/brick_%v", b.Id),
 	}
 
-	_, err := sshexec.ConnectAndExec(b.nodedb.Info.Name+":22", commands, nil)
+	_, err = sshexec.ConnectAndExec(nodename+":22", commands, nil)
 	if err != nil {
 		return err
 	}
 
-	// SSH into node and create brick
-	return nil
+	err = b.FreeStorage()
 
+	return err
+}
+
+func (b *Brick) FreeStorage() error {
+	// Add storage back
+	return b.db.Writer(func() error {
+		tpsize := uint64(float64(b.Size) * THINP_SNAPSHOT_FACTOR)
+		b.db.nodes[b.NodeId].Info.Devices[b.DeviceId].Used -= tpsize
+		b.db.nodes[b.NodeId].Info.Devices[b.DeviceId].Free += tpsize
+
+		b.db.nodes[b.NodeId].Info.Storage.Used -= tpsize
+		b.db.nodes[b.NodeId].Info.Storage.Free += tpsize
+
+		return nil
+	})
+}
+
+func (b *Brick) AllocateStorage(nodeid, deviceid string) error {
+	// Add storage back
+	b.NodeId = nodeid
+	b.DeviceId = deviceid
+	return b.db.Writer(func() error {
+		tpsize := uint64(float64(b.Size) * THINP_SNAPSHOT_FACTOR)
+		b.db.nodes[b.NodeId].Info.Devices[b.DeviceId].Used += tpsize
+		b.db.nodes[b.NodeId].Info.Devices[b.DeviceId].Free -= tpsize
+
+		b.db.nodes[b.NodeId].Info.Storage.Used += tpsize
+		b.db.nodes[b.NodeId].Info.Storage.Free -= tpsize
+
+		return nil
+	})
 }

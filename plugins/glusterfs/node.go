@@ -35,13 +35,16 @@ const (
 	VGDISPLAY_FREE_NUMBER_EXTENTS      = 15
 )
 
-type NodeDB struct {
+type NodeEntry struct {
 	Info requests.NodeInfoResp
+
+	// private
+	db *GlusterFSDB
 }
 
-func NewNodeDB(v *requests.NodeAddRequest) *NodeDB {
+func NewNodeEntry(v *requests.NodeAddRequest, db *GlusterFSDB) *NodeEntry {
 
-	node := &NodeDB{}
+	node := &NodeEntry{}
 	node.Info.Id = utils.GenUUID()
 	node.Info.Name = v.Name
 	node.Info.Zone = v.Zone
@@ -50,15 +53,21 @@ func NewNodeDB(v *requests.NodeAddRequest) *NodeDB {
 	return node
 }
 
-func (n *NodeDB) Load(db *GlusterFSDB) {
-
+func (n *NodeEntry) Copy() *NodeEntry {
+	nc := &NodeEntry{}
+	*nc = *n
+	return nc
 }
 
-func (n *NodeDB) Device(id string) *requests.DeviceResponse {
+func (n *NodeEntry) Load(db *GlusterFSDB) {
+	n.db = db
+}
+
+func (n *NodeEntry) Device(id string) *requests.DeviceResponse {
 	return n.Info.Devices[id]
 }
 
-func (n *NodeDB) DeviceAdd(req *requests.DeviceRequest) error {
+func (n *NodeEntry) DeviceAdd(req *requests.DeviceRequest) error {
 	// Setup device object
 	dev := &requests.DeviceResponse{}
 	dev.Name = req.Name
@@ -93,7 +102,7 @@ func (n *NodeDB) DeviceAdd(req *requests.DeviceRequest) error {
 	return nil
 }
 
-func (n *NodeDB) getVgSizeFromNode(device *requests.DeviceResponse) error {
+func (n *NodeEntry) getVgSizeFromNode(device *requests.DeviceResponse) error {
 
 	// Just for now, it will work wih https://github.com/lpabon/vagrant-gfsm
 	sshexec := ssh.NewSshExecWithKeyFile("vagrant", "insecure_private_key")

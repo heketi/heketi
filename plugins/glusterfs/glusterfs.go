@@ -16,15 +16,9 @@
 
 package glusterfs
 
-import (
-	"sync"
-)
-
 type GlusterFSPlugin struct {
-	db     *GlusterFSDB
-	ring   *GlusterRing
-	rwlock sync.RWMutex
-
+	db       *GlusterFSDB
+	ring     *GlusterRing
 	peerHost string
 }
 

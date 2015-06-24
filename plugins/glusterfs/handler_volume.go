@@ -63,15 +63,17 @@ func (m *GlusterFSPlugin) allocBricks(num_bricks, replicas int, size uint64) ([]
 
 		var brick *Brick
 
-		brick = NewBrick(size)
+		brick = NewBrick(size, m.db)
 		nodelist, err := m.ring.GetNodes(brick_num, brick.Id)
 		if err != nil {
 			return nil, err
 		}
+
+		var nodeid, deviceid string
 		for i := 0; i < replicas; i++ {
 
 			if i > 0 {
-				brick = NewBrick(size)
+				brick = NewBrick(size, m.db)
 			}
 
 			// This could be a function
@@ -81,11 +83,7 @@ func (m *GlusterFSPlugin) allocBricks(num_bricks, replicas int, size uint64) ([]
 				if len(nodelist) < 1 {
 					// unable to satisfy request.  Give back the data
 					for brick := range bricks {
-						bricks[brick].nodedb.Info.Devices[bricks[brick].DeviceId].Used -= tpsize
-						bricks[brick].nodedb.Info.Devices[bricks[brick].DeviceId].Free += tpsize
-
-						bricks[brick].nodedb.Info.Storage.Used -= tpsize
-						bricks[brick].nodedb.Info.Storage.Free += tpsize
+						bricks[brick].FreeStorage()
 					}
 					return nil, ErrNoSpace
 				}
@@ -95,21 +93,17 @@ func (m *GlusterFSPlugin) allocBricks(num_bricks, replicas int, size uint64) ([]
 				// Should check list size
 				bricknode, nodelist = nodelist[0], nodelist[1:len(nodelist)]
 
-				// Probably should be an accessor
-				if m.db.nodes[bricknode.NodeId].Info.Devices[bricknode.DeviceId].Free > tpsize {
-					enough_space = true
-					brick.NodeId = bricknode.NodeId
-					brick.DeviceId = bricknode.DeviceId
-					brick.nodedb = m.db.nodes[bricknode.NodeId]
+				m.db.Reader(func() error {
+					if m.db.nodes[bricknode.NodeId].Info.Devices[bricknode.DeviceId].Free > tpsize {
+						enough_space = true
+						nodeid, deviceid = bricknode.NodeId, bricknode.DeviceId
+					}
+					return nil
+				})
 
-					// This really needs to be cleaned up
-					brick.nodedb.Info.Devices[brick.DeviceId].Used += tpsize
-					brick.nodedb.Info.Devices[brick.DeviceId].Free -= tpsize
-
-					brick.nodedb.Info.Storage.Used += tpsize
-					brick.nodedb.Info.Storage.Free -= tpsize
-				}
 			}
+
+			brick.AllocateStorage(nodeid, deviceid)
 
 			// Create a brick object
 			bricks = append(bricks, brick)
@@ -137,9 +131,6 @@ func (m *GlusterFSPlugin) createBricks(bricks []*Brick) error {
 }
 
 func (m *GlusterFSPlugin) VolumeCreate(v *requests.VolumeCreateRequest) (*requests.VolumeInfoResp, error) {
-
-	m.rwlock.Lock()
-	defer m.rwlock.Unlock()
 
 	// Get the nodes and storage for these bricks
 	// and Create the bricks
@@ -178,63 +169,77 @@ func (m *GlusterFSPlugin) VolumeCreate(v *requests.VolumeCreateRequest) (*reques
 	}
 
 	// Create volume object
-	volume := NewVolumeDB(v, bricklist, replica)
+	volume := NewVolumeEntry(v, bricklist, replica, m.db)
 	err = volume.CreateGlusterVolume()
 	if err != nil {
 		return nil, err
 	}
 
-	// Save volume information on the DB
-	m.db.volumes[volume.Info.Id] = volume
+	err = m.db.Writer(func() error {
+		// Save volume information on the DB
+		m.db.volumes[volume.Info.Id] = volume
 
-	// Save changes to the DB
-	m.db.Commit()
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
 
-	return volume.InfoResponse(), nil
+	return &volume.Copy().Info, nil
 }
 
 func (m *GlusterFSPlugin) VolumeDelete(id string) error {
 
-	m.rwlock.Lock()
-	defer m.rwlock.Unlock()
+	return m.db.Writer(func() error {
+		if v, ok := m.db.volumes[id]; ok {
 
-	if v, ok := m.db.volumes[id]; ok {
-		v.Destroy()
-		delete(m.db.volumes, id)
-	} else {
-		return errors.New("Volume id not found")
-	}
+			// :TODO: This can probably be done outside the transaction
+			v.Destroy()
 
-	m.db.Commit()
-	return nil
+			delete(m.db.volumes, id)
+		} else {
+			return errors.New("Volume id not found")
+		}
+
+		return nil
+	})
+
 }
 
 func (m *GlusterFSPlugin) VolumeInfo(id string) (*requests.VolumeInfoResp, error) {
 
-	m.rwlock.RLock()
-	defer m.rwlock.RUnlock()
+	var info *requests.VolumeInfoResp
 
-	if volume, ok := m.db.volumes[id]; ok {
-		return volume.InfoResponse(), nil
-	} else {
-		return nil, errors.New("Id not found")
-	}
+	err := m.db.Reader(func() error {
+		if volume, ok := m.db.volumes[id]; ok {
+			info = &volume.Copy().Info
+			return nil
+		} else {
+			return errors.New("Id not found")
+		}
+	})
+
+	return info, err
 }
 
 func (m *GlusterFSPlugin) VolumeResize(id string) (*requests.VolumeInfoResp, error) {
-	return m.VolumeInfo(id)
+	return nil, errors.New("Not supported yet")
 }
 
 func (m *GlusterFSPlugin) VolumeList() (*requests.VolumeListResponse, error) {
 
-	m.rwlock.RLock()
-	defer m.rwlock.RUnlock()
-
 	list := &requests.VolumeListResponse{}
 	list.Volumes = make([]requests.VolumeInfoResp, 0)
 
-	for _, volume := range m.db.volumes {
-		list.Volumes = append(list.Volumes, *volume.InfoResponse())
+	err := m.db.Reader(func() error {
+		for _, volume := range m.db.volumes {
+			list.Volumes = append(list.Volumes, volume.Info)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return list, nil
