@@ -35,6 +35,7 @@ var (
 	// :TODO: Need to add what the maximum number of volumes is
 	BRICK_MIN_SIZE = uint64(1 * GB)
 	BRICK_MAX_SIZE = uint64(4 * TB)
+	BRICK_MAX_NUM  = 200
 
 	ErrNoSpace = errors.New("No space")
 )
@@ -148,6 +149,10 @@ func (m *GlusterFSPlugin) VolumeCreate(v *requests.VolumeCreateRequest) (*reques
 			return nil, err
 		}
 		num_bricks := int(v.Size / brick_size)
+
+		if num_bricks > BRICK_MAX_NUM {
+			return nil, errors.New("No space. Maximum number of bricks reached.")
+		}
 
 		// Allocate bricks in the cluster
 		bricklist, err = m.allocBricks(num_bricks, replica, brick_size)
