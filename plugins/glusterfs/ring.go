@@ -67,9 +67,8 @@ func (g *GlusterRing) createServer() {
 
 				// :TODO: Log
 				if err != nil {
+					// :TODO: May want to try again a few times if we fail.
 					fmt.Println(err)
-				} else {
-					fmt.Println("Success")
 				}
 				created = true
 			}
