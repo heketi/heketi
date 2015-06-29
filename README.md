@@ -5,7 +5,7 @@
 
 # Heketi
 
-Heketi is a RESTful storage management framework which enables certain storage systems to be easily managed.  Heketi poses itself not an abstraction layer, but instead as a framework for developers to enhance their existing storage system management through a plugin interface.  Heketi also provides a RESTful interface which enables callers to easily manage the storage system.
+Heketi provides a RESTful management interface which can be used to manage the life cycle of GlusterFS volumes.  The goal of Heketi is to provide a simple way to create, list, and delete GlusterFS volumes in multiple storage clusters.  Heketi intelligently will manage the allocation, creation, and deletion of bricks throughout the disks in the cluster.
 
 # Documentation
 Please visit the [WIKI](http://github.com/heketi/heketi/wiki) for project documentation and demo information
