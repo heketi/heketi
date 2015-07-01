@@ -153,6 +153,94 @@ func TestHandlerCompletions(t *testing.T) {
 
 }
 
+func TestAsyncHttpRedirectFunc(t *testing.T) {
+	// Setup asynchronous manager
+	route := "/x"
+	manager := NewAsyncHttpManager(route)
+
+	// Setup the route
+	router := mux.NewRouter()
+	router.HandleFunc(route+"/{id}", manager.HandlerStatus).Methods("GET")
+	router.HandleFunc("/result", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "HelloWorld")
+	}).Methods("GET")
+
+	// Start testing error condition
+	handlerfunc := func() (string, error) {
+		return "", errors.New("Test Handler Function")
+	}
+
+	// The variable 'handlerfunc' can be changed outside the scope to
+	// point to a new function.  Isn't Go awesome!
+	router.HandleFunc("/app", func(w http.ResponseWriter, r *http.Request) {
+		manager.AsyncHttpRedirectFunc(w, r, handlerfunc)
+	}).Methods("GET")
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Get /app url
+	r, err := http.Get(ts.URL + "/app")
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	tests.Assert(t, err == nil)
+	location, err := r.Location()
+	tests.Assert(t, err == nil)
+
+	// Expect the error
+	r, err = http.Get(location.String())
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusInternalServerError)
+	body, err := ioutil.ReadAll(r.Body)
+	r.Body.Close()
+	tests.Assert(t, err == nil)
+	tests.Assert(t, string(body) == "Test Handler Function\n")
+
+	// Set handler function to return a url to /result
+	handlerfunc = func() (string, error) {
+		return "/result", nil
+	}
+
+	// Get /app url
+	r, err = http.Get(ts.URL + "/app")
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	tests.Assert(t, err == nil)
+	location, err = r.Location()
+	tests.Assert(t, err == nil)
+
+	// Should have the content from /result.  http.Get() automatically
+	// retreives the content when a status of SeeOther is set and the
+	// Location header has the next URL.
+	r, err = http.Get(location.String())
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusOK)
+	body, err = ioutil.ReadAll(r.Body)
+	r.Body.Close()
+	tests.Assert(t, err == nil)
+	tests.Assert(t, string(body) == "HelloWorld")
+
+	// Test no redirect, simple completion
+	handlerfunc = func() (string, error) {
+		return "", nil
+	}
+
+	// Get /app url
+	r, err = http.Get(ts.URL + "/app")
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	tests.Assert(t, err == nil)
+	location, err = r.Location()
+	tests.Assert(t, err == nil)
+
+	// Should be success
+	r, err = http.Get(location.String())
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusNoContent)
+	tests.Assert(t, r.ContentLength == 0)
+
+}
+
 func TestHandlerConcurrency(t *testing.T) {
 
 	// Setup asynchronous manager
@@ -221,6 +309,56 @@ func TestHandlerApplication(t *testing.T) {
 		}()
 
 		http.Redirect(w, r, handler.Url(), http.StatusAccepted)
+	}).Methods("GET")
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Get /app url
+	r, err := http.Get(ts.URL + "/app")
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	tests.Assert(t, err == nil)
+	location, err := r.Location()
+	tests.Assert(t, err == nil)
+
+	for {
+		// Since Get automatically redirects, we will
+		// just keep asking until we get a body
+		r, err := http.Get(location.String())
+		tests.Assert(t, err == nil)
+		tests.Assert(t, r.StatusCode == http.StatusOK)
+		if r.ContentLength > 0 {
+			body, err := ioutil.ReadAll(r.Body)
+			r.Body.Close()
+			tests.Assert(t, err == nil)
+			tests.Assert(t, string(body) == "HelloWorld")
+			break
+		}
+	}
+
+}
+
+func TestApplicationWithRedirectFunc(t *testing.T) {
+
+	// Setup asynchronous manager
+	route := "/x"
+	manager := NewAsyncHttpManager(route)
+
+	// Setup the route
+	router := mux.NewRouter()
+	router.HandleFunc(route+"/{id}", manager.HandlerStatus).Methods("GET")
+	router.HandleFunc("/result", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "HelloWorld")
+	}).Methods("GET")
+
+	router.HandleFunc("/app", func(w http.ResponseWriter, r *http.Request) {
+		manager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
+			time.Sleep(100 * time.Millisecond)
+			return "/result", nil
+		})
 	}).Methods("GET")
 
 	// Setup the server

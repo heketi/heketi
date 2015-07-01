@@ -57,6 +57,24 @@ func (a *AsyncHttpManager) NewHandler() *AsyncHttpHandler {
 	return handler
 }
 
+func (a *AsyncHttpManager) AsyncHttpRedirectFunc(w http.ResponseWriter,
+	r *http.Request,
+	handlerfunc func() (string, error)) {
+
+	handler := a.NewHandler()
+	go func() {
+		url, err := handlerfunc()
+		if err != nil {
+			handler.CompletedWithError(err)
+		} else if url != "" {
+			handler.CompletedWithLocation(url)
+		} else {
+			handler.Completed()
+		}
+	}()
+	http.Redirect(w, r, handler.Url(), http.StatusAccepted)
+}
+
 func (a *AsyncHttpManager) HandlerStatus(w http.ResponseWriter, r *http.Request) {
 	// Get the id from the URL
 	vars := mux.Vars(r)
