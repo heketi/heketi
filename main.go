@@ -51,12 +51,6 @@ func main() {
 
 	}
 
-	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, "HelloWorld")
-	}).Methods("GET")
-
 	// Use negroni to add middleware.  Here we add two
 	// middlewares: Recovery and Logger, which come with
 	// Negroni
@@ -71,6 +65,7 @@ func main() {
 		select {
 		case <-signalch:
 			fmt.Printf("Shutting down...")
+			app.Close()
 			os.Exit(0)
 		}
 	}()

@@ -54,6 +54,10 @@ func (a *App) GetRoutes() rest.Routes {
 	}
 }
 
+func (a *App) Close() {
+
+}
+
 func (a *App) Hello(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)

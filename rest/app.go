@@ -18,4 +18,5 @@ package rest
 
 type Application interface {
 	GetRoutes() Routes
+	Close()
 }
