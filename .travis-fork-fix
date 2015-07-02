@@ -5,10 +5,10 @@
 # from pblcache repo and not from the fork.  This program
 # will fix the issue.
 
-PBLREPO="github.com/heketi/heketi"
-PBLCACHEDIR="../../lpabon/heketi"
+REPO="github.com/heketi/heketi"
+REPODIR="../../heketi/heketi"
 
-if ! git remote -v | grep origin | grep ${PBLREPO} ; then
-    mv ${PBLCACHEDIR} ${PBLCACHEDIR}.orig
-    ln -s $PWD ${PBLCACHEDIR}
+if ! git remote -v | grep origin | grep ${REPO} ; then
+    mv ${REPODIR} ${REPODIR}.orig
+    ln -s $PWD ${REPODIR}
 fi

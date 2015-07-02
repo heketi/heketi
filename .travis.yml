@@ -1,5 +1,6 @@
 language: go
 install:
+- bash .travis-fork-fix
 - go get github.com/mattn/goveralls
 - go get github.com/robfig/glock
 - glock sync github.com/heketi/heketi
@@ -17,7 +18,6 @@ matrix:
 before_script:
 - if [[ "$GOTOOLS" = "yes" ]] ; then go get golang.org/x/tools/cmd/vet; fi
 - if [[ "$GOTOOLS" = "yes" ]] ; then go get golang.org/x/tools/cmd/cover; fi
-- bash .travis-fork-fix
 script:
 - if [[ "GOTOOLS" = "yes" ]] ; then go fmt ./... | wc -l | grep 0 ; fi
 - if [[ "GOTOOLS" = "yes" ]] ; then go vet ./... ; fi
