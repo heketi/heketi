@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
+	"errors"
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/utils"
 	"net/http"
@@ -34,6 +35,10 @@ type ClusterInfoRequest struct {
 	Id      string   `json:"id"`
 	Nodes   []string `json:"nodes"`
 	Volumes []string `json:"volumes"`
+}
+
+type ClusterListResponse struct {
+	Clusters []string `json:"clusters"`
 }
 
 type ClusterEntry struct {
@@ -81,7 +86,7 @@ func (a *App) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 		b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
 		if b == nil {
 			logger.Error("Unable to save new cluster information in db")
-			return err
+			return errors.New("Unable to open bucket")
 		}
 
 		err = b.Put([]byte(id), buffer.Bytes())
@@ -104,6 +109,41 @@ func (a *App) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusCreated)
 	if err := json.NewEncoder(w).Encode(entry.Info); err != nil {
+		panic(err)
+	}
+}
+
+func (a *App) ClusterList(w http.ResponseWriter, r *http.Request) {
+
+	var list ClusterListResponse
+	list.Clusters = make([]string, 0)
+
+	// Get all the cluster ids from the DB
+	err := a.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
+		if b == nil {
+			logger.Error("Unable to access db")
+			return errors.New("Unable to open bucket")
+		}
+
+		b.ForEach(func(k, v []byte) error {
+			list.Clusters = append(list.Clusters, string(k))
+			return nil
+		})
+
+		return nil
+	})
+
+	if err != nil {
+		logger.Err(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Send list back
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(list); err != nil {
 		panic(err)
 	}
 }

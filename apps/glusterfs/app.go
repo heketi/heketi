@@ -120,7 +120,7 @@ func (a *App) GetRoutes() rest.Routes {
 		// Cluster
 		rest.Route{"ClusterCreate", "POST", "/clusters", a.ClusterCreate},
 		rest.Route{"ClusterInfo", "GET", "/clusters/{id:[A-Fa-f0-9]+}", a.NotImplemented},
-		rest.Route{"ClusterList", "GET", "/clusters", a.NotImplemented},
+		rest.Route{"ClusterList", "GET", "/clusters", a.ClusterList},
 		rest.Route{"ClusterDelete", "DELETE", "/clusters/{id:[A-Fa-f0-9]+}", a.NotImplemented},
 
 		// Node
