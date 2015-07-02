@@ -26,7 +26,12 @@ import (
 )
 
 const (
-	ASYNC_ROUTE = "/queue"
+	ASYNC_ROUTE           = "/queue"
+	BOLTDB_BUCKET_CLUSTER = "CLUSTER"
+	BOLTDB_BUCKET_NODE    = "NODE"
+	BOLTDB_BUCKET_VOLUME  = "VOLUME"
+	BOLTDB_BUCKET_DEVICE  = "DEVICE"
+	BOLTDB_BUCKET_BRICK   = "BRICK"
 )
 
 var (
@@ -51,6 +56,51 @@ func NewApp() *App {
 		logger.Error("Unable to open database")
 		return nil
 	}
+
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		// Create Cluster Bucket
+		_, err := tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_CLUSTER))
+		if err != nil {
+			logger.Error("Unable to create cluster bucket in DB")
+			return err
+		}
+
+		// Create Node Bucket
+		_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_NODE))
+		if err != nil {
+			logger.Error("Unable to create cluster bucket in DB")
+			return err
+		}
+
+		// Create Volume Bucket
+		_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_VOLUME))
+		if err != nil {
+			logger.Error("Unable to create cluster bucket in DB")
+			return err
+		}
+
+		// Create Device Bucket
+		_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_DEVICE))
+		if err != nil {
+			logger.Error("Unable to create cluster bucket in DB")
+			return err
+		}
+
+		// Create Brick Bucket
+		_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_BRICK))
+		if err != nil {
+			logger.Error("Unable to create cluster bucket in DB")
+			return err
+		}
+
+		return nil
+
+	})
+	if err != nil {
+		logger.Err(err)
+		return nil
+	}
+
 	logger.Info("GlusterFS Application Loaded")
 
 	return app
@@ -68,7 +118,7 @@ func (a *App) GetRoutes() rest.Routes {
 		rest.Route{"Async", "GET", ASYNC_ROUTE + "/{id:[A-Fa-f0-9]+}", a.asyncManager.HandlerStatus},
 
 		// Cluster
-		rest.Route{"ClusterCreate", "POST", "/clusters", a.NotImplemented},
+		rest.Route{"ClusterCreate", "POST", "/clusters", a.ClusterCreate},
 		rest.Route{"ClusterInfo", "GET", "/clusters/{id:[A-Fa-f0-9]+}", a.NotImplemented},
 		rest.Route{"ClusterList", "GET", "/clusters", a.NotImplemented},
 		rest.Route{"ClusterDelete", "DELETE", "/clusters/{id:[A-Fa-f0-9]+}", a.NotImplemented},

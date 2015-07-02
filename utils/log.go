@@ -50,8 +50,8 @@ func NewLogger(prefix string, level int) *Logger {
 		l.level = level
 	}
 
-	l.critlog = log.New(os.Stderr, prefix+" CRITICAL ", log.LstdFlags)
-	l.errorlog = log.New(os.Stderr, prefix+" ERROR ", log.LstdFlags)
+	l.critlog = log.New(os.Stderr, prefix+" CRITICAL ", log.Llongfile|log.LstdFlags)
+	l.errorlog = log.New(os.Stderr, prefix+" ERROR ", log.Llongfile|log.LstdFlags)
 	l.warninglog = log.New(os.Stderr, prefix+" WARNING ", log.LstdFlags)
 	l.infolog = log.New(os.Stdout, prefix+" INFO ", log.LstdFlags)
 	l.debuglog = log.New(os.Stdout, prefix+" DEBUG ", log.Llongfile|log.LstdFlags)
