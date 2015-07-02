@@ -2,4 +2,4 @@ github.com/codegangsta/negroni c7477ad8e330bef55bf1ebe300cf8aa67c492d1b
 github.com/gorilla/context 215affda49addc4c8ef7e2534915df2c8c35c6cd
 github.com/gorilla/mux 47e8f450ef38c857cdd922ec08862ca9d65a1c6d
 github.com/lpabon/godbc 9577782540c1398b710ddae1b86268ba03a19b0c
-golang.org/x/crypto 1e856cbfdf9bc25eefca75f83f25d55e35ae72e0
+golang.org/x/crypto cc04154d65fb9296747569b107cfd05380b1ea3e
