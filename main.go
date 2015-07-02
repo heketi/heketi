@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2014 The heketi Authors
+// Copyright (c) 2015 The heketi Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
+	"github.com/heketi/heketi/apps/glusterfs"
+	"github.com/heketi/heketi/rest"
 	"log"
 	"net/http"
 	"os"
@@ -28,22 +30,26 @@ import (
 
 func main() {
 
+	var app rest.Application
+
+	// Setup a new GlusterFS application
+	app = glusterfs.NewApp()
+
 	// Create a router and do not allow any routes
 	// unless defined.
 	router := mux.NewRouter().StrictSlash(true)
-	/*
 
-		for _, route := range r {
+	// Register all routes from the App
+	for _, route := range app.GetRoutes() {
 
-			// Add routes from the table
-			router.
-				Methods(route.Method).
-				Path(route.Pattern).
-				Name(route.Name).
-				Handler(route.HandlerFunc)
+		// Add routes from the table
+		router.
+			Methods(route.Method).
+			Path(route.Pattern).
+			Name(route.Name).
+			Handler(route.HandlerFunc)
 
-		}
-	*/
+	}
 
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
