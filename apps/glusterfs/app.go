@@ -18,25 +18,54 @@ package glusterfs
 
 import (
 	"fmt"
+	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/rest"
+	"github.com/heketi/heketi/utils"
 	"net/http"
+	"time"
+)
+
+const (
+	ASYNC_ROUTE = "/queue"
+)
+
+var (
+	logger = utils.NewLogger("[heketi]", utils.LEVEL_DEBUG)
 )
 
 type App struct {
-	hello string
+	asyncManager *rest.AsyncHttpManager
+	db           *bolt.DB
 }
 
 func NewApp() *App {
-	return &App{}
+	app := &App{}
+
+	// Setup asynchronous manager
+	app.asyncManager = rest.NewAsyncHttpManager(ASYNC_ROUTE)
+
+	// Setup BoltDB database
+	var err error
+	app.db, err = bolt.Open("heketi.db", 0600, &bolt.Options{Timeout: 3 * time.Second})
+	if err != nil {
+		logger.Error("Unable to open database")
+		return nil
+	}
+	logger.Info("GlusterFS Application Loaded")
+
+	return app
 }
 
-// Interface rest.App
+// Register Routes
 func (a *App) GetRoutes() rest.Routes {
 
 	return rest.Routes{
 
 		// HelloWorld
 		rest.Route{"Hello", "GET", "/hello", a.Hello},
+
+		// Asynchronous Manager
+		rest.Route{"Async", "GET", ASYNC_ROUTE + "/{id:[A-Fa-f0-9]+}", a.asyncManager.HandlerStatus},
 
 		// Cluster
 		rest.Route{"ClusterCreate", "POST", "/clusters", a.NotImplemented},
@@ -65,6 +94,9 @@ func (a *App) GetRoutes() rest.Routes {
 
 func (a *App) Close() {
 
+	// Close the DB
+	a.db.Close()
+	logger.Info("Closed")
 }
 
 func (a *App) Hello(w http.ResponseWriter, r *http.Request) {
