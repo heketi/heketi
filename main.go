@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2014 The heketi Authors
+// Copyright (c) 2015 The heketi Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
-	"github.com/heketi/heketi/handlers"
-	"github.com/heketi/heketi/plugins"
+	"github.com/heketi/heketi/apps/glusterfs"
+	"github.com/heketi/heketi/rest"
 	"log"
 	"net/http"
 	"os"
@@ -30,20 +30,17 @@ import (
 
 func main() {
 
-	// Get a mock node server
-	plugin := plugins.NewPlugin("glusterfs")
+	var app rest.Application
 
-	//
-	nodeserver := handlers.NewNodeServer(plugin)
-	volumeserver := handlers.NewVolumeServer(plugin)
-
-	r := volumeserver.VolumeRoutes()
-	r = append(r, nodeserver.NodeRoutes()...)
+	// Setup a new GlusterFS application
+	app = glusterfs.NewApp()
 
 	// Create a router and do not allow any routes
 	// unless defined.
 	router := mux.NewRouter().StrictSlash(true)
-	for _, route := range r {
+
+	// Register all routes from the App
+	for _, route := range app.GetRoutes() {
 
 		// Add routes from the table
 		router.
@@ -68,7 +65,7 @@ func main() {
 		select {
 		case <-signalch:
 			fmt.Printf("Shutting down...")
-			plugin.Close()
+			app.Close()
 			os.Exit(0)
 		}
 	}()
