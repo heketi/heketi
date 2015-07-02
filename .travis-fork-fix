@@ -6,8 +6,9 @@
 # will fix the issue.
 
 REPO="github.com/heketi/heketi"
-REPODIR="../../heketi/heketi"
+REPODIR="../../heketi"
 
 if ! git remote -v | grep origin | grep ${REPO} ; then
-    ln -s $PWD ${REPODIR}
+    mkdir -p ${REPODIR}
+    ln -s $PWD ${REPODIR}/heketi
 fi
