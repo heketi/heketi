@@ -20,8 +20,6 @@ import (
 	"fmt"
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
-	"github.com/heketi/heketi/handlers"
-	"github.com/heketi/heketi/plugins"
 	"log"
 	"net/http"
 	"os"
@@ -30,29 +28,28 @@ import (
 
 func main() {
 
-	// Get a mock node server
-	plugin := plugins.NewPlugin("glusterfs")
-
-	//
-	nodeserver := handlers.NewNodeServer(plugin)
-	volumeserver := handlers.NewVolumeServer(plugin)
-
-	r := volumeserver.VolumeRoutes()
-	r = append(r, nodeserver.NodeRoutes()...)
-
 	// Create a router and do not allow any routes
 	// unless defined.
 	router := mux.NewRouter().StrictSlash(true)
-	for _, route := range r {
+	/*
 
-		// Add routes from the table
-		router.
-			Methods(route.Method).
-			Path(route.Pattern).
-			Name(route.Name).
-			Handler(route.HandlerFunc)
+		for _, route := range r {
 
-	}
+			// Add routes from the table
+			router.
+				Methods(route.Method).
+				Path(route.Pattern).
+				Name(route.Name).
+				Handler(route.HandlerFunc)
+
+		}
+	*/
+
+	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "HelloWorld")
+	}).Methods("GET")
 
 	// Use negroni to add middleware.  Here we add two
 	// middlewares: Recovery and Logger, which come with
@@ -68,7 +65,6 @@ func main() {
 		select {
 		case <-signalch:
 			fmt.Printf("Shutting down...")
-			plugin.Close()
 			os.Exit(0)
 		}
 	}()
