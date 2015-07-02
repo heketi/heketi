@@ -9,6 +9,5 @@ REPO="github.com/heketi/heketi"
 REPODIR="../../heketi/heketi"
 
 if ! git remote -v | grep origin | grep ${REPO} ; then
-    mv ${REPODIR} ${REPODIR}.orig
     ln -s $PWD ${REPODIR}
 fi
