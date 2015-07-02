@@ -77,6 +77,12 @@ func (l *Logger) Error(format string, v ...interface{}) {
 	}
 }
 
+func (l *Logger) Err(err error) {
+	if l.level >= LEVEL_ERROR {
+		l.errorlog.Print(err)
+	}
+}
+
 func (l *Logger) Warning(format string, v ...interface{}) {
 	if l.level >= LEVEL_WARNING {
 		l.warninglog.Printf(format, v...)
