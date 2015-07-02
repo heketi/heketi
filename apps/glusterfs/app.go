@@ -39,18 +39,27 @@ func (a *App) GetRoutes() rest.Routes {
 		rest.Route{"Hello", "GET", "/hello", a.Hello},
 
 		// Cluster
+		rest.Route{"ClusterCreate", "POST", "/clusters", a.NotImplemented},
+		rest.Route{"ClusterInfo", "GET", "/clusters/{id:[A-Fa-f0-9]+}", a.NotImplemented},
+		rest.Route{"ClusterList", "GET", "/clusters", a.NotImplemented},
+		rest.Route{"ClusterDelete", "DELETE", "/clusters/{id:[A-Fa-f0-9]+}", a.NotImplemented},
 
 		// Node
-		/*
-		   Route{"NodeList", "GET", "/nodes", n.NodeListHandler},
-		   Route{"NodeAdd", "POST", "/nodes", n.NodeAddHandler},
-		   Route{"NodeInfo", "GET", "/nodes/{id:[A-Fa-f0-9]+}", n.NodeInfoHandler},
-		   Route{"NodeDelete", "DELETE", "/nodes/{id:[A-Fa-f0-9]+}", n.NodeDeleteHandler},
-		   Route{"NodeAddDevice", "POST", "/nodes/{id:[A-Fa-f0-9]+}/devices", n.NodeAddDeviceHandler},
-		   //Route{"NodeDeleteDevice", "DELETE", "/nodes/{id:[A-Fa-f0-9]+}/devices/{devid:[A-Fa-f0-9]+}", n.NodeDeleteDeviceHandler},
-		*/
+		rest.Route{"NodeAdd", "POST", "/nodes", a.NotImplemented},
+		rest.Route{"NodeInfo", "GET", "/nodes/{id:[A-Fa-f0-9]+}", a.NotImplemented},
+		rest.Route{"NodeDelete", "DELETE", "/nodes/{id:[A-Fa-f0-9]+}", a.NotImplemented},
+
+		// Devices
+		rest.Route{"DeviceAdd", "POST", "/devices", a.NotImplemented},
+		rest.Route{"DeviceInfo", "GET", "/devices/{id:[A-Fa-f0-9]+}", a.NotImplemented},
+		rest.Route{"DeviceDelete", "DELETE", "/devices/{id:[A-Fa-f0-9]+}", a.NotImplemented},
 
 		// Volume
+		rest.Route{"VolumeCreate", "POST", "/volumes", a.NotImplemented},
+		rest.Route{"VolumeInfo", "GET", "/volumes/{id:[A-Fa-f0-9]+}", a.NotImplemented},
+		rest.Route{"VolumeExpand", "POST", "/volumes/{id:[A-Fa-f0-9]+}/expand", a.NotImplemented},
+		rest.Route{"VolumeDelete", "DELETE", "/volumes/{id:[A-Fa-f0-9]+}", a.NotImplemented},
+		rest.Route{"VolumeList", "GET", "/volumes", a.NotImplemented},
 	}
 }
 
@@ -62,4 +71,8 @@ func (a *App) Hello(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "HelloWorld from GlusterFS Application")
+}
+
+func (a *App) NotImplemented(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Function not yet supported", http.StatusNotImplemented)
 }
