@@ -1,3 +1,4 @@
+github.com/boltdb/bolt 5eb31d5821750fbc84284d610c0ce85261662adb
 github.com/codegangsta/negroni c7477ad8e330bef55bf1ebe300cf8aa67c492d1b
 github.com/gorilla/context 215affda49addc4c8ef7e2534915df2c8c35c6cd
 github.com/gorilla/mux 47e8f450ef38c857cdd922ec08862ca9d65a1c6d

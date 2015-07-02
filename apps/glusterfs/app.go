@@ -18,19 +18,95 @@ package glusterfs
 
 import (
 	"fmt"
+	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/rest"
+	"github.com/heketi/heketi/utils"
 	"net/http"
+	"time"
+)
+
+const (
+	ASYNC_ROUTE           = "/queue"
+	BOLTDB_BUCKET_CLUSTER = "CLUSTER"
+	BOLTDB_BUCKET_NODE    = "NODE"
+	BOLTDB_BUCKET_VOLUME  = "VOLUME"
+	BOLTDB_BUCKET_DEVICE  = "DEVICE"
+	BOLTDB_BUCKET_BRICK   = "BRICK"
+)
+
+var (
+	logger = utils.NewLogger("[heketi]", utils.LEVEL_DEBUG)
 )
 
 type App struct {
-	hello string
+	asyncManager *rest.AsyncHttpManager
+	db           *bolt.DB
 }
 
 func NewApp() *App {
-	return &App{}
+	app := &App{}
+
+	// Setup asynchronous manager
+	app.asyncManager = rest.NewAsyncHttpManager(ASYNC_ROUTE)
+
+	// Setup BoltDB database
+	var err error
+	app.db, err = bolt.Open("heketi.db", 0600, &bolt.Options{Timeout: 3 * time.Second})
+	if err != nil {
+		logger.Error("Unable to open database")
+		return nil
+	}
+
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		// Create Cluster Bucket
+		_, err := tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_CLUSTER))
+		if err != nil {
+			logger.Error("Unable to create cluster bucket in DB")
+			return err
+		}
+
+		// Create Node Bucket
+		_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_NODE))
+		if err != nil {
+			logger.Error("Unable to create cluster bucket in DB")
+			return err
+		}
+
+		// Create Volume Bucket
+		_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_VOLUME))
+		if err != nil {
+			logger.Error("Unable to create cluster bucket in DB")
+			return err
+		}
+
+		// Create Device Bucket
+		_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_DEVICE))
+		if err != nil {
+			logger.Error("Unable to create cluster bucket in DB")
+			return err
+		}
+
+		// Create Brick Bucket
+		_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_BRICK))
+		if err != nil {
+			logger.Error("Unable to create cluster bucket in DB")
+			return err
+		}
+
+		return nil
+
+	})
+	if err != nil {
+		logger.Err(err)
+		return nil
+	}
+
+	logger.Info("GlusterFS Application Loaded")
+
+	return app
 }
 
-// Interface rest.App
+// Register Routes
 func (a *App) GetRoutes() rest.Routes {
 
 	return rest.Routes{
@@ -38,10 +114,13 @@ func (a *App) GetRoutes() rest.Routes {
 		// HelloWorld
 		rest.Route{"Hello", "GET", "/hello", a.Hello},
 
+		// Asynchronous Manager
+		rest.Route{"Async", "GET", ASYNC_ROUTE + "/{id:[A-Fa-f0-9]+}", a.asyncManager.HandlerStatus},
+
 		// Cluster
-		rest.Route{"ClusterCreate", "POST", "/clusters", a.NotImplemented},
+		rest.Route{"ClusterCreate", "POST", "/clusters", a.ClusterCreate},
 		rest.Route{"ClusterInfo", "GET", "/clusters/{id:[A-Fa-f0-9]+}", a.NotImplemented},
-		rest.Route{"ClusterList", "GET", "/clusters", a.NotImplemented},
+		rest.Route{"ClusterList", "GET", "/clusters", a.ClusterList},
 		rest.Route{"ClusterDelete", "DELETE", "/clusters/{id:[A-Fa-f0-9]+}", a.NotImplemented},
 
 		// Node
@@ -65,6 +144,9 @@ func (a *App) GetRoutes() rest.Routes {
 
 func (a *App) Close() {
 
+	// Close the DB
+	a.db.Close()
+	logger.Info("Closed")
 }
 
 func (a *App) Hello(w http.ResponseWriter, r *http.Request) {

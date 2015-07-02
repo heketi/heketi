@@ -156,7 +156,7 @@ func (a *AsyncHttpManager) AsyncHttpRedirectFunc(w http.ResponseWriter,
 //
 //		// Setup the route
 //		router := mux.NewRouter()
-//	 	router.HandleFunc(route+"/{id}", manager.HandlerStatus).Methods("GET")
+//	 	router.HandleFunc(route+"/{id:[A-Fa-f0-9]+}", manager.HandlerStatus).Methods("GET")
 //
 //		// Setup the server
 //		ts := httptest.NewServer(router)

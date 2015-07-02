@@ -34,6 +34,10 @@ func main() {
 
 	// Setup a new GlusterFS application
 	app = glusterfs.NewApp()
+	if app == nil {
+		fmt.Println("Unable to start application")
+		os.Exit(1)
+	}
 
 	// Create a router and do not allow any routes
 	// unless defined.
@@ -64,8 +68,13 @@ func main() {
 	go func() {
 		select {
 		case <-signalch:
-			fmt.Printf("Shutting down...")
+			fmt.Printf("Shutting down...\n")
+			// :TODO: Need to stop the server before closing the app
+
+			// Close the application
 			app.Close()
+
+			// Quit
 			os.Exit(0)
 		}
 	}()
