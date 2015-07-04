@@ -30,7 +30,7 @@ type ClusterCreateRequest struct {
 	Name string `json:"name,omitempty"`
 }
 
-type ClusterInfoRequest struct {
+type ClusterInfoResponse struct {
 	Name    string   `json:"name"`
 	Id      string   `json:"id"`
 	Nodes   []string `json:"nodes"`
@@ -42,7 +42,7 @@ type ClusterListResponse struct {
 }
 
 type ClusterEntry struct {
-	Info ClusterInfoRequest
+	Info ClusterInfoResponse
 }
 
 func (a *App) ClusterCreate(w http.ResponseWriter, r *http.Request) {
@@ -64,7 +64,7 @@ func (a *App) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 
 	// Create a new ClusterInfo
 	entry := &ClusterEntry{
-		Info: ClusterInfoRequest{
+		Info: ClusterInfoResponse{
 			Name:    msg.Name,
 			Id:      id,
 			Nodes:   make([]string, 0),

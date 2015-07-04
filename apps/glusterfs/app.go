@@ -35,7 +35,8 @@ const (
 )
 
 var (
-	logger = utils.NewLogger("[heketi]", utils.LEVEL_DEBUG)
+	logger     = utils.NewLogger("[heketi]", utils.LEVEL_DEBUG)
+	dbfilename = "heketi.db"
 )
 
 type App struct {
@@ -51,7 +52,7 @@ func NewApp() *App {
 
 	// Setup BoltDB database
 	var err error
-	app.db, err = bolt.Open("heketi.db", 0600, &bolt.Options{Timeout: 3 * time.Second})
+	app.db, err = bolt.Open(dbfilename, 0600, &bolt.Options{Timeout: 3 * time.Second})
 	if err != nil {
 		logger.Error("Unable to open database")
 		return nil

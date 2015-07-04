@@ -22,8 +22,10 @@ import (
 	"os"
 )
 
+type LogLevel int
+
 const (
-	LEVEL_UNDEFINED = iota
+	LEVEL_NOLOG LogLevel = iota
 	LEVEL_CRITICAL
 	LEVEL_ERROR
 	LEVEL_WARNING
@@ -35,16 +37,16 @@ type Logger struct {
 	critlog, errorlog, infolog *log.Logger
 	debuglog, warninglog       *log.Logger
 
-	level int
+	level LogLevel
 }
 
-func NewLogger(prefix string, level int) *Logger {
+func NewLogger(prefix string, level LogLevel) *Logger {
 	godbc.Require(level >= 0, level)
 	godbc.Require(level <= LEVEL_DEBUG, level)
 
 	l := &Logger{}
 
-	if level == LEVEL_UNDEFINED {
+	if level == LEVEL_NOLOG {
 		l.level = LEVEL_DEBUG
 	} else {
 		l.level = level
@@ -63,6 +65,14 @@ func NewLogger(prefix string, level int) *Logger {
 	godbc.Ensure(l.debuglog != nil)
 
 	return l
+}
+
+func (l *Logger) Level() LogLevel {
+	return l.level
+}
+
+func (l *Logger) SetLevel(level LogLevel) {
+	l.level = level
 }
 
 func (l *Logger) Critical(format string, v ...interface{}) {
