@@ -19,6 +19,7 @@ package glusterfs
 import (
 	"fmt"
 	"github.com/boltdb/bolt"
+	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/rest"
 	"github.com/heketi/heketi/utils"
 	"net/http"
@@ -108,9 +109,9 @@ func NewApp() *App {
 }
 
 // Register Routes
-func (a *App) GetRoutes() rest.Routes {
+func (a *App) SetRoutes(router *mux.Router) error {
 
-	return rest.Routes{
+	routes := rest.Routes{
 
 		// HelloWorld
 		rest.Route{"Hello", "GET", "/hello", a.Hello},
@@ -141,6 +142,21 @@ func (a *App) GetRoutes() rest.Routes {
 		rest.Route{"VolumeDelete", "DELETE", "/volumes/{id:[A-Fa-f0-9]+}", a.NotImplemented},
 		rest.Route{"VolumeList", "GET", "/volumes", a.NotImplemented},
 	}
+
+	// Register all routes from the App
+	for _, route := range routes {
+
+		// Add routes from the table
+		router.
+			Methods(route.Method).
+			Path(route.Pattern).
+			Name(route.Name).
+			Handler(route.HandlerFunc)
+
+	}
+
+	return nil
+
 }
 
 func (a *App) Close() {

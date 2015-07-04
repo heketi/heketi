@@ -52,13 +52,14 @@ func (a *App) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 	id := utils.GenUUID()
 
 	// Determine if JSON was sent
-	if r.ContentLength > 0 {
-		err := utils.GetJsonFromRequest(r, &msg)
-		if err != nil {
-			http.Error(w, "request unable to be parsed", 422)
-			return
-		}
-	} else {
+	err := utils.GetJsonFromRequest(r, &msg)
+	if err != nil {
+		http.Error(w, "request unable to be parsed", 422)
+		return
+	}
+
+	// If a name was not supplied, then use the id instead
+	if msg.Name == "" {
 		msg.Name = id
 	}
 
@@ -75,7 +76,7 @@ func (a *App) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 	// Convert entry to bytes
 	var buffer bytes.Buffer
 	enc := gob.NewEncoder(&buffer)
-	err := enc.Encode(entry)
+	err = enc.Encode(entry)
 	if err != nil {
 		http.Error(w, "Unable to create cluster", http.StatusInternalServerError)
 		return
@@ -142,7 +143,7 @@ func (a *App) ClusterList(w http.ResponseWriter, r *http.Request) {
 
 	// Send list back
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(list); err != nil {
 		panic(err)
 	}

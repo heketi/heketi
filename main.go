@@ -42,17 +42,10 @@ func main() {
 	// Create a router and do not allow any routes
 	// unless defined.
 	router := mux.NewRouter().StrictSlash(true)
-
-	// Register all routes from the App
-	for _, route := range app.GetRoutes() {
-
-		// Add routes from the table
-		router.
-			Methods(route.Method).
-			Path(route.Pattern).
-			Name(route.Name).
-			Handler(route.HandlerFunc)
-
+	err := app.SetRoutes(router)
+	if err != nil {
+		fmt.Println("Unable to create http server endpoints")
+		os.Exit(1)
 	}
 
 	// Use negroni to add middleware.  Here we add two

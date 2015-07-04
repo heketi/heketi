@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"github.com/boltdb/bolt"
+	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/tests"
 	"github.com/heketi/heketi/utils"
 	"net/http"
@@ -33,6 +34,35 @@ func init() {
 	logger.SetLevel(utils.LEVEL_NOLOG)
 }
 
+func TestClusterCreateBadJsonRequest(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Patch dbfilename so that it is restored at the end of the tests
+	defer tests.Patch(&dbfilename, tmpfile).Restore()
+
+	// Create the app
+	app := NewApp()
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// ClusterCreate JSON Request
+	request := []byte(`{
+		some really bad json code
+    }`)
+
+	// Post nothing
+	r, err := http.Post(ts.URL+"/clusters", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == 422)
+
+}
+
 func TestClusterCreateEmptyRequest(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
@@ -43,12 +73,19 @@ func TestClusterCreateEmptyRequest(t *testing.T) {
 	// Create the app
 	app := NewApp()
 	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
 
 	// Setup the server
-	ts := httptest.NewServer(http.HandlerFunc(app.ClusterCreate))
+	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	r, err := http.Get(ts.URL)
+	// ClusterCreate JSON Request
+	request := []byte(`{
+    }`)
+
+	// Post nothing
+	r, err := http.Post(ts.URL+"/clusters", "application/json", bytes.NewBuffer(request))
 	tests.Assert(t, err == nil)
 	tests.Assert(t, r.StatusCode == http.StatusCreated)
 
@@ -93,9 +130,11 @@ func TestClusterCreateWithName(t *testing.T) {
 	// Create the app
 	app := NewApp()
 	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
 
 	// Setup the server
-	ts := httptest.NewServer(http.HandlerFunc(app.ClusterCreate))
+	ts := httptest.NewServer(router)
 	defer ts.Close()
 
 	// ClusterCreate JSON Request
@@ -104,7 +143,7 @@ func TestClusterCreateWithName(t *testing.T) {
     }`)
 
 	// Request
-	r, err := http.Post(ts.URL, "application/json", bytes.NewBuffer(request))
+	r, err := http.Post(ts.URL+"/clusters", "application/json", bytes.NewBuffer(request))
 	tests.Assert(t, r.StatusCode == http.StatusCreated)
 	tests.Assert(t, err == nil)
 
