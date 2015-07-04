@@ -16,7 +16,11 @@
 
 package rest
 
+import (
+	"github.com/gorilla/mux"
+)
+
 type Application interface {
-	GetRoutes() Routes
+	SetRoutes(router *mux.Router) error
 	Close()
 }
