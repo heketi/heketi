@@ -114,33 +114,101 @@ func (a *App) SetRoutes(router *mux.Router) error {
 	routes := rest.Routes{
 
 		// HelloWorld
-		rest.Route{"Hello", "GET", "/hello", a.Hello},
+		rest.Route{
+			Name:        "Hello",
+			Method:      "GET",
+			Pattern:     "/hello",
+			HandlerFunc: a.Hello},
 
 		// Asynchronous Manager
-		rest.Route{"Async", "GET", ASYNC_ROUTE + "/{id:[A-Fa-f0-9]+}", a.asyncManager.HandlerStatus},
+		rest.Route{
+			Name:        "Async",
+			Method:      "GET",
+			Pattern:     ASYNC_ROUTE + "/{id:[A-Fa-f0-9]+}",
+			HandlerFunc: a.asyncManager.HandlerStatus},
 
 		// Cluster
-		rest.Route{"ClusterCreate", "POST", "/clusters", a.ClusterCreate},
-		rest.Route{"ClusterInfo", "GET", "/clusters/{id:[A-Fa-f0-9]+}", a.NotImplemented},
-		rest.Route{"ClusterList", "GET", "/clusters", a.ClusterList},
-		rest.Route{"ClusterDelete", "DELETE", "/clusters/{id:[A-Fa-f0-9]+}", a.NotImplemented},
+		rest.Route{
+			Name:        "ClusterCreate",
+			Method:      "POST",
+			Pattern:     "/clusters",
+			HandlerFunc: a.ClusterCreate},
+		rest.Route{
+			Name:        "ClusterInfo",
+			Method:      "GET",
+			Pattern:     "/clusters/{id:[A-Fa-f0-9]+}",
+			HandlerFunc: a.NotImplemented},
+		rest.Route{
+			Name:        "ClusterList",
+			Method:      "GET",
+			Pattern:     "/clusters",
+			HandlerFunc: a.ClusterList},
+		rest.Route{
+			Name:        "ClusterDelete",
+			Method:      "DELETE",
+			Pattern:     "/clusters/{id:[A-Fa-f0-9]+}",
+			HandlerFunc: a.NotImplemented},
 
 		// Node
-		rest.Route{"NodeAdd", "POST", "/nodes", a.NotImplemented},
-		rest.Route{"NodeInfo", "GET", "/nodes/{id:[A-Fa-f0-9]+}", a.NotImplemented},
-		rest.Route{"NodeDelete", "DELETE", "/nodes/{id:[A-Fa-f0-9]+}", a.NotImplemented},
+		rest.Route{
+			Name:        "NodeAdd",
+			Method:      "POST",
+			Pattern:     "/nodes",
+			HandlerFunc: a.NotImplemented},
+		rest.Route{
+			Name:        "NodeInfo",
+			Method:      "GET",
+			Pattern:     "/nodes/{id:[A-Fa-f0-9]+}",
+			HandlerFunc: a.NotImplemented},
+		rest.Route{
+			Name:        "NodeDelete",
+			Method:      "DELETE",
+			Pattern:     "/nodes/{id:[A-Fa-f0-9]+}",
+			HandlerFunc: a.NotImplemented},
 
 		// Devices
-		rest.Route{"DeviceAdd", "POST", "/devices", a.NotImplemented},
-		rest.Route{"DeviceInfo", "GET", "/devices/{id:[A-Fa-f0-9]+}", a.NotImplemented},
-		rest.Route{"DeviceDelete", "DELETE", "/devices/{id:[A-Fa-f0-9]+}", a.NotImplemented},
+		rest.Route{
+			Name:        "DeviceAdd",
+			Method:      "POST",
+			Pattern:     "/devices",
+			HandlerFunc: a.NotImplemented},
+		rest.Route{
+			Name:        "DeviceInfo",
+			Method:      "GET",
+			Pattern:     "/devices/{id:[A-Fa-f0-9]+}",
+			HandlerFunc: a.NotImplemented},
+		rest.Route{
+			Name:        "DeviceDelete",
+			Method:      "DELETE",
+			Pattern:     "/devices/{id:[A-Fa-f0-9]+}",
+			HandlerFunc: a.NotImplemented},
 
 		// Volume
-		rest.Route{"VolumeCreate", "POST", "/volumes", a.NotImplemented},
-		rest.Route{"VolumeInfo", "GET", "/volumes/{id:[A-Fa-f0-9]+}", a.NotImplemented},
-		rest.Route{"VolumeExpand", "POST", "/volumes/{id:[A-Fa-f0-9]+}/expand", a.NotImplemented},
-		rest.Route{"VolumeDelete", "DELETE", "/volumes/{id:[A-Fa-f0-9]+}", a.NotImplemented},
-		rest.Route{"VolumeList", "GET", "/volumes", a.NotImplemented},
+		rest.Route{
+			Name:        "VolumeCreate",
+			Method:      "POST",
+			Pattern:     "/volumes",
+			HandlerFunc: a.NotImplemented},
+		rest.Route{
+			Name:        "VolumeInfo",
+			Method:      "GET",
+			Pattern:     "/volumes/{id:[A-Fa-f0-9]+}",
+			HandlerFunc: a.NotImplemented},
+		rest.Route{
+			Name:        "VolumeExpand",
+			Method:      "POST",
+			Pattern:     "/volumes/{id:[A-Fa-f0-9]+}/expand",
+			HandlerFunc: a.NotImplemented},
+		rest.Route{
+			Name:        "VolumeDelete",
+			Method:      "DELETE",
+			Pattern:     "/volumes/{id:[A-Fa-f0-9]+}",
+			HandlerFunc: a.NotImplemented},
+		rest.Route{
+			Name:        "VolumeList",
+			Method:      "GET",
+			Pattern:     "/volumes",
+			HandlerFunc: a.NotImplemented},
 	}
 
 	// Register all routes from the App
