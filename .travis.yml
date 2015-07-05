@@ -19,7 +19,7 @@ before_script:
 - if [[ "$GOTOOLS" = "yes" ]] ; then go get golang.org/x/tools/cmd/vet; fi
 - if [[ "$GOTOOLS" = "yes" ]] ; then go get golang.org/x/tools/cmd/cover; fi
 script:
-- if [[ "GOTOOLS" = "yes" ]] ; then go fmt ./... | wc -l | grep 0 ; fi
-- if [[ "GOTOOLS" = "yes" ]] ; then go vet ./... ; fi
+- if [[ "$GOTOOLS" = "yes" ]] ; then go fmt ./... | wc -l | grep 0 ; fi
+- if [[ "$GOTOOLS" = "yes" ]] ; then go vet ./... ; fi
 - go test -v $OPTIONS ./...
 - if [[ -n "$COVERAGE" ]]; then bash .travis-coverage; fi
