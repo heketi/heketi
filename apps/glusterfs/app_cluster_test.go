@@ -192,14 +192,17 @@ func TestClusterInfo(t *testing.T) {
 	defer ts.Close()
 
 	// Create a new ClusterInfo
-	id := "123"
-	entry := &ClusterEntry{
-		Info: ClusterInfoResponse{
-			Id:      id,
-			Nodes:   []string{"a1", "a2", "a3"},
-			Volumes: []string{"b1", "b2", "b3"},
-		},
+	entry := NewClusterEntry()
+	entry.Info.Id = "123"
+	for _, node := range []string{"a1", "a2", "a3"} {
+		entry.AddNode(node)
 	}
+	for _, vol := range []string{"b1", "b2", "b3"} {
+		entry.AddVolume(vol)
+	}
+	entry.Info.Storage.Free = 1234567
+	entry.Info.Storage.Total = 2345678
+	entry.Info.Storage.Used = 3456789
 
 	// Save the info in the database
 	err := app.db.Update(func(tx *bolt.Tx) error {
@@ -225,7 +228,7 @@ func TestClusterInfo(t *testing.T) {
 
 	// Now that we have some data in the database, we can
 	// make a request for the clutser list
-	r, err := http.Get(ts.URL + "/clusters/" + id)
+	r, err := http.Get(ts.URL + "/clusters/" + "123")
 	tests.Assert(t, r.StatusCode == http.StatusOK)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
@@ -243,4 +246,7 @@ func TestClusterInfo(t *testing.T) {
 	tests.Assert(t, entry.Info.Nodes[0] == msg.Nodes[0])
 	tests.Assert(t, entry.Info.Nodes[1] == msg.Nodes[1])
 	tests.Assert(t, entry.Info.Nodes[2] == msg.Nodes[2])
+	tests.Assert(t, entry.Info.Storage.Free == 1234567)
+	tests.Assert(t, entry.Info.Storage.Total == 2345678)
+	tests.Assert(t, entry.Info.Storage.Used == 3456789)
 }

@@ -19,6 +19,7 @@ package glusterfs
 import (
 	"bytes"
 	"encoding/gob"
+	"github.com/lpabon/godbc"
 )
 
 type ClusterEntry struct {
@@ -57,4 +58,41 @@ func (c *ClusterEntry) Unmarshal(buffer []byte) error {
 	}
 
 	return nil
+}
+
+func (c *ClusterEntry) AddNode(nodeid string) {
+	c.Info.Nodes = append(c.Info.Nodes, nodeid)
+}
+
+func (c *ClusterEntry) AddVolume(volid string) {
+	c.Info.Volumes = append(c.Info.Volumes, volid)
+}
+
+func (c *ClusterEntry) StorageAdd(amount uint64) {
+	c.Info.Storage.Free += amount
+	c.Info.Storage.Total += amount
+
+	godbc.Ensure(c.Info.Storage.Free >= 0)
+	godbc.Ensure(c.Info.Storage.Used >= 0)
+	godbc.Ensure(c.Info.Storage.Total >= 0)
+}
+
+func (c *ClusterEntry) StorageAllocate(amount uint64) {
+	c.Info.Storage.Free -= amount
+	c.Info.Storage.Used += amount
+	c.Info.Storage.Total -= amount
+
+	godbc.Ensure(c.Info.Storage.Free >= 0)
+	godbc.Ensure(c.Info.Storage.Used >= 0)
+	godbc.Ensure(c.Info.Storage.Total >= 0)
+}
+
+func (c *ClusterEntry) StorageFree(amount uint64) {
+	c.Info.Storage.Free += amount
+	c.Info.Storage.Used -= amount
+	c.Info.Storage.Total += amount
+
+	godbc.Ensure(c.Info.Storage.Free >= 0)
+	godbc.Ensure(c.Info.Storage.Used >= 0)
+	godbc.Ensure(c.Info.Storage.Total >= 0)
 }
