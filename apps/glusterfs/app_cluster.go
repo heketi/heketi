@@ -27,25 +27,6 @@ import (
 	"net/http"
 )
 
-type ClusterCreateRequest struct {
-	Name string `json:"name,omitempty"`
-}
-
-type ClusterInfoResponse struct {
-	Name    string   `json:"name"`
-	Id      string   `json:"id"`
-	Nodes   []string `json:"nodes"`
-	Volumes []string `json:"volumes"`
-}
-
-type ClusterListResponse struct {
-	Clusters []string `json:"clusters"`
-}
-
-type ClusterEntry struct {
-	Info ClusterInfoResponse
-}
-
 var (
 	ErrNotFound = errors.New("Id not found")
 )

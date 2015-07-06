@@ -249,3 +249,103 @@ func TestClusterList(t *testing.T) {
 		mockid++
 	}
 }
+
+func TestClusterInfoIdNotFound(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Patch dbfilename so that it is restored at the end of the tests
+	defer tests.Patch(&dbfilename, tmpfile).Restore()
+
+	// Create the app
+	app := NewApp()
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Now that we have some data in the database, we can
+	// make a request for the clutser list
+	r, err := http.Get(ts.URL + "/clusters/12345")
+	tests.Assert(t, r.StatusCode == http.StatusNotFound)
+	tests.Assert(t, err == nil)
+}
+
+func TestClusterInfo(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Patch dbfilename so that it is restored at the end of the tests
+	defer tests.Patch(&dbfilename, tmpfile).Restore()
+
+	// Create the app
+	app := NewApp()
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Create a new ClusterInfo
+	id := "123"
+	entry := &ClusterEntry{
+		Info: ClusterInfoResponse{
+			Name:    id,
+			Id:      id,
+			Nodes:   []string{"a1", "a2", "a3"},
+			Volumes: []string{"b1", "b2", "b3"},
+		},
+	}
+
+	// Save the info in the database
+	err := app.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
+		if b == nil {
+			return errors.New("Unable to open bucket")
+		}
+
+		var buffer bytes.Buffer
+
+		enc := gob.NewEncoder(&buffer)
+		err := enc.Encode(entry)
+		if err != nil {
+			return err
+		}
+
+		err = b.Put([]byte(entry.Info.Id), buffer.Bytes())
+		if err != nil {
+			return err
+		}
+
+		return nil
+
+	})
+	tests.Assert(t, err == nil)
+
+	// Now that we have some data in the database, we can
+	// make a request for the clutser list
+	r, err := http.Get(ts.URL + "/clusters/" + id)
+	tests.Assert(t, r.StatusCode == http.StatusOK)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
+
+	// Read response
+	var msg ClusterInfoResponse
+	err = utils.GetJsonFromResponse(r, &msg)
+	tests.Assert(t, err == nil)
+
+	// Check values are equal
+	tests.Assert(t, entry.Info.Id == msg.Id)
+	tests.Assert(t, entry.Info.Name == msg.Name)
+	tests.Assert(t, entry.Info.Volumes[0] == msg.Volumes[0])
+	tests.Assert(t, entry.Info.Volumes[1] == msg.Volumes[1])
+	tests.Assert(t, entry.Info.Volumes[2] == msg.Volumes[2])
+	tests.Assert(t, entry.Info.Nodes[0] == msg.Nodes[0])
+	tests.Assert(t, entry.Info.Nodes[1] == msg.Nodes[1])
+	tests.Assert(t, entry.Info.Nodes[2] == msg.Nodes[2])
+}
