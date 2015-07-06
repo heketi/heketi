@@ -16,21 +16,20 @@
 
 package glusterfs
 
-type ClusterCreateRequest struct {
-	Name string `json:"name,omitempty"`
-}
-
 type ClusterInfoResponse struct {
-	Name    string   `json:"name"`
-	Id      string   `json:"id"`
-	Nodes   []string `json:"nodes"`
-	Volumes []string `json:"volumes"`
+	Id      string      `json:"id"`
+	Nodes   []string    `json:"nodes"`
+	Volumes []string    `json:"volumes"`
+	Storage StorageSize `json:"storage"`
 }
 
 type ClusterListResponse struct {
 	Clusters []string `json:"clusters"`
 }
 
-type ClusterEntry struct {
-	Info ClusterInfoResponse
+// Storage values in KB
+type StorageSize struct {
+	Total uint64 `json:"total"`
+	Free  uint64 `json:"free"`
+	Used  uint64 `json:"used"`
 }

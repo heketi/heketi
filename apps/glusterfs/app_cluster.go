@@ -17,8 +17,6 @@
 package glusterfs
 
 import (
-	"bytes"
-	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"github.com/boltdb/bolt"
@@ -32,37 +30,13 @@ var (
 )
 
 func (a *App) ClusterCreate(w http.ResponseWriter, r *http.Request) {
-	var msg ClusterCreateRequest
-
-	// Generate an id
-	id := utils.GenUUID()
-
-	// Determine if JSON was sent
-	err := utils.GetJsonFromRequest(r, &msg)
-	if err != nil {
-		http.Error(w, "request unable to be parsed", 422)
-		return
-	}
-
-	// If a name was not supplied, then use the id instead
-	if msg.Name == "" {
-		msg.Name = id
-	}
 
 	// Create a new ClusterInfo
-	entry := &ClusterEntry{
-		Info: ClusterInfoResponse{
-			Name:    msg.Name,
-			Id:      id,
-			Nodes:   make([]string, 0),
-			Volumes: make([]string, 0),
-		},
-	}
+	entry := NewClusterEntry()
+	entry.Info.Id = utils.GenUUID()
 
 	// Convert entry to bytes
-	var buffer bytes.Buffer
-	enc := gob.NewEncoder(&buffer)
-	err = enc.Encode(entry)
+	buffer, err := entry.Marshal()
 	if err != nil {
 		http.Error(w, "Unable to create cluster", http.StatusInternalServerError)
 		return
@@ -76,7 +50,7 @@ func (a *App) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 			return errors.New("Unable to open bucket")
 		}
 
-		err = b.Put([]byte(id), buffer.Bytes())
+		err = b.Put([]byte(entry.Info.Id), buffer)
 		if err != nil {
 			logger.Error("Unable to save new cluster information in db")
 			return err
@@ -155,28 +129,13 @@ func (a *App) ClusterInfo(w http.ResponseWriter, r *http.Request) {
 			return ErrNotFound
 		}
 
-		// Unmarshal
-		dec := gob.NewDecoder(bytes.NewReader(val))
-		err := dec.Decode(&entry)
-		if err != nil {
-			return err
-		}
-
-		return nil
+		return entry.Unmarshal(val)
 	})
 	if err == ErrNotFound {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	} else if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-
-	// Make sure we return an empty list in JSON if we have no elements
-	if entry.Info.Nodes == nil {
-		entry.Info.Nodes = make([]string, 0)
-	}
-	if entry.Info.Volumes == nil {
-		entry.Info.Volumes = make([]string, 0)
 	}
 
 	// Write msg
