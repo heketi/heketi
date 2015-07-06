@@ -137,7 +137,7 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Name:        "ClusterInfo",
 			Method:      "GET",
 			Pattern:     "/clusters/{id:[A-Fa-f0-9]+}",
-			HandlerFunc: a.NotImplemented},
+			HandlerFunc: a.ClusterInfo},
 		rest.Route{
 			Name:        "ClusterList",
 			Method:      "GET",

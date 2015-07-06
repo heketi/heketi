@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/boltdb/bolt"
+	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/utils"
 	"net/http"
 )
@@ -44,6 +45,10 @@ type ClusterListResponse struct {
 type ClusterEntry struct {
 	Info ClusterInfoResponse
 }
+
+var (
+	ErrNotFound = errors.New("Id not found")
+)
 
 func (a *App) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 	var msg ClusterCreateRequest
@@ -147,4 +152,57 @@ func (a *App) ClusterList(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(list); err != nil {
 		panic(err)
 	}
+}
+
+func (a *App) ClusterInfo(w http.ResponseWriter, r *http.Request) {
+
+	// Get the id from the URL
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	// Get info from db
+	var entry ClusterEntry
+	err := a.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
+		if b == nil {
+			logger.Error("Unable to access db")
+			return errors.New("Unable to open bucket")
+		}
+
+		val := b.Get([]byte(id))
+		if val == nil {
+			return ErrNotFound
+		}
+
+		// Unmarshal
+		dec := gob.NewDecoder(bytes.NewReader(val))
+		err := dec.Decode(&entry)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err == ErrNotFound {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	// Make sure we return an empty list in JSON if we have no elements
+	if entry.Info.Nodes == nil {
+		entry.Info.Nodes = make([]string, 0)
+	}
+	if entry.Info.Volumes == nil {
+		entry.Info.Volumes = make([]string, 0)
+	}
+
+	// Write msg
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(entry.Info); err != nil {
+		panic(err)
+	}
+
 }
