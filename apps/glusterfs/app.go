@@ -55,7 +55,7 @@ func NewApp() *App {
 	var err error
 	app.db, err = bolt.Open(dbfilename, 0600, &bolt.Options{Timeout: 3 * time.Second})
 	if err != nil {
-		logger.Error("Unable to open database")
+		logger.LogError("Unable to open database")
 		return nil
 	}
 
@@ -63,35 +63,35 @@ func NewApp() *App {
 		// Create Cluster Bucket
 		_, err := tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_CLUSTER))
 		if err != nil {
-			logger.Error("Unable to create cluster bucket in DB")
+			logger.LogError("Unable to create cluster bucket in DB")
 			return err
 		}
 
 		// Create Node Bucket
 		_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_NODE))
 		if err != nil {
-			logger.Error("Unable to create cluster bucket in DB")
+			logger.LogError("Unable to create cluster bucket in DB")
 			return err
 		}
 
 		// Create Volume Bucket
 		_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_VOLUME))
 		if err != nil {
-			logger.Error("Unable to create cluster bucket in DB")
+			logger.LogError("Unable to create cluster bucket in DB")
 			return err
 		}
 
 		// Create Device Bucket
 		_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_DEVICE))
 		if err != nil {
-			logger.Error("Unable to create cluster bucket in DB")
+			logger.LogError("Unable to create cluster bucket in DB")
 			return err
 		}
 
 		// Create Brick Bucket
 		_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_BRICK))
 		if err != nil {
-			logger.Error("Unable to create cluster bucket in DB")
+			logger.LogError("Unable to create cluster bucket in DB")
 			return err
 		}
 

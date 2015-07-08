@@ -81,7 +81,7 @@ func (l *Logger) Critical(format string, v ...interface{}) {
 	}
 }
 
-func (l *Logger) Error(format string, v ...interface{}) {
+func (l *Logger) LogError(format string, v ...interface{}) {
 	if l.level >= LEVEL_ERROR {
 		l.errorlog.Printf(format, v...)
 	}

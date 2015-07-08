@@ -46,13 +46,13 @@ func (a *App) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 	err = a.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
 		if b == nil {
-			logger.Error("Unable to save new cluster information in db")
+			logger.LogError("Unable to save new cluster information in db")
 			return errors.New("Unable to open bucket")
 		}
 
 		err = b.Put([]byte(entry.Info.Id), buffer)
 		if err != nil {
-			logger.Error("Unable to save new cluster information in db")
+			logger.LogError("Unable to save new cluster information in db")
 			return err
 		}
 
@@ -83,7 +83,7 @@ func (a *App) ClusterList(w http.ResponseWriter, r *http.Request) {
 	err := a.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
 		if b == nil {
-			logger.Error("Unable to access db")
+			logger.LogError("Unable to access db")
 			return errors.New("Unable to open bucket")
 		}
 
@@ -120,7 +120,7 @@ func (a *App) ClusterInfo(w http.ResponseWriter, r *http.Request) {
 	err := a.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
 		if b == nil {
-			logger.Error("Unable to access db")
+			logger.LogError("Unable to access db")
 			return errors.New("Unable to open bucket")
 		}
 
@@ -159,7 +159,7 @@ func (a *App) ClusterDelete(w http.ResponseWriter, r *http.Request) {
 	err := a.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
 		if b == nil {
-			logger.Error("Unable to access db")
+			logger.LogError("Unable to access db")
 			return errors.New("Unable to access db")
 		}
 
@@ -173,7 +173,7 @@ func (a *App) ClusterDelete(w http.ResponseWriter, r *http.Request) {
 		// Convert from bytes to a struct
 		err := entry.Unmarshal(val)
 		if err != nil {
-			logger.Error("Unable to read from database: %v", err.Error())
+			logger.LogError("Unable to read from database: %s", err.Error())
 			http.Error(w, "Unable to unmarshal from database", http.StatusInternalServerError)
 			return err
 		}
@@ -188,7 +188,7 @@ func (a *App) ClusterDelete(w http.ResponseWriter, r *http.Request) {
 		// Delete key
 		err = b.Delete([]byte(id))
 		if err != nil {
-			logger.Error("Unable to delete container key [%v] in db: %v", id, err.Error())
+			logger.LogError("Unable to delete container key [%v] in db: %v", id, err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return err
 		}
