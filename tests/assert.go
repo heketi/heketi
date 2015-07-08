@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2014 The pblcache Authors
+// Copyright (c) 2015 The heketi Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,21 +16,28 @@
 package tests
 
 import (
+	"fmt"
 	"runtime"
 	"testing"
 )
 
 // Simple assert call for unit and functional tests
-func Assert(t *testing.T, b bool) {
+func Assert(t *testing.T, b bool, message ...interface{}) {
 	if !b {
 		pc, file, line, _ := runtime.Caller(1)
 		caller_func_info := runtime.FuncForPC(pc)
 
-		t.Errorf("\n\rASSERT:\tfunc (%s) 0x%x\n\r\tFile %s:%d",
+		error_string := fmt.Sprintf("\n\rASSERT:\tfunc (%s) 0x%x\n\r\tFile %s:%d",
 			caller_func_info.Name(),
 			pc,
 			file,
 			line)
+
+		if len(message) > 0 {
+			error_string += fmt.Sprintf("\n\r\tInfo: %+v", message)
+		}
+
+		t.Errorf(error_string)
 		t.FailNow()
 	}
 }
