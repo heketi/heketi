@@ -147,7 +147,7 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Name:        "ClusterDelete",
 			Method:      "DELETE",
 			Pattern:     "/clusters/{id:[A-Fa-f0-9]+}",
-			HandlerFunc: a.NotImplemented},
+			HandlerFunc: a.ClusterDelete},
 
 		// Node
 		rest.Route{

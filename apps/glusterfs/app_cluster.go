@@ -166,12 +166,12 @@ func (a *App) ClusterDelete(w http.ResponseWriter, r *http.Request) {
 		// Get data from database
 		val := b.Get([]byte(id))
 		if val == nil {
-			http.Error(w, err.Error(), http.StatusNotFound)
+			http.Error(w, "Id not found", http.StatusNotFound)
 			return ErrNotFound
 		}
 
 		// Convert from bytes to a struct
-		err = entry.Unmarshal(val)
+		err := entry.Unmarshal(val)
 		if err != nil {
 			logger.Error("Unable to read from database: %v", err.Error())
 			http.Error(w, "Unable to unmarshal from database", http.StatusInternalServerError)
