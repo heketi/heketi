@@ -19,7 +19,9 @@ package glusterfs
 import (
 	"bytes"
 	"encoding/gob"
+	"github.com/heketi/heketi/utils"
 	"github.com/lpabon/godbc"
+	"sort"
 )
 
 type ClusterEntry struct {
@@ -28,8 +30,8 @@ type ClusterEntry struct {
 
 func NewClusterEntry() *ClusterEntry {
 	entry := &ClusterEntry{}
-	entry.Info.Nodes = make([]string, 0)
-	entry.Info.Volumes = make([]string, 0)
+	entry.Info.Nodes = make(sort.StringSlice, 0)
+	entry.Info.Volumes = make(sort.StringSlice, 0)
 
 	return entry
 }
@@ -51,21 +53,31 @@ func (c *ClusterEntry) Unmarshal(buffer []byte) error {
 
 	// Make sure to setup arrays if nil
 	if c.Info.Nodes == nil {
-		c.Info.Nodes = make([]string, 0)
+		c.Info.Nodes = make(sort.StringSlice, 0)
 	}
 	if c.Info.Volumes == nil {
-		c.Info.Volumes = make([]string, 0)
+		c.Info.Volumes = make(sort.StringSlice, 0)
 	}
 
 	return nil
 }
 
-func (c *ClusterEntry) AddNode(nodeid string) {
-	c.Info.Nodes = append(c.Info.Nodes, nodeid)
+func (c *ClusterEntry) NodeAdd(id string) {
+	c.Info.Nodes = append(c.Info.Nodes, id)
+	c.Info.Nodes.Sort()
 }
 
-func (c *ClusterEntry) AddVolume(volid string) {
-	c.Info.Volumes = append(c.Info.Volumes, volid)
+func (c *ClusterEntry) VolumeAdd(id string) {
+	c.Info.Volumes = append(c.Info.Volumes, id)
+	c.Info.Volumes.Sort()
+}
+
+func (c *ClusterEntry) VolumeDelete(id string) {
+	c.Info.Volumes = utils.SortedStringsDelete(c.Info.Volumes, id)
+}
+
+func (c *ClusterEntry) NodeDelete(id string) {
+	c.Info.Nodes = utils.SortedStringsDelete(c.Info.Nodes, id)
 }
 
 func (c *ClusterEntry) StorageAdd(amount uint64) {

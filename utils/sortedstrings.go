@@ -17,32 +17,22 @@
 package utils
 
 import (
-	"encoding/json"
-	"io"
-	"io/ioutil"
-	"net/http"
+	"sort"
 )
 
-func jsonFromBody(r io.Reader, n int64, v interface{}) error {
-
-	// Check body
-	body, err := ioutil.ReadAll(io.LimitReader(r, n))
-	if err != nil {
-		return err
+func SortedStringHas(s sort.StringSlice, x string) bool {
+	index := s.Search(x)
+	if index == len(s) {
+		return false
 	}
-	if err := json.Unmarshal(body, v); err != nil {
-		return err
-	}
-
-	return nil
+	return s[s.Search(x)] == x
 }
 
-func GetJsonFromRequest(r *http.Request, v interface{}) error {
-	defer r.Body.Close()
-	return jsonFromBody(r.Body, r.ContentLength, v)
-}
+func SortedStringsDelete(s sort.StringSlice, x string) sort.StringSlice {
+	index := s.Search(x)
+	if len(s) != index && s[index] == x {
+		s = append(s[:index], s[index+1:]...)
+	}
 
-func GetJsonFromResponse(r *http.Response, v interface{}) error {
-	defer r.Body.Close()
-	return jsonFromBody(r.Body, r.ContentLength, v)
+	return s
 }

@@ -16,11 +16,15 @@
 
 package glusterfs
 
+import (
+	"sort"
+)
+
 type ClusterInfoResponse struct {
-	Id      string      `json:"id"`
-	Nodes   []string    `json:"nodes"`
-	Volumes []string    `json:"volumes"`
-	Storage StorageSize `json:"storage"`
+	Id      string           `json:"id"`
+	Nodes   sort.StringSlice `json:"nodes"`
+	Volumes sort.StringSlice `json:"volumes"`
+	Storage StorageSize      `json:"storage"`
 }
 
 type ClusterListResponse struct {

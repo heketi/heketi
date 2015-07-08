@@ -18,6 +18,7 @@ package glusterfs
 
 import (
 	"github.com/heketi/heketi/tests"
+	"github.com/heketi/heketi/utils"
 	"testing"
 )
 
@@ -59,4 +60,61 @@ func TestClusterEntryMarshal(t *testing.T) {
 	tests.Assert(t, um.Info.Storage.Free == 10)
 	tests.Assert(t, um.Info.Storage.Used == 100)
 	tests.Assert(t, um.Info.Storage.Total == 1000)
+}
+
+func TestClusterEntryAddDeleteElements(t *testing.T) {
+	c := NewClusterEntry()
+
+	c.NodeAdd("123")
+	tests.Assert(t, len(c.Info.Nodes) == 1)
+	tests.Assert(t, len(c.Info.Volumes) == 0)
+	tests.Assert(t, utils.SortedStringHas(c.Info.Nodes, "123"))
+
+	c.NodeAdd("456")
+	tests.Assert(t, len(c.Info.Nodes) == 2)
+	tests.Assert(t, len(c.Info.Volumes) == 0)
+	tests.Assert(t, utils.SortedStringHas(c.Info.Nodes, "123"))
+	tests.Assert(t, utils.SortedStringHas(c.Info.Nodes, "456"))
+
+	c.VolumeAdd("aabb")
+	tests.Assert(t, len(c.Info.Nodes) == 2)
+	tests.Assert(t, len(c.Info.Volumes) == 1)
+	tests.Assert(t, utils.SortedStringHas(c.Info.Nodes, "123"))
+	tests.Assert(t, utils.SortedStringHas(c.Info.Nodes, "456"))
+	tests.Assert(t, utils.SortedStringHas(c.Info.Volumes, "aabb"))
+
+	c.NodeDelete("aabb")
+	tests.Assert(t, len(c.Info.Nodes) == 2)
+	tests.Assert(t, len(c.Info.Volumes) == 1)
+	tests.Assert(t, utils.SortedStringHas(c.Info.Nodes, "123"))
+	tests.Assert(t, utils.SortedStringHas(c.Info.Nodes, "456"))
+	tests.Assert(t, utils.SortedStringHas(c.Info.Volumes, "aabb"))
+
+	c.NodeDelete("456")
+	tests.Assert(t, len(c.Info.Nodes) == 1)
+	tests.Assert(t, len(c.Info.Volumes) == 1)
+	tests.Assert(t, utils.SortedStringHas(c.Info.Nodes, "123"))
+	tests.Assert(t, !utils.SortedStringHas(c.Info.Nodes, "456"))
+	tests.Assert(t, utils.SortedStringHas(c.Info.Volumes, "aabb"))
+
+	c.NodeDelete("123")
+	tests.Assert(t, len(c.Info.Nodes) == 0)
+	tests.Assert(t, len(c.Info.Volumes) == 1)
+	tests.Assert(t, !utils.SortedStringHas(c.Info.Nodes, "123"))
+	tests.Assert(t, !utils.SortedStringHas(c.Info.Nodes, "456"))
+	tests.Assert(t, utils.SortedStringHas(c.Info.Volumes, "aabb"))
+
+	c.VolumeDelete("123")
+	tests.Assert(t, len(c.Info.Nodes) == 0)
+	tests.Assert(t, len(c.Info.Volumes) == 1)
+	tests.Assert(t, !utils.SortedStringHas(c.Info.Nodes, "123"))
+	tests.Assert(t, !utils.SortedStringHas(c.Info.Nodes, "456"))
+	tests.Assert(t, utils.SortedStringHas(c.Info.Volumes, "aabb"))
+
+	c.VolumeDelete("aabb")
+	tests.Assert(t, len(c.Info.Nodes) == 0)
+	tests.Assert(t, len(c.Info.Volumes) == 0)
+	tests.Assert(t, !utils.SortedStringHas(c.Info.Nodes, "123"))
+	tests.Assert(t, !utils.SortedStringHas(c.Info.Nodes, "456"))
+	tests.Assert(t, !utils.SortedStringHas(c.Info.Volumes, "aabb"))
 }

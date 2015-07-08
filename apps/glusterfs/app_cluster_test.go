@@ -195,10 +195,10 @@ func TestClusterInfo(t *testing.T) {
 	entry := NewClusterEntry()
 	entry.Info.Id = "123"
 	for _, node := range []string{"a1", "a2", "a3"} {
-		entry.AddNode(node)
+		entry.NodeAdd(node)
 	}
 	for _, vol := range []string{"b1", "b2", "b3"} {
-		entry.AddVolume(vol)
+		entry.VolumeAdd(vol)
 	}
 	entry.Info.Storage.Free = 1234567
 	entry.Info.Storage.Total = 2345678
