@@ -46,13 +46,13 @@ func (a *App) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 	err = a.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
 		if b == nil {
-			logger.Error("Unable to save new cluster information in db")
+			logger.LogError("Unable to save new cluster information in db")
 			return errors.New("Unable to open bucket")
 		}
 
 		err = b.Put([]byte(entry.Info.Id), buffer)
 		if err != nil {
-			logger.Error("Unable to save new cluster information in db")
+			logger.LogError("Unable to save new cluster information in db")
 			return err
 		}
 
@@ -83,7 +83,7 @@ func (a *App) ClusterList(w http.ResponseWriter, r *http.Request) {
 	err := a.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
 		if b == nil {
-			logger.Error("Unable to access db")
+			logger.LogError("Unable to access db")
 			return errors.New("Unable to open bucket")
 		}
 
@@ -120,7 +120,7 @@ func (a *App) ClusterInfo(w http.ResponseWriter, r *http.Request) {
 	err := a.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
 		if b == nil {
-			logger.Error("Unable to access db")
+			logger.LogError("Unable to access db")
 			return errors.New("Unable to open bucket")
 		}
 
@@ -136,6 +136,7 @@ func (a *App) ClusterInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	// Write msg
@@ -145,4 +146,61 @@ func (a *App) ClusterInfo(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
+}
+
+func (a *App) ClusterDelete(w http.ResponseWriter, r *http.Request) {
+
+	// Get the id from the URL
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	// Get info from db
+	var entry ClusterEntry
+	err := a.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
+		if b == nil {
+			logger.LogError("Unable to access db")
+			return errors.New("Unable to access db")
+		}
+
+		// Get data from database
+		val := b.Get([]byte(id))
+		if val == nil {
+			http.Error(w, "Id not found", http.StatusNotFound)
+			return ErrNotFound
+		}
+
+		// Convert from bytes to a struct
+		err := entry.Unmarshal(val)
+		if err != nil {
+			logger.LogError("Unable to read from database: %s", err.Error())
+			http.Error(w, "Unable to unmarshal from database", http.StatusInternalServerError)
+			return err
+		}
+
+		// Check if the cluster has elements
+		if len(entry.Info.Nodes) > 0 || len(entry.Info.Volumes) > 0 {
+			logger.Warning("Unable to delete cluster [%v] because it contains volumes and/or nodes", id)
+			http.Error(w, "Cluster contains nodes and/or volumes", http.StatusConflict)
+			return errors.New("Cluster Conflict")
+		}
+
+		// Delete key
+		err = b.Delete([]byte(id))
+		if err != nil {
+			logger.LogError("Unable to delete container key [%v] in db: %v", id, err.Error())
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+
+		// Show that the key has been deleted
+		logger.Info("Deleted container [%d]", id)
+		return nil
+	})
+	if err != nil {
+		return
+	}
+
+	// Write msg
+	w.WriteHeader(http.StatusOK)
 }

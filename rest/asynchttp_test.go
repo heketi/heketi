@@ -236,7 +236,7 @@ func TestAsyncHttpRedirectFunc(t *testing.T) {
 	// Should be success
 	r, err = http.Get(location.String())
 	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusNoContent, r)
+	tests.Assert(t, r.StatusCode == http.StatusNoContent, *r)
 	tests.Assert(t, r.ContentLength == 0)
 
 }

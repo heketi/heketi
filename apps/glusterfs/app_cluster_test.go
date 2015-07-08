@@ -250,3 +250,133 @@ func TestClusterInfo(t *testing.T) {
 	tests.Assert(t, entry.Info.Storage.Total == 2345678)
 	tests.Assert(t, entry.Info.Storage.Used == 3456789)
 }
+
+func TestClusterDelete(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Patch dbfilename so that it is restored at the end of the tests
+	defer tests.Patch(&dbfilename, tmpfile).Restore()
+
+	// Create the app
+	app := NewApp()
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Create an entry with volumes and nodes
+	entries := make([]*ClusterEntry, 0)
+	entry := NewClusterEntry()
+	entry.Info.Id = "a1"
+	for _, node := range []string{"a1", "a2", "a3"} {
+		entry.NodeAdd(node)
+	}
+	for _, vol := range []string{"b1", "b2", "b3"} {
+		entry.VolumeAdd(vol)
+	}
+	entries = append(entries, entry)
+
+	// Create an entry with only volumes
+	entry = NewClusterEntry()
+	entry.Info.Id = "a2"
+	for _, vol := range []string{"b1", "b2", "b3"} {
+		entry.VolumeAdd(vol)
+	}
+	entries = append(entries, entry)
+
+	// Create an entry with only nodes
+	entry = NewClusterEntry()
+	entry.Info.Id = "a3"
+	for _, node := range []string{"a1", "a2", "a3"} {
+		entry.NodeAdd(node)
+	}
+	entries = append(entries, entry)
+
+	// Create an empty entry
+	entry = NewClusterEntry()
+	entry.Info.Id = "000"
+	entries = append(entries, entry)
+
+	// Save the info in the database
+	err := app.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
+		if b == nil {
+			return errors.New("Unable to open bucket")
+		}
+
+		for _, entry := range entries {
+			buffer, err := entry.Marshal()
+			if err != nil {
+				return err
+			}
+
+			err = b.Put([]byte(entry.Info.Id), buffer)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+
+	})
+	tests.Assert(t, err == nil)
+
+	// Check that we cannot delete a cluster with elements
+	req, err := http.NewRequest("DELETE", ts.URL+"/clusters/"+"a1", nil)
+	tests.Assert(t, err == nil)
+	r, err := http.DefaultClient.Do(req)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusConflict)
+
+	// Check that we cannot delete a cluster with volumes
+	req, err = http.NewRequest("DELETE", ts.URL+"/clusters/"+"a2", nil)
+	tests.Assert(t, err == nil)
+	r, err = http.DefaultClient.Do(req)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusConflict)
+
+	// Check that we cannot delete a cluster with nodes
+	req, err = http.NewRequest("DELETE", ts.URL+"/clusters/"+"a3", nil)
+	tests.Assert(t, err == nil)
+	r, err = http.DefaultClient.Do(req)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusConflict)
+
+	// Delete cluster with no elements
+	req, err = http.NewRequest("DELETE", ts.URL+"/clusters/"+"000", nil)
+	tests.Assert(t, err == nil)
+	r, err = http.DefaultClient.Do(req)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusOK)
+
+	// Check database still has a1,a2, and a3, but not '000'
+	err = app.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
+		if b == nil {
+			return errors.New("Unable to open bucket")
+		}
+
+		// Check that the ids are still in the database
+		for _, id := range []string{"a1", "a2", "a3"} {
+			buffer := b.Get([]byte(id))
+			if buffer == nil {
+				return errors.New(fmt.Sprintf("Id %v not found", id))
+			}
+		}
+
+		// Check that the id 000 is no longer in the database
+		buffer := b.Get([]byte("000"))
+		if buffer != nil {
+			return errors.New(fmt.Sprintf("Id 000 still in database and was deleted"))
+		}
+
+		return nil
+
+	})
+	tests.Assert(t, err == nil, err)
+
+}
