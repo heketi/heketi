@@ -17,66 +17,26 @@
 package glusterfs
 
 import (
-	"bytes"
-	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"github.com/boltdb/bolt"
+	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/utils"
 	"net/http"
 )
 
-type ClusterCreateRequest struct {
-	Name string `json:"name,omitempty"`
-}
-
-type ClusterInfoResponse struct {
-	Name    string   `json:"name"`
-	Id      string   `json:"id"`
-	Nodes   []string `json:"nodes"`
-	Volumes []string `json:"volumes"`
-}
-
-type ClusterListResponse struct {
-	Clusters []string `json:"clusters"`
-}
-
-type ClusterEntry struct {
-	Info ClusterInfoResponse
-}
+var (
+	ErrNotFound = errors.New("Id not found")
+)
 
 func (a *App) ClusterCreate(w http.ResponseWriter, r *http.Request) {
-	var msg ClusterCreateRequest
-
-	// Generate an id
-	id := utils.GenUUID()
-
-	// Determine if JSON was sent
-	err := utils.GetJsonFromRequest(r, &msg)
-	if err != nil {
-		http.Error(w, "request unable to be parsed", 422)
-		return
-	}
-
-	// If a name was not supplied, then use the id instead
-	if msg.Name == "" {
-		msg.Name = id
-	}
 
 	// Create a new ClusterInfo
-	entry := &ClusterEntry{
-		Info: ClusterInfoResponse{
-			Name:    msg.Name,
-			Id:      id,
-			Nodes:   make([]string, 0),
-			Volumes: make([]string, 0),
-		},
-	}
+	entry := NewClusterEntry()
+	entry.Info.Id = utils.GenUUID()
 
 	// Convert entry to bytes
-	var buffer bytes.Buffer
-	enc := gob.NewEncoder(&buffer)
-	err = enc.Encode(entry)
+	buffer, err := entry.Marshal()
 	if err != nil {
 		http.Error(w, "Unable to create cluster", http.StatusInternalServerError)
 		return
@@ -90,7 +50,7 @@ func (a *App) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 			return errors.New("Unable to open bucket")
 		}
 
-		err = b.Put([]byte(id), buffer.Bytes())
+		err = b.Put([]byte(entry.Info.Id), buffer)
 		if err != nil {
 			logger.Error("Unable to save new cluster information in db")
 			return err
@@ -147,4 +107,42 @@ func (a *App) ClusterList(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(list); err != nil {
 		panic(err)
 	}
+}
+
+func (a *App) ClusterInfo(w http.ResponseWriter, r *http.Request) {
+
+	// Get the id from the URL
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	// Get info from db
+	var entry ClusterEntry
+	err := a.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
+		if b == nil {
+			logger.Error("Unable to access db")
+			return errors.New("Unable to open bucket")
+		}
+
+		val := b.Get([]byte(id))
+		if val == nil {
+			return ErrNotFound
+		}
+
+		return entry.Unmarshal(val)
+	})
+	if err == ErrNotFound {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	// Write msg
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(entry.Info); err != nil {
+		panic(err)
+	}
+
 }

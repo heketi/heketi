@@ -14,35 +14,26 @@
 // limitations under the License.
 //
 
-package utils
+package glusterfs
 
 import (
-	"encoding/json"
-	"io"
-	"io/ioutil"
-	"net/http"
+	"sort"
 )
 
-func jsonFromBody(r io.Reader, n int64, v interface{}) error {
-
-	// Check body
-	body, err := ioutil.ReadAll(io.LimitReader(r, n))
-	if err != nil {
-		return err
-	}
-	if err := json.Unmarshal(body, v); err != nil {
-		return err
-	}
-
-	return nil
+type ClusterInfoResponse struct {
+	Id      string           `json:"id"`
+	Nodes   sort.StringSlice `json:"nodes"`
+	Volumes sort.StringSlice `json:"volumes"`
+	Storage StorageSize      `json:"storage"`
 }
 
-func GetJsonFromRequest(r *http.Request, v interface{}) error {
-	defer r.Body.Close()
-	return jsonFromBody(r.Body, r.ContentLength, v)
+type ClusterListResponse struct {
+	Clusters []string `json:"clusters"`
 }
 
-func GetJsonFromResponse(r *http.Response, v interface{}) error {
-	defer r.Body.Close()
-	return jsonFromBody(r.Body, r.ContentLength, v)
+// Storage values in KB
+type StorageSize struct {
+	Total uint64 `json:"total"`
+	Free  uint64 `json:"free"`
+	Used  uint64 `json:"used"`
 }

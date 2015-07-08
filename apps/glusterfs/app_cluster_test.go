@@ -18,7 +18,6 @@ package glusterfs
 
 import (
 	"bytes"
-	"encoding/gob"
 	"errors"
 	"fmt"
 	"github.com/boltdb/bolt"
@@ -36,36 +35,7 @@ func init() {
 	logger.SetLevel(utils.LEVEL_NOLOG)
 }
 
-func TestClusterCreateBadJsonRequest(t *testing.T) {
-	tmpfile := tests.Tempfile()
-	defer os.Remove(tmpfile)
-
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
-	// Create the app
-	app := NewApp()
-	defer app.Close()
-	router := mux.NewRouter()
-	app.SetRoutes(router)
-
-	// Setup the server
-	ts := httptest.NewServer(router)
-	defer ts.Close()
-
-	// ClusterCreate JSON Request
-	request := []byte(`{
-		some really bad json code
-    }`)
-
-	// Post nothing
-	r, err := http.Post(ts.URL+"/clusters", "application/json", bytes.NewBuffer(request))
-	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == 422)
-
-}
-
-func TestClusterCreateEmptyRequest(t *testing.T) {
+func TestClusterCreate(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
@@ -97,86 +67,20 @@ func TestClusterCreateEmptyRequest(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Test JSON
-	tests.Assert(t, msg.Id == msg.Name)
 	tests.Assert(t, len(msg.Nodes) == 0)
 	tests.Assert(t, len(msg.Volumes) == 0)
 
 	// Check that the data on the database is recorded correctly
-	var entrybytes []byte
-	err = app.db.View(func(tx *bolt.Tx) error {
-		entrybytes = tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER)).Get([]byte(msg.Id))
-		return nil
-	})
-	tests.Assert(t, err == nil)
-
-	// Unmarshal
 	var entry ClusterEntry
-	dec := gob.NewDecoder(bytes.NewReader(entrybytes))
-	err = dec.Decode(&entry)
+	err = app.db.View(func(tx *bolt.Tx) error {
+		return entry.Unmarshal(
+			tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER)).
+				Get([]byte(msg.Id)))
+	})
 	tests.Assert(t, err == nil)
 
 	// Make sure they entries are euqal
 	tests.Assert(t, entry.Info.Id == msg.Id)
-	tests.Assert(t, entry.Info.Name == msg.Name)
-	tests.Assert(t, len(entry.Info.Volumes) == 0)
-	tests.Assert(t, len(entry.Info.Nodes) == 0)
-}
-
-func TestClusterCreateWithName(t *testing.T) {
-	tmpfile := tests.Tempfile()
-	defer os.Remove(tmpfile)
-
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
-	// Create the app
-	app := NewApp()
-	defer app.Close()
-	router := mux.NewRouter()
-	app.SetRoutes(router)
-
-	// Setup the server
-	ts := httptest.NewServer(router)
-	defer ts.Close()
-
-	// ClusterCreate JSON Request
-	request := []byte(`{
-        "name" : "test_name"
-    }`)
-
-	// Request
-	r, err := http.Post(ts.URL+"/clusters", "application/json", bytes.NewBuffer(request))
-	tests.Assert(t, r.StatusCode == http.StatusCreated)
-	tests.Assert(t, err == nil)
-
-	// Read JSON
-	var msg ClusterInfoResponse
-	err = utils.GetJsonFromResponse(r, &msg)
-	tests.Assert(t, err == nil)
-
-	// Test JSON
-	tests.Assert(t, msg.Id != msg.Name)
-	tests.Assert(t, "test_name" == msg.Name)
-	tests.Assert(t, len(msg.Nodes) == 0)
-	tests.Assert(t, len(msg.Volumes) == 0)
-
-	// Check that the data on the database is recorded correctly
-	var entrybytes []byte
-	err = app.db.View(func(tx *bolt.Tx) error {
-		entrybytes = tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER)).Get([]byte(msg.Id))
-		return nil
-	})
-	tests.Assert(t, err == nil)
-
-	// Unmarshal
-	var entry ClusterEntry
-	dec := gob.NewDecoder(bytes.NewReader(entrybytes))
-	err = dec.Decode(&entry)
-	tests.Assert(t, err == nil)
-
-	// Make sure they entries are euqal
-	tests.Assert(t, entry.Info.Id == msg.Id)
-	tests.Assert(t, entry.Info.Name == msg.Name)
 	tests.Assert(t, len(entry.Info.Volumes) == 0)
 	tests.Assert(t, len(entry.Info.Nodes) == 0)
 }
@@ -207,19 +111,15 @@ func TestClusterList(t *testing.T) {
 		}
 
 		for i := 0; i < numclusters; i++ {
-			var buffer bytes.Buffer
 			var entry ClusterEntry
 
 			entry.Info.Id = fmt.Sprintf("%v", 5000+i)
-			entry.Info.Name = entry.Info.Id
-
-			enc := gob.NewEncoder(&buffer)
-			err := enc.Encode(entry)
+			buffer, err := entry.Marshal()
 			if err != nil {
 				return err
 			}
 
-			err = b.Put([]byte(entry.Info.Id), buffer.Bytes())
+			err = b.Put([]byte(entry.Info.Id), buffer)
 			if err != nil {
 				return err
 			}
@@ -248,4 +148,105 @@ func TestClusterList(t *testing.T) {
 		tests.Assert(t, id == fmt.Sprintf("%v", mockid))
 		mockid++
 	}
+}
+
+func TestClusterInfoIdNotFound(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Patch dbfilename so that it is restored at the end of the tests
+	defer tests.Patch(&dbfilename, tmpfile).Restore()
+
+	// Create the app
+	app := NewApp()
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Now that we have some data in the database, we can
+	// make a request for the clutser list
+	r, err := http.Get(ts.URL + "/clusters/12345")
+	tests.Assert(t, r.StatusCode == http.StatusNotFound)
+	tests.Assert(t, err == nil)
+}
+
+func TestClusterInfo(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Patch dbfilename so that it is restored at the end of the tests
+	defer tests.Patch(&dbfilename, tmpfile).Restore()
+
+	// Create the app
+	app := NewApp()
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Create a new ClusterInfo
+	entry := NewClusterEntry()
+	entry.Info.Id = "123"
+	for _, node := range []string{"a1", "a2", "a3"} {
+		entry.NodeAdd(node)
+	}
+	for _, vol := range []string{"b1", "b2", "b3"} {
+		entry.VolumeAdd(vol)
+	}
+	entry.Info.Storage.Free = 1234567
+	entry.Info.Storage.Total = 2345678
+	entry.Info.Storage.Used = 3456789
+
+	// Save the info in the database
+	err := app.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
+		if b == nil {
+			return errors.New("Unable to open bucket")
+		}
+
+		buffer, err := entry.Marshal()
+		if err != nil {
+			return err
+		}
+
+		err = b.Put([]byte(entry.Info.Id), buffer)
+		if err != nil {
+			return err
+		}
+
+		return nil
+
+	})
+	tests.Assert(t, err == nil)
+
+	// Now that we have some data in the database, we can
+	// make a request for the clutser list
+	r, err := http.Get(ts.URL + "/clusters/" + "123")
+	tests.Assert(t, r.StatusCode == http.StatusOK)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
+
+	// Read response
+	var msg ClusterInfoResponse
+	err = utils.GetJsonFromResponse(r, &msg)
+	tests.Assert(t, err == nil)
+
+	// Check values are equal
+	tests.Assert(t, entry.Info.Id == msg.Id)
+	tests.Assert(t, entry.Info.Volumes[0] == msg.Volumes[0])
+	tests.Assert(t, entry.Info.Volumes[1] == msg.Volumes[1])
+	tests.Assert(t, entry.Info.Volumes[2] == msg.Volumes[2])
+	tests.Assert(t, entry.Info.Nodes[0] == msg.Nodes[0])
+	tests.Assert(t, entry.Info.Nodes[1] == msg.Nodes[1])
+	tests.Assert(t, entry.Info.Nodes[2] == msg.Nodes[2])
+	tests.Assert(t, entry.Info.Storage.Free == 1234567)
+	tests.Assert(t, entry.Info.Storage.Total == 2345678)
+	tests.Assert(t, entry.Info.Storage.Used == 3456789)
 }
