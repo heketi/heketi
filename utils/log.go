@@ -17,9 +17,12 @@
 package utils
 
 import (
+	"fmt"
 	"github.com/lpabon/godbc"
+	"io"
 	"log"
 	"os"
+	"runtime"
 )
 
 type LogLevel int
@@ -31,6 +34,11 @@ const (
 	LEVEL_WARNING
 	LEVEL_INFO
 	LEVEL_DEBUG
+)
+
+var (
+	stderr io.Writer = os.Stderr
+	stdout io.Writer = os.Stdout
 )
 
 type Logger struct {
@@ -52,11 +60,11 @@ func NewLogger(prefix string, level LogLevel) *Logger {
 		l.level = level
 	}
 
-	l.critlog = log.New(os.Stderr, prefix+" CRITICAL ", log.Llongfile|log.LstdFlags)
-	l.errorlog = log.New(os.Stderr, prefix+" ERROR ", log.Llongfile|log.LstdFlags)
-	l.warninglog = log.New(os.Stderr, prefix+" WARNING ", log.LstdFlags)
-	l.infolog = log.New(os.Stdout, prefix+" INFO ", log.LstdFlags)
-	l.debuglog = log.New(os.Stdout, prefix+" DEBUG ", log.Llongfile|log.LstdFlags)
+	l.critlog = log.New(stderr, prefix+" CRITICAL ", log.LstdFlags)
+	l.errorlog = log.New(stderr, prefix+" ERROR ", log.LstdFlags)
+	l.warninglog = log.New(stdout, prefix+" WARNING ", log.LstdFlags)
+	l.infolog = log.New(stdout, prefix+" INFO ", log.LstdFlags)
+	l.debuglog = log.New(stdout, prefix+" DEBUG ", log.LstdFlags)
 
 	godbc.Ensure(l.critlog != nil)
 	godbc.Ensure(l.errorlog != nil)
@@ -75,21 +83,28 @@ func (l *Logger) SetLevel(level LogLevel) {
 	l.level = level
 }
 
+func logWithLonfile(l *log.Logger, format string, v ...interface{}) {
+	_, file, line, _ := runtime.Caller(2)
+
+	l.Print(fmt.Sprintf("%v:%v: ", file, line) +
+		fmt.Sprintf(format, v...))
+}
+
 func (l *Logger) Critical(format string, v ...interface{}) {
 	if l.level >= LEVEL_CRITICAL {
-		l.critlog.Printf(format, v...)
+		logWithLonfile(l.critlog, format, v...)
 	}
 }
 
 func (l *Logger) LogError(format string, v ...interface{}) {
 	if l.level >= LEVEL_ERROR {
-		l.errorlog.Printf(format, v...)
+		logWithLonfile(l.errorlog, format, v...)
 	}
 }
 
 func (l *Logger) Err(err error) {
 	if l.level >= LEVEL_ERROR {
-		l.errorlog.Print(err)
+		logWithLonfile(l.errorlog, "%v", err)
 	}
 }
 
@@ -107,6 +122,6 @@ func (l *Logger) Info(format string, v ...interface{}) {
 
 func (l *Logger) Debug(format string, v ...interface{}) {
 	if l.level >= LEVEL_DEBUG {
-		l.debuglog.Printf(format, v...)
+		logWithLonfile(l.debuglog, format, v...)
 	}
 }
