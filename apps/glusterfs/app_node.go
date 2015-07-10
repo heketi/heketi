@@ -36,6 +36,14 @@ func (a *App) NodeAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check information in JSON request
+	if len(msg.Hostnames.Manage) == 0 {
+		http.Error(w, "Manage hostname missing", http.StatusBadRequest)
+		return
+	}
+	if len(msg.Hostnames.Storage) == 0 {
+		http.Error(w, "Storage hostname missing", http.StatusBadRequest)
+		return
+	}
 
 	// Create a node entry
 	node := NewNodeEntry()
@@ -93,7 +101,7 @@ func (a *App) NodeAdd(w http.ResponseWriter, r *http.Request) {
 
 	logger.Info("Adding node %v", node.Info.Hostnames.Manage[0])
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
-		time.Sleep(65 * time.Second)
+		time.Sleep(30 * time.Second)
 		logger.Info("Redirect to %v", "/nodes/"+node.Info.Id)
 		return "/nodes/" + node.Info.Id, nil
 	})
@@ -130,7 +138,7 @@ func (a *App) NodeInfo(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		info = entry.InfoReponse()
+		info = entry.InfoReponse(tx)
 
 		return nil
 	})

@@ -19,6 +19,7 @@ package glusterfs
 import (
 	"bytes"
 	"encoding/gob"
+	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/utils"
 	"github.com/lpabon/godbc"
 	"sort"
@@ -43,7 +44,7 @@ func (n *NodeEntry) Cluster() string {
 	return n.Info.ClusterId
 }
 
-func (n *NodeEntry) InfoReponse() *NodeInfoResponse {
+func (n *NodeEntry) InfoReponse(tx *bolt.Tx) *NodeInfoResponse {
 	info := &NodeInfoResponse{}
 	*info = n.Info
 
