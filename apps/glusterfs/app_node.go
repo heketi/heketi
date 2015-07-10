@@ -116,29 +116,21 @@ func (a *App) NodeInfo(w http.ResponseWriter, r *http.Request) {
 	// Get Node information
 	var info *NodeInfoResponse
 	err := a.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(BOLTDB_BUCKET_NODE))
-		if b == nil {
-			logger.LogError("Unable to access node bucket")
-			err := errors.New("Unable to create node entry")
+		entry, err := NewNodeEntryFromId(tx, id)
+		if err == ErrNotFound {
+			http.Error(w, "Id not found", http.StatusNotFound)
+			return err
+		} else if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return err
 		}
 
-		entry := NewNodeEntry()
-		val := b.Get([]byte(id))
-		if val == nil {
-			http.Error(w, "Id not found", http.StatusNotFound)
-			return ErrNotFound
-		}
-
-		err := entry.Unmarshal(val)
-		if err != nil {
-			logger.LogError("Unable to unmarshal node: %v", err)
-			http.Error(w, "Unable to access node information", http.StatusInternalServerError)
+		info = entry.NewInfoReponse(tx)
+		if info == nil {
+			err := errors.New("Unable to get node information")
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return err
 		}
-
-		info = entry.InfoReponse(tx)
 
 		return nil
 	})

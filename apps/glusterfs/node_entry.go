@@ -19,6 +19,7 @@ package glusterfs
 import (
 	"bytes"
 	"encoding/gob"
+	"errors"
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/utils"
 	"github.com/lpabon/godbc"
@@ -40,13 +41,60 @@ func NewNodeEntry() *NodeEntry {
 	return entry
 }
 
+func NewNodeEntryFromId(tx *bolt.Tx, id string) (*NodeEntry, error) {
+	entry := NewNodeEntry()
+	b := tx.Bucket([]byte(BOLTDB_BUCKET_NODE))
+	if b == nil {
+		logger.LogError("Unable to access node bucket")
+		err := errors.New("Unable to create node entry")
+		return nil, err
+	}
+
+	val := b.Get([]byte(id))
+	if val == nil {
+		return nil, ErrNotFound
+	}
+
+	err := entry.Unmarshal(val)
+	if err != nil {
+		logger.LogError("Unable to unmarshal node: %v", err)
+		return nil, err
+	}
+
+	return entry, nil
+}
+
 func (n *NodeEntry) Cluster() string {
 	return n.Info.ClusterId
 }
 
-func (n *NodeEntry) InfoReponse(tx *bolt.Tx) *NodeInfoResponse {
+func (n *NodeEntry) NewInfoReponse(tx *bolt.Tx) *NodeInfoResponse {
+
+	godbc.Require(tx != nil)
+	godbc.Require(n.Info.DevicesInfo != nil)
+	godbc.Require(len(n.Info.DevicesInfo) == 0, n.Info.DevicesInfo)
+
 	info := &NodeInfoResponse{}
 	*info = n.Info
+
+	/*
+		b := tx.Bucket([]byte(BOLTDB_BUCKET_DEVICE))
+		if b == nil {
+			logger.Error("Unable to open device bucket")
+			return nil
+		}
+
+			for _, driveid := range n.Devices {
+				entry := NewDriveEntryFromDB(tx, id)
+				if entry == nil {
+					what?
+				}
+
+				driveinfo := entry.NewInfoResponse(tx)
+				info.DeviceInfo = append(info.DeviceInfo, driveinfo)
+
+			}
+	*/
 
 	return info
 }
