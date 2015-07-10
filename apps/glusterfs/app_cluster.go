@@ -100,6 +100,8 @@ func (a *App) ClusterInfo(w http.ResponseWriter, r *http.Request) {
 	// Get info from db
 	var info *ClusterInfoResponse
 	err := a.db.View(func(tx *bolt.Tx) error {
+
+		// Create a db entry from the id
 		entry, err := NewClusterEntryFromId(tx, id)
 		if err == ErrNotFound {
 			http.Error(w, err.Error(), http.StatusNotFound)
@@ -109,6 +111,7 @@ func (a *App) ClusterInfo(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
+		// Create a response from the db entry
 		info, err = entry.NewClusterInfoResponse(tx)
 		if err != nil {
 			return err

@@ -20,18 +20,6 @@ import (
 	"sort"
 )
 
-// Cluster
-type ClusterInfoResponse struct {
-	Id      string           `json:"id"`
-	Nodes   sort.StringSlice `json:"nodes"`
-	Volumes sort.StringSlice `json:"volumes"`
-	Storage StorageSize      `json:"storage"`
-}
-
-type ClusterListResponse struct {
-	Clusters []string `json:"clusters"`
-}
-
 // Storage values in KB
 type StorageSize struct {
 	Total uint64 `json:"total"`
@@ -43,6 +31,8 @@ type HostAddresses struct {
 	Manage  sort.StringSlice `json:"manage"`
 	Storage sort.StringSlice `json:"storage"`
 }
+
+// Volume
 
 // Brick
 type Brick struct {
@@ -85,4 +75,16 @@ type NodeInfoResponse struct {
 	Id          string               `json:"id"`
 	Storage     StorageSize          `json:"storage"`
 	DevicesInfo []DeviceInfoResponse `json:"devices"`
+}
+
+// Cluster
+type ClusterInfoResponse struct {
+	Id      string           `json:"id"`
+	Nodes   sort.StringSlice `json:"nodes"`
+	Volumes sort.StringSlice `json:"volumes"`
+	Storage StorageSize      `json:"storage"`
+}
+
+type ClusterListResponse struct {
+	Clusters []string `json:"clusters"`
 }

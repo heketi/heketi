@@ -42,6 +42,8 @@ func NewNodeEntry() *NodeEntry {
 }
 
 func NewNodeEntryFromRequest(req *NodeAddRequest) *NodeEntry {
+	godbc.Require(req != nil)
+
 	node := NewNodeEntry()
 	node.Info.Id = utils.GenUUID()
 	node.Info.ClusterId = req.ClusterId
@@ -117,21 +119,26 @@ func (n *NodeEntry) NewInfoReponse(tx *bolt.Tx) (*NodeInfoResponse, error) {
 	info.DevicesInfo = make([]DeviceInfoResponse, 0)
 
 	/*
+		// Access device information
 		b := tx.Bucket([]byte(BOLTDB_BUCKET_DEVICE))
 		if b == nil {
-			logger.Error("Unable to open device bucket")
-			return nil
+			logger.LogError("Unable to open device bucket")
+			return asdfasdf nil
 		}
 
+		// Add each drive information
 			for _, driveid := range n.Devices {
-				entry := NewDriveEntryFromDB(tx, id)
-				if entry == nil {
-					what?
+				entry, err := NewDriveEntryFromId(tx, driveid)
+				godbc.Check(err != ErrNotFound, driveid, n.Devices)
+				if err != nil {
+					return err
 				}
 
-				driveinfo := entry.NewInfoResponse(tx)
+				driveinfo, err := entry.NewInfoResponse(tx)
+				if err != nil {
+					return err
+				}
 				info.DeviceInfo = append(info.DeviceInfo, driveinfo)
-
 			}
 	*/
 
@@ -162,6 +169,8 @@ func (n *NodeEntry) Unmarshal(buffer []byte) error {
 }
 
 func (n *NodeEntry) DeviceAdd(id string) {
+	godbc.Require(!utils.SortedStringHas(n.Devices, id))
+
 	n.Devices = append(n.Devices, id)
 	n.Devices.Sort()
 }
