@@ -154,12 +154,12 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Name:        "NodeAdd",
 			Method:      "POST",
 			Pattern:     "/nodes",
-			HandlerFunc: a.NotImplemented},
+			HandlerFunc: a.NodeAdd},
 		rest.Route{
 			Name:        "NodeInfo",
 			Method:      "GET",
 			Pattern:     "/nodes/{id:[A-Fa-f0-9]+}",
-			HandlerFunc: a.NotImplemented},
+			HandlerFunc: a.NodeInfo},
 		rest.Route{
 			Name:        "NodeDelete",
 			Method:      "DELETE",

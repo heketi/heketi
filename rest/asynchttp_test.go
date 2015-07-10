@@ -304,7 +304,7 @@ func TestHandlerApplication(t *testing.T) {
 	router.HandleFunc("/app", func(w http.ResponseWriter, r *http.Request) {
 		handler := manager.NewHandler()
 		go func() {
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(500 * time.Millisecond)
 			handler.CompletedWithLocation("/result")
 		}()
 
@@ -334,6 +334,8 @@ func TestHandlerApplication(t *testing.T) {
 			tests.Assert(t, err == nil)
 			tests.Assert(t, string(body) == "HelloWorld")
 			break
+		} else {
+			tests.Assert(t, r.Header.Get("X-Heketi-Pending") == "true")
 		}
 	}
 
@@ -356,7 +358,7 @@ func TestApplicationWithRedirectFunc(t *testing.T) {
 
 	router.HandleFunc("/app", func(w http.ResponseWriter, r *http.Request) {
 		manager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(500 * time.Millisecond)
 			return "/result", nil
 		})
 	}).Methods("GET")
@@ -384,6 +386,8 @@ func TestApplicationWithRedirectFunc(t *testing.T) {
 			tests.Assert(t, err == nil)
 			tests.Assert(t, string(body) == "HelloWorld")
 			break
+		} else {
+			tests.Assert(t, r.Header.Get("X-Heketi-Pending") == "true")
 		}
 	}
 

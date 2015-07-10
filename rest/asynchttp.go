@@ -195,6 +195,7 @@ func (a *AsyncHttpManager) HandlerStatus(w http.ResponseWriter, r *http.Request)
 		} else {
 			// Still pending
 			// Could add a JSON body here later
+			w.Header().Add("X-Heketi-Pending", "true")
 			w.WriteHeader(http.StatusOK)
 		}
 
