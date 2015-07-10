@@ -18,7 +18,6 @@ package glusterfs
 
 import (
 	"encoding/json"
-	"errors"
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/utils"
@@ -46,49 +45,33 @@ func (a *App) NodeAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create a node entry
-	node := NewNodeEntry()
+	node := NewNodeEntryFromRequest(&msg)
 
 	// Add node entry into the db
 	err = a.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
-		if b == nil {
-			logger.LogError("Unable to access cluster bucket")
-			err := errors.New("Unable to access database")
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return err
-		}
-
-		// Check if the cluster specified exists
-		if b.Get([]byte(msg.ClusterId)) == nil {
+		cluster, err := NewClusterEntryFromId(tx, msg.ClusterId)
+		if err == ErrNotFound {
 			http.Error(w, "Cluster id does not exist", http.StatusNotFound)
-			return ErrNotFound
-		}
-
-		b = tx.Bucket([]byte(BOLTDB_BUCKET_NODE))
-		if b == nil {
-			logger.LogError("Unable to access node bucket")
-			err := errors.New("Unable to create node entry")
+			return err
+		} else if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return err
 		}
 
-		// Setup node entry
-		node.Info.Id = utils.GenUUID()
-		node.Info.ClusterId = msg.ClusterId
-		node.Info.Hostnames = msg.Hostnames
-		node.Info.Zone = msg.Zone
+		// Add node to cluster
+		cluster.NodeAdd(node.Info.Id)
 
-		// Save node entry to db
-		buffer, err := node.Marshal()
+		// Save cluster
+		err = cluster.Save(tx)
 		if err != nil {
-			logger.LogError("Unable to marshal node entry: %v", node)
-			http.Error(w, "Unable to create cluster", http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return err
 		}
-		err = b.Put([]byte(node.Info.Id), buffer)
+
+		// Save node
+		err = node.Save(tx)
 		if err != nil {
-			logger.LogError("Unable to save node entry")
-			http.Error(w, "Unable to create cluster", http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return err
 		}
 
@@ -125,9 +108,8 @@ func (a *App) NodeInfo(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		info = entry.NewInfoReponse(tx)
-		if info == nil {
-			err := errors.New("Unable to get node information")
+		info, err = entry.NewInfoReponse(tx)
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return err
 		}

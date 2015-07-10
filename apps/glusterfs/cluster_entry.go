@@ -19,6 +19,8 @@ package glusterfs
 import (
 	"bytes"
 	"encoding/gob"
+	"errors"
+	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/utils"
 	"github.com/lpabon/godbc"
 	"sort"
@@ -34,6 +36,72 @@ func NewClusterEntry() *ClusterEntry {
 	entry.Info.Volumes = make(sort.StringSlice, 0)
 
 	return entry
+}
+
+func NewClusterEntryFromRequest() *ClusterEntry {
+	entry := NewClusterEntry()
+	entry.Info.Id = utils.GenUUID()
+
+	return entry
+}
+
+func NewClusterEntryFromId(tx *bolt.Tx, id string) (*ClusterEntry, error) {
+	b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
+	if b == nil {
+		logger.LogError("Unable to access cluster bucket")
+		err := errors.New("Unable to access database")
+		return nil, err
+	}
+
+	val := b.Get([]byte(id))
+	if val == nil {
+		return nil, ErrNotFound
+	}
+
+	entry := &ClusterEntry{}
+	err := entry.Unmarshal(val)
+	if err != nil {
+		logger.LogError(
+			"Unable to unmarshal cluster [%v] information from db: %v",
+			id, err)
+		return nil, err
+	}
+
+	return entry, nil
+
+}
+
+func (c *ClusterEntry) Save(tx *bolt.Tx) error {
+	godbc.Require(tx != nil)
+	godbc.Require(len(c.Info.Id) > 0)
+
+	b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
+	if b == nil {
+		logger.LogError("Unable to save new cluster information in db")
+		return errors.New("Unable to open bucket")
+	}
+
+	buffer, err := c.Marshal()
+	if err != nil {
+		logger.LogError("Unable to marshal cluster code")
+		return err
+	}
+
+	err = b.Put([]byte(c.Info.Id), buffer)
+	if err != nil {
+		logger.LogError("Unable to save new cluster information in db")
+		return err
+	}
+
+	return nil
+}
+
+func (c *ClusterEntry) NewClusterInfoResponse(tx *bolt.Tx) (*ClusterInfoResponse, error) {
+
+	info := &ClusterInfoResponse{}
+	*info = c.Info
+
+	return info, nil
 }
 
 func (c *ClusterEntry) Marshal() ([]byte, error) {

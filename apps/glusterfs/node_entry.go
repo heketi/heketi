@@ -41,6 +41,16 @@ func NewNodeEntry() *NodeEntry {
 	return entry
 }
 
+func NewNodeEntryFromRequest(req *NodeAddRequest) *NodeEntry {
+	node := NewNodeEntry()
+	node.Info.Id = utils.GenUUID()
+	node.Info.ClusterId = req.ClusterId
+	node.Info.Hostnames = req.Hostnames
+	node.Info.Zone = req.Zone
+
+	return node
+}
+
 func NewNodeEntryFromId(tx *bolt.Tx, id string) (*NodeEntry, error) {
 	entry := NewNodeEntry()
 	b := tx.Bucket([]byte(BOLTDB_BUCKET_NODE))
@@ -68,14 +78,43 @@ func (n *NodeEntry) Cluster() string {
 	return n.Info.ClusterId
 }
 
-func (n *NodeEntry) NewInfoReponse(tx *bolt.Tx) *NodeInfoResponse {
+func (n *NodeEntry) Save(tx *bolt.Tx) error {
+	godbc.Require(tx != nil)
+	godbc.Require(len(n.Info.Id) > 0)
+
+	// Access bucket
+	b := tx.Bucket([]byte(BOLTDB_BUCKET_NODE))
+	if b == nil {
+		err := errors.New("Unable to create node entry")
+		logger.Err(err)
+		return err
+	}
+
+	// Save node entry to db
+	buffer, err := n.Marshal()
+	if err != nil {
+		logger.Err(err)
+		return err
+	}
+
+	// Save data using the id as the key
+	err = b.Put([]byte(n.Info.Id), buffer)
+	if err != nil {
+		logger.Err(err)
+		return err
+	}
+
+	return nil
+
+}
+
+func (n *NodeEntry) NewInfoReponse(tx *bolt.Tx) (*NodeInfoResponse, error) {
 
 	godbc.Require(tx != nil)
-	godbc.Require(n.Info.DevicesInfo != nil)
-	godbc.Require(len(n.Info.DevicesInfo) == 0, n.Info.DevicesInfo)
 
 	info := &NodeInfoResponse{}
 	*info = n.Info
+	info.DevicesInfo = make([]DeviceInfoResponse, 0)
 
 	/*
 		b := tx.Bucket([]byte(BOLTDB_BUCKET_DEVICE))
@@ -96,7 +135,7 @@ func (n *NodeEntry) NewInfoReponse(tx *bolt.Tx) *NodeInfoResponse {
 			}
 	*/
 
-	return info
+	return info, nil
 }
 
 func (n *NodeEntry) Marshal() ([]byte, error) {
