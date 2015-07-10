@@ -76,10 +76,6 @@ func NewNodeEntryFromId(tx *bolt.Tx, id string) (*NodeEntry, error) {
 	return entry, nil
 }
 
-func (n *NodeEntry) Cluster() string {
-	return n.Info.ClusterId
-}
-
 func (n *NodeEntry) Save(tx *bolt.Tx) error {
 	godbc.Require(tx != nil)
 	godbc.Require(len(n.Info.Id) > 0)

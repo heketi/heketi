@@ -44,6 +44,7 @@ func TestClusterEntryMarshal(t *testing.T) {
 	buffer, err := m.Marshal()
 	tests.Assert(t, err == nil)
 	tests.Assert(t, buffer != nil)
+	tests.Assert(t, len(buffer) > 0)
 
 	um := NewClusterEntry()
 	err = um.Unmarshal(buffer)
