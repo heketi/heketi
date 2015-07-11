@@ -151,28 +151,19 @@ func (c *ClusterEntry) NodeDelete(id string) {
 func (c *ClusterEntry) StorageAdd(amount uint64) {
 	c.Info.Storage.Free += amount
 	c.Info.Storage.Total += amount
+}
 
-	godbc.Ensure(c.Info.Storage.Free >= 0)
-	godbc.Ensure(c.Info.Storage.Used >= 0)
-	godbc.Ensure(c.Info.Storage.Total >= 0)
+func (c *ClusterEntry) StorageDelete(amount uint64) {
+	c.Info.Storage.Free -= amount
+	c.Info.Storage.Total -= amount
 }
 
 func (c *ClusterEntry) StorageAllocate(amount uint64) {
 	c.Info.Storage.Free -= amount
 	c.Info.Storage.Used += amount
-	c.Info.Storage.Total -= amount
-
-	godbc.Ensure(c.Info.Storage.Free >= 0)
-	godbc.Ensure(c.Info.Storage.Used >= 0)
-	godbc.Ensure(c.Info.Storage.Total >= 0)
 }
 
 func (c *ClusterEntry) StorageFree(amount uint64) {
 	c.Info.Storage.Free += amount
 	c.Info.Storage.Used -= amount
-	c.Info.Storage.Total += amount
-
-	godbc.Ensure(c.Info.Storage.Free >= 0)
-	godbc.Ensure(c.Info.Storage.Used >= 0)
-	godbc.Ensure(c.Info.Storage.Total >= 0)
 }

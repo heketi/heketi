@@ -98,7 +98,7 @@ func TestNewNodeEntryMarshal(t *testing.T) {
 
 }
 
-func TestNodeClusterAddDeleteDevices(t *testing.T) {
+func TestNodeEntryAddDeleteDevices(t *testing.T) {
 	n := NewNodeEntry()
 	tests.Assert(t, len(n.Devices) == 0)
 
@@ -329,4 +329,47 @@ func TestNewNodeEntryNewInfoResponse(t *testing.T) {
 	tests.Assert(t, info.Storage.Free == 10)
 	tests.Assert(t, info.Storage.Total == 100)
 	tests.Assert(t, info.Storage.Used == 1000)
+}
+
+func TestNodeEntryStorage(t *testing.T) {
+	n := NewNodeEntry()
+
+	tests.Assert(t, n.Info.Storage.Free == 0)
+	tests.Assert(t, n.Info.Storage.Total == 0)
+	tests.Assert(t, n.Info.Storage.Used == 0)
+
+	n.StorageAdd(1000)
+	tests.Assert(t, n.Info.Storage.Free == 1000)
+	tests.Assert(t, n.Info.Storage.Total == 1000)
+	tests.Assert(t, n.Info.Storage.Used == 0)
+
+	n.StorageAdd(2000)
+	tests.Assert(t, n.Info.Storage.Free == 3000)
+	tests.Assert(t, n.Info.Storage.Total == 3000)
+	tests.Assert(t, n.Info.Storage.Used == 0)
+
+	n.StorageAllocate(1000)
+	tests.Assert(t, n.Info.Storage.Free == 2000)
+	tests.Assert(t, n.Info.Storage.Total == 3000)
+	tests.Assert(t, n.Info.Storage.Used == 1000)
+
+	n.StorageAllocate(500)
+	tests.Assert(t, n.Info.Storage.Free == 1500)
+	tests.Assert(t, n.Info.Storage.Total == 3000)
+	tests.Assert(t, n.Info.Storage.Used == 1500)
+
+	n.StorageFree(500)
+	tests.Assert(t, n.Info.Storage.Free == 2000)
+	tests.Assert(t, n.Info.Storage.Total == 3000)
+	tests.Assert(t, n.Info.Storage.Used == 1000)
+
+	n.StorageFree(1000)
+	tests.Assert(t, n.Info.Storage.Free == 3000)
+	tests.Assert(t, n.Info.Storage.Total == 3000)
+	tests.Assert(t, n.Info.Storage.Used == 0)
+
+	n.StorageDelete(3000)
+	tests.Assert(t, n.Info.Storage.Free == 0)
+	tests.Assert(t, n.Info.Storage.Total == 0)
+	tests.Assert(t, n.Info.Storage.Used == 0)
 }

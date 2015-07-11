@@ -178,28 +178,19 @@ func (n *NodeEntry) DeviceDelete(id string) {
 func (n *NodeEntry) StorageAdd(amount uint64) {
 	n.Info.Storage.Free += amount
 	n.Info.Storage.Total += amount
-
-	godbc.Ensure(n.Info.Storage.Free >= 0)
-	godbc.Ensure(n.Info.Storage.Used >= 0)
-	godbc.Ensure(n.Info.Storage.Total >= 0)
 }
 
 func (n *NodeEntry) StorageAllocate(amount uint64) {
 	n.Info.Storage.Free -= amount
 	n.Info.Storage.Used += amount
-	n.Info.Storage.Total -= amount
-
-	godbc.Ensure(n.Info.Storage.Free >= 0)
-	godbc.Ensure(n.Info.Storage.Used >= 0)
-	godbc.Ensure(n.Info.Storage.Total >= 0)
 }
 
 func (n *NodeEntry) StorageFree(amount uint64) {
 	n.Info.Storage.Free += amount
 	n.Info.Storage.Used -= amount
-	n.Info.Storage.Total += amount
+}
 
-	godbc.Ensure(n.Info.Storage.Free >= 0)
-	godbc.Ensure(n.Info.Storage.Used >= 0)
-	godbc.Ensure(n.Info.Storage.Total >= 0)
+func (n *NodeEntry) StorageDelete(amount uint64) {
+	n.Info.Storage.Total -= amount
+	n.Info.Storage.Free -= amount
 }
