@@ -84,7 +84,7 @@ func (a *App) NodeAdd(w http.ResponseWriter, r *http.Request) {
 
 	logger.Info("Adding node %v", node.Info.Hostnames.Manage[0])
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
-		time.Sleep(30 * time.Second)
+		time.Sleep(1 * time.Second)
 		logger.Info("Redirect to %v", "/nodes/"+node.Info.Id)
 		return "/nodes/" + node.Info.Id, nil
 	})
