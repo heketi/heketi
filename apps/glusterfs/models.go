@@ -20,6 +20,64 @@ import (
 	"sort"
 )
 
+// Storage values in KB
+type StorageSize struct {
+	Total uint64 `json:"total"`
+	Free  uint64 `json:"free"`
+	Used  uint64 `json:"used"`
+}
+
+type HostAddresses struct {
+	Manage  sort.StringSlice `json:"manage"`
+	Storage sort.StringSlice `json:"storage"`
+}
+
+// Volume
+
+// Brick
+type Brick struct {
+	Id       string `json:"id"`
+	Path     string `json:"path"`
+	DeviceId string `json:"device"`
+	NodeId   string `json:"node"`
+
+	// Size in KB
+	Size uint64 `json:"size"`
+}
+
+// Device
+type Device struct {
+	Name   string `json:"name"`
+	Weight int    `json:"weight"`
+}
+
+type DeviceAddRequest struct {
+	NodeId  string   `json:"node"`
+	Devices []Device `json:"devices"`
+}
+
+type DeviceInfoResponse struct {
+	Device
+	Storage StorageSize `json:"storage"`
+	Id      string      `json:"id"`
+	Bricks  []Brick     `json:"bricks"`
+}
+
+// Node
+type NodeAddRequest struct {
+	Zone      int           `json:"zone"`
+	Hostnames HostAddresses `json:"hostnames"`
+	ClusterId string        `json:"cluster"`
+}
+
+type NodeInfoResponse struct {
+	NodeAddRequest
+	Id          string               `json:"id"`
+	Storage     StorageSize          `json:"storage"`
+	DevicesInfo []DeviceInfoResponse `json:"devices"`
+}
+
+// Cluster
 type ClusterInfoResponse struct {
 	Id      string           `json:"id"`
 	Nodes   sort.StringSlice `json:"nodes"`
@@ -29,11 +87,4 @@ type ClusterInfoResponse struct {
 
 type ClusterListResponse struct {
 	Clusters []string `json:"clusters"`
-}
-
-// Storage values in KB
-type StorageSize struct {
-	Total uint64 `json:"total"`
-	Free  uint64 `json:"free"`
-	Used  uint64 `json:"used"`
 }

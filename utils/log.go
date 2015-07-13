@@ -48,6 +48,13 @@ type Logger struct {
 	level LogLevel
 }
 
+func logWithLongFile(l *log.Logger, format string, v ...interface{}) {
+	_, file, line, _ := runtime.Caller(2)
+
+	l.Print(fmt.Sprintf("%v:%v: ", file, line) +
+		fmt.Sprintf(format, v...))
+}
+
 func NewLogger(prefix string, level LogLevel) *Logger {
 	godbc.Require(level >= 0, level)
 	godbc.Require(level <= LEVEL_DEBUG, level)
@@ -83,28 +90,21 @@ func (l *Logger) SetLevel(level LogLevel) {
 	l.level = level
 }
 
-func logWithLonfile(l *log.Logger, format string, v ...interface{}) {
-	_, file, line, _ := runtime.Caller(2)
-
-	l.Print(fmt.Sprintf("%v:%v: ", file, line) +
-		fmt.Sprintf(format, v...))
-}
-
 func (l *Logger) Critical(format string, v ...interface{}) {
 	if l.level >= LEVEL_CRITICAL {
-		logWithLonfile(l.critlog, format, v...)
+		logWithLongFile(l.critlog, format, v...)
 	}
 }
 
 func (l *Logger) LogError(format string, v ...interface{}) {
 	if l.level >= LEVEL_ERROR {
-		logWithLonfile(l.errorlog, format, v...)
+		logWithLongFile(l.errorlog, format, v...)
 	}
 }
 
 func (l *Logger) Err(err error) {
 	if l.level >= LEVEL_ERROR {
-		logWithLonfile(l.errorlog, "%v", err)
+		logWithLongFile(l.errorlog, "%v", err)
 	}
 }
 
@@ -122,6 +122,6 @@ func (l *Logger) Info(format string, v ...interface{}) {
 
 func (l *Logger) Debug(format string, v ...interface{}) {
 	if l.level >= LEVEL_DEBUG {
-		logWithLonfile(l.debuglog, format, v...)
+		logWithLongFile(l.debuglog, format, v...)
 	}
 }

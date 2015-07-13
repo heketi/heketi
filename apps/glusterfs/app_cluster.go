@@ -21,7 +21,6 @@ import (
 	"errors"
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
-	"github.com/heketi/heketi/utils"
 	"net/http"
 )
 
@@ -32,37 +31,20 @@ var (
 func (a *App) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 
 	// Create a new ClusterInfo
-	entry := NewClusterEntry()
-	entry.Info.Id = utils.GenUUID()
-
-	// Convert entry to bytes
-	buffer, err := entry.Marshal()
-	if err != nil {
-		http.Error(w, "Unable to create cluster", http.StatusInternalServerError)
-		return
-	}
+	entry := NewClusterEntryFromRequest()
 
 	// Add cluster to db
-	err = a.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
-		if b == nil {
-			logger.LogError("Unable to save new cluster information in db")
-			return errors.New("Unable to open bucket")
-		}
-
-		err = b.Put([]byte(entry.Info.Id), buffer)
+	err := a.db.Update(func(tx *bolt.Tx) error {
+		err := entry.Save(tx)
 		if err != nil {
-			logger.LogError("Unable to save new cluster information in db")
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return err
 		}
 
 		return nil
 
 	})
-
 	if err != nil {
-		logger.Err(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -116,33 +98,35 @@ func (a *App) ClusterInfo(w http.ResponseWriter, r *http.Request) {
 	id := vars["id"]
 
 	// Get info from db
-	var entry ClusterEntry
+	var info *ClusterInfoResponse
 	err := a.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
-		if b == nil {
-			logger.LogError("Unable to access db")
-			return errors.New("Unable to open bucket")
+
+		// Create a db entry from the id
+		entry, err := NewClusterEntryFromId(tx, id)
+		if err == ErrNotFound {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return err
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
 		}
 
-		val := b.Get([]byte(id))
-		if val == nil {
-			return ErrNotFound
+		// Create a response from the db entry
+		info, err = entry.NewClusterInfoResponse(tx)
+		if err != nil {
+			return err
 		}
 
-		return entry.Unmarshal(val)
+		return nil
 	})
-	if err == ErrNotFound {
-		http.Error(w, err.Error(), http.StatusNotFound)
-		return
-	} else if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if err != nil {
 		return
 	}
 
 	// Write msg
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(entry.Info); err != nil {
+	if err := json.NewEncoder(w).Encode(info); err != nil {
 		panic(err)
 	}
 
@@ -155,26 +139,13 @@ func (a *App) ClusterDelete(w http.ResponseWriter, r *http.Request) {
 	id := vars["id"]
 
 	// Get info from db
-	var entry ClusterEntry
 	err := a.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
-		if b == nil {
-			logger.LogError("Unable to access db")
-			return errors.New("Unable to access db")
-		}
-
-		// Get data from database
-		val := b.Get([]byte(id))
-		if val == nil {
-			http.Error(w, "Id not found", http.StatusNotFound)
-			return ErrNotFound
-		}
-
-		// Convert from bytes to a struct
-		err := entry.Unmarshal(val)
-		if err != nil {
-			logger.LogError("Unable to read from database: %s", err.Error())
-			http.Error(w, "Unable to unmarshal from database", http.StatusInternalServerError)
+		entry, err := NewClusterEntryFromId(tx, id)
+		if err == ErrNotFound {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return err
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return err
 		}
 
@@ -185,6 +156,13 @@ func (a *App) ClusterDelete(w http.ResponseWriter, r *http.Request) {
 			return errors.New("Cluster Conflict")
 		}
 
+		b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
+		if b == nil {
+			logger.LogError("Unable to access cluster bucket")
+			err := errors.New("Unable to access database")
+			return err
+		}
+
 		// Delete key
 		err = b.Delete([]byte(id))
 		if err != nil {
@@ -192,14 +170,14 @@ func (a *App) ClusterDelete(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return err
 		}
-
-		// Show that the key has been deleted
-		logger.Info("Deleted container [%d]", id)
 		return nil
 	})
 	if err != nil {
 		return
 	}
+
+	// Show that the key has been deleted
+	logger.Info("Deleted container [%d]", id)
 
 	// Write msg
 	w.WriteHeader(http.StatusOK)
