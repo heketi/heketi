@@ -18,16 +18,15 @@ package glusterfs
 
 import (
 	"bytes"
-	//"errors"
 	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/tests"
 	"github.com/heketi/heketi/utils"
-	// "io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"sort"
 	"testing"
 	"time"
 )
@@ -216,4 +215,86 @@ func TestNodeAdd(t *testing.T) {
 	tests.Assert(t, entry.Info.Hostnames.Manage[0] == node.Hostnames.Manage[0])
 	tests.Assert(t, entry.Info.Hostnames.Storage[0] == node.Hostnames.Storage[0])
 	tests.Assert(t, len(entry.Devices) == 0)
+}
+
+func TestNodeInfoIdNotFound(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Patch dbfilename so that it is restored at the end of the tests
+	defer tests.Patch(&dbfilename, tmpfile).Restore()
+
+	// Create the app
+	app := NewApp()
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Get unknown node id
+	r, err := http.Get(ts.URL + "/nodes/123456789")
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusNotFound)
+
+}
+
+func TestNodeInfo(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Patch dbfilename so that it is restored at the end of the tests
+	defer tests.Patch(&dbfilename, tmpfile).Restore()
+
+	// Create the app
+	app := NewApp()
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Create a node to save in the db
+	node := NewNodeEntry()
+	node.Info.Id = "abc"
+	node.Info.ClusterId = "123"
+	node.Info.Hostnames.Manage = sort.StringSlice{"manage.system"}
+	node.Info.Hostnames.Storage = sort.StringSlice{"storage.system"}
+	node.Info.Zone = 10
+	node.StorageAdd(10000)
+	node.StorageAllocate(1000)
+
+	// Save node in the db
+	err := app.db.Update(func(tx *bolt.Tx) error {
+		value, err := node.Marshal()
+		if err != nil {
+			return err
+		}
+		return tx.Bucket([]byte(BOLTDB_BUCKET_NODE)).Put([]byte(node.Info.Id), value)
+	})
+	tests.Assert(t, err == nil)
+
+	// Get unknown node id
+	r, err := http.Get(ts.URL + "/nodes/" + node.Info.Id)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusOK)
+	tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
+
+	var info NodeInfoResponse
+	err = utils.GetJsonFromResponse(r, &info)
+	tests.Assert(t, info.Id == node.Info.Id)
+	tests.Assert(t, info.Hostnames.Manage[0] == node.Info.Hostnames.Manage[0])
+	tests.Assert(t, len(info.Hostnames.Manage) == len(node.Info.Hostnames.Manage))
+	tests.Assert(t, info.Hostnames.Storage[0] == node.Info.Hostnames.Storage[0])
+	tests.Assert(t, len(info.Hostnames.Storage) == len(node.Info.Hostnames.Storage))
+	tests.Assert(t, info.Zone == node.Info.Zone)
+	tests.Assert(t, info.Storage.Free == node.Info.Storage.Free)
+	tests.Assert(t, info.Storage.Used == node.Info.Storage.Used)
+	tests.Assert(t, info.Storage.Total == node.Info.Storage.Total)
+
+	// TODO add device
 }
