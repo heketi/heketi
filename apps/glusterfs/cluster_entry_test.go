@@ -17,8 +17,11 @@
 package glusterfs
 
 import (
+	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/tests"
 	"github.com/heketi/heketi/utils"
+	"os"
+	"reflect"
 	"testing"
 )
 
@@ -29,6 +32,19 @@ func TestNewClusterEntry(t *testing.T) {
 	tests.Assert(t, c.Info.Nodes != nil)
 	tests.Assert(t, len(c.Info.Volumes) == 0)
 	tests.Assert(t, len(c.Info.Nodes) == 0)
+}
+
+func TestNewClusterEntryFromRequest(t *testing.T) {
+
+	c := NewClusterEntryFromRequest()
+	tests.Assert(t, c != nil)
+	tests.Assert(t, len(c.Info.Id) > 0)
+	tests.Assert(t, c.Info.Id != "")
+	tests.Assert(t, c.Info.Volumes != nil)
+	tests.Assert(t, c.Info.Nodes != nil)
+	tests.Assert(t, len(c.Info.Volumes) == 0)
+	tests.Assert(t, len(c.Info.Nodes) == 0)
+
 }
 
 func TestClusterEntryMarshal(t *testing.T) {
@@ -118,6 +134,264 @@ func TestClusterEntryAddDeleteElements(t *testing.T) {
 	tests.Assert(t, !utils.SortedStringHas(c.Info.Nodes, "123"))
 	tests.Assert(t, !utils.SortedStringHas(c.Info.Nodes, "456"))
 	tests.Assert(t, !utils.SortedStringHas(c.Info.Volumes, "aabb"))
+}
+
+func TestNewClusterEntryFromIdNotFound(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Patch dbfilename so that it is restored at the end of the tests
+	defer tests.Patch(&dbfilename, tmpfile).Restore()
+
+	// Create the app
+	app := NewApp()
+	defer app.Close()
+
+	// Test for ID not found
+	err := app.db.View(func(tx *bolt.Tx) error {
+		_, err := NewClusterEntryFromId(tx, "123")
+		return err
+	})
+	tests.Assert(t, err == ErrNotFound)
+
+}
+
+func TestNewClusterEntryFromId(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Patch dbfilename so that it is restored at the end of the tests
+	defer tests.Patch(&dbfilename, tmpfile).Restore()
+
+	// Create the app
+	app := NewApp()
+	defer app.Close()
+
+	// Create a cluster
+	c := NewClusterEntryFromRequest()
+	c.Info.Storage.Free = 10
+	c.Info.Storage.Total = 100
+	c.Info.Storage.Used = 1000
+	c.NodeAdd("node_abc")
+	c.NodeAdd("node_def")
+	c.VolumeAdd("vol_abc")
+
+	// Save element in database
+	err := app.db.Update(func(tx *bolt.Tx) error {
+		return c.Save(tx)
+	})
+	tests.Assert(t, err == nil)
+
+	var cluster *ClusterEntry
+	err = app.db.View(func(tx *bolt.Tx) error {
+		var err error
+		cluster, err = NewClusterEntryFromId(tx, c.Info.Id)
+		if err != nil {
+			return err
+		}
+		return nil
+
+	})
+	tests.Assert(t, err == nil)
+
+	tests.Assert(t, cluster.Info.Id == c.Info.Id)
+	tests.Assert(t, cluster.Info.Storage.Free == 10)
+	tests.Assert(t, cluster.Info.Storage.Total == 100)
+	tests.Assert(t, cluster.Info.Storage.Used == 1000)
+	tests.Assert(t, len(c.Info.Nodes) == 2)
+	tests.Assert(t, len(c.Info.Volumes) == 1)
+	tests.Assert(t, utils.SortedStringHas(c.Info.Nodes, "node_abc"))
+	tests.Assert(t, utils.SortedStringHas(c.Info.Nodes, "node_def"))
+	tests.Assert(t, utils.SortedStringHas(c.Info.Volumes, "vol_abc"))
+
+}
+
+func TestNewClusterEntrySaveDelete(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Patch dbfilename so that it is restored at the end of the tests
+	defer tests.Patch(&dbfilename, tmpfile).Restore()
+
+	// Create the app
+	app := NewApp()
+	defer app.Close()
+
+	// Create a cluster
+	c := NewClusterEntryFromRequest()
+	c.Info.Storage.Free = 10
+	c.Info.Storage.Total = 100
+	c.Info.Storage.Used = 1000
+	c.NodeAdd("node_abc")
+	c.NodeAdd("node_def")
+	c.VolumeAdd("vol_abc")
+
+	// Save element in database
+	err := app.db.Update(func(tx *bolt.Tx) error {
+		return c.Save(tx)
+	})
+	tests.Assert(t, err == nil)
+
+	var cluster *ClusterEntry
+	err = app.db.View(func(tx *bolt.Tx) error {
+		var err error
+		cluster, err = NewClusterEntryFromId(tx, c.Info.Id)
+		if err != nil {
+			return err
+		}
+		return nil
+
+	})
+	tests.Assert(t, err == nil)
+
+	tests.Assert(t, cluster.Info.Id == c.Info.Id)
+	tests.Assert(t, cluster.Info.Storage.Free == 10)
+	tests.Assert(t, cluster.Info.Storage.Total == 100)
+	tests.Assert(t, cluster.Info.Storage.Used == 1000)
+	tests.Assert(t, len(c.Info.Nodes) == 2)
+	tests.Assert(t, len(c.Info.Volumes) == 1)
+	tests.Assert(t, utils.SortedStringHas(c.Info.Nodes, "node_abc"))
+	tests.Assert(t, utils.SortedStringHas(c.Info.Nodes, "node_def"))
+	tests.Assert(t, utils.SortedStringHas(c.Info.Volumes, "vol_abc"))
+
+	// Delete entry which has devices
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		var err error
+		cluster, err = NewClusterEntryFromId(tx, c.Info.Id)
+		if err != nil {
+			return err
+		}
+
+		err = cluster.Delete(tx)
+		if err != nil {
+			return err
+		}
+
+		return nil
+
+	})
+	tests.Assert(t, err == ErrConflict)
+
+	// Delete devices in cluster
+	cluster.VolumeDelete("vol_abc")
+	tests.Assert(t, len(cluster.Info.Volumes) == 0)
+	tests.Assert(t, len(cluster.Info.Nodes) == 2)
+
+	// Save cluster
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		return cluster.Save(tx)
+	})
+	tests.Assert(t, err == nil)
+
+	// Try do delete a cluster which still has nodes
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		var err error
+		cluster, err = NewClusterEntryFromId(tx, c.Info.Id)
+		if err != nil {
+			return err
+		}
+
+		err = cluster.Delete(tx)
+		if err != nil {
+			return err
+		}
+
+		return nil
+
+	})
+	tests.Assert(t, err == ErrConflict)
+
+	// Delete cluster
+	cluster.NodeDelete("node_abc")
+	cluster.NodeDelete("node_def")
+	tests.Assert(t, len(cluster.Info.Nodes) == 0)
+
+	// Save cluster
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		return cluster.Save(tx)
+	})
+	tests.Assert(t, err == nil)
+
+	// Now try to delete the cluster with no elements
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		var err error
+		cluster, err = NewClusterEntryFromId(tx, c.Info.Id)
+		if err != nil {
+			return err
+		}
+
+		err = cluster.Delete(tx)
+		if err != nil {
+			return err
+		}
+
+		return nil
+
+	})
+	tests.Assert(t, err == nil)
+
+	// Check cluster has been deleted and is not in db
+	err = app.db.View(func(tx *bolt.Tx) error {
+		var err error
+		cluster, err = NewClusterEntryFromId(tx, c.Info.Id)
+		if err != nil {
+			return err
+		}
+		return nil
+
+	})
+	tests.Assert(t, err == ErrNotFound)
+}
+
+func TestNewClusterEntryNewInfoResponse(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Patch dbfilename so that it is restored at the end of the tests
+	defer tests.Patch(&dbfilename, tmpfile).Restore()
+
+	// Create the app
+	app := NewApp()
+	defer app.Close()
+
+	// Create a cluster
+	c := NewClusterEntryFromRequest()
+	c.Info.Storage.Free = 10
+	c.Info.Storage.Total = 100
+	c.Info.Storage.Used = 1000
+	c.NodeAdd("node_abc")
+	c.NodeAdd("node_def")
+	c.VolumeAdd("vol_abc")
+
+	// Save element in database
+	err := app.db.Update(func(tx *bolt.Tx) error {
+		return c.Save(tx)
+	})
+	tests.Assert(t, err == nil)
+
+	var info *ClusterInfoResponse
+	err = app.db.View(func(tx *bolt.Tx) error {
+		cluster, err := NewClusterEntryFromId(tx, c.Info.Id)
+		if err != nil {
+			return err
+		}
+
+		info, err = cluster.NewClusterInfoResponse(tx)
+		if err != nil {
+			return err
+		}
+
+		return nil
+
+	})
+	tests.Assert(t, err == nil)
+
+	tests.Assert(t, info.Id == c.Info.Id)
+	tests.Assert(t, reflect.DeepEqual(info.Nodes, c.Info.Nodes))
+	tests.Assert(t, reflect.DeepEqual(info.Volumes, c.Info.Volumes))
+	tests.Assert(t, info.Storage.Free == 10)
+	tests.Assert(t, info.Storage.Total == 100)
+	tests.Assert(t, info.Storage.Used == 1000)
 }
 
 func TestClusterEntryStorage(t *testing.T) {

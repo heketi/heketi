@@ -164,7 +164,7 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Name:        "NodeDelete",
 			Method:      "DELETE",
 			Pattern:     "/nodes/{id:[A-Fa-f0-9]+}",
-			HandlerFunc: a.NotImplemented},
+			HandlerFunc: a.NodeDelete},
 
 		// Devices
 		rest.Route{

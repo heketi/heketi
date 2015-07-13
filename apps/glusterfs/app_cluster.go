@@ -26,6 +26,7 @@ import (
 
 var (
 	ErrNotFound = errors.New("Id not found")
+	ErrConflict = errors.New(http.StatusText(http.StatusConflict))
 )
 
 func (a *App) ClusterCreate(w http.ResponseWriter, r *http.Request) {
@@ -138,8 +139,10 @@ func (a *App) ClusterDelete(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	// Get info from db
+	// Delete cluster from db
 	err := a.db.Update(func(tx *bolt.Tx) error {
+
+		// Access cluster entry
 		entry, err := NewClusterEntryFromId(tx, id)
 		if err == ErrNotFound {
 			http.Error(w, err.Error(), http.StatusNotFound)
@@ -149,27 +152,15 @@ func (a *App) ClusterDelete(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		// Check if the cluster has elements
-		if len(entry.Info.Nodes) > 0 || len(entry.Info.Volumes) > 0 {
-			logger.Warning("Unable to delete cluster [%v] because it contains volumes and/or nodes", id)
-			http.Error(w, "Cluster contains nodes and/or volumes", http.StatusConflict)
-			return errors.New("Cluster Conflict")
-		}
-
-		b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
-		if b == nil {
-			logger.LogError("Unable to access cluster bucket")
-			err := errors.New("Unable to access database")
+		err = entry.Delete(tx)
+		if err == ErrConflict {
+			http.Error(w, err.Error(), http.StatusConflict)
 			return err
-		}
-
-		// Delete key
-		err = b.Delete([]byte(id))
-		if err != nil {
-			logger.LogError("Unable to delete container key [%v] in db: %v", id, err.Error())
+		} else if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return err
 		}
+
 		return nil
 	})
 	if err != nil {
@@ -177,7 +168,7 @@ func (a *App) ClusterDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Show that the key has been deleted
-	logger.Info("Deleted container [%d]", id)
+	logger.Info("Deleted cluster [%s]", id)
 
 	// Write msg
 	w.WriteHeader(http.StatusOK)

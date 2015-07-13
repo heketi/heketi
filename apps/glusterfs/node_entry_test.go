@@ -21,6 +21,7 @@ import (
 	"github.com/heketi/heketi/tests"
 	"github.com/heketi/heketi/utils"
 	"os"
+	"reflect"
 	"testing"
 )
 
@@ -171,12 +172,7 @@ func TestNewNodeEntryFromId(t *testing.T) {
 
 	// Save element in database
 	err := app.db.Update(func(tx *bolt.Tx) error {
-		buffer, err := n.Marshal()
-		if err != nil {
-			return nil
-		}
-
-		return tx.Bucket([]byte(BOLTDB_BUCKET_NODE)).Put([]byte(n.Info.Id), buffer)
+		return n.Save(tx)
 	})
 	tests.Assert(t, err == nil)
 
@@ -197,8 +193,8 @@ func TestNewNodeEntryFromId(t *testing.T) {
 	tests.Assert(t, node.Info.Zone == n.Info.Zone)
 	tests.Assert(t, len(node.Info.Hostnames.Manage) == 1)
 	tests.Assert(t, len(node.Info.Hostnames.Storage) == 1)
-	tests.Assert(t, node.Info.Hostnames.Manage[0] == n.Info.Hostnames.Manage[0])
-	tests.Assert(t, node.Info.Hostnames.Storage[0] == n.Info.Hostnames.Storage[0])
+	tests.Assert(t, reflect.DeepEqual(node.Info.Hostnames.Manage, n.Info.Hostnames.Manage))
+	tests.Assert(t, reflect.DeepEqual(node.Info.Hostnames.Storage, n.Info.Hostnames.Storage))
 	tests.Assert(t, node.Info.Storage.Free == 10)
 	tests.Assert(t, node.Info.Storage.Total == 100)
 	tests.Assert(t, node.Info.Storage.Used == 1000)
@@ -207,7 +203,7 @@ func TestNewNodeEntryFromId(t *testing.T) {
 	tests.Assert(t, node.Devices.Search("def") == 1)
 }
 
-func TestNewNodeEntrySave(t *testing.T) {
+func TestNewNodeEntrySaveDelete(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
@@ -258,14 +254,71 @@ func TestNewNodeEntrySave(t *testing.T) {
 	tests.Assert(t, node.Info.Zone == n.Info.Zone)
 	tests.Assert(t, len(node.Info.Hostnames.Manage) == 1)
 	tests.Assert(t, len(node.Info.Hostnames.Storage) == 1)
-	tests.Assert(t, node.Info.Hostnames.Manage[0] == n.Info.Hostnames.Manage[0])
-	tests.Assert(t, node.Info.Hostnames.Storage[0] == n.Info.Hostnames.Storage[0])
+	tests.Assert(t, reflect.DeepEqual(node.Info.Hostnames.Manage, n.Info.Hostnames.Manage))
+	tests.Assert(t, reflect.DeepEqual(node.Info.Hostnames.Storage, n.Info.Hostnames.Storage))
 	tests.Assert(t, node.Info.Storage.Free == 10)
 	tests.Assert(t, node.Info.Storage.Total == 100)
 	tests.Assert(t, node.Info.Storage.Used == 1000)
 	tests.Assert(t, len(node.Devices) == 2)
 	tests.Assert(t, node.Devices.Search("abc") == 0)
 	tests.Assert(t, node.Devices.Search("def") == 1)
+
+	// Delete entry which has devices
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		var err error
+		node, err = NewNodeEntryFromId(tx, n.Info.Id)
+		if err != nil {
+			return err
+		}
+
+		err = node.Delete(tx)
+		if err != nil {
+			return err
+		}
+
+		return nil
+
+	})
+	tests.Assert(t, err == ErrConflict)
+
+	// Delete devices in node
+	node.DeviceDelete("abc")
+	node.DeviceDelete("def")
+	tests.Assert(t, len(node.Devices) == 0)
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		return node.Save(tx)
+	})
+	tests.Assert(t, err == nil)
+
+	// Now try to delete the node
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		var err error
+		node, err = NewNodeEntryFromId(tx, n.Info.Id)
+		if err != nil {
+			return err
+		}
+
+		err = node.Delete(tx)
+		if err != nil {
+			return err
+		}
+
+		return nil
+
+	})
+	tests.Assert(t, err == nil)
+
+	// Check node has been deleted and is not in db
+	err = app.db.View(func(tx *bolt.Tx) error {
+		var err error
+		node, err = NewNodeEntryFromId(tx, n.Info.Id)
+		if err != nil {
+			return err
+		}
+		return nil
+
+	})
+	tests.Assert(t, err == ErrNotFound)
 }
 
 func TestNewNodeEntryNewInfoResponse(t *testing.T) {
@@ -324,8 +377,8 @@ func TestNewNodeEntryNewInfoResponse(t *testing.T) {
 	tests.Assert(t, info.Zone == n.Info.Zone)
 	tests.Assert(t, len(info.Hostnames.Manage) == 1)
 	tests.Assert(t, len(info.Hostnames.Storage) == 1)
-	tests.Assert(t, info.Hostnames.Manage[0] == n.Info.Hostnames.Manage[0])
-	tests.Assert(t, info.Hostnames.Storage[0] == n.Info.Hostnames.Storage[0])
+	tests.Assert(t, reflect.DeepEqual(info.Hostnames.Manage, n.Info.Hostnames.Manage))
+	tests.Assert(t, reflect.DeepEqual(info.Hostnames.Storage, n.Info.Hostnames.Storage))
 	tests.Assert(t, info.Storage.Free == 10)
 	tests.Assert(t, info.Storage.Total == 100)
 	tests.Assert(t, info.Storage.Used == 1000)
