@@ -190,13 +190,21 @@ func TestAsyncHttpRedirectFunc(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Expect the error
-	r, err = http.Get(location.String())
-	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusInternalServerError)
-	body, err := ioutil.ReadAll(r.Body)
-	r.Body.Close()
-	tests.Assert(t, err == nil)
-	tests.Assert(t, string(body) == "Test Handler Function\n")
+	for {
+		r, err := http.Get(location.String())
+		tests.Assert(t, err == nil)
+		if r.Header.Get("X-Pending") != "true" {
+			tests.Assert(t, r.StatusCode == http.StatusInternalServerError)
+			body, err := ioutil.ReadAll(r.Body)
+			r.Body.Close()
+			tests.Assert(t, err == nil)
+			tests.Assert(t, string(body) == "Test Handler Function\n")
+			break
+		} else {
+			tests.Assert(t, r.StatusCode == http.StatusOK)
+			time.Sleep(time.Millisecond)
+		}
+	}
 
 	// Set handler function to return a url to /result
 	handlerfunc = func() (string, error) {
@@ -213,13 +221,21 @@ func TestAsyncHttpRedirectFunc(t *testing.T) {
 	// Should have the content from /result.  http.Get() automatically
 	// retreives the content when a status of SeeOther is set and the
 	// Location header has the next URL.
-	r, err = http.Get(location.String())
-	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusOK)
-	body, err = ioutil.ReadAll(r.Body)
-	r.Body.Close()
-	tests.Assert(t, err == nil)
-	tests.Assert(t, string(body) == "HelloWorld")
+	for {
+		r, err := http.Get(location.String())
+		tests.Assert(t, err == nil)
+		if r.Header.Get("X-Pending") != "true" {
+			tests.Assert(t, r.StatusCode == http.StatusOK)
+			body, err := ioutil.ReadAll(r.Body)
+			r.Body.Close()
+			tests.Assert(t, err == nil)
+			tests.Assert(t, string(body) == "HelloWorld")
+			break
+		} else {
+			tests.Assert(t, r.StatusCode == http.StatusOK)
+			time.Sleep(time.Millisecond)
+		}
+	}
 
 	// Test no redirect, simple completion
 	handlerfunc = func() (string, error) {
@@ -234,10 +250,18 @@ func TestAsyncHttpRedirectFunc(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Should be success
-	r, err = http.Get(location.String())
-	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusNoContent, *r)
-	tests.Assert(t, r.ContentLength == 0)
+	for {
+		r, err := http.Get(location.String())
+		tests.Assert(t, err == nil)
+		if r.Header.Get("X-Pending") != "true" {
+			tests.Assert(t, r.StatusCode == http.StatusNoContent)
+			tests.Assert(t, r.ContentLength == 0)
+			break
+		} else {
+			tests.Assert(t, r.StatusCode == http.StatusOK)
+			time.Sleep(time.Millisecond)
+		}
+	}
 
 }
 
@@ -335,7 +359,8 @@ func TestHandlerApplication(t *testing.T) {
 			tests.Assert(t, string(body) == "HelloWorld")
 			break
 		} else {
-			tests.Assert(t, r.Header.Get("X-Heketi-Pending") == "true")
+			tests.Assert(t, r.Header.Get("X-Pending") == "true")
+			time.Sleep(time.Millisecond)
 		}
 	}
 
@@ -387,7 +412,8 @@ func TestApplicationWithRedirectFunc(t *testing.T) {
 			tests.Assert(t, string(body) == "HelloWorld")
 			break
 		} else {
-			tests.Assert(t, r.Header.Get("X-Heketi-Pending") == "true")
+			tests.Assert(t, r.Header.Get("X-Pending") == "true")
+			time.Sleep(time.Millisecond)
 		}
 	}
 
