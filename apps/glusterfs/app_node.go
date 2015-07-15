@@ -138,7 +138,7 @@ func (a *App) NodeDelete(w http.ResponseWriter, r *http.Request) {
 	err := a.db.Update(func(tx *bolt.Tx) error {
 
 		// Access node entry
-		entry, err := NewNodeEntryFromId(tx, id)
+		node, err := NewNodeEntryFromId(tx, id)
 		if err == ErrNotFound {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return err
@@ -147,7 +147,25 @@ func (a *App) NodeDelete(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		err = entry.Delete(tx)
+		// Get Cluster
+		cluster, err := NewClusterEntryFromId(tx, node.Info.ClusterId)
+		if err == ErrNotFound {
+			http.Error(w, "Cluster id does not exist", http.StatusNotFound)
+			logger.Critical("Cluster id %v is expected be in db. Pointed to by node %v",
+				node.Info.ClusterId,
+				node.Info.Id)
+			return err
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+		cluster.NodeDelete(node.Info.Id)
+
+		// Save cluster
+		cluster.Save(tx)
+
+		// Delete node from db
+		err = node.Delete(tx)
 		if err == ErrConflict {
 			http.Error(w, err.Error(), http.StatusConflict)
 			return err

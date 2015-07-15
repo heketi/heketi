@@ -82,20 +82,7 @@ func TestNewNodeEntryMarshal(t *testing.T) {
 	um := &NodeEntry{}
 	err = um.Unmarshal(buffer)
 	tests.Assert(t, err == nil)
-
-	tests.Assert(t, um.Info.ClusterId == n.Info.ClusterId)
-	tests.Assert(t, um.Info.Id == n.Info.Id)
-	tests.Assert(t, um.Info.Zone == n.Info.Zone)
-	tests.Assert(t, len(um.Info.Hostnames.Manage) == 1)
-	tests.Assert(t, len(um.Info.Hostnames.Storage) == 1)
-	tests.Assert(t, um.Info.Hostnames.Manage[0] == n.Info.Hostnames.Manage[0])
-	tests.Assert(t, um.Info.Hostnames.Storage[0] == n.Info.Hostnames.Storage[0])
-	tests.Assert(t, um.Info.Storage.Free == 10)
-	tests.Assert(t, um.Info.Storage.Total == 100)
-	tests.Assert(t, um.Info.Storage.Used == 1000)
-	tests.Assert(t, len(um.Devices) == 2)
-	tests.Assert(t, um.Devices.Search("abc") == 0)
-	tests.Assert(t, um.Devices.Search("def") == 1)
+	tests.Assert(t, reflect.DeepEqual(n, um))
 
 }
 
@@ -187,20 +174,8 @@ func TestNewNodeEntryFromId(t *testing.T) {
 
 	})
 	tests.Assert(t, err == nil)
+	tests.Assert(t, reflect.DeepEqual(node, n))
 
-	tests.Assert(t, node.Info.ClusterId == n.Info.ClusterId)
-	tests.Assert(t, node.Info.Id == n.Info.Id)
-	tests.Assert(t, node.Info.Zone == n.Info.Zone)
-	tests.Assert(t, len(node.Info.Hostnames.Manage) == 1)
-	tests.Assert(t, len(node.Info.Hostnames.Storage) == 1)
-	tests.Assert(t, reflect.DeepEqual(node.Info.Hostnames.Manage, n.Info.Hostnames.Manage))
-	tests.Assert(t, reflect.DeepEqual(node.Info.Hostnames.Storage, n.Info.Hostnames.Storage))
-	tests.Assert(t, node.Info.Storage.Free == 10)
-	tests.Assert(t, node.Info.Storage.Total == 100)
-	tests.Assert(t, node.Info.Storage.Used == 1000)
-	tests.Assert(t, len(node.Devices) == 2)
-	tests.Assert(t, node.Devices.Search("abc") == 0)
-	tests.Assert(t, node.Devices.Search("def") == 1)
 }
 
 func TestNewNodeEntrySaveDelete(t *testing.T) {
@@ -248,20 +223,7 @@ func TestNewNodeEntrySaveDelete(t *testing.T) {
 
 	})
 	tests.Assert(t, err == nil)
-
-	tests.Assert(t, node.Info.ClusterId == n.Info.ClusterId)
-	tests.Assert(t, node.Info.Id == n.Info.Id)
-	tests.Assert(t, node.Info.Zone == n.Info.Zone)
-	tests.Assert(t, len(node.Info.Hostnames.Manage) == 1)
-	tests.Assert(t, len(node.Info.Hostnames.Storage) == 1)
-	tests.Assert(t, reflect.DeepEqual(node.Info.Hostnames.Manage, n.Info.Hostnames.Manage))
-	tests.Assert(t, reflect.DeepEqual(node.Info.Hostnames.Storage, n.Info.Hostnames.Storage))
-	tests.Assert(t, node.Info.Storage.Free == 10)
-	tests.Assert(t, node.Info.Storage.Total == 100)
-	tests.Assert(t, node.Info.Storage.Used == 1000)
-	tests.Assert(t, len(node.Devices) == 2)
-	tests.Assert(t, node.Devices.Search("abc") == 0)
-	tests.Assert(t, node.Devices.Search("def") == 1)
+	tests.Assert(t, reflect.DeepEqual(node, n))
 
 	// Delete entry which has devices
 	err = app.db.Update(func(tx *bolt.Tx) error {

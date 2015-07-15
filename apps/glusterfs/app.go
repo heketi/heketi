@@ -171,7 +171,7 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Name:        "DeviceAdd",
 			Method:      "POST",
 			Pattern:     "/devices",
-			HandlerFunc: a.NotImplemented},
+			HandlerFunc: a.DeviceAdd},
 		rest.Route{
 			Name:        "DeviceInfo",
 			Method:      "GET",
