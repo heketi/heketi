@@ -54,6 +54,8 @@ func NewNodeEntryFromRequest(req *NodeAddRequest) *NodeEntry {
 }
 
 func NewNodeEntryFromId(tx *bolt.Tx, id string) (*NodeEntry, error) {
+	godbc.Require(tx != nil)
+
 	entry := NewNodeEntry()
 	b := tx.Bucket([]byte(BOLTDB_BUCKET_NODE))
 	if b == nil {
@@ -104,6 +106,32 @@ func (n *NodeEntry) Save(tx *bolt.Tx) error {
 
 	return nil
 
+}
+
+func (n *NodeEntry) Delete(tx *bolt.Tx) error {
+	godbc.Require(tx != nil)
+
+	// Check if the nodes still has drives
+	if len(n.Devices) > 0 {
+		logger.Warning("Unable to delete node [%v] because it contains devices", n.Info.Id)
+		return ErrConflict
+	}
+
+	b := tx.Bucket([]byte(BOLTDB_BUCKET_NODE))
+	if b == nil {
+		err := errors.New("Unable to access database")
+		logger.Err(err)
+		return err
+	}
+
+	// Delete key
+	err := b.Delete([]byte(n.Info.Id))
+	if err != nil {
+		logger.LogError("Unable to delete container key [%v] in db: %v", n.Info.Id, err.Error())
+		return err
+	}
+
+	return nil
 }
 
 func (n *NodeEntry) NewInfoReponse(tx *bolt.Tx) (*NodeInfoResponse, error) {

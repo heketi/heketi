@@ -85,7 +85,7 @@ func (a *App) NodeAdd(w http.ResponseWriter, r *http.Request) {
 	logger.Info("Adding node %v", node.Info.Hostnames.Manage[0])
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
 		time.Sleep(1 * time.Second)
-		logger.Info("Redirect to %v", "/nodes/"+node.Info.Id)
+		logger.Info("Added node " + node.Info.Id)
 		return "/nodes/" + node.Info.Id, nil
 	})
 }
@@ -127,5 +127,45 @@ func (a *App) NodeInfo(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
-	logger.Info("Added node %v", id)
+}
+
+func (a *App) NodeDelete(w http.ResponseWriter, r *http.Request) {
+	// Get the id from the URL
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	// Get info from db
+	err := a.db.Update(func(tx *bolt.Tx) error {
+
+		// Access node entry
+		entry, err := NewNodeEntryFromId(tx, id)
+		if err == ErrNotFound {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return err
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+
+		err = entry.Delete(tx)
+		if err == ErrConflict {
+			http.Error(w, err.Error(), http.StatusConflict)
+			return err
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+
+		return nil
+
+	})
+	if err != nil {
+		return
+	}
+
+	// Show that the key has been deleted
+	logger.Info("Deleted node [%s]", id)
+
+	// Write msg
+	w.WriteHeader(http.StatusOK)
 }

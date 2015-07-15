@@ -96,6 +96,32 @@ func (c *ClusterEntry) Save(tx *bolt.Tx) error {
 	return nil
 }
 
+func (c *ClusterEntry) Delete(tx *bolt.Tx) error {
+	godbc.Require(tx != nil)
+
+	// Check if the nodes still has drives
+	if len(c.Info.Nodes) > 0 || len(c.Info.Volumes) > 0 {
+		logger.Warning("Unable to delete cluster [%v] because it contains volumes and/or nodes", c.Info.Id)
+		return ErrConflict
+	}
+
+	b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
+	if b == nil {
+		err := errors.New("Unable to access database")
+		logger.Err(err)
+		return err
+	}
+
+	// Delete key
+	err := b.Delete([]byte(c.Info.Id))
+	if err != nil {
+		logger.LogError("Unable to delete container key [%v] in db: %v", c.Info.Id, err.Error())
+		return err
+	}
+
+	return nil
+}
+
 func (c *ClusterEntry) NewClusterInfoResponse(tx *bolt.Tx) (*ClusterInfoResponse, error) {
 
 	info := &ClusterInfoResponse{}
