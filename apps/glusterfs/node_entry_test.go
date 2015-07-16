@@ -307,8 +307,6 @@ func TestNewNodeEntryNewInfoResponse(t *testing.T) {
 	n.Info.Storage.Free = 10
 	n.Info.Storage.Total = 100
 	n.Info.Storage.Used = 1000
-	n.DeviceAdd("abc")
-	n.DeviceAdd("def")
 
 	// Save element in database
 	err := app.db.Update(func(tx *bolt.Tx) error {

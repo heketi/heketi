@@ -309,7 +309,7 @@ func TestNewDeviceEntryNewInfoResponse(t *testing.T) {
 			return err
 		}
 
-		info, err = device.NewInfoReponse(tx)
+		info, err = device.NewInfoResponse(tx)
 		if err != nil {
 			return err
 		}

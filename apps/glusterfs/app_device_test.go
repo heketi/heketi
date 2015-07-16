@@ -226,8 +226,6 @@ func TestDeviceAdd(t *testing.T) {
 	tests.Assert(t, len(val.Bricks) == 0)
 }
 
-/*
-
 func TestDeviceInfoIdNotFound(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
@@ -272,11 +270,9 @@ func TestDeviceInfo(t *testing.T) {
 	// Create a device to save in the db
 	device := NewDeviceEntry()
 	device.Info.Id = "abc"
-	device.Info.ClusterId = "123"
-	device.Info.Hostnames.Manage = sort.StringSlice{"manage.system"}
-	device.Info.Hostnames.Storage = sort.StringSlice{"storage.system"}
-	device.Info.Zone = 10
-	device.StorageAdd(10000)
+	device.Info.Name = "/dev/fake1"
+	device.Info.Weight = 101
+	device.StorageSet(10000)
 	device.StorageAllocate(1000)
 
 	// Save device in the db
@@ -285,7 +281,7 @@ func TestDeviceInfo(t *testing.T) {
 	})
 	tests.Assert(t, err == nil)
 
-	// Get unknown device id
+	// Get device information
 	r, err := http.Get(ts.URL + "/devices/" + device.Info.Id)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, r.StatusCode == http.StatusOK)
@@ -294,17 +290,15 @@ func TestDeviceInfo(t *testing.T) {
 	var info DeviceInfoResponse
 	err = utils.GetJsonFromResponse(r, &info)
 	tests.Assert(t, info.Id == device.Info.Id)
-	tests.Assert(t, info.Hostnames.Manage[0] == device.Info.Hostnames.Manage[0])
-	tests.Assert(t, len(info.Hostnames.Manage) == len(device.Info.Hostnames.Manage))
-	tests.Assert(t, info.Hostnames.Storage[0] == device.Info.Hostnames.Storage[0])
-	tests.Assert(t, len(info.Hostnames.Storage) == len(device.Info.Hostnames.Storage))
-	tests.Assert(t, info.Zone == device.Info.Zone)
+	tests.Assert(t, info.Name == device.Info.Name)
+	tests.Assert(t, info.Weight == device.Info.Weight)
 	tests.Assert(t, info.Storage.Free == device.Info.Storage.Free)
 	tests.Assert(t, info.Storage.Used == device.Info.Storage.Used)
 	tests.Assert(t, info.Storage.Total == device.Info.Storage.Total)
 
 }
 
+/*
 func TestDeviceDeleteErrors(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)

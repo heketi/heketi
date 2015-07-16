@@ -17,10 +17,9 @@
 package glusterfs
 
 import (
-	//"encoding/json"
-	//"errors"
+	"encoding/json"
 	"github.com/boltdb/bolt"
-	//"github.com/gorilla/mux"
+	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/utils"
 	"net/http"
 	"time"
@@ -114,5 +113,44 @@ func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 		// to return http status of 204 (No Content)
 		return "", sg.Result()
 	})
+
+}
+
+func (a *App) DeviceInfo(w http.ResponseWriter, r *http.Request) {
+
+	// Get device id from URL
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	// Get device information
+	var info *DeviceInfoResponse
+	err := a.db.View(func(tx *bolt.Tx) error {
+		entry, err := NewDeviceEntryFromId(tx, id)
+		if err == ErrNotFound {
+			http.Error(w, "Id not found", http.StatusNotFound)
+			return err
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+
+		info, err = entry.NewInfoResponse(tx)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return
+	}
+
+	// Write msg
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(info); err != nil {
+		panic(err)
+	}
 
 }
