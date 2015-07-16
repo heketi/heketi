@@ -46,7 +46,7 @@ func TestNewDeviceEntryFromRequest(t *testing.T) {
 		Weight: 123,
 	}
 
-	d := NewDeviceEntryFromRequest(req)
+	d := NewDeviceEntryFromRequest(req, "123")
 	tests.Assert(t, d != nil)
 	tests.Assert(t, d.Info.Id != "")
 	tests.Assert(t, d.Info.Name == req.Name)
@@ -54,6 +54,7 @@ func TestNewDeviceEntryFromRequest(t *testing.T) {
 	tests.Assert(t, d.Info.Storage.Free == 0)
 	tests.Assert(t, d.Info.Storage.Total == 0)
 	tests.Assert(t, d.Info.Storage.Used == 0)
+	tests.Assert(t, d.NodeId == "123")
 	tests.Assert(t, d.Bricks != nil)
 	tests.Assert(t, len(d.Bricks) == 0)
 
@@ -64,8 +65,9 @@ func TestNewDeviceEntryMarshal(t *testing.T) {
 		Name:   "dev",
 		Weight: 123,
 	}
+	nodeid := "abc"
 
-	d := NewDeviceEntryFromRequest(req)
+	d := NewDeviceEntryFromRequest(req, nodeid)
 	d.Info.Storage.Free = 10
 	d.Info.Storage.Total = 100
 	d.Info.Storage.Used = 1000
@@ -143,8 +145,9 @@ func TestNewDeviceEntryFromId(t *testing.T) {
 		Name:   "dev",
 		Weight: 123,
 	}
+	nodeid := "abc"
 
-	d := NewDeviceEntryFromRequest(req)
+	d := NewDeviceEntryFromRequest(req, nodeid)
 	d.Info.Storage.Free = 10
 	d.Info.Storage.Total = 100
 	d.Info.Storage.Used = 1000
@@ -187,8 +190,9 @@ func TestNewDeviceEntrySaveDelete(t *testing.T) {
 		Name:   "dev",
 		Weight: 123,
 	}
+	nodeid := "abc"
 
-	d := NewDeviceEntryFromRequest(req)
+	d := NewDeviceEntryFromRequest(req, nodeid)
 	d.Info.Storage.Free = 10
 	d.Info.Storage.Total = 100
 	d.Info.Storage.Used = 1000
@@ -288,8 +292,9 @@ func TestNewDeviceEntryNewInfoResponse(t *testing.T) {
 		Name:   "dev",
 		Weight: 123,
 	}
+	nodeid := "abc"
 
-	d := NewDeviceEntryFromRequest(req)
+	d := NewDeviceEntryFromRequest(req, nodeid)
 	d.Info.Storage.Free = 10
 	d.Info.Storage.Total = 100
 	d.Info.Storage.Used = 1000

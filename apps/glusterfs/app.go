@@ -181,7 +181,7 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Name:        "DeviceDelete",
 			Method:      "DELETE",
 			Pattern:     "/devices/{id:[A-Fa-f0-9]+}",
-			HandlerFunc: a.NotImplemented},
+			HandlerFunc: a.DeviceDelete},
 
 		// Volume
 		rest.Route{

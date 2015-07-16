@@ -144,8 +144,8 @@ func TestNodeAddDelete(t *testing.T) {
 	tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
 
 	// Read cluster information
-	var cluster ClusterInfoResponse
-	err = utils.GetJsonFromResponse(r, &cluster)
+	var clusterinfo ClusterInfoResponse
+	err = utils.GetJsonFromResponse(r, &clusterinfo)
 	tests.Assert(t, err == nil)
 
 	// Create node on this cluster
@@ -156,7 +156,7 @@ func TestNodeAddDelete(t *testing.T) {
 			"manage" : [ "manage.hostname.com"  ]
 		},
 		"zone" : 1
-    }`, cluster.Id))
+    }`, clusterinfo.Id))
 
 	// Post nothing
 	r, err = http.Post(ts.URL+"/nodes", "application/json", bytes.NewBuffer(request))
@@ -188,18 +188,18 @@ func TestNodeAddDelete(t *testing.T) {
 	tests.Assert(t, node.Hostnames.Manage[0] == "manage.hostname.com")
 	tests.Assert(t, node.Hostnames.Storage[0] == "storage.hostname.com")
 	tests.Assert(t, node.Zone == 1)
-	tests.Assert(t, node.ClusterId == cluster.Id)
+	tests.Assert(t, node.ClusterId == clusterinfo.Id)
 	tests.Assert(t, len(node.DevicesInfo) == 0)
 
 	// Check Cluster has node
-	r, err = http.Get(ts.URL + "/clusters/" + cluster.Id)
+	r, err = http.Get(ts.URL + "/clusters/" + clusterinfo.Id)
 	tests.Assert(t, r.StatusCode == http.StatusOK)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
 
-	err = utils.GetJsonFromResponse(r, &cluster)
-	tests.Assert(t, len(cluster.Nodes) == 1)
-	tests.Assert(t, cluster.Nodes[0] == node.Id)
+	err = utils.GetJsonFromResponse(r, &clusterinfo)
+	tests.Assert(t, len(clusterinfo.Nodes) == 1)
+	tests.Assert(t, clusterinfo.Nodes[0] == node.Id)
 
 	// Check the data is in the database correctly
 	var entry *NodeEntry
@@ -216,8 +216,59 @@ func TestNodeAddDelete(t *testing.T) {
 	tests.Assert(t, entry.Info.Hostnames.Storage[0] == node.Hostnames.Storage[0])
 	tests.Assert(t, len(entry.Devices) == 0)
 
-	// Now delete node
+	// Add some devices to check if delete conflict works
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		entry, err = NewNodeEntryFromId(tx, node.Id)
+		if err != nil {
+			return err
+		}
+
+		entry.DeviceAdd("123")
+		entry.DeviceAdd("456")
+		return entry.Save(tx)
+	})
+	tests.Assert(t, err == nil)
+
+	// Now delete node and check for conflict
 	req, err := http.NewRequest("DELETE", ts.URL+"/nodes/"+node.Id, nil)
+	tests.Assert(t, err == nil)
+	r, err = http.DefaultClient.Do(req)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusConflict)
+
+	// Check that nothing has changed in the db
+	var cluster *ClusterEntry
+	err = app.db.View(func(tx *bolt.Tx) error {
+		entry, err = NewNodeEntryFromId(tx, node.Id)
+		if err != nil {
+			return err
+		}
+
+		cluster, err = NewClusterEntryFromId(tx, entry.Info.ClusterId)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	tests.Assert(t, err == nil)
+	tests.Assert(t, utils.SortedStringHas(cluster.Info.Nodes, node.Id))
+
+	// Node delete the drives
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		entry, err = NewNodeEntryFromId(tx, node.Id)
+		if err != nil {
+			return err
+		}
+
+		entry.DeviceDelete("123")
+		entry.DeviceDelete("456")
+		return entry.Save(tx)
+	})
+	tests.Assert(t, err == nil)
+
+	// Now delete node
+	req, err = http.NewRequest("DELETE", ts.URL+"/nodes/"+node.Id, nil)
 	tests.Assert(t, err == nil)
 	r, err = http.DefaultClient.Do(req)
 	tests.Assert(t, err == nil)
@@ -225,19 +276,19 @@ func TestNodeAddDelete(t *testing.T) {
 
 	// Check db to make sure key is removed
 	err = app.db.View(func(tx *bolt.Tx) error {
-		entry, err = NewNodeEntryFromId(tx, node.Id)
+		_, err = NewNodeEntryFromId(tx, node.Id)
 		return err
 	})
 	tests.Assert(t, err == ErrNotFound)
 
 	// Check the cluster does not have this node id
-	r, err = http.Get(ts.URL + "/clusters/" + cluster.Id)
+	r, err = http.Get(ts.URL + "/clusters/" + clusterinfo.Id)
 	tests.Assert(t, r.StatusCode == http.StatusOK)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
 
-	err = utils.GetJsonFromResponse(r, &cluster)
-	tests.Assert(t, len(cluster.Nodes) == 0)
+	err = utils.GetJsonFromResponse(r, &clusterinfo)
+	tests.Assert(t, len(clusterinfo.Nodes) == 0)
 }
 
 func TestNodeInfoIdNotFound(t *testing.T) {
@@ -356,6 +407,6 @@ func TestNodeDeleteErrors(t *testing.T) {
 	tests.Assert(t, err == nil)
 	r, err = http.DefaultClient.Do(req)
 	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusNotFound)
+	tests.Assert(t, r.StatusCode == http.StatusInternalServerError)
 
 }

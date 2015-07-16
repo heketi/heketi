@@ -150,7 +150,7 @@ func (a *App) NodeDelete(w http.ResponseWriter, r *http.Request) {
 		// Get Cluster
 		cluster, err := NewClusterEntryFromId(tx, node.Info.ClusterId)
 		if err == ErrNotFound {
-			http.Error(w, "Cluster id does not exist", http.StatusNotFound)
+			http.Error(w, "Cluster id does not exist", http.StatusInternalServerError)
 			logger.Critical("Cluster id %v is expected be in db. Pointed to by node %v",
 				node.Info.ClusterId,
 				node.Info.Id)
