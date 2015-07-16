@@ -30,7 +30,6 @@ func TestNewNodeEntry(t *testing.T) {
 	n := NewNodeEntry()
 	tests.Assert(t, n.Info.Id == "")
 	tests.Assert(t, n.Info.ClusterId == "")
-	tests.Assert(t, n.Info.DevicesInfo == nil)
 	tests.Assert(t, len(n.Devices) == 0)
 	tests.Assert(t, n.Devices != nil)
 }

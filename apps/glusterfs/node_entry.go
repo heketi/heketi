@@ -27,16 +27,13 @@ import (
 )
 
 type NodeEntry struct {
-	Info    NodeInfoResponse
+	Info    NodeInfo
 	Devices sort.StringSlice
 }
 
 func NewNodeEntry() *NodeEntry {
 	entry := &NodeEntry{}
 	entry.Devices = make(sort.StringSlice, 0)
-
-	// Unused
-	// entry.Info.DevicesInfo
 
 	return entry
 }
@@ -139,7 +136,11 @@ func (n *NodeEntry) NewInfoReponse(tx *bolt.Tx) (*NodeInfoResponse, error) {
 	godbc.Require(tx != nil)
 
 	info := &NodeInfoResponse{}
-	*info = n.Info
+	info.ClusterId = n.Info.ClusterId
+	info.Hostnames = n.Info.Hostnames
+	info.Id = n.Info.Id
+	info.Storage = n.Info.Storage
+	info.Zone = n.Info.Zone
 	info.DevicesInfo = make([]DeviceInfoResponse, 0)
 
 	/*

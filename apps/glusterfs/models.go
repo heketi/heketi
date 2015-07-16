@@ -75,10 +75,14 @@ type NodeAddRequest struct {
 	ClusterId string        `json:"cluster"`
 }
 
-type NodeInfoResponse struct {
+type NodeInfo struct {
 	NodeAddRequest
-	Id          string               `json:"id"`
-	Storage     StorageSize          `json:"storage"`
+	Id      string      `json:"id"`
+	Storage StorageSize `json:"storage"`
+}
+
+type NodeInfoResponse struct {
+	NodeInfo
 	DevicesInfo []DeviceInfoResponse `json:"devices"`
 }
 
