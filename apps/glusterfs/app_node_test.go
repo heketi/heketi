@@ -288,8 +288,6 @@ func TestNodeInfo(t *testing.T) {
 	node.Info.Hostnames.Manage = sort.StringSlice{"manage.system"}
 	node.Info.Hostnames.Storage = sort.StringSlice{"storage.system"}
 	node.Info.Zone = 10
-	node.StorageAdd(10000)
-	node.StorageAllocate(1000)
 
 	// Save node in the db
 	err := app.db.Update(func(tx *bolt.Tx) error {
@@ -311,9 +309,6 @@ func TestNodeInfo(t *testing.T) {
 	tests.Assert(t, info.Hostnames.Storage[0] == node.Info.Hostnames.Storage[0])
 	tests.Assert(t, len(info.Hostnames.Storage) == len(node.Info.Hostnames.Storage))
 	tests.Assert(t, info.Zone == node.Info.Zone)
-	tests.Assert(t, info.Storage.Free == node.Info.Storage.Free)
-	tests.Assert(t, info.Storage.Used == node.Info.Storage.Used)
-	tests.Assert(t, info.Storage.Total == node.Info.Storage.Total)
 
 }
 
@@ -341,8 +336,6 @@ func TestNodeDeleteErrors(t *testing.T) {
 	node.Info.Hostnames.Manage = sort.StringSlice{"manage.system"}
 	node.Info.Hostnames.Storage = sort.StringSlice{"storage.system"}
 	node.Info.Zone = 10
-	node.StorageAdd(10000)
-	node.StorageAllocate(1000)
 
 	// Save node in the db
 	err := app.db.Update(func(tx *bolt.Tx) error {

@@ -67,9 +67,6 @@ func TestNewNodeEntryMarshal(t *testing.T) {
 	}
 
 	n := NewNodeEntryFromRequest(req)
-	n.Info.Storage.Free = 10
-	n.Info.Storage.Total = 100
-	n.Info.Storage.Used = 1000
 	n.DeviceAdd("abc")
 	n.DeviceAdd("def")
 
@@ -150,9 +147,6 @@ func TestNewNodeEntryFromId(t *testing.T) {
 	}
 
 	n := NewNodeEntryFromRequest(req)
-	n.Info.Storage.Free = 10
-	n.Info.Storage.Total = 100
-	n.Info.Storage.Used = 1000
 	n.DeviceAdd("abc")
 	n.DeviceAdd("def")
 
@@ -199,9 +193,6 @@ func TestNewNodeEntrySaveDelete(t *testing.T) {
 	}
 
 	n := NewNodeEntryFromRequest(req)
-	n.Info.Storage.Free = 10
-	n.Info.Storage.Total = 100
-	n.Info.Storage.Used = 1000
 	n.DeviceAdd("abc")
 	n.DeviceAdd("def")
 
@@ -304,9 +295,6 @@ func TestNewNodeEntryNewInfoResponse(t *testing.T) {
 	}
 
 	n := NewNodeEntryFromRequest(req)
-	n.Info.Storage.Free = 10
-	n.Info.Storage.Total = 100
-	n.Info.Storage.Used = 1000
 
 	// Save element in database
 	err := app.db.Update(func(tx *bolt.Tx) error {
@@ -338,50 +326,4 @@ func TestNewNodeEntryNewInfoResponse(t *testing.T) {
 	tests.Assert(t, len(info.Hostnames.Storage) == 1)
 	tests.Assert(t, reflect.DeepEqual(info.Hostnames.Manage, n.Info.Hostnames.Manage))
 	tests.Assert(t, reflect.DeepEqual(info.Hostnames.Storage, n.Info.Hostnames.Storage))
-	tests.Assert(t, info.Storage.Free == 10)
-	tests.Assert(t, info.Storage.Total == 100)
-	tests.Assert(t, info.Storage.Used == 1000)
-}
-
-func TestNodeEntryStorage(t *testing.T) {
-	n := NewNodeEntry()
-
-	tests.Assert(t, n.Info.Storage.Free == 0)
-	tests.Assert(t, n.Info.Storage.Total == 0)
-	tests.Assert(t, n.Info.Storage.Used == 0)
-
-	n.StorageAdd(1000)
-	tests.Assert(t, n.Info.Storage.Free == 1000)
-	tests.Assert(t, n.Info.Storage.Total == 1000)
-	tests.Assert(t, n.Info.Storage.Used == 0)
-
-	n.StorageAdd(2000)
-	tests.Assert(t, n.Info.Storage.Free == 3000)
-	tests.Assert(t, n.Info.Storage.Total == 3000)
-	tests.Assert(t, n.Info.Storage.Used == 0)
-
-	n.StorageAllocate(1000)
-	tests.Assert(t, n.Info.Storage.Free == 2000)
-	tests.Assert(t, n.Info.Storage.Total == 3000)
-	tests.Assert(t, n.Info.Storage.Used == 1000)
-
-	n.StorageAllocate(500)
-	tests.Assert(t, n.Info.Storage.Free == 1500)
-	tests.Assert(t, n.Info.Storage.Total == 3000)
-	tests.Assert(t, n.Info.Storage.Used == 1500)
-
-	n.StorageFree(500)
-	tests.Assert(t, n.Info.Storage.Free == 2000)
-	tests.Assert(t, n.Info.Storage.Total == 3000)
-	tests.Assert(t, n.Info.Storage.Used == 1000)
-
-	n.StorageFree(1000)
-	tests.Assert(t, n.Info.Storage.Free == 3000)
-	tests.Assert(t, n.Info.Storage.Total == 3000)
-	tests.Assert(t, n.Info.Storage.Used == 0)
-
-	n.StorageDelete(3000)
-	tests.Assert(t, n.Info.Storage.Free == 0)
-	tests.Assert(t, n.Info.Storage.Total == 0)
-	tests.Assert(t, n.Info.Storage.Used == 0)
 }
