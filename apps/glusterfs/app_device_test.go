@@ -272,6 +272,7 @@ func TestDeviceInfo(t *testing.T) {
 	device.Info.Id = "abc"
 	device.Info.Name = "/dev/fake1"
 	device.Info.Weight = 101
+	device.NodeId = "def"
 	device.StorageSet(10000)
 	device.StorageAllocate(1000)
 

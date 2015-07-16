@@ -74,7 +74,7 @@ func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 				// Pretend work
 				time.Sleep(1 * time.Second)
 
-				device := NewDeviceEntryFromRequest(dev)
+				device := NewDeviceEntryFromRequest(dev, msg.NodeId)
 				err := a.db.Update(func(tx *bolt.Tx) error {
 					node, err := NewNodeEntryFromId(tx, msg.NodeId)
 					if err != nil {
@@ -153,4 +153,66 @@ func (a *App) DeviceInfo(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
+}
+
+func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
+	// Get the id from the URL
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	// Get info from db
+	err := a.db.Update(func(tx *bolt.Tx) error {
+
+		// Access device entry
+		device, err := NewDeviceEntryFromId(tx, id)
+		if err == ErrNotFound {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return err
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+
+		// Access node entry
+		node, err := NewNodeEntryFromId(tx, device.NodeId)
+		if err == ErrNotFound {
+			http.Error(w, "Node id does not exist", http.StatusInternalServerError)
+			logger.Critical(
+				"Node id %v pointed to by device %v, but it is not in the db",
+				node.Info.ClusterId,
+				node.Info.Id)
+			return err
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+
+		// Delete device from node
+		node.DeviceDelete(device.Info.Id)
+
+		// Save node
+		node.Save(tx)
+
+		// Delete device from db
+		err = device.Delete(tx)
+		if err == ErrConflict {
+			http.Error(w, err.Error(), http.StatusConflict)
+			return err
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+
+		return nil
+
+	})
+	if err != nil {
+		return
+	}
+
+	// Show that the key has been deleted
+	logger.Info("Deleted node [%s]", id)
+
+	// Write msg
+	w.WriteHeader(http.StatusOK)
 }

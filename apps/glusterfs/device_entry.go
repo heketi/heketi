@@ -29,6 +29,7 @@ import (
 type DeviceEntry struct {
 	Info   DeviceInfo
 	Bricks sort.StringSlice
+	NodeId string
 }
 
 func NewDeviceEntry() *DeviceEntry {
@@ -38,13 +39,14 @@ func NewDeviceEntry() *DeviceEntry {
 	return entry
 }
 
-func NewDeviceEntryFromRequest(req *Device) *DeviceEntry {
+func NewDeviceEntryFromRequest(req *Device, nodeid string) *DeviceEntry {
 	godbc.Require(req != nil)
 
 	device := NewDeviceEntry()
 	device.Info.Id = utils.GenUUID()
 	device.Info.Name = req.Name
 	device.Info.Weight = req.Weight
+	device.NodeId = nodeid
 
 	return device
 }
