@@ -46,6 +46,7 @@ type Brick struct {
 }
 
 // Device
+
 type Device struct {
 	Name   string `json:"name"`
 	Weight int    `json:"weight"`
@@ -56,11 +57,15 @@ type DeviceAddRequest struct {
 	Devices []Device `json:"devices"`
 }
 
-type DeviceInfoResponse struct {
+type DeviceInfo struct {
 	Device
 	Storage StorageSize `json:"storage"`
 	Id      string      `json:"id"`
-	Bricks  []Brick     `json:"bricks"`
+}
+
+type DeviceInfoResponse struct {
+	DeviceInfo
+	Bricks []Brick `json:"bricks"`
 }
 
 // Node

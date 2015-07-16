@@ -79,7 +79,7 @@ func TestNodeAddBadRequests(t *testing.T) {
 		"cluster" : "123",
 		"hostnames" : {
 			"manage" : [ "manage.hostname.com" ]
-		} 
+		}
     }`)
 
 	// Post bad JSON
@@ -92,7 +92,7 @@ func TestNodeAddBadRequests(t *testing.T) {
 		"cluster" : "123",
 		"hostnames" : {
 			"storage" : [ "storage.hostname.com" ]
-		} 
+		}
     }`)
 
 	// Post bad JSON
@@ -106,7 +106,7 @@ func TestNodeAddBadRequests(t *testing.T) {
 		"hostnames" : {
 			"storage" : [ "storage.hostname.com" ],
 			"manage" : [ "manage.hostname.com"  ]
-		}, 
+		},
 		"zone" : 10
     }`)
 
@@ -116,7 +116,7 @@ func TestNodeAddBadRequests(t *testing.T) {
 	tests.Assert(t, r.StatusCode == http.StatusNotFound)
 }
 
-func TestNodeAdd(t *testing.T) {
+func TestNodeAddDelete(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
@@ -154,7 +154,7 @@ func TestNodeAdd(t *testing.T) {
 		"hostnames" : {
 			"storage" : [ "storage.hostname.com" ],
 			"manage" : [ "manage.hostname.com"  ]
-		}, 
+		},
 		"zone" : 1
     }`, cluster.Id))
 
@@ -215,6 +215,29 @@ func TestNodeAdd(t *testing.T) {
 	tests.Assert(t, entry.Info.Hostnames.Manage[0] == node.Hostnames.Manage[0])
 	tests.Assert(t, entry.Info.Hostnames.Storage[0] == node.Hostnames.Storage[0])
 	tests.Assert(t, len(entry.Devices) == 0)
+
+	// Now delete node
+	req, err := http.NewRequest("DELETE", ts.URL+"/nodes/"+node.Id, nil)
+	tests.Assert(t, err == nil)
+	r, err = http.DefaultClient.Do(req)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusOK)
+
+	// Check db to make sure key is removed
+	err = app.db.View(func(tx *bolt.Tx) error {
+		entry, err = NewNodeEntryFromId(tx, node.Id)
+		return err
+	})
+	tests.Assert(t, err == ErrNotFound)
+
+	// Check the cluster does not have this node id
+	r, err = http.Get(ts.URL + "/clusters/" + cluster.Id)
+	tests.Assert(t, r.StatusCode == http.StatusOK)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
+
+	err = utils.GetJsonFromResponse(r, &cluster)
+	tests.Assert(t, len(cluster.Nodes) == 0)
 }
 
 func TestNodeInfoIdNotFound(t *testing.T) {
@@ -270,11 +293,7 @@ func TestNodeInfo(t *testing.T) {
 
 	// Save node in the db
 	err := app.db.Update(func(tx *bolt.Tx) error {
-		value, err := node.Marshal()
-		if err != nil {
-			return err
-		}
-		return tx.Bucket([]byte(BOLTDB_BUCKET_NODE)).Put([]byte(node.Info.Id), value)
+		return node.Save(tx)
 	})
 	tests.Assert(t, err == nil)
 
@@ -296,5 +315,54 @@ func TestNodeInfo(t *testing.T) {
 	tests.Assert(t, info.Storage.Used == node.Info.Storage.Used)
 	tests.Assert(t, info.Storage.Total == node.Info.Storage.Total)
 
-	// TODO add device
+}
+
+func TestNodeDeleteErrors(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Patch dbfilename so that it is restored at the end of the tests
+	defer tests.Patch(&dbfilename, tmpfile).Restore()
+
+	// Create the app
+	app := NewApp()
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Create a node to save in the db
+	node := NewNodeEntry()
+	node.Info.Id = "abc"
+	node.Info.ClusterId = "123"
+	node.Info.Hostnames.Manage = sort.StringSlice{"manage.system"}
+	node.Info.Hostnames.Storage = sort.StringSlice{"storage.system"}
+	node.Info.Zone = 10
+	node.StorageAdd(10000)
+	node.StorageAllocate(1000)
+
+	// Save node in the db
+	err := app.db.Update(func(tx *bolt.Tx) error {
+		return node.Save(tx)
+	})
+	tests.Assert(t, err == nil)
+
+	// Delete unknown id
+	req, err := http.NewRequest("DELETE", ts.URL+"/nodes/123", nil)
+	tests.Assert(t, err == nil)
+	r, err := http.DefaultClient.Do(req)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusNotFound)
+
+	// Delete node without a cluster there.. that's probably a really
+	// bad situation
+	req, err = http.NewRequest("DELETE", ts.URL+"/nodes/"+node.Info.Id, nil)
+	tests.Assert(t, err == nil)
+	r, err = http.DefaultClient.Do(req)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusNotFound)
+
 }
