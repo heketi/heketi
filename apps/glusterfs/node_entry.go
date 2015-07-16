@@ -143,29 +143,19 @@ func (n *NodeEntry) NewInfoReponse(tx *bolt.Tx) (*NodeInfoResponse, error) {
 	info.Zone = n.Info.Zone
 	info.DevicesInfo = make([]DeviceInfoResponse, 0)
 
-	/*
-		// Access device information
-		b := tx.Bucket([]byte(BOLTDB_BUCKET_DEVICE))
-		if b == nil {
-			logger.LogError("Unable to open device bucket")
-			return asdfasdf nil
+	// Add each drive information
+	for _, deviceid := range n.Devices {
+		device, err := NewDeviceEntryFromId(tx, deviceid)
+		if err != nil {
+			return nil, err
 		}
 
-		// Add each drive information
-			for _, driveid := range n.Devices {
-				entry, err := NewDriveEntryFromId(tx, driveid)
-				godbc.Check(err != ErrNotFound, driveid, n.Devices)
-				if err != nil {
-					return err
-				}
-
-				driveinfo, err := entry.NewInfoResponse(tx)
-				if err != nil {
-					return err
-				}
-				info.DeviceInfo = append(info.DeviceInfo, driveinfo)
-			}
-	*/
+		driveinfo, err := device.NewInfoResponse(tx)
+		if err != nil {
+			return nil, err
+		}
+		info.DevicesInfo = append(info.DevicesInfo, *driveinfo)
+	}
 
 	return info, nil
 }

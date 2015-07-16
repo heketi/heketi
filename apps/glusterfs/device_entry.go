@@ -130,7 +130,7 @@ func (d *DeviceEntry) Delete(tx *bolt.Tx) error {
 	return nil
 }
 
-func (d *DeviceEntry) NewInfoReponse(tx *bolt.Tx) (*DeviceInfoResponse, error) {
+func (d *DeviceEntry) NewInfoResponse(tx *bolt.Tx) (*DeviceInfoResponse, error) {
 
 	godbc.Require(tx != nil)
 
