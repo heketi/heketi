@@ -179,8 +179,8 @@ func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Node id does not exist", http.StatusInternalServerError)
 			logger.Critical(
 				"Node id %v pointed to by device %v, but it is not in the db",
-				node.Info.ClusterId,
-				node.Info.Id)
+				device.NodeId,
+				device.Info.Id)
 			return err
 		} else if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

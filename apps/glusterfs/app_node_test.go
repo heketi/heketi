@@ -276,7 +276,7 @@ func TestNodeAddDelete(t *testing.T) {
 
 	// Check db to make sure key is removed
 	err = app.db.View(func(tx *bolt.Tx) error {
-		entry, err = NewNodeEntryFromId(tx, node.Id)
+		_, err = NewNodeEntryFromId(tx, node.Id)
 		return err
 	})
 	tests.Assert(t, err == ErrNotFound)

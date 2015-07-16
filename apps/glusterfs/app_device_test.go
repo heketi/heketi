@@ -90,7 +90,7 @@ func TestDeviceAddBadRequests(t *testing.T) {
 
 }
 
-func TestDeviceAdd(t *testing.T) {
+func TestDeviceAddDelete(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
@@ -110,7 +110,7 @@ func TestDeviceAdd(t *testing.T) {
 	// Add Cluster then a Node on the cluster
 	// node
 	cluster := NewClusterEntryFromRequest()
-	req := &NodeAddRequest{
+	nodereq := &NodeAddRequest{
 		ClusterId: cluster.Info.Id,
 		Hostnames: HostAddresses{
 			Manage:  []string{"manage"},
@@ -118,7 +118,7 @@ func TestDeviceAdd(t *testing.T) {
 		},
 		Zone: 99,
 	}
-	node := NewNodeEntryFromRequest(req)
+	node := NewNodeEntryFromRequest(nodereq)
 	cluster.NodeAdd(node.Info.Id)
 
 	// Save information in the db
@@ -224,6 +224,79 @@ func TestDeviceAdd(t *testing.T) {
 	tests.Assert(t, val.Info.Name == "/dev/fake4")
 	tests.Assert(t, val.Info.Weight == 40)
 	tests.Assert(t, len(val.Bricks) == 0)
+
+	// Add some bricks to check if delete conflicts works
+	fakeid := devicemap["/dev/fake1"].Info.Id
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		device, err := NewDeviceEntryFromId(tx, fakeid)
+		if err != nil {
+			return err
+		}
+
+		device.BrickAdd("123")
+		device.BrickAdd("456")
+		return device.Save(tx)
+	})
+	tests.Assert(t, err == nil)
+
+	// Now delete device and check for conflict
+	req, err := http.NewRequest("DELETE", ts.URL+"/devices/"+fakeid, nil)
+	tests.Assert(t, err == nil)
+	r, err = http.DefaultClient.Do(req)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusConflict)
+
+	// Check the db is still intact
+	err = app.db.View(func(tx *bolt.Tx) error {
+		device, err := NewDeviceEntryFromId(tx, fakeid)
+		if err != nil {
+			return err
+		}
+
+		node, err = NewNodeEntryFromId(tx, device.NodeId)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	tests.Assert(t, err == nil)
+	tests.Assert(t, utils.SortedStringHas(node.Devices, fakeid))
+
+	// Node delete bricks from the device
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		device, err := NewDeviceEntryFromId(tx, fakeid)
+		if err != nil {
+			return err
+		}
+
+		device.BrickDelete("123")
+		device.BrickDelete("456")
+		return device.Save(tx)
+	})
+	tests.Assert(t, err == nil)
+
+	// Delete device
+	req, err = http.NewRequest("DELETE", ts.URL+"/devices/"+fakeid, nil)
+	tests.Assert(t, err == nil)
+	r, err = http.DefaultClient.Do(req)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusOK)
+
+	// Check db
+	err = app.db.View(func(tx *bolt.Tx) error {
+		_, err := NewDeviceEntryFromId(tx, fakeid)
+		return err
+	})
+	tests.Assert(t, err == ErrNotFound)
+
+	// Check node does not have the device
+	err = app.db.View(func(tx *bolt.Tx) error {
+		node, err = NewNodeEntryFromId(tx, node.Info.Id)
+		return err
+	})
+	tests.Assert(t, err == nil)
+	tests.Assert(t, !utils.SortedStringHas(node.Devices, fakeid))
 }
 
 func TestDeviceInfoIdNotFound(t *testing.T) {
@@ -299,7 +372,6 @@ func TestDeviceInfo(t *testing.T) {
 
 }
 
-/*
 func TestDeviceDeleteErrors(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
@@ -320,11 +392,10 @@ func TestDeviceDeleteErrors(t *testing.T) {
 	// Create a device to save in the db
 	device := NewDeviceEntry()
 	device.Info.Id = "abc"
-	device.Info.ClusterId = "123"
-	device.Info.Hostnames.Manage = sort.StringSlice{"manage.system"}
-	device.Info.Hostnames.Storage = sort.StringSlice{"storage.system"}
-	device.Info.Zone = 10
-	device.StorageAdd(10000)
+	device.Info.Name = "/dev/fake1"
+	device.Info.Weight = 101
+	device.NodeId = "def"
+	device.StorageSet(10000)
 	device.StorageAllocate(1000)
 
 	// Save device in the db
@@ -340,14 +411,12 @@ func TestDeviceDeleteErrors(t *testing.T) {
 	tests.Assert(t, err == nil)
 	tests.Assert(t, r.StatusCode == http.StatusNotFound)
 
-	// Delete device without a cluster there.. that's probably a really
+	// Delete device without a node there.. that's probably a really
 	// bad situation
 	req, err = http.NewRequest("DELETE", ts.URL+"/devices/"+device.Info.Id, nil)
 	tests.Assert(t, err == nil)
 	r, err = http.DefaultClient.Do(req)
 	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusNotFound)
+	tests.Assert(t, r.StatusCode == http.StatusInternalServerError)
 
 }
-
-*/
