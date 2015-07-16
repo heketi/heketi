@@ -139,7 +139,6 @@ func (n *NodeEntry) NewInfoReponse(tx *bolt.Tx) (*NodeInfoResponse, error) {
 	info.ClusterId = n.Info.ClusterId
 	info.Hostnames = n.Info.Hostnames
 	info.Id = n.Info.Id
-	info.Storage = n.Info.Storage
 	info.Zone = n.Info.Zone
 	info.DevicesInfo = make([]DeviceInfoResponse, 0)
 
@@ -192,24 +191,4 @@ func (n *NodeEntry) DeviceAdd(id string) {
 
 func (n *NodeEntry) DeviceDelete(id string) {
 	n.Devices = utils.SortedStringsDelete(n.Devices, id)
-}
-
-func (n *NodeEntry) StorageAdd(amount uint64) {
-	n.Info.Storage.Free += amount
-	n.Info.Storage.Total += amount
-}
-
-func (n *NodeEntry) StorageAllocate(amount uint64) {
-	n.Info.Storage.Free -= amount
-	n.Info.Storage.Used += amount
-}
-
-func (n *NodeEntry) StorageFree(amount uint64) {
-	n.Info.Storage.Free += amount
-	n.Info.Storage.Used -= amount
-}
-
-func (n *NodeEntry) StorageDelete(amount uint64) {
-	n.Info.Storage.Total -= amount
-	n.Info.Storage.Free -= amount
 }

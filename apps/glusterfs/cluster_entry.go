@@ -173,23 +173,3 @@ func (c *ClusterEntry) VolumeDelete(id string) {
 func (c *ClusterEntry) NodeDelete(id string) {
 	c.Info.Nodes = utils.SortedStringsDelete(c.Info.Nodes, id)
 }
-
-func (c *ClusterEntry) StorageAdd(amount uint64) {
-	c.Info.Storage.Free += amount
-	c.Info.Storage.Total += amount
-}
-
-func (c *ClusterEntry) StorageDelete(amount uint64) {
-	c.Info.Storage.Free -= amount
-	c.Info.Storage.Total -= amount
-}
-
-func (c *ClusterEntry) StorageAllocate(amount uint64) {
-	c.Info.Storage.Free -= amount
-	c.Info.Storage.Used += amount
-}
-
-func (c *ClusterEntry) StorageFree(amount uint64) {
-	c.Info.Storage.Free += amount
-	c.Info.Storage.Used -= amount
-}

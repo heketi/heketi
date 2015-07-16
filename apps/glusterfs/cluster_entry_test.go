@@ -53,10 +53,6 @@ func TestClusterEntryMarshal(t *testing.T) {
 	m.Info.Nodes = []string{"1", "2"}
 	m.Info.Volumes = []string{"3", "4", "5"}
 
-	m.Info.Storage.Free = 10
-	m.Info.Storage.Used = 100
-	m.Info.Storage.Total = 1000
-
 	buffer, err := m.Marshal()
 	tests.Assert(t, err == nil)
 	tests.Assert(t, buffer != nil)
@@ -74,9 +70,6 @@ func TestClusterEntryMarshal(t *testing.T) {
 	tests.Assert(t, um.Info.Volumes[0] == "3")
 	tests.Assert(t, um.Info.Volumes[1] == "4")
 	tests.Assert(t, um.Info.Volumes[2] == "5")
-	tests.Assert(t, um.Info.Storage.Free == 10)
-	tests.Assert(t, um.Info.Storage.Used == 100)
-	tests.Assert(t, um.Info.Storage.Total == 1000)
 }
 
 func TestClusterEntryAddDeleteElements(t *testing.T) {
@@ -169,9 +162,6 @@ func TestNewClusterEntryFromId(t *testing.T) {
 
 	// Create a cluster
 	c := NewClusterEntryFromRequest()
-	c.Info.Storage.Free = 10
-	c.Info.Storage.Total = 100
-	c.Info.Storage.Used = 1000
 	c.NodeAdd("node_abc")
 	c.NodeAdd("node_def")
 	c.VolumeAdd("vol_abc")
@@ -195,9 +185,6 @@ func TestNewClusterEntryFromId(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	tests.Assert(t, cluster.Info.Id == c.Info.Id)
-	tests.Assert(t, cluster.Info.Storage.Free == 10)
-	tests.Assert(t, cluster.Info.Storage.Total == 100)
-	tests.Assert(t, cluster.Info.Storage.Used == 1000)
 	tests.Assert(t, len(c.Info.Nodes) == 2)
 	tests.Assert(t, len(c.Info.Volumes) == 1)
 	tests.Assert(t, utils.SortedStringHas(c.Info.Nodes, "node_abc"))
@@ -219,9 +206,6 @@ func TestNewClusterEntrySaveDelete(t *testing.T) {
 
 	// Create a cluster
 	c := NewClusterEntryFromRequest()
-	c.Info.Storage.Free = 10
-	c.Info.Storage.Total = 100
-	c.Info.Storage.Used = 1000
 	c.NodeAdd("node_abc")
 	c.NodeAdd("node_def")
 	c.VolumeAdd("vol_abc")
@@ -245,9 +229,6 @@ func TestNewClusterEntrySaveDelete(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	tests.Assert(t, cluster.Info.Id == c.Info.Id)
-	tests.Assert(t, cluster.Info.Storage.Free == 10)
-	tests.Assert(t, cluster.Info.Storage.Total == 100)
-	tests.Assert(t, cluster.Info.Storage.Used == 1000)
 	tests.Assert(t, len(c.Info.Nodes) == 2)
 	tests.Assert(t, len(c.Info.Volumes) == 1)
 	tests.Assert(t, utils.SortedStringHas(c.Info.Nodes, "node_abc"))
@@ -356,9 +337,6 @@ func TestNewClusterEntryNewInfoResponse(t *testing.T) {
 
 	// Create a cluster
 	c := NewClusterEntryFromRequest()
-	c.Info.Storage.Free = 10
-	c.Info.Storage.Total = 100
-	c.Info.Storage.Used = 1000
 	c.NodeAdd("node_abc")
 	c.NodeAdd("node_def")
 	c.VolumeAdd("vol_abc")
@@ -389,50 +367,4 @@ func TestNewClusterEntryNewInfoResponse(t *testing.T) {
 	tests.Assert(t, info.Id == c.Info.Id)
 	tests.Assert(t, reflect.DeepEqual(info.Nodes, c.Info.Nodes))
 	tests.Assert(t, reflect.DeepEqual(info.Volumes, c.Info.Volumes))
-	tests.Assert(t, info.Storage.Free == 10)
-	tests.Assert(t, info.Storage.Total == 100)
-	tests.Assert(t, info.Storage.Used == 1000)
-}
-
-func TestClusterEntryStorage(t *testing.T) {
-	c := NewClusterEntry()
-
-	tests.Assert(t, c.Info.Storage.Free == 0)
-	tests.Assert(t, c.Info.Storage.Total == 0)
-	tests.Assert(t, c.Info.Storage.Used == 0)
-
-	c.StorageAdd(1000)
-	tests.Assert(t, c.Info.Storage.Free == 1000)
-	tests.Assert(t, c.Info.Storage.Total == 1000)
-	tests.Assert(t, c.Info.Storage.Used == 0)
-
-	c.StorageAdd(2000)
-	tests.Assert(t, c.Info.Storage.Free == 3000)
-	tests.Assert(t, c.Info.Storage.Total == 3000)
-	tests.Assert(t, c.Info.Storage.Used == 0)
-
-	c.StorageAllocate(1000)
-	tests.Assert(t, c.Info.Storage.Free == 2000)
-	tests.Assert(t, c.Info.Storage.Total == 3000)
-	tests.Assert(t, c.Info.Storage.Used == 1000)
-
-	c.StorageAllocate(500)
-	tests.Assert(t, c.Info.Storage.Free == 1500)
-	tests.Assert(t, c.Info.Storage.Total == 3000)
-	tests.Assert(t, c.Info.Storage.Used == 1500)
-
-	c.StorageFree(500)
-	tests.Assert(t, c.Info.Storage.Free == 2000)
-	tests.Assert(t, c.Info.Storage.Total == 3000)
-	tests.Assert(t, c.Info.Storage.Used == 1000)
-
-	c.StorageFree(1000)
-	tests.Assert(t, c.Info.Storage.Free == 3000)
-	tests.Assert(t, c.Info.Storage.Total == 3000)
-	tests.Assert(t, c.Info.Storage.Used == 0)
-
-	c.StorageDelete(3000)
-	tests.Assert(t, c.Info.Storage.Free == 0)
-	tests.Assert(t, c.Info.Storage.Total == 0)
-	tests.Assert(t, c.Info.Storage.Used == 0)
 }

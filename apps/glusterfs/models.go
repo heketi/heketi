@@ -77,8 +77,7 @@ type NodeAddRequest struct {
 
 type NodeInfo struct {
 	NodeAddRequest
-	Id      string      `json:"id"`
-	Storage StorageSize `json:"storage"`
+	Id string `json:"id"`
 }
 
 type NodeInfoResponse struct {
@@ -91,7 +90,6 @@ type ClusterInfoResponse struct {
 	Id      string           `json:"id"`
 	Nodes   sort.StringSlice `json:"nodes"`
 	Volumes sort.StringSlice `json:"volumes"`
-	Storage StorageSize      `json:"storage"`
 }
 
 type ClusterListResponse struct {
