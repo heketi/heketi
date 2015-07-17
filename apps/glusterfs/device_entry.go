@@ -19,7 +19,6 @@ package glusterfs
 import (
 	"bytes"
 	"encoding/gob"
-	"errors"
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/utils"
 	"github.com/lpabon/godbc"
@@ -55,54 +54,23 @@ func NewDeviceEntryFromId(tx *bolt.Tx, id string) (*DeviceEntry, error) {
 	godbc.Require(tx != nil)
 
 	entry := NewDeviceEntry()
-	b := tx.Bucket([]byte(BOLTDB_BUCKET_DEVICE))
-	if b == nil {
-		logger.LogError("Unable to access device bucket")
-		err := errors.New("Unable to create device entry")
-		return nil, err
-	}
-
-	val := b.Get([]byte(id))
-	if val == nil {
-		return nil, ErrNotFound
-	}
-
-	err := entry.Unmarshal(val)
+	err := EntryLoad(tx, entry, id)
 	if err != nil {
-		logger.LogError("Unable to unmarshal device: %v", err)
 		return nil, err
 	}
 
 	return entry, nil
 }
 
+func (d *DeviceEntry) BucketName() string {
+	return BOLTDB_BUCKET_DEVICE
+}
+
 func (d *DeviceEntry) Save(tx *bolt.Tx) error {
 	godbc.Require(tx != nil)
 	godbc.Require(len(d.Info.Id) > 0)
 
-	// Access bucket
-	b := tx.Bucket([]byte(BOLTDB_BUCKET_DEVICE))
-	if b == nil {
-		err := errors.New("Unable to create device entry")
-		logger.Err(err)
-		return err
-	}
-
-	// Save device entry to db
-	buffer, err := d.Marshal()
-	if err != nil {
-		logger.Err(err)
-		return err
-	}
-
-	// Save data using the id as the key
-	err = b.Put([]byte(d.Info.Id), buffer)
-	if err != nil {
-		logger.Err(err)
-		return err
-	}
-
-	return nil
+	return EntrySave(tx, d, d.Info.Id)
 
 }
 
@@ -115,21 +83,7 @@ func (d *DeviceEntry) Delete(tx *bolt.Tx) error {
 		return ErrConflict
 	}
 
-	b := tx.Bucket([]byte(BOLTDB_BUCKET_DEVICE))
-	if b == nil {
-		err := errors.New("Unable to access database")
-		logger.Err(err)
-		return err
-	}
-
-	// Delete key
-	err := b.Delete([]byte(d.Info.Id))
-	if err != nil {
-		logger.LogError("Unable to delete container key [%v] in db: %v", d.Info.Id, err.Error())
-		return err
-	}
-
-	return nil
+	return EntryDelete(tx, d, d.Info.Id)
 }
 
 func (d *DeviceEntry) NewInfoResponse(tx *bolt.Tx) (*DeviceInfoResponse, error) {
