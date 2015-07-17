@@ -19,7 +19,6 @@ package glusterfs
 import (
 	"bytes"
 	"encoding/gob"
-	"errors"
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/utils"
 	"github.com/lpabon/godbc"
@@ -54,54 +53,23 @@ func NewNodeEntryFromId(tx *bolt.Tx, id string) (*NodeEntry, error) {
 	godbc.Require(tx != nil)
 
 	entry := NewNodeEntry()
-	b := tx.Bucket([]byte(BOLTDB_BUCKET_NODE))
-	if b == nil {
-		logger.LogError("Unable to access node bucket")
-		err := errors.New("Unable to create node entry")
-		return nil, err
-	}
-
-	val := b.Get([]byte(id))
-	if val == nil {
-		return nil, ErrNotFound
-	}
-
-	err := entry.Unmarshal(val)
+	err := EntryLoad(tx, entry, id)
 	if err != nil {
-		logger.LogError("Unable to unmarshal node: %v", err)
 		return nil, err
 	}
 
 	return entry, nil
 }
 
+func (n *NodeEntry) BucketName() string {
+	return BOLTDB_BUCKET_NODE
+}
+
 func (n *NodeEntry) Save(tx *bolt.Tx) error {
 	godbc.Require(tx != nil)
 	godbc.Require(len(n.Info.Id) > 0)
 
-	// Access bucket
-	b := tx.Bucket([]byte(BOLTDB_BUCKET_NODE))
-	if b == nil {
-		err := errors.New("Unable to create node entry")
-		logger.Err(err)
-		return err
-	}
-
-	// Save node entry to db
-	buffer, err := n.Marshal()
-	if err != nil {
-		logger.Err(err)
-		return err
-	}
-
-	// Save data using the id as the key
-	err = b.Put([]byte(n.Info.Id), buffer)
-	if err != nil {
-		logger.Err(err)
-		return err
-	}
-
-	return nil
+	return EntrySave(tx, n, n.Info.Id)
 
 }
 
@@ -114,21 +82,7 @@ func (n *NodeEntry) Delete(tx *bolt.Tx) error {
 		return ErrConflict
 	}
 
-	b := tx.Bucket([]byte(BOLTDB_BUCKET_NODE))
-	if b == nil {
-		err := errors.New("Unable to access database")
-		logger.Err(err)
-		return err
-	}
-
-	// Delete key
-	err := b.Delete([]byte(n.Info.Id))
-	if err != nil {
-		logger.LogError("Unable to delete container key [%v] in db: %v", n.Info.Id, err.Error())
-		return err
-	}
-
-	return nil
+	return EntryDelete(tx, n, n.Info.Id)
 }
 
 func (n *NodeEntry) NewInfoReponse(tx *bolt.Tx) (*NodeInfoResponse, error) {

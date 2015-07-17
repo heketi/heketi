@@ -19,7 +19,6 @@ package glusterfs
 import (
 	"bytes"
 	"encoding/gob"
-	"errors"
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/utils"
 	"github.com/lpabon/godbc"
@@ -46,54 +45,25 @@ func NewClusterEntryFromRequest() *ClusterEntry {
 }
 
 func NewClusterEntryFromId(tx *bolt.Tx, id string) (*ClusterEntry, error) {
-	b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
-	if b == nil {
-		logger.LogError("Unable to access cluster bucket")
-		err := errors.New("Unable to access database")
-		return nil, err
-	}
 
-	val := b.Get([]byte(id))
-	if val == nil {
-		return nil, ErrNotFound
-	}
-
-	entry := &ClusterEntry{}
-	err := entry.Unmarshal(val)
+	entry := NewClusterEntry()
+	err := EntryLoad(tx, entry, id)
 	if err != nil {
-		logger.LogError(
-			"Unable to unmarshal cluster [%v] information from db: %v",
-			id, err)
 		return nil, err
 	}
 
 	return entry, nil
+}
 
+func (c *ClusterEntry) BucketName() string {
+	return BOLTDB_BUCKET_CLUSTER
 }
 
 func (c *ClusterEntry) Save(tx *bolt.Tx) error {
 	godbc.Require(tx != nil)
 	godbc.Require(len(c.Info.Id) > 0)
 
-	b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
-	if b == nil {
-		logger.LogError("Unable to save new cluster information in db")
-		return errors.New("Unable to open bucket")
-	}
-
-	buffer, err := c.Marshal()
-	if err != nil {
-		logger.LogError("Unable to marshal cluster code")
-		return err
-	}
-
-	err = b.Put([]byte(c.Info.Id), buffer)
-	if err != nil {
-		logger.LogError("Unable to save new cluster information in db")
-		return err
-	}
-
-	return nil
+	return EntrySave(tx, c, c.Info.Id)
 }
 
 func (c *ClusterEntry) Delete(tx *bolt.Tx) error {
@@ -105,21 +75,7 @@ func (c *ClusterEntry) Delete(tx *bolt.Tx) error {
 		return ErrConflict
 	}
 
-	b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
-	if b == nil {
-		err := errors.New("Unable to access database")
-		logger.Err(err)
-		return err
-	}
-
-	// Delete key
-	err := b.Delete([]byte(c.Info.Id))
-	if err != nil {
-		logger.LogError("Unable to delete container key [%v] in db: %v", c.Info.Id, err.Error())
-		return err
-	}
-
-	return nil
+	return EntryDelete(tx, c, c.Info.Id)
 }
 
 func (c *ClusterEntry) NewClusterInfoResponse(tx *bolt.Tx) (*ClusterInfoResponse, error) {
