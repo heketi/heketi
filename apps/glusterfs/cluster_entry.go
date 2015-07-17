@@ -29,6 +29,15 @@ type ClusterEntry struct {
 	Info ClusterInfoResponse
 }
 
+func ClusterList(tx *bolt.Tx) ([]string, error) {
+
+	list := EntryKeys(tx, BOLTDB_BUCKET_CLUSTER)
+	if list == nil {
+		return nil, ErrAccessList
+	}
+	return list, nil
+}
+
 func NewClusterEntry() *ClusterEntry {
 	entry := &ClusterEntry{}
 	entry.Info.Nodes = make(sort.StringSlice, 0)

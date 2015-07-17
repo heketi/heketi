@@ -31,6 +31,15 @@ type DeviceEntry struct {
 	NodeId string
 }
 
+func DeviceList(tx *bolt.Tx) ([]string, error) {
+
+	list := EntryKeys(tx, BOLTDB_BUCKET_DEVICE)
+	if list == nil {
+		return nil, ErrAccessList
+	}
+	return list, nil
+}
+
 func NewDeviceEntry() *DeviceEntry {
 	entry := &DeviceEntry{}
 	entry.Bricks = make(sort.StringSlice, 0)
@@ -60,6 +69,14 @@ func NewDeviceEntryFromId(tx *bolt.Tx, id string) (*DeviceEntry, error) {
 	}
 
 	return entry, nil
+}
+
+func (d *DeviceEntry) SetId(id string) {
+	d.Info.Id = id
+}
+
+func (d *DeviceEntry) Id() string {
+	return d.Info.Id
 }
 
 func (d *DeviceEntry) BucketName() string {
@@ -96,7 +113,7 @@ func (d *DeviceEntry) NewInfoResponse(tx *bolt.Tx) (*DeviceInfoResponse, error) 
 	info.Weight = d.Info.Weight
 	info.Storage = d.Info.Storage
 
-	info.Bricks = make([]Brick, 0)
+	info.Bricks = make([]BrickInfo, 0)
 
 	/*
 	   // Access device information
@@ -172,4 +189,8 @@ func (d *DeviceEntry) StorageAllocate(amount uint64) {
 func (d *DeviceEntry) StorageFree(amount uint64) {
 	d.Info.Storage.Free += amount
 	d.Info.Storage.Used -= amount
+}
+
+func (d *DeviceEntry) StorageCheck(amount uint64) bool {
+	return d.Info.Storage.Free > amount
 }
