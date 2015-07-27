@@ -17,6 +17,7 @@
 package commands
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/heketi/heketi/client/go/utils"
@@ -28,17 +29,23 @@ type ArithCommand struct {
 	// the struct below are here also
 	Cmd
 
-	// Now we can add stuff that specific to this
-	// structure
-	operation string
+	// Subcommands available to this command
+	cmds Commands
+
+	// Subcommand
+	cmd Command
 }
 
 func NewArithCommand() *ArithCommand {
 	cmd := &ArithCommand{}
 	cmd.name = "arith"
 
+	cmd.cmds = Commands{
+		NewArithSubtractCommand(),
+	}
+
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
-	cmd.flags.StringVar(&cmd.operation, "op", "a", "help message")
+	//cmd.flags.StringVar(&cmd.operation, "op", "a", "help message")
 	cmd.flags.Usage = func() {
 		fmt.Println("Hello from my usage")
 	}
@@ -52,7 +59,22 @@ func (a *ArithCommand) Name() string {
 }
 
 func (a *ArithCommand) Parse(args []string) error {
-	return a.flags.Parse(args)
+
+	// Parse our flags here
+
+	// Check which of the subcommands we need to call the .Parse function
+	for _, cmd := range a.cmds {
+		if args[0] == cmd.Name() {
+			cmd.Parse(args[1:])
+			// Save this command for later use
+			a.cmd = cmd
+
+			return nil
+		}
+	}
+
+	// Done
+	return errors.New("Command not found")
 }
 
 func (a *ArithCommand) add() int {
@@ -86,20 +108,26 @@ func (a *ArithCommand) subtract() int {
 
 func (a *ArithCommand) Do() error {
 
-	fmt.Println(a.flags.Args())
-	switch a.flags.Arg(0) {
-	case "add":
-		// if a.operation != "a" {
-		a.add()
-		// }
-	case "subtract":
-		a.subtract()
-	default:
-		fmt.Println("NAH")
-	}
-	fmt.Println(a.flags.Arg(1))
-	fmt.Println("Options:")
-	fmt.Println(a.operation)
+	// Call cmd.Do()
 
-	return nil
+	return a.cmd.Do()
+
+	/*
+			fmt.Println(a.flags.Args())
+			switch a.flags.Arg(0) {
+			case "add":
+				// if a.operation != "a" {
+				a.add()
+				// }
+			case "subtract":
+				a.subtract()
+			default:
+				fmt.Println("NAH")
+			}
+			fmt.Println(a.flags.Arg(1))
+			fmt.Println("Options:")
+			fmt.Println(a.operation)
+
+		return nil
+	*/
 }
