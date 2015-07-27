@@ -14,29 +14,21 @@
 // limitations under the License.
 //
 
-package main
+package commands
 
 import (
 	"flag"
-	"fmt"
-	"github.com/heketi/heketi/client/go/commands"
 )
 
-// ------ Main
-func main() {
-	flag.Parse()
-	cmds := commands.Commands{
-		commands.NewArithCommand(),
-		commands.NewEchoCommand(),
-	}
+type Command interface {
+	Name() string
+	Parse([]string) error
+	Do() error
+}
 
-	for _, cmd := range cmds {
-		if flag.Arg(0) == cmd.Name() {
-			cmd.Parse(flag.Args()[1:])
-			cmd.Do()
-			return
-		}
-	}
+type Commands []Command
 
-	fmt.Println("Command not found")
+type Cmd struct {
+	name  string
+	flags *flag.FlagSet
 }
