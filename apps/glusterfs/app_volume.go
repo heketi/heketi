@@ -18,6 +18,7 @@ package glusterfs
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/utils"
@@ -25,9 +26,13 @@ import (
 	"time"
 )
 
-func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
+const (
+	VOLUME_CREATE_MAX_SNAPSHOT_FACTOR = 100
+)
 
-	var msg DeviceAddRequest
+func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
+
+	var msg VolumeCreateRequest
 	err := utils.GetJsonFromRequest(r, &msg)
 	if err != nil {
 		http.Error(w, "request unable to be parsed", 422)
@@ -35,20 +40,39 @@ func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check the message has devices
-	if len(msg.Devices) <= 0 {
-		http.Error(w, "no devices added", http.StatusBadRequest)
+	if msg.Size < 1 {
+		http.Error(w, "Invalid volume size", http.StatusBadRequest)
 		return
 	}
+	if msg.Snapshot.Enable {
+		if msg.Snapshot.Factor < 1 || msg.Snapshot.Factor > VOLUME_CREATE_MAX_SNAPSHOT_FACTOR {
+			http.Error(w, "Invalid snapshot factor", http.StatusBadRequest)
+			return
+		}
+	}
 
-	// Check the node is in the db
+	// Check that the clusters requested are avilable
 	err = a.db.View(func(tx *bolt.Tx) error {
-		_, err := NewNodeEntryFromId(tx, msg.NodeId)
-		if err == ErrNotFound {
-			http.Error(w, "Node id does not exist", http.StatusNotFound)
-			return err
-		} else if err != nil {
+
+		// Check we have clusters
+		// :TODO: All we need to do is check for one instead of gathering all keys
+		clusters, err := ClusterList(tx)
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return err
+		}
+		if len(clusters) == 0 {
+			http.Error(w, fmt.Sprintf("No clusters configured"), http.StatusBadRequest)
+			return ErrNotFound
+		}
+
+		// Check the clusters requested are correct
+		for _, clusterid := range msg.Clusters {
+			_, err := NewClusterEntryFromId(tx, clusterid)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("Cluster id %v not found", clusterid), http.StatusBadRequest)
+				return err
+			}
 		}
 
 		return nil
@@ -57,78 +81,37 @@ func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Log the devices are being added
-	logger.Info("Adding devices %+v to node %v", msg.Devices, msg.NodeId)
+	// Create a volume entry
+	vol := NewVolumeEntryFromRequest(&msg)
 
 	// Add device in an asynchronous function
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
 
-		sg := utils.NewStatusGroup()
-		for index := range msg.Devices {
-			sg.Add(1)
-
-			// Add each drive
-			go func(dev *Device) {
-				defer sg.Done()
-
-				device := NewDeviceEntryFromRequest(dev, msg.NodeId)
-
-				// Pretend work
-				time.Sleep(1 * time.Second)
-				// :TODO: Fake work
-				device.StorageSet(10 * TB)
-
-				err := a.db.Update(func(tx *bolt.Tx) error {
-					node, err := NewNodeEntryFromId(tx, msg.NodeId)
-					if err != nil {
-						return err
-					}
-
-					// Add device to node
-					node.DeviceAdd(device.Info.Id)
-
-					// Commit
-					err = node.Save(tx)
-					if err != nil {
-						return err
-					}
-
-					// Save drive
-					err = device.Save(tx)
-					if err != nil {
-						return err
-					}
-
-					return nil
-
-				})
-				if err != nil {
-					sg.Err(err)
-				}
-
-				logger.Info("Added device %v", dev.Name)
-
-			}(&msg.Devices[index])
+		logger.Info("Creating volume %v", vol.Info.Id)
+		err := vol.Create(a.db)
+		if err != nil {
+			logger.LogError("Failed to create volume %v", vol.Info.Id)
+			return "", err
 		}
 
+		logger.Info("Created volume %v", vol.Info.Id)
+
 		// Done
-		// Returning a null string instructs the async manager
-		// to return http status of 204 (No Content)
-		return "", sg.Result()
+		return "/volumes/" + vol.Info.Id, nil
 	})
 
 }
 
-func (a *App) DeviceInfo(w http.ResponseWriter, r *http.Request) {
+func (a *App) VolumeInfo(w http.ResponseWriter, r *http.Request) {
 
 	// Get device id from URL
 	vars := mux.Vars(r)
 	id := vars["id"]
 
 	// Get device information
-	var info *DeviceInfoResponse
+	var info *VolumeInfoResponse
 	err := a.db.View(func(tx *bolt.Tx) error {
-		entry, err := NewDeviceEntryFromId(tx, id)
+		entry, err := NewVolumeEntryFromId(tx, id)
 		if err == ErrNotFound {
 			http.Error(w, "Id not found", http.StatusNotFound)
 			return err
@@ -158,7 +141,7 @@ func (a *App) DeviceInfo(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
+func (a *App) VolumeDelete(w http.ResponseWriter, r *http.Request) {
 	// Get the id from the URL
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -166,8 +149,8 @@ func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
 	// Get info from db
 	err := a.db.Update(func(tx *bolt.Tx) error {
 
-		// Access device entry
-		device, err := NewDeviceEntryFromId(tx, id)
+		// Access volume entry
+		volume, err := NewVolumeEntryFromId(tx, id)
 		if err == ErrNotFound {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return err
@@ -176,28 +159,10 @@ func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		// Access node entry
-		node, err := NewNodeEntryFromId(tx, device.NodeId)
-		if err == ErrNotFound {
-			http.Error(w, "Node id does not exist", http.StatusInternalServerError)
-			logger.Critical(
-				"Node id %v pointed to by device %v, but it is not in the db",
-				device.NodeId,
-				device.Info.Id)
-			return err
-		} else if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return err
-		}
+		// Delete volume from cluster
 
-		// Delete device from node
-		node.DeviceDelete(device.Info.Id)
-
-		// Save node
-		node.Save(tx)
-
-		// Delete device from db
-		err = device.Delete(tx)
+		// Delete volume from db
+		err = volume.Delete(tx)
 		if err == ErrConflict {
 			http.Error(w, err.Error(), http.StatusConflict)
 			return err
@@ -213,9 +178,19 @@ func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Show that the key has been deleted
-	logger.Info("Deleted node [%s]", id)
+	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
 
-	// Write msg
-	w.WriteHeader(http.StatusOK)
+		// Actually destroy the Volume here
+		time.Sleep(time.Millisecond * 10)
+
+		// If it fails for some reason, we will need to add to the DB again
+		// or hold state on the entry "DELETING"
+
+		// Show that the key has been deleted
+		logger.Info("Deleted node [%s]", id)
+
+		return "", nil
+
+	})
+
 }

@@ -25,6 +25,19 @@ import (
 	"testing"
 )
 
+func createSampleDeviceEntry(nodeid string, disksize uint64) *DeviceEntry {
+
+	req := &Device{
+		Name:   "dev",
+		Weight: 123,
+	}
+
+	d := NewDeviceEntryFromRequest(req, nodeid)
+	d.StorageSet(disksize)
+
+	return d
+}
+
 func TestNewDeviceEntry(t *testing.T) {
 
 	d := NewDeviceEntry()

@@ -14,6 +14,10 @@
 // limitations under the License.
 //
 
+//
+// Please see https://github.com/heketi/heketi/wiki/API
+// for documentation
+//
 package glusterfs
 
 import (
@@ -35,7 +39,7 @@ type HostAddresses struct {
 // Volume
 
 // Brick
-type Brick struct {
+type BrickInfo struct {
 	Id       string `json:"id"`
 	Path     string `json:"path"`
 	DeviceId string `json:"device"`
@@ -65,7 +69,7 @@ type DeviceInfo struct {
 
 type DeviceInfoResponse struct {
 	DeviceInfo
-	Bricks []Brick `json:"bricks"`
+	Bricks []BrickInfo `json:"bricks"`
 }
 
 // Node
@@ -94,4 +98,45 @@ type ClusterInfoResponse struct {
 
 type ClusterListResponse struct {
 	Clusters []string `json:"clusters"`
+}
+
+// Volume
+type VolumeCreateRequest struct {
+	// Size in GB
+	Size     int      `json:"size"`
+	Clusters []string `json:"clusters,omitempty"`
+	Name     string   `json:"name"`
+	Replica  int      `json:"replica"`
+	Snapshot struct {
+		Enable bool    `json:"enable"`
+		Factor float32 `json:"factor"`
+	} `json:"snapshot"`
+}
+
+type VolumeInfo struct {
+	VolumeCreateRequest
+	Id      string `json:"id"`
+	Cluster string `json:"cluster"`
+	Mount   struct {
+		GlusterFS struct {
+			MountPoint string            `json:"device"`
+			Options    map[string]string `json:"options"`
+		} `json:"glusterfs"`
+	} `json:"mount"`
+}
+
+type VolumeInfoResponse struct {
+	VolumeInfo
+	Bricks []BrickInfo `json:"bricks"`
+}
+
+// Constructors
+
+func NewVolumeInfoResponse() *VolumeInfoResponse {
+
+	info := &VolumeInfoResponse{}
+	info.Mount.GlusterFS.Options = make(map[string]string)
+	info.Bricks = make([]BrickInfo, 0)
+
+	return info
 }

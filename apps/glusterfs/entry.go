@@ -17,7 +17,6 @@
 package glusterfs
 
 import (
-	"errors"
 	"github.com/boltdb/bolt"
 	"github.com/lpabon/godbc"
 )
@@ -28,6 +27,26 @@ type DbEntry interface {
 	Unmarshal(buffer []byte) error
 }
 
+func EntryKeys(tx *bolt.Tx, bucket string) []string {
+	list := make([]string, 0)
+
+	// Get all the cluster ids from the DB
+	b := tx.Bucket([]byte(bucket))
+	if b == nil {
+		return nil
+	}
+
+	err := b.ForEach(func(k, v []byte) error {
+		list = append(list, string(k))
+		return nil
+	})
+	if err != nil {
+		return nil
+	}
+
+	return list
+}
+
 func EntrySave(tx *bolt.Tx, entry DbEntry, key string) error {
 	godbc.Require(tx != nil)
 	godbc.Require(len(key) > 0)
@@ -35,7 +54,7 @@ func EntrySave(tx *bolt.Tx, entry DbEntry, key string) error {
 	// Access bucket
 	b := tx.Bucket([]byte(entry.BucketName()))
 	if b == nil {
-		err := errors.New("Unable to access db")
+		err := ErrDbAccess
 		logger.Err(err)
 		return err
 	}
@@ -64,7 +83,7 @@ func EntryDelete(tx *bolt.Tx, entry DbEntry, key string) error {
 	// Access bucket
 	b := tx.Bucket([]byte(entry.BucketName()))
 	if b == nil {
-		err := errors.New("Unable to access database")
+		err := ErrDbAccess
 		logger.Err(err)
 		return err
 	}
@@ -85,7 +104,7 @@ func EntryLoad(tx *bolt.Tx, entry DbEntry, key string) error {
 
 	b := tx.Bucket([]byte(entry.BucketName()))
 	if b == nil {
-		err := errors.New("Unable to access db")
+		err := ErrDbAccess
 		logger.Err(err)
 		return err
 	}
