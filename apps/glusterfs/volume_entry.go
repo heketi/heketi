@@ -277,7 +277,79 @@ func (v *VolumeEntry) Create(db *bolt.DB) error {
 		return err
 	}
 
+	// Create bricks
+
+	// Create GlusterFS volume
+
 	return nil
+}
+
+func (v *VolumeEntry) Destroy(db *bolt.DB) error {
+	logger.Info("Destroying volume %v", v.Info.Id)
+
+	// Stop volume
+
+	// Destory bricks
+	sg := utils.NewStatusGroup()
+	db.View(func(tx *bolt.Tx) error {
+		for _, id := range v.Bricks {
+			brick, err := NewBrickEntryFromId(tx, id)
+			if err != nil {
+				logger.LogError("Brick %v not found in db: %v", id, err)
+				continue
+			}
+
+			sg.Add(1)
+			go func(b *BrickEntry) {
+				defer sg.Done()
+				sg.Err(b.Destroy(db))
+			}(brick)
+		}
+
+		return nil
+	})
+	err := sg.Result()
+	if err != nil {
+		logger.LogError("Unable to delete bricks: %v", err)
+		return err
+	}
+
+	// Remove from db
+	err = db.Update(func(tx *bolt.Tx) error {
+		for _, brickid := range v.Bricks {
+			brick, err := NewBrickEntryFromId(tx, brickid)
+			if err != nil {
+				logger.Err(err)
+				return err
+			}
+
+			device, err := NewDeviceEntryFromId(tx, brick.Info.DeviceId)
+			if err != nil {
+				logger.Err(err)
+				return err
+			}
+
+			device.BrickDelete(brickid)
+
+			err = brick.Delete(tx)
+			if err != nil {
+				logger.Err(err)
+				return err
+			}
+
+			err = device.Save(tx)
+			if err != nil {
+				logger.Err(err)
+				return err
+			}
+
+		}
+		v.Delete(tx)
+
+		return nil
+	})
+
+	return err
 }
 
 // Return size of each brick in KB, error

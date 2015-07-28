@@ -23,7 +23,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/utils"
 	"net/http"
-	"time"
 )
 
 const (
@@ -176,25 +175,15 @@ func (a *App) VolumeDelete(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	// Get info from db
-	err := a.db.Update(func(tx *bolt.Tx) error {
+	// Get volume entry
+	var volume *VolumeEntry
+	err := a.db.View(func(tx *bolt.Tx) error {
 
 		// Access volume entry
-		volume, err := NewVolumeEntryFromId(tx, id)
+		var err error
+		volume, err = NewVolumeEntryFromId(tx, id)
 		if err == ErrNotFound {
 			http.Error(w, err.Error(), http.StatusNotFound)
-			return err
-		} else if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return err
-		}
-
-		// Delete volume from cluster
-
-		// Delete volume from db
-		err = volume.Delete(tx)
-		if err == ErrConflict {
-			http.Error(w, err.Error(), http.StatusConflict)
 			return err
 		} else if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -211,14 +200,18 @@ func (a *App) VolumeDelete(w http.ResponseWriter, r *http.Request) {
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
 
 		// Actually destroy the Volume here
-		time.Sleep(time.Millisecond * 10)
+		err := volume.Destroy(a.db)
 
 		// If it fails for some reason, we will need to add to the DB again
 		// or hold state on the entry "DELETING"
 
 		// Show that the key has been deleted
-		logger.Info("Deleted node [%s]", id)
+		if err != nil {
+			logger.LogError("Failed to delete volume %v: %v", volume.Info.Id, err)
+			return "", err
+		}
 
+		logger.Info("Deleted node [%s]", id)
 		return "", nil
 
 	})
