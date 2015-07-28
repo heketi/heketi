@@ -538,10 +538,6 @@ func TestVolumeDelete(t *testing.T) {
 	// Create a volume
 	v := createSampleVolumeEntry(100)
 	tests.Assert(t, v != nil)
-	err = app.db.Update(func(tx *bolt.Tx) error {
-		return v.Save(tx)
-	})
-	tests.Assert(t, err == nil)
 	err = v.Create(app.db)
 	tests.Assert(t, err == nil)
 
@@ -573,4 +569,169 @@ func TestVolumeDelete(t *testing.T) {
 	r, err = http.Get(ts.URL + "/volumes/" + v.Info.Id)
 	tests.Assert(t, r.StatusCode == http.StatusNotFound)
 	tests.Assert(t, err == nil)
+}
+
+func TestVolumeExpandBadJson(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Patch dbfilename so that it is restored at the end of the tests
+	defer tests.Patch(&dbfilename, tmpfile).Restore()
+
+	// Create the app
+	app := NewApp()
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// VolumeCreate JSON Request
+	request := []byte(`{
+        "asdfasd  0
+    }`)
+
+	// Send request
+	r, err := http.Post(ts.URL+"/volumes", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == 422)
+}
+
+func TestVolumeExpandIdNotFound(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Patch dbfilename so that it is restored at the end of the tests
+	defer tests.Patch(&dbfilename, tmpfile).Restore()
+
+	// Create the app
+	app := NewApp()
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// JSON Request
+	request := []byte(`{
+        "expand_size" : 100
+    }`)
+
+	// Now that we have some data in the database, we can
+	// make a request for the clutser list
+	r, err := http.Post(ts.URL+"/volumes/12345/expand",
+		"application/json",
+		bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusNotFound, r.StatusCode)
+	body, err := ioutil.ReadAll(io.LimitReader(r.Body, r.ContentLength))
+	tests.Assert(t, err == nil)
+	r.Body.Close()
+	tests.Assert(t, strings.Contains(string(body), "Id not found"))
+}
+
+func TestVolumeExpandSizeTooSmall(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Patch dbfilename so that it is restored at the end of the tests
+	defer tests.Patch(&dbfilename, tmpfile).Restore()
+
+	// Create the app
+	app := NewApp()
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// VolumeCreate JSON Request
+	request := []byte(`{
+        "expand_size" : 0
+    }`)
+
+	// Send request
+	r, err := http.Post(ts.URL+"/volumes", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusBadRequest)
+	body, err := ioutil.ReadAll(io.LimitReader(r.Body, r.ContentLength))
+	tests.Assert(t, err == nil)
+	r.Body.Close()
+	tests.Assert(t, strings.Contains(string(body), "Invalid volume size"))
+}
+
+func TestVolumeExpand(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Patch dbfilename so that it is restored at the end of the tests
+	defer tests.Patch(&dbfilename, tmpfile).Restore()
+
+	// Create the app
+	app := NewApp()
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Create a cluster
+	err := setupSampleDbWithTopology(app.db,
+		1,    // clusters
+		10,   // nodes_per_cluster
+		10,   // devices_per_node,
+		5*TB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	// Create a volume
+	v := createSampleVolumeEntry(100)
+	tests.Assert(t, v != nil)
+	err = v.Create(app.db)
+	tests.Assert(t, err == nil)
+
+	// Keep a copy
+	vc := &VolumeEntry{}
+	*vc = *v
+
+	// JSON Request
+	request := []byte(`{
+        "expand_size" : 1000
+    }`)
+
+	// Send request
+	r, err := http.Post(ts.URL+"/volumes/"+v.Info.Id+"/expand",
+		"application/json",
+		bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	location, err := r.Location()
+	tests.Assert(t, err == nil)
+
+	// Query queue until finished
+	var info VolumeInfoResponse
+	for {
+		r, err := http.Get(location.String())
+		tests.Assert(t, err == nil)
+		tests.Assert(t, r.StatusCode == http.StatusOK)
+		if r.Header.Get("X-Pending") == "true" {
+			time.Sleep(time.Millisecond * 10)
+			continue
+		} else {
+			err = utils.GetJsonFromResponse(r, &info)
+			tests.Assert(t, err == nil)
+			break
+		}
+	}
+
+	tests.Assert(t, info.Size == 100+1000)
+	tests.Assert(t, len(vc.Bricks) < len(info.Bricks))
 }

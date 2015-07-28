@@ -217,3 +217,65 @@ func (a *App) VolumeDelete(w http.ResponseWriter, r *http.Request) {
 	})
 
 }
+
+func (a *App) VolumeExpand(w http.ResponseWriter, r *http.Request) {
+	logger.Debug("In VolumeExpand")
+
+	// Get the id from the URL
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	var msg VolumeExpandRequest
+	err := utils.GetJsonFromRequest(r, &msg)
+	if err != nil {
+		http.Error(w, "request unable to be parsed", 422)
+		return
+	}
+	logger.Debug("Msg: %v", msg)
+
+	// Check the message
+	if msg.Size < 1 {
+		http.Error(w, "Invalid volume size", http.StatusBadRequest)
+		return
+	}
+	logger.Debug("Size: %v", msg.Size)
+
+	// Get volume entry
+	var volume *VolumeEntry
+	err = a.db.View(func(tx *bolt.Tx) error {
+
+		// Access volume entry
+		var err error
+		volume, err = NewVolumeEntryFromId(tx, id)
+		if err == ErrNotFound {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return err
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+
+		return nil
+
+	})
+	if err != nil {
+		return
+	}
+
+	// Expand device in an asynchronous function
+	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
+
+		logger.Info("Expanding volume %v", volume.Info.Id)
+		err := volume.Expand(a.db, msg.Size)
+		if err != nil {
+			logger.LogError("Failed to expand volume %v", volume.Info.Id)
+			return "", err
+		}
+
+		logger.Info("Expanded volume %v", volume.Info.Id)
+
+		// Done
+		return "/volumes/" + volume.Info.Id, nil
+	})
+
+}

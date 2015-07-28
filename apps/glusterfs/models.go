@@ -134,6 +134,10 @@ type VolumeListResponse struct {
 	Volumes []string `json:"volumes"`
 }
 
+type VolumeExpandRequest struct {
+	Size int `json:"expand_size"`
+}
+
 // Constructors
 
 func NewVolumeInfoResponse() *VolumeInfoResponse {

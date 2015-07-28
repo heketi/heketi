@@ -198,7 +198,7 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Name:        "VolumeExpand",
 			Method:      "POST",
 			Pattern:     "/volumes/{id:[A-Fa-f0-9]+}/expand",
-			HandlerFunc: a.NotImplemented},
+			HandlerFunc: a.VolumeExpand},
 		rest.Route{
 			Name:        "VolumeDelete",
 			Method:      "DELETE",
