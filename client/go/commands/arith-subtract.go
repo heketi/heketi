@@ -20,6 +20,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/heketi/heketi/client/go/utils"
+	"math"
 )
 
 type ArithSubtractCommand struct {
@@ -30,7 +31,8 @@ type ArithSubtractCommand struct {
 
 	// Now we can add stuff that specific to this
 	// structure
-	values []int
+	values  []int
+	abs_val string
 }
 
 func NewArithSubtractCommand() *ArithSubtractCommand {
@@ -38,6 +40,7 @@ func NewArithSubtractCommand() *ArithSubtractCommand {
 	cmd.name = "subtract"
 
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
+	cmd.flags.StringVar(&cmd.abs_val, "abs_val", "no", "get abs value")
 	cmd.flags.Usage = func() {
 		fmt.Println("Hello from my subtract")
 	}
@@ -50,12 +53,32 @@ func (a *ArithSubtractCommand) Name() string {
 
 }
 
+// func (a *ArithSubtractCommand) Exec(args []string) error {
+// 	a.flags.Parse(args)
+// 	a.values = utils.StrArrToIntArr(a.flags.Args())
+
+// 	fmt.Println(a.abs_val)
+// 	fmt.Printf("Total: %v\n", a.values[0]-a.values[1])
+
+// 	return nil
+
+// }
+
 func (a *ArithSubtractCommand) Parse(args []string) error {
-	a.values = utils.StrArrToIntArr(args)
+	a.flags.Parse(args)
+	a.values = utils.StrArrToIntArr(a.flags.Args())
 	return nil
 }
 
 func (a *ArithSubtractCommand) Do() error {
-	fmt.Printf("Total: %v\n", a.values[0]-a.values[1])
+	val := a.values[0] - a.values[1]
+	switch a.abs_val {
+	case "yes":
+		fmt.Printf("Total: %v\n", math.Abs(float64(val)))
+	case "no":
+		fmt.Println("Total:", val)
+	default:
+		fmt.Println("Invalid option for flag abs-val")
+	}
 	return nil
 }

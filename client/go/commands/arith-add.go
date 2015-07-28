@@ -17,69 +17,61 @@
 package commands
 
 import (
-	"errors"
 	"flag"
 	"fmt"
+	"github.com/heketi/heketi/client/go/utils"
 )
 
-type ArithCommand struct {
+type ArithAddCommand struct {
 	// Generic stuff.  This is called
 	// embedding.  In other words, the members in
 	// the struct below are here also
 	Cmd
 
-	// Subcommands available to this command
-	cmds Commands
-
-	// Subcommand
-	cmd Command
+	// Now we can add stuff that specific to this
+	// structure
+	values []int
+	double string
 }
 
-func NewArithCommand() *ArithCommand {
-	cmd := &ArithCommand{}
-	cmd.name = "arith"
-
-	cmd.cmds = Commands{
-		NewArithSubtractCommand(),
-		NewArithAddCommand(),
-	}
+func NewArithAddCommand() *ArithAddCommand {
+	cmd := &ArithAddCommand{}
+	cmd.name = "add"
 
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
+	cmd.flags.StringVar(&cmd.double, "double", "no", "doubles the sum")
 	cmd.flags.Usage = func() {
-		fmt.Println("Hello from my usage")
+		fmt.Println("Hello from my add")
 	}
 
 	return cmd
 }
 
-func (a *ArithCommand) Name() string {
+func (a *ArithAddCommand) Name() string {
 	return a.name
 
 }
 
-func (a *ArithCommand) Parse(args []string) error {
-
-	// Parse our flags here
-
-	// Check which of the subcommands we need to call the .Parse function
-	for _, cmd := range a.cmds {
-		if args[0] == cmd.Name() {
-			cmd.Parse(args[1:])
-			// Save this command for later use
-			a.cmd = cmd
-
-			return nil
-		}
-	}
-
-	// Done
-	return errors.New("Command not found")
+func (a *ArithAddCommand) Parse(args []string) error {
+	a.flags.Parse(args)
+	a.values = utils.StrArrToIntArr(a.flags.Args())
+	return nil
 }
 
-func (a *ArithCommand) Do() error {
+func (a *ArithAddCommand) Do() error {
+	sum := 0
+	for _, val := range a.values {
+		sum = sum + val
+	}
 
-	// Call cmd.Do()
+	switch a.double {
+	case "yes":
+		fmt.Printf("Total: %v\n", sum*2)
+	case "no":
+		fmt.Printf("Total: %v\n", sum)
+	default:
+		fmt.Println("Invalid value for flag: double")
+	}
 
-	return a.cmd.Do()
-
+	return nil
 }
