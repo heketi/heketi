@@ -25,6 +25,19 @@ import (
 	"testing"
 )
 
+func createSampleNodeEntry() *NodeEntry {
+	req := &NodeAddRequest{
+		ClusterId: "123",
+		Hostnames: HostAddresses{
+			Manage:  []string{"manage"},
+			Storage: []string{"storage"},
+		},
+		Zone: 99,
+	}
+
+	return NewNodeEntryFromRequest(req)
+}
+
 func TestNewNodeEntry(t *testing.T) {
 
 	n := NewNodeEntry()

@@ -18,15 +18,9 @@ package glusterfs
 
 import (
 	"encoding/json"
-	"errors"
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
 	"net/http"
-)
-
-var (
-	ErrNotFound = errors.New("Id not found")
-	ErrConflict = errors.New(http.StatusText(http.StatusConflict))
 )
 
 func (a *App) ClusterCreate(w http.ResponseWriter, r *http.Request) {
@@ -60,20 +54,15 @@ func (a *App) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 func (a *App) ClusterList(w http.ResponseWriter, r *http.Request) {
 
 	var list ClusterListResponse
-	list.Clusters = make([]string, 0)
 
 	// Get all the cluster ids from the DB
 	err := a.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
-		if b == nil {
-			logger.LogError("Unable to access db")
-			return errors.New("Unable to open bucket")
-		}
+		var err error
 
-		b.ForEach(func(k, v []byte) error {
-			list.Clusters = append(list.Clusters, string(k))
-			return nil
-		})
+		list.Clusters, err = ClusterList(tx)
+		if err != nil {
+			return err
+		}
 
 		return nil
 	})

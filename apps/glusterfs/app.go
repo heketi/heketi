@@ -188,12 +188,12 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Name:        "VolumeCreate",
 			Method:      "POST",
 			Pattern:     "/volumes",
-			HandlerFunc: a.NotImplemented},
+			HandlerFunc: a.VolumeCreate},
 		rest.Route{
 			Name:        "VolumeInfo",
 			Method:      "GET",
 			Pattern:     "/volumes/{id:[A-Fa-f0-9]+}",
-			HandlerFunc: a.NotImplemented},
+			HandlerFunc: a.VolumeInfo},
 		rest.Route{
 			Name:        "VolumeExpand",
 			Method:      "POST",
@@ -203,12 +203,12 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Name:        "VolumeDelete",
 			Method:      "DELETE",
 			Pattern:     "/volumes/{id:[A-Fa-f0-9]+}",
-			HandlerFunc: a.NotImplemented},
+			HandlerFunc: a.VolumeDelete},
 		rest.Route{
 			Name:        "VolumeList",
 			Method:      "GET",
 			Pattern:     "/volumes",
-			HandlerFunc: a.NotImplemented},
+			HandlerFunc: a.VolumeList},
 	}
 
 	// Register all routes from the App

@@ -71,10 +71,13 @@ func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 			go func(dev *Device) {
 				defer sg.Done()
 
+				device := NewDeviceEntryFromRequest(dev, msg.NodeId)
+
 				// Pretend work
 				time.Sleep(1 * time.Second)
+				// :TODO: Fake work
+				device.StorageSet(10 * TB)
 
-				device := NewDeviceEntryFromRequest(dev, msg.NodeId)
 				err := a.db.Update(func(tx *bolt.Tx) error {
 					node, err := NewNodeEntryFromId(tx, msg.NodeId)
 					if err != nil {

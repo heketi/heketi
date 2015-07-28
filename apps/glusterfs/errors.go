@@ -14,35 +14,19 @@
 // limitations under the License.
 //
 
-package utils
+package glusterfs
 
 import (
-	"encoding/json"
-	"io"
-	"io/ioutil"
+	"errors"
 	"net/http"
 )
 
-func jsonFromBody(r io.Reader, v interface{}) error {
-
-	// Check body
-	body, err := ioutil.ReadAll(r)
-	if err != nil {
-		return err
-	}
-	if err := json.Unmarshal(body, v); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func GetJsonFromRequest(r *http.Request, v interface{}) error {
-	defer r.Body.Close()
-	return jsonFromBody(r.Body, v)
-}
-
-func GetJsonFromResponse(r *http.Response, v interface{}) error {
-	defer r.Body.Close()
-	return jsonFromBody(r.Body, v)
-}
+var (
+	ErrNoSpace          = errors.New("No space")
+	ErrNotFound         = errors.New("Id not found")
+	ErrConflict         = errors.New(http.StatusText(http.StatusConflict))
+	ErrMaxBricks        = errors.New("Maximum number of bricks reached.")
+	ErrMininumBrickSize = errors.New("Minimum brick size limit reached.  Out of space.")
+	ErrDbAccess         = errors.New("Unable to access db")
+	ErrAccessList       = errors.New("Unable to access list")
+)

@@ -14,35 +14,27 @@
 // limitations under the License.
 //
 
-package utils
+package glusterfs
 
-import (
-	"encoding/json"
-	"io"
-	"io/ioutil"
-	"net/http"
-)
-
-func jsonFromBody(r io.Reader, v interface{}) error {
-
-	// Check body
-	body, err := ioutil.ReadAll(r)
-	if err != nil {
-		return err
-	}
-	if err := json.Unmarshal(body, v); err != nil {
-		return err
-	}
-
-	return nil
+type AllocationList struct {
+	list []string
 }
 
-func GetJsonFromRequest(r *http.Request, v interface{}) error {
-	defer r.Body.Close()
-	return jsonFromBody(r.Body, v)
+func NewAllocationList() *AllocationList {
+	a := &AllocationList{}
+	a.list = make([]string, 0)
+	return a
 }
 
-func GetJsonFromResponse(r *http.Response, v interface{}) error {
-	defer r.Body.Close()
-	return jsonFromBody(r.Body, v)
+func (a *AllocationList) IsEmpty() bool {
+	return len(a.list) == 0
+}
+
+func (a *AllocationList) Pop() (x string) {
+	x, a.list = a.list[0], a.list[1:len(a.list)]
+	return
+}
+
+func (a *AllocationList) Append(x string) {
+	a.list = append(a.list, x)
 }

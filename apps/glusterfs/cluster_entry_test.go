@@ -25,6 +25,10 @@ import (
 	"testing"
 )
 
+func createSampleClusterEntry() *ClusterEntry {
+	return NewClusterEntryFromRequest()
+}
+
 func TestNewClusterEntry(t *testing.T) {
 	c := NewClusterEntry()
 	tests.Assert(t, c.Info.Id == "")

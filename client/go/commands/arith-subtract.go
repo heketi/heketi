@@ -53,17 +53,6 @@ func (a *ArithSubtractCommand) Name() string {
 
 }
 
-// func (a *ArithSubtractCommand) Exec(args []string) error {
-// 	a.flags.Parse(args)
-// 	a.values = utils.StrArrToIntArr(a.flags.Args())
-
-// 	fmt.Println(a.abs_val)
-// 	fmt.Printf("Total: %v\n", a.values[0]-a.values[1])
-
-// 	return nil
-
-// }
-
 func (a *ArithSubtractCommand) Parse(args []string) error {
 	a.flags.Parse(args)
 	a.values = utils.StrArrToIntArr(a.flags.Args())
@@ -76,7 +65,7 @@ func (a *ArithSubtractCommand) Do() error {
 	case "yes":
 		fmt.Printf("Total: %v\n", math.Abs(float64(val)))
 	case "no":
-		fmt.Println("Total:", val)
+		fmt.Println("Total:\n", val)
 	default:
 		fmt.Println("Invalid option for flag abs-val")
 	}
