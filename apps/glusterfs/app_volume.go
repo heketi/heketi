@@ -102,6 +102,36 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func (a *App) VolumeList(w http.ResponseWriter, r *http.Request) {
+
+	var list VolumeListResponse
+
+	// Get all the cluster ids from the DB
+	err := a.db.View(func(tx *bolt.Tx) error {
+		var err error
+
+		list.Volumes, err = VolumeList(tx)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		logger.Err(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Send list back
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(list); err != nil {
+		panic(err)
+	}
+}
+
 func (a *App) VolumeInfo(w http.ResponseWriter, r *http.Request) {
 
 	// Get device id from URL

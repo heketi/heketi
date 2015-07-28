@@ -208,7 +208,7 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Name:        "VolumeList",
 			Method:      "GET",
 			Pattern:     "/volumes",
-			HandlerFunc: a.NotImplemented},
+			HandlerFunc: a.VolumeList},
 	}
 
 	// Register all routes from the App

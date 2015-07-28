@@ -48,6 +48,15 @@ type VolumeEntry struct {
 	Bricks sort.StringSlice
 }
 
+func VolumeList(tx *bolt.Tx) ([]string, error) {
+
+	list := EntryKeys(tx, BOLTDB_BUCKET_VOLUME)
+	if list == nil {
+		return nil, ErrAccessList
+	}
+	return list, nil
+}
+
 func NewVolumeEntry() *VolumeEntry {
 	entry := &VolumeEntry{}
 	entry.Bricks = make(sort.StringSlice, 0)
