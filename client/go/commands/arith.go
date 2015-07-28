@@ -20,7 +20,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/heketi/heketi/client/go/utils"
 )
 
 type ArithCommand struct {
@@ -42,10 +41,10 @@ func NewArithCommand() *ArithCommand {
 
 	cmd.cmds = Commands{
 		NewArithSubtractCommand(),
+		NewArithAddCommand(),
 	}
 
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
-	//cmd.flags.StringVar(&cmd.operation, "op", "a", "help message")
 	cmd.flags.Usage = func() {
 		fmt.Println("Hello from my usage")
 	}
@@ -77,57 +76,10 @@ func (a *ArithCommand) Parse(args []string) error {
 	return errors.New("Command not found")
 }
 
-func (a *ArithCommand) add() int {
-	args := a.flags.Args()[1 : len(a.flags.Args())-1]
-	fmt.Println(args)
-	sum := 0
-
-	//convert string arr to int arr
-	ret := utils.StrArrToIntArr(args)
-	//sum all numbers
-	for _, num := range ret {
-		sum = sum + num
-	}
-	fmt.Println(sum)
-	return sum
-}
-
-func (a *ArithCommand) subtract() int {
-	if len(a.flags.Args()) > 3 {
-		panic("Oops, I can only subtract 2 numbers!")
-	}
-	args := a.flags.Args()[1:3]
-
-	ret := utils.StrArrToIntArr(args)
-
-	difference := ret[0] - ret[1]
-	fmt.Println(difference)
-	return difference
-
-}
-
 func (a *ArithCommand) Do() error {
 
 	// Call cmd.Do()
 
 	return a.cmd.Do()
 
-	/*
-			fmt.Println(a.flags.Args())
-			switch a.flags.Arg(0) {
-			case "add":
-				// if a.operation != "a" {
-				a.add()
-				// }
-			case "subtract":
-				a.subtract()
-			default:
-				fmt.Println("NAH")
-			}
-			fmt.Println(a.flags.Arg(1))
-			fmt.Println("Options:")
-			fmt.Println(a.operation)
-
-		return nil
-	*/
 }

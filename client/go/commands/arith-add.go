@@ -20,10 +20,9 @@ import (
 	"flag"
 	"fmt"
 	"github.com/heketi/heketi/client/go/utils"
-	"math"
 )
 
-type ArithSubtractCommand struct {
+type ArithAddCommand struct {
 	// Generic stuff.  This is called
 	// embedding.  In other words, the members in
 	// the struct below are here also
@@ -31,43 +30,48 @@ type ArithSubtractCommand struct {
 
 	// Now we can add stuff that specific to this
 	// structure
-	values  []int
-	abs_val string
+	values []int
+	double string
 }
 
-func NewArithSubtractCommand() *ArithSubtractCommand {
-	cmd := &ArithSubtractCommand{}
-	cmd.name = "subtract"
+func NewArithAddCommand() *ArithAddCommand {
+	cmd := &ArithAddCommand{}
+	cmd.name = "add"
 
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
-	cmd.flags.StringVar(&cmd.abs_val, "abs_val", "no", "get abs value")
+	cmd.flags.StringVar(&cmd.double, "double", "no", "doubles the sum")
 	cmd.flags.Usage = func() {
-		fmt.Println("Hello from my subtract")
+		fmt.Println("Hello from my add")
 	}
 
 	return cmd
 }
 
-func (a *ArithSubtractCommand) Name() string {
+func (a *ArithAddCommand) Name() string {
 	return a.name
 
 }
 
-func (a *ArithSubtractCommand) Parse(args []string) error {
+func (a *ArithAddCommand) Parse(args []string) error {
 	a.flags.Parse(args)
 	a.values = utils.StrArrToIntArr(a.flags.Args())
 	return nil
 }
 
-func (a *ArithSubtractCommand) Do() error {
-	val := a.values[0] - a.values[1]
-	switch a.abs_val {
-	case "yes":
-		fmt.Printf("Total: %v\n", math.Abs(float64(val)))
-	case "no":
-		fmt.Println("Total:\n", val)
-	default:
-		fmt.Println("Invalid option for flag abs-val")
+func (a *ArithAddCommand) Do() error {
+	sum := 0
+	for _, val := range a.values {
+		sum = sum + val
 	}
+
+	switch a.double {
+	case "yes":
+		fmt.Printf("Total: %v\n", sum*2)
+	case "no":
+		fmt.Printf("Total: %v\n", sum)
+	default:
+		fmt.Println("Invalid value for flag: double")
+	}
+
 	return nil
 }
