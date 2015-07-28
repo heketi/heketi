@@ -23,10 +23,10 @@ import (
 	"net/http"
 )
 
-func jsonFromBody(r io.Reader, n int64, v interface{}) error {
+func jsonFromBody(r io.Reader, v interface{}) error {
 
 	// Check body
-	body, err := ioutil.ReadAll(io.LimitReader(r, n))
+	body, err := ioutil.ReadAll(r)
 	if err != nil {
 		return err
 	}
@@ -39,10 +39,10 @@ func jsonFromBody(r io.Reader, n int64, v interface{}) error {
 
 func GetJsonFromRequest(r *http.Request, v interface{}) error {
 	defer r.Body.Close()
-	return jsonFromBody(r.Body, r.ContentLength, v)
+	return jsonFromBody(r.Body, v)
 }
 
 func GetJsonFromResponse(r *http.Response, v interface{}) error {
 	defer r.Body.Close()
-	return jsonFromBody(r.Body, r.ContentLength, v)
+	return jsonFromBody(r.Body, v)
 }

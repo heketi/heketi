@@ -130,6 +130,10 @@ type VolumeInfoResponse struct {
 	Bricks []BrickInfo `json:"bricks"`
 }
 
+type VolumeListResponse struct {
+	Volumes []string `json:"volumes"`
+}
+
 // Constructors
 
 func NewVolumeInfoResponse() *VolumeInfoResponse {
