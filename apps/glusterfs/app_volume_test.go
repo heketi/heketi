@@ -440,7 +440,7 @@ func TestVolumeList(t *testing.T) {
 	defer ts.Close()
 
 	// Create some volumes
-	numvolumes := 10
+	numvolumes := 1000
 	err := app.db.Update(func(tx *bolt.Tx) error {
 
 		for i := 0; i < numvolumes; i++ {
