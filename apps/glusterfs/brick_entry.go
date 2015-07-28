@@ -28,6 +28,15 @@ type BrickEntry struct {
 	Info BrickInfo
 }
 
+func BrickList(tx *bolt.Tx) ([]string, error) {
+
+	list := EntryKeys(tx, BOLTDB_BUCKET_BRICK)
+	if list == nil {
+		return nil, ErrAccessList
+	}
+	return list, nil
+}
+
 func NewBrickEntry(size uint64, deviceid, nodeid string) *BrickEntry {
 	entry := &BrickEntry{}
 	entry.Info.Id = utils.GenUUID()
@@ -95,5 +104,15 @@ func (b *BrickEntry) Unmarshal(buffer []byte) error {
 		return err
 	}
 
+	return nil
+}
+
+func (b *BrickEntry) Create(db *bolt.DB) error {
+	logger.Info("Creating brick %v", b.Info.Id)
+	return nil
+}
+
+func (b *BrickEntry) Destroy(db *bolt.DB) error {
+	logger.Info("Destroying brick %v", b.Info.Id)
 	return nil
 }

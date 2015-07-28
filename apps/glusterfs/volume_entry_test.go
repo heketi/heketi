@@ -759,7 +759,7 @@ func TestVolumeEntryCreateOnClustersRequested(t *testing.T) {
 	err = v.Create(app.db)
 	tests.Assert(t, err == nil)
 
-	// Check database volume does not exist
+	// Check database volume exists
 	err = app.db.View(func(tx *bolt.Tx) error {
 		entry, err := NewVolumeEntryFromId(tx, v.Info.Id)
 		if err != nil {
@@ -838,7 +838,7 @@ func TestVolumeEntryCreateCheckingClustersForSpace(t *testing.T) {
 	err = v.Create(app.db)
 	tests.Assert(t, err == nil)
 
-	// Check database volume does not exist
+	// Check database volume exists
 	var info *VolumeInfoResponse
 	err = app.db.View(func(tx *bolt.Tx) error {
 		entry, err := NewVolumeEntryFromId(tx, v.Info.Id)
@@ -888,7 +888,7 @@ func TestVolumeEntryCreateWithSnapshot(t *testing.T) {
 	err = v.Create(app.db)
 	tests.Assert(t, err == nil)
 
-	// Check database volume does not exist
+	// Check database volume exists
 	var info *VolumeInfoResponse
 	err = app.db.View(func(tx *bolt.Tx) error {
 		entry, err := NewVolumeEntryFromId(tx, v.Info.Id)
@@ -919,6 +919,71 @@ func TestVolumeEntryCreateWithSnapshot(t *testing.T) {
 		}
 
 		return nil
+	})
+	tests.Assert(t, err == nil)
+}
+
+func TestVolumeEntryDestroy(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Patch dbfilename so that it is restored at the end of the tests
+	defer tests.Patch(&dbfilename, tmpfile).Restore()
+
+	// Create the app
+	app := NewApp()
+	defer app.Close()
+
+	// Lots of nodes with little drives
+	err := setupSampleDbWithTopology(app.db,
+		1,      // clusters
+		4,      // nodes_per_cluster
+		4,      // devices_per_node,
+		500*GB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	// Create a volume with a snapshot factor of 1.5
+	// For a 200G vol, it would get a brick size of 100G, with a thin pool
+	// size of 100G * 1.5 = 150GB.
+	v := createSampleVolumeEntry(200)
+	v.Info.Snapshot.Enable = true
+	v.Info.Snapshot.Factor = 1.5
+
+	err = v.Create(app.db)
+	tests.Assert(t, err == nil)
+
+	// Destroy the volume
+	err = v.Destroy(app.db)
+	tests.Assert(t, err == nil)
+
+	// Check database volume does not exist
+	var bricks []string
+	err = app.db.View(func(tx *bolt.Tx) error {
+		bricks, err = BrickList(tx)
+		return err
+	})
+	tests.Assert(t, err == nil)
+
+	// Check that there are no bricks
+	tests.Assert(t, len(bricks) == 0)
+
+	// Check that the devices have no bricks
+	err = app.db.View(func(tx *bolt.Tx) error {
+		devices, err := DeviceList(tx)
+		if err != nil {
+			return err
+		}
+
+		for _, id := range devices {
+			device, err := NewDeviceEntryFromId(tx, id)
+			if err != nil {
+				return err
+			}
+			tests.Assert(t, len(device.Bricks) == 0, id, device)
+		}
+
+		return err
 	})
 	tests.Assert(t, err == nil)
 }
