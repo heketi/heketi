@@ -68,7 +68,7 @@ $(PACKAGE): all
 	@mkdir -p tmp/$(APP_NAME)
 	@cp $(APP_NAME) tmp/$(APP_NAME)/
 	@mkdir -p $(DIR)/dist/
-	tar -cf $@ -C tmp $(APP_NAME);
+	tar -czf $@ -C tmp $(APP_NAME);
 	@rm -rf tmp
 	@echo
 	@echo Package $@ saved in dist directory
