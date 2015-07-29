@@ -28,7 +28,13 @@ import (
 	"os/signal"
 )
 
+var (
+	HEKETI_VERSION = "(dev)"
+)
+
 func main() {
+
+	fmt.Printf("Heketi %v\n", HEKETI_VERSION)
 
 	var app rest.Application
 
