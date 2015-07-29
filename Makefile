@@ -9,12 +9,17 @@ SHA := $(shell git rev-parse --short HEAD)
 BRANCH := $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
 VER := $(shell git describe)
 ARCH := $(shell go env GOARCH)
+GOOS := $(shell go env GOOS)
 DIR=.
 
 ifdef APP_SUFFIX
   VERSION = $(VER)-$(subst /,-,$(APP_SUFFIX))
-else 
+else
+ifeq (master,$(BRANCH))
+  VERSION = $(VER)
+else
   VERSION = $(VER)-$(BRANCH)
+endif
 endif
 
 # Go setup
@@ -26,11 +31,11 @@ EXECUTABLES :=$(APP_NAME)
 # Build Binaries setting main.version and main.build vars
 LDFLAGS :=-ldflags "-X main.HEKETI_VERSION $(VERSION)"
 # Package target
-PACKAGE :=$(DIR)/dist/$(APP_NAME)-$(VERSION)-$(ARCH).tar.gz
+PACKAGE :=$(DIR)/dist/$(APP_NAME)-$(VERSION).$(GOOS).$(ARCH).tar.gz
 
 .DEFAULT: all
 
-all: $(EXECUTABLES)
+all: build
 
 # print the version
 version:
@@ -44,10 +49,10 @@ name:
 package:
 	@echo $(PACKAGE)
 
-$(APP_NAME): 
-	$(GO) build $(LDFLAGS) -o $@ $<
+build:
+	$(GO) build $(LDFLAGS) -o $(APP_NAME)
 
-run: $(APP_NAME)
+run: build
 	./$(APP_NAME)
 
 test: 
@@ -65,5 +70,7 @@ $(PACKAGE): all
 	@mkdir -p $(DIR)/dist/
 	tar -cf $@ -C tmp $(APP_NAME);
 	@rm -rf tmp
+	@echo
+	@echo Package $@ saved in dist directory
 
 dist: $(PACKAGE)
