@@ -15,7 +15,3 @@ func StrArrToIntArr(nums []string) []int {
 	}
 	return ret
 }
-
-func Test() string {
-	return "WORKING!!!"
-}
