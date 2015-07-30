@@ -43,6 +43,10 @@ const (
 	BRICK_MAX_NUM  = 200
 )
 
+var (
+	createBricks = CreateBricks
+)
+
 type VolumeEntry struct {
 	Info   VolumeInfo
 	Bricks sort.StringSlice
@@ -138,7 +142,7 @@ func (v *VolumeEntry) NewInfoResponse(tx *bolt.Tx) (*VolumeInfoResponse, error) 
 	info.Replica = v.Info.Replica
 	info.Name = v.Info.Name
 
-	for _, brickid := range v.Bricks {
+	for _, brickid := range v.BricksIds() {
 		brick, err := NewBrickEntryFromId(tx, brickid)
 		if err != nil {
 			return nil, err
@@ -188,8 +192,17 @@ func (v *VolumeEntry) BrickDelete(id string) {
 	v.Bricks = utils.SortedStringsDelete(v.Bricks, id)
 }
 
-func (v *VolumeEntry) Create(db *bolt.DB) error {
+func (v *VolumeEntry) Create(db *bolt.DB) (e error) {
 
+	defer func() {
+		if e != nil {
+			db.Update(func(tx *bolt.Tx) error {
+				err := v.Delete(tx)
+				godbc.Check(err == nil)
+				return nil
+			})
+		}
+	}()
 	// Get list of clusters
 	var clusters []string
 	if len(v.Info.Clusters) == 0 {
@@ -213,102 +226,76 @@ func (v *VolumeEntry) Create(db *bolt.DB) error {
 	}
 	logger.Debug("Using the following clusters: %+v", clusters)
 
-	// Volume size in KB
-	volSize := uint64(v.Info.Size) * GB
-
 	// For each cluster look for storage space for this volume
-	var err error
 	for _, cluster := range clusters {
-		// :TODO: Make this a function to handle err easier
-
-		// Set size bricks will satisfy.  This value will keep
-		// being halved until either space is found, or it is
-		// determined that the cluster is full
-		size := volSize
-
-		// Continue adjust 'size' until space is found
-		for done := false; !done; {
-			// Determine brick size needed
-			var brick_size uint64
-			brick_size, err = v.determineBrickSize(size)
-			if err != nil {
-				done = true
-				continue
-			}
-			logger.Debug("brick_size = %v", brick_size)
-
-			// Calculate number of bricks needed to satisfy the volume request
-			// according to the brick size
-			num_bricks := int(volSize / brick_size)
-			logger.Debug("num_bricks = %v", num_bricks)
-
-			// Check that the volume does not have too many bricks
-			if num_bricks > BRICK_MAX_NUM {
-				logger.Debug("Maximum number of bricks reached")
-				// Try other clusters if possible
-				err = ErrMaxBricks
-				done = true
-				continue
-			}
-
-			// Allocate bricks in the cluster
-			err = v.allocBricks(db, cluster, num_bricks, brick_size)
-			if err == ErrNoSpace {
-				logger.Debug("No space, need to reduce size and try again")
-				// Out of space for the specified brick size, try again
-				// with smaller bricks
-				size /= 2
-				continue
-			}
-			if err != nil {
-				logger.Err(err)
-				// Unknown error occurred, let's try another cluster
-				done = true
-				continue
-			}
-
-			logger.Debug("Volume to be created on cluster %v", cluster)
-
-			// We were able to allocate bricks
-			return nil
+		brick_entries, err := v.allocBricksInCluster(db, cluster, v.Info.Size)
+		if err != nil {
+			continue
 		}
+
+		// Volume has been allocated
+		logger.Debug("Volume to be created on cluster %v", cluster)
+
+		// Create bricks
+		err = createBricks(db, brick_entries)
+		if err != nil {
+			return err
+		}
+
+		// :TODO: Create GlusterFS volume
+
+		// Save information on db
+		v.Info.Cluster = cluster
+		err = db.Update(func(tx *bolt.Tx) error {
+
+			// Save volume information
+			err = v.Save(tx)
+			if err != nil {
+				return err
+			}
+
+			// Save cluster
+			entry, err := NewClusterEntryFromId(tx, cluster)
+			if err != nil {
+				return err
+			}
+			entry.VolumeAdd(v.Info.Id)
+			return entry.Save(tx)
+		})
+		if err != nil {
+			return err
+		}
+
+		return nil
 	}
-	if err != nil {
-		return err
-	}
 
-	// Create bricks
+	return ErrNoSpace
 
-	// Create GlusterFS volume
-
-	return nil
 }
 
 func (v *VolumeEntry) Destroy(db *bolt.DB) error {
 	logger.Info("Destroying volume %v", v.Info.Id)
 
-	// Stop volume
+	// :TODO: Stop volume
 
-	// Destory bricks
-	sg := utils.NewStatusGroup()
+	// :TODO: Destroy the volume
+
+	// Destroy bricks - create a list of brick entries
+	brick_entries := make([]*BrickEntry, 0)
 	db.View(func(tx *bolt.Tx) error {
-		for _, id := range v.Bricks {
+		for _, id := range v.BricksIds() {
 			brick, err := NewBrickEntryFromId(tx, id)
 			if err != nil {
 				logger.LogError("Brick %v not found in db: %v", id, err)
 				continue
 			}
-
-			sg.Add(1)
-			go func(b *BrickEntry) {
-				defer sg.Done()
-				sg.Err(b.Destroy(db))
-			}(brick)
+			brick_entries = append(brick_entries, brick)
 		}
-
 		return nil
 	})
-	err := sg.Result()
+
+	// Destroy bricks
+	err := DestroyBricks(db, brick_entries)
 	if err != nil {
 		logger.LogError("Unable to delete bricks: %v", err)
 		return err
@@ -316,33 +303,12 @@ func (v *VolumeEntry) Destroy(db *bolt.DB) error {
 
 	// Remove from db
 	err = db.Update(func(tx *bolt.Tx) error {
-		for _, brickid := range v.Bricks {
-			brick, err := NewBrickEntryFromId(tx, brickid)
+		for _, brick := range brick_entries {
+			err = v.removeBrickFromDb(tx, brick)
 			if err != nil {
 				logger.Err(err)
 				return err
 			}
-
-			device, err := NewDeviceEntryFromId(tx, brick.Info.DeviceId)
-			if err != nil {
-				logger.Err(err)
-				return err
-			}
-
-			device.BrickDelete(brickid)
-
-			err = brick.Delete(tx)
-			if err != nil {
-				logger.Err(err)
-				return err
-			}
-
-			err = device.Save(tx)
-			if err != nil {
-				logger.Err(err)
-				return err
-			}
-
 		}
 		v.Delete(tx)
 
@@ -350,6 +316,108 @@ func (v *VolumeEntry) Destroy(db *bolt.DB) error {
 	})
 
 	return err
+}
+
+func (v *VolumeEntry) Expand(db *bolt.DB, sizeGB int) (e error) {
+
+	// Allocate new bricks in the cluster
+	brick_entries, err := v.allocBricksInCluster(db, v.Info.Cluster, sizeGB)
+	if err != nil {
+		return err
+	}
+
+	// Setup cleanup function
+	defer func() {
+		if e != nil {
+			logger.Debug("Error detected, cleaning up")
+
+			// Remove from db
+			db.Update(func(tx *bolt.Tx) error {
+				for _, brick := range brick_entries {
+					v.removeBrickFromDb(tx, brick)
+				}
+				err := v.Save(tx)
+				godbc.Check(err == nil)
+
+				return nil
+			})
+		}
+	}()
+
+	// Create bricks
+	err = createBricks(db, brick_entries)
+	if err != nil {
+		logger.Err(err)
+		return err
+	}
+
+	// Setup cleanup function
+	defer func() {
+		if err != nil {
+			logger.Debug("Error detected, cleaning up")
+			DestroyBricks(db, brick_entries)
+		}
+	}()
+
+	// :TODO: Add them to the volume
+
+	// Increase the recorded volume size
+	v.Info.Size += sizeGB
+
+	// Save volume entry
+	err = db.Update(func(tx *bolt.Tx) error {
+		return v.Save(tx)
+	})
+
+	return err
+
+}
+
+func (v *VolumeEntry) allocBricksInCluster(db *bolt.DB, cluster string, gbsize int) ([]*BrickEntry, error) {
+
+	// This value will keep being halved until either
+	// space is found, or it is determined that the cluster is full
+	size := uint64(gbsize) * GB
+	volSize := size
+
+	// Continue adjust 'size' until space is found
+	for {
+		// Determine brick size needed
+		brick_size, err := v.determineBrickSize(size)
+		if err != nil {
+			return nil, err
+		}
+		logger.Debug("brick_size = %v", brick_size)
+
+		// Calculate number of bricks needed to satisfy the volume request
+		// according to the brick size
+		num_bricks := int(volSize / brick_size)
+		logger.Debug("num_bricks = %v", num_bricks)
+
+		// Check that the volume does not have too many bricks
+		if num_bricks > BRICK_MAX_NUM {
+			logger.Debug("Maximum number of bricks reached")
+			// Try other clusters if possible
+			return nil, ErrMaxBricks
+		}
+
+		// Allocate bricks in the cluster
+		brick_entries, err := v.allocBricks(db, cluster, num_bricks, brick_size)
+		if err == ErrNoSpace {
+			logger.Debug("No space, need to reduce size and try again")
+			// Out of space for the specified brick size, try again
+			// with smaller bricks
+			size /= 2
+			continue
+		}
+		if err != nil {
+			logger.Err(err)
+			return nil, err
+		}
+
+		// We were able to allocate bricks
+		return brick_entries, nil
+	}
 }
 
 // Return size of each brick in KB, error
@@ -369,38 +437,27 @@ func (v *VolumeEntry) allocBricks(
 	db *bolt.DB,
 	cluster string,
 	num_bricks int,
-	brick_size uint64) (err error) {
+	brick_size uint64) (brick_entries []*BrickEntry, e error) {
 
 	// Setup garbage collector function in case of error
 	defer func() {
 
 		// Check the named return value 'err'
-		if err != nil {
-			logger.Debug("Error detected.  Cleaning up volume %v", v.Info.Id)
+		if e != nil {
+			logger.Debug("Error detected.  Cleaning up volume %v: Len(%v) ", v.Info.Id, len(brick_entries))
 			db.Update(func(tx *bolt.Tx) error {
-				for _, brickid := range v.Bricks {
-					brick, err := NewBrickEntryFromId(tx, brickid)
+				for _, brick := range brick_entries {
+					logger.Debug("Destroying brick %v", brick.Id())
+					err := v.removeBrickFromDb(tx, brick)
 					godbc.Check(err == nil)
-
-					device, err := NewDeviceEntryFromId(tx, brick.Info.DeviceId)
-					godbc.Check(err == nil)
-
-					device.BrickDelete(brickid)
-
-					err = brick.Delete(tx)
-					godbc.Check(err == nil)
-
-					err = device.Save(tx)
-					godbc.Check(err == nil)
-
 				}
-				v.Delete(tx)
-
 				return nil
 			})
-			v.Bricks = make(sort.StringSlice, 0)
 		}
 	}()
+
+	// Initialize brick_entries
+	brick_entries = make([]*BrickEntry, 0)
 
 	// Allocate size for the brick plus the snapshot
 	tpsize := uint64(float32(brick_size) * v.Info.Snapshot.Factor)
@@ -440,7 +497,7 @@ func (v *VolumeEntry) allocBricks(
 			return err
 		})
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		// Check location has space for each brick and its replicas
@@ -473,6 +530,7 @@ func (v *VolumeEntry) allocBricks(
 						if i == 0 {
 							brick.SetId(brickId)
 						}
+						brick_entries = append(brick_entries, brick)
 
 						// Allocate space on device
 						device.StorageAllocate(tpsize)
@@ -504,35 +562,53 @@ func (v *VolumeEntry) allocBricks(
 				return nil
 			})
 			if err != nil {
-				return err
+				return brick_entries, err
 			}
 		}
 	}
 
-	// Save this cluster
-	v.Info.Cluster = cluster
+	return brick_entries, nil
 
-	// Add to cluster
-	err = db.Update(func(tx *bolt.Tx) error {
+}
 
-		// Save volume information
-		err = v.Save(tx)
-		if err != nil {
-			return err
-		}
+func (v *VolumeEntry) removeBrickFromDb(tx *bolt.Tx, brick *BrickEntry) error {
 
-		// Save cluster
-		entry, err := NewClusterEntryFromId(tx, cluster)
-		if err != nil {
-			return err
-		}
-		entry.VolumeAdd(v.Info.Id)
-		return entry.Save(tx)
-	})
+	// Access device
+	device, err := NewDeviceEntryFromId(tx, brick.Info.DeviceId)
 	if err != nil {
+		logger.Err(err)
+		return err
+	}
+
+	// Delete brick from device
+	device.BrickDelete(brick.Info.Id)
+
+	// Save device
+	err = device.Save(tx)
+	if err != nil {
+		logger.Err(err)
+		return err
+	}
+
+	// Delete brick entryfrom db
+	err = brick.Delete(tx)
+	if err != nil {
+		logger.Err(err)
+		return err
+	}
+
+	// Delete brick from volume db
+	v.BrickDelete(brick.Info.Id)
+	if err != nil {
+		logger.Err(err)
 		return err
 	}
 
 	return nil
+}
 
+func (v *VolumeEntry) BricksIds() sort.StringSlice {
+	ids := make(sort.StringSlice, len(v.Bricks))
+	copy(ids, v.Bricks)
+	return ids
 }

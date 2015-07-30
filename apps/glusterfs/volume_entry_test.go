@@ -17,6 +17,7 @@
 package glusterfs
 
 import (
+	"errors"
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/tests"
 	"github.com/heketi/heketi/utils"
@@ -455,7 +456,8 @@ func TestVolumeEntryCreateRunOutOfSpaceMinBrickSizeLimit(t *testing.T) {
 	// Shouldn't be able to break it down enough to allocate volume
 	v := createSampleVolumeEntry(100)
 	err = v.Create(app.db)
-	tests.Assert(t, err == ErrMininumBrickSize)
+	tests.Assert(t, err == ErrNoSpace)
+	tests.Assert(t, v.Info.Cluster == "")
 
 	// Check database volume does not exist
 	err = app.db.View(func(tx *bolt.Tx) error {
@@ -469,10 +471,11 @@ func TestVolumeEntryCreateRunOutOfSpaceMinBrickSizeLimit(t *testing.T) {
 	var volumes []string
 	err = app.db.View(func(tx *bolt.Tx) error {
 		bricks = EntryKeys(tx, BOLTDB_BUCKET_BRICK)
-
 		volumes = EntryKeys(tx, BOLTDB_BUCKET_VOLUME)
+
 		return nil
 	})
+	tests.Assert(t, err == nil)
 	tests.Assert(t, len(bricks) == 0, bricks)
 	tests.Assert(t, len(volumes) == 0)
 
@@ -504,7 +507,7 @@ func TestVolumeEntryCreateRunOutOfSpaceMaxBrickLimit(t *testing.T) {
 	// Shouldn't be able to break it down enough to allocate volume
 	v := createSampleVolumeEntry(BRICK_MAX_NUM * 2)
 	err = v.Create(app.db)
-	tests.Assert(t, err == ErrMaxBricks, err)
+	tests.Assert(t, err == ErrNoSpace)
 
 	// Check database volume does not exist
 	err = app.db.View(func(tx *bolt.Tx) error {
@@ -986,4 +989,150 @@ func TestVolumeEntryDestroy(t *testing.T) {
 		return err
 	})
 	tests.Assert(t, err == nil)
+}
+
+func TestVolumeEntryExpandNoSpace(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Patch dbfilename so that it is restored at the end of the tests
+	defer tests.Patch(&dbfilename, tmpfile).Restore()
+
+	// Create the app
+	app := NewApp()
+	defer app.Close()
+
+	// Create cluster
+	err := setupSampleDbWithTopology(app.db,
+		10,     // clusters
+		1,      // nodes_per_cluster
+		2,      // devices_per_node,
+		600*GB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	// Create large volume
+	v := createSampleVolumeEntry(599)
+	err = v.Create(app.db)
+	tests.Assert(t, err == nil)
+
+	// Save a copy of the volume before expansion
+	vcopy := &VolumeEntry{}
+	*vcopy = *v
+
+	// Asking for a large amount will require too many little bricks
+	err = v.Expand(app.db, 500)
+	tests.Assert(t, err == ErrMaxBricks)
+
+	// Asking for a small amount will set the bricks too small
+	err = v.Expand(app.db, 10)
+	tests.Assert(t, err == ErrMininumBrickSize)
+
+	// Check db is the same as before expansion
+	var entry *VolumeEntry
+	err = app.db.View(func(tx *bolt.Tx) error {
+		var err error
+		entry, err = NewVolumeEntryFromId(tx, v.Info.Id)
+
+		return err
+	})
+	tests.Assert(t, err == nil, err)
+	tests.Assert(t, reflect.DeepEqual(vcopy, entry))
+}
+
+func TestVolumeEntryExpandCreateBricksFailure(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Patch dbfilename so that it is restored at the end of the tests
+	defer tests.Patch(&dbfilename, tmpfile).Restore()
+
+	// Create the app
+	app := NewApp()
+	defer app.Close()
+
+	// Create large cluster
+	err := setupSampleDbWithTopology(app.db,
+		10,     // clusters
+		10,     // nodes_per_cluster
+		20,     // devices_per_node,
+		600*GB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	// Create volume
+	v := createSampleVolumeEntry(100)
+	err = v.Create(app.db)
+	tests.Assert(t, err == nil)
+
+	// Save a copy of the volume before expansion
+	vcopy := &VolumeEntry{}
+	*vcopy = *v
+
+	// Mock create bricks to fail
+	ErrMock := errors.New("MOCK")
+	mockCreateBricks := func(db *bolt.DB, brick_entries []*BrickEntry) error {
+		return ErrMock
+	}
+	defer tests.Patch(&createBricks, mockCreateBricks).Restore()
+
+	// Expand volume
+	err = v.Expand(app.db, 500)
+	tests.Assert(t, err == ErrMock)
+
+	// Check db is the same as before expansion
+	var entry *VolumeEntry
+	err = app.db.View(func(tx *bolt.Tx) error {
+		var err error
+		entry, err = NewVolumeEntryFromId(tx, v.Info.Id)
+
+		return err
+	})
+	tests.Assert(t, err == nil)
+	tests.Assert(t, reflect.DeepEqual(vcopy, entry))
+}
+
+func TestVolumeEntryExpand(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Patch dbfilename so that it is restored at the end of the tests
+	defer tests.Patch(&dbfilename, tmpfile).Restore()
+
+	// Create the app
+	app := NewApp()
+	defer app.Close()
+
+	// Create large cluster
+	err := setupSampleDbWithTopology(app.db,
+		1,    // clusters
+		10,   // nodes_per_cluster
+		20,   // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	// Create volume
+	v := createSampleVolumeEntry(1024)
+	err = v.Create(app.db)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, v.Info.Size == 1024)
+	tests.Assert(t, len(v.Bricks) == 4)
+
+	// Expand volume
+	err = v.Expand(app.db, 1234)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, v.Info.Size == 1024+1234)
+	tests.Assert(t, len(v.Bricks) == 8)
+
+	// Check db
+	var entry *VolumeEntry
+	err = app.db.View(func(tx *bolt.Tx) error {
+		var err error
+		entry, err = NewVolumeEntryFromId(tx, v.Info.Id)
+
+		return err
+	})
+	tests.Assert(t, err == nil)
+	tests.Assert(t, reflect.DeepEqual(entry, v))
 }
