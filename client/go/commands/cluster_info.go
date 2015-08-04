@@ -95,17 +95,17 @@ func (a *GetClusterInfoCommand) Exec(args []string) error {
 	}
 
 	//print revelent results
-	s := "Cluster: " + clusterId + " \n" + "Nodes: \n"
+	str := "Cluster: " + clusterId + " \n" + "Nodes: \n"
 	for _, node := range body.Nodes {
-		s += node + "\n"
+		str += node + "\n"
 	}
 
-	s += "Volumes: \n"
+	str += "Volumes: \n"
 	for _, volume := range body.Volumes {
-		s += volume + "\n"
+		str += volume + "\n"
 	}
 
-	fmt.Fprintf(stdout, s)
+	fmt.Fprintf(stdout, str)
 	return nil
 
 }
