@@ -53,6 +53,7 @@ func (a *GetClusterInfoCommand) Name() string {
 }
 
 func (a *GetClusterInfoCommand) Exec(args []string) error {
+
 	//parse flags and set id
 	a.flags.Parse(args)
 

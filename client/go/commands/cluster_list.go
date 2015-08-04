@@ -54,6 +54,9 @@ func (a *GetClusterListCommand) Name() string {
 
 func (a *GetClusterListCommand) Exec(args []string) error {
 
+	//parse args
+	a.flags.Parse(args)
+
 	s := a.flags.Args()
 
 	//ensure number of args

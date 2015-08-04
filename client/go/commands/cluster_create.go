@@ -55,6 +55,9 @@ func (a *CreateNewClusterCommand) Name() string {
 
 func (a *CreateNewClusterCommand) Exec(args []string) error {
 
+	//parse args
+	a.flags.Parse(args)
+
 	s := a.flags.Args()
 	//ensure length
 	if len(s) > 0 {
