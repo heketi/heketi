@@ -34,9 +34,9 @@ func init() {
 	flag.StringVar(&options.Url, "server", "", "server url goes here.")
 
 	flag.Usage = func() {
-		fmt.Println("USAGE: \n")
-		fmt.Println("heketi cluster <n>\n")
-		fmt.Println("where n can be one of the following: \n")
+		fmt.Println("USAGE: ")
+		fmt.Println("heketi cluster <n>")
+		fmt.Println("where n can be one of the following: ")
 		fmt.Println("create <id> \n info <id> \n list \n destroy <id>")
 
 		//TODO:  add other first level commands
