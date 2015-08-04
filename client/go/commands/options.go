@@ -16,25 +16,6 @@
 
 package commands
 
-import (
-	"flag"
-	"io"
-	"os"
-)
-
-//make stdout "global" to command package
-var (
-	stdout io.Writer = os.Stdout
-)
-
-type Command interface {
-	Name() string
-	Exec([]string) error
-}
-
-type Commands []Command
-
-type Cmd struct {
-	name  string
-	flags *flag.FlagSet
+type Options struct {
+	Url string
 }

@@ -20,20 +20,53 @@ import (
 	"flag"
 	"fmt"
 	"github.com/heketi/heketi/client/go/commands"
+	"io"
+	"os"
 )
+
+var (
+	stdout  io.Writer = os.Stdout
+	options commands.Options
+)
+
+func init() {
+
+	flag.StringVar(&options.Url, "server", "", "server url goes here.")
+
+	flag.Usage = func() {
+		fmt.Println("USAGE: ")
+		fmt.Println("heketi cluster <n>")
+		fmt.Println("where n can be one of the following: ")
+		fmt.Println("create <id> \n info <id> \n list \n destroy <id>")
+
+		//TODO:  add other first level commands
+	}
+}
 
 // ------ Main
 func main() {
 	flag.Parse()
+
+	//ensure that we pass a server
+	if options.Url == "" {
+		fmt.Fprintf(stdout, "You need a server!\n")
+		os.Exit(1)
+	}
+
+	//all first level commands go here (cluster, node, device, volume)
 	cmds := commands.Commands{
-		commands.NewArithCommand(),
-		commands.NewEchoCommand(),
+		commands.NewClusterCommand(&options),
 	}
 
 	for _, cmd := range cmds {
 		if flag.Arg(0) == cmd.Name() {
-			cmd.Parse(flag.Args()[1:])
-			cmd.Do()
+
+			//check for err
+			err := cmd.Exec(flag.Args()[1:])
+			if err != nil {
+				fmt.Fprintf(stdout, "Error: %v\n", err)
+				os.Exit(1)
+			}
 			return
 		}
 	}
