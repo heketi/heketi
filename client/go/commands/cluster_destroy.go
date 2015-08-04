@@ -96,8 +96,13 @@ func (a *DestroyClusterCommand) Exec(args []string) error {
 	}
 
 	//if all is well, print stuff
-	fmt.Fprintf(stdout, "Successfully destroyed cluster with id: %v ", clusterId)
+	if a.options.Json == false {
+		fmt.Fprintf(stdout, "Successfully destroyed cluster with id: %v ", clusterId)
+	}
+	if a.options.Json == true {
+		fmt.Fprintf(stdout, "Warning, cluster destroy, does not return a json response! \n Successfully destroyed cluster with id: %v", clusterId)
 
+	}
 	return nil
 
 }

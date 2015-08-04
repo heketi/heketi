@@ -17,6 +17,7 @@
 package commands
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -92,11 +93,17 @@ func (a *GetClusterListCommand) Exec(args []string) error {
 	}
 
 	//if all is well, print stuff
-	str := "Clusters: \n"
-	for _, cluster := range body.Clusters {
-		str += cluster + "\n"
+	if a.options.Json == false {
+		str := "Clusters: \n"
+		for _, cluster := range body.Clusters {
+			str += cluster + "\n"
+		}
+		fmt.Fprintf(stdout, str)
 	}
-	fmt.Fprintf(stdout, str)
+	if a.options.Json == true {
+		res, _ := json.Marshal(body)
+		fmt.Fprintf(stdout, string(res))
+	}
 	return nil
 
 }

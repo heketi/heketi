@@ -17,6 +17,7 @@
 package commands
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -53,7 +54,6 @@ func (a *GetClusterInfoCommand) Name() string {
 }
 
 func (a *GetClusterInfoCommand) Exec(args []string) error {
-
 	//parse flags and set id
 	a.flags.Parse(args)
 
@@ -96,17 +96,25 @@ func (a *GetClusterInfoCommand) Exec(args []string) error {
 	}
 
 	//print revelent results
-	str := "Cluster: " + clusterId + " \n" + "Nodes: \n"
-	for _, node := range body.Nodes {
-		str += node + "\n"
+	if a.options.Json == false {
+		s := "Cluster: " + clusterId + " \n" + "Nodes: \n"
+		for _, node := range body.Nodes {
+			s += node + "\n"
+		}
+
+		s += "Volumes: \n"
+		for _, volume := range body.Volumes {
+			s += volume + "\n"
+		}
+
+		fmt.Fprintf(stdout, s)
 	}
 
-	str += "Volumes: \n"
-	for _, volume := range body.Volumes {
-		str += volume + "\n"
+	//if json is yes, pass back some json
+	if a.options.Json == true {
+		res, _ := json.Marshal(body)
+		fmt.Fprintf(stdout, string(res))
 	}
-
-	fmt.Fprintf(stdout, str)
 	return nil
 
 }

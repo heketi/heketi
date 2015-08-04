@@ -32,6 +32,7 @@ var (
 func init() {
 
 	flag.StringVar(&options.Url, "server", "", "server url goes here.")
+	flag.BoolVar(&options.Json, "json", false, "get response as json")
 
 	flag.Usage = func() {
 		fmt.Println("USAGE: ")
@@ -52,6 +53,10 @@ func main() {
 		fmt.Fprintf(stdout, "You need a server!\n")
 		os.Exit(1)
 	}
+	if options.Json != false && options.Json != true {
+		fmt.Fprintf(stdout, "Invalid Argument for '-json'\n")
+		os.Exit(1)
+	}
 
 	//all first level commands go here (cluster, node, device, volume)
 	cmds := commands.Commands{
@@ -61,7 +66,6 @@ func main() {
 	for _, cmd := range cmds {
 		if flag.Arg(0) == cmd.Name() {
 
-			//check for err
 			err := cmd.Exec(flag.Args()[1:])
 			if err != nil {
 				fmt.Fprintf(stdout, "Error: %v\n", err)

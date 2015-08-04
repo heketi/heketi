@@ -18,6 +18,7 @@ package commands
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -90,9 +91,14 @@ func (a *CreateNewClusterCommand) Exec(args []string) error {
 		fmt.Println("Error: Bad json response from server")
 		return err
 	}
-
 	//if all is well, print stuff
-	fmt.Fprintf(stdout, "Cluster id: %v", body.Id)
+	if a.options.Json == false {
+		fmt.Fprintf(stdout, "Cluster id: %v", body.Id)
+	}
+	if a.options.Json == true {
+		res, _ := json.Marshal(body)
+		fmt.Fprintf(stdout, string(res))
+	}
 
 	return nil
 

@@ -17,5 +17,6 @@
 package commands
 
 type Options struct {
-	Url string
+	Url  string
+	Json bool
 }
