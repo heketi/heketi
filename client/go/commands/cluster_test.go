@@ -70,8 +70,7 @@ func TestClusterCommandTooLittleArguments(t *testing.T) {
 	ClusterCommand := NewClusterCommand(options)
 
 	//too little args
-	var str = []string{}
-	err := ClusterCommand.Exec(str)
+	err := ClusterCommand.Exec([]string{})
 
 	//make sure not enough args
 	tests.Assert(t, err != nil, err)
@@ -180,33 +179,32 @@ func TestNewGetClusterInfoAndDestroy(t *testing.T) {
 	mockCluster := NewCreateNewClusterCommand(options)
 
 	//create new cluster
-	EmptyArgs := make([]string, 0)
-	err := mockCluster.Exec(EmptyArgs)
+	err := mockCluster.Exec([]string{})
 	tests.Assert(t, err == nil)
 
 	//get cluster id
-	MockClusterId := strings.SplitAfter(b.String(), "id:")[1]
+	MockClusterIdArray := strings.SplitAfter(b.String(), "id: ")
+	tests.Assert(t, len(MockClusterIdArray) >= 1)
+	MockClusterId := MockClusterIdArray[1]
 	b.Reset()
 
 	//set destroy id to our id
 	clusterInfo := NewGetClusterInfoCommand(options)
-	clusterInfo.clusterId = MockClusterId
 
 	//assert that cluster info Exec succeeds and prints correctly
-	args := []string{clusterInfo.clusterId}
+	args := []string{MockClusterId}
 	err = clusterInfo.Exec(args)
 	tests.Assert(t, err == nil, err)
-	tests.Assert(t, strings.Contains(b.String(), "For cluster:"), b.String())
+	tests.Assert(t, strings.Contains(b.String(), "Cluster: "), b.String())
 
 	//create destroy struct and destroy it
 	mockClusterDestroy := NewDestroyClusterCommand(options)
-	mockClusterDestroy.clusterId = MockClusterId
-	args = []string{mockClusterDestroy.clusterId}
+	args = []string{MockClusterId}
 	err = mockClusterDestroy.Exec(args)
 	tests.Assert(t, err == nil)
 
 	//assert that we cannot get info on destroyed cluster
-	err = clusterInfo.Exec(EmptyArgs)
+	err = clusterInfo.Exec([]string{})
 	tests.Assert(t, err != nil)
 
 }
@@ -236,10 +234,10 @@ func TestNewGetClusterInfoBadID(t *testing.T) {
 
 	//set destroy id to our id
 	clusterInfo := NewGetClusterInfoCommand(options)
-	clusterInfo.clusterId = "penguins are the key to something"
+	clusterId := "penguins are the key to something"
 
 	//assert that cluster info Exec FAILS and with bad id
-	args := []string{clusterInfo.clusterId}
+	args := []string{clusterId}
 	err := clusterInfo.Exec(args)
 	tests.Assert(t, err != nil, err)
 	tests.Assert(t, err.Error() != "")
@@ -273,17 +271,16 @@ func TestNewGetClusterList(t *testing.T) {
 	mockCluster := NewCreateNewClusterCommand(options)
 
 	//create new cluster
-	args := make([]string, 0)
-	err := mockCluster.Exec(args)
+	err := mockCluster.Exec([]string{})
 	tests.Assert(t, err == nil)
 
 	//assert cluster was created
-	tests.Assert(t, strings.Contains(b.String(), "Cluster id:"), b.String())
+	tests.Assert(t, strings.Contains(b.String(), "Cluster id: "), b.String())
 	b.Reset()
 
 	//create new list command
 	listCommand := NewGetClusterListCommand(options)
-	err = listCommand.Exec(args)
+	err = listCommand.Exec([]string{})
 	tests.Assert(t, err == nil)
 
 	//asert stdout is correct
@@ -317,8 +314,7 @@ func TestClusterPostSuccess(t *testing.T) {
 	tests.Assert(t, cluster != nil)
 
 	//execute and assert works
-	args := make([]string, 0)
-	err := cluster.Exec(args)
+	err := cluster.Exec([]string{})
 	tests.Assert(t, err == nil)
 	tests.Assert(t, strings.Contains(b.String(), "Cluster id:"), b.String())
 }
@@ -349,8 +345,7 @@ func TestClusterPostFailure(t *testing.T) {
 	tests.Assert(t, cluster != nil)
 
 	//execute
-	var args = make([]string, 0)
-	err := cluster.Exec(args)
+	err := cluster.Exec([]string{})
 	tests.Assert(t, err != nil)
 	tests.Assert(t, strings.Contains(b.String(), "Unable to send "))
 }

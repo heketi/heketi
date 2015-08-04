@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"github.com/heketi/heketi/apps/glusterfs"
 	"github.com/heketi/heketi/utils"
+	"github.com/lpabon/godbc"
 	"net/http"
 )
 
@@ -32,10 +33,17 @@ type CreateNewClusterCommand struct {
 }
 
 func NewCreateNewClusterCommand(options *Options) *CreateNewClusterCommand {
+
+	godbc.Require(options != nil)
+	godbc.Require(options.Url != "")
+
 	cmd := &CreateNewClusterCommand{}
 	cmd.name = "create"
 	cmd.options = options
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
+
+	godbc.Ensure(cmd.flags != nil)
+	godbc.Ensure(cmd.name == "create")
 
 	return cmd
 }
@@ -47,8 +55,9 @@ func (a *CreateNewClusterCommand) Name() string {
 
 func (a *CreateNewClusterCommand) Exec(args []string) error {
 
+	s := a.flags.Args()
 	//ensure length
-	if len(args) > 0 {
+	if len(s) > 0 {
 		return errors.New("Too many arguments!")
 	}
 
@@ -58,7 +67,7 @@ func (a *CreateNewClusterCommand) Exec(args []string) error {
 	//do http POST and check if sent to server
 	r, err := http.Post(url+"/clusters", "application/json", bytes.NewBuffer([]byte("{}")))
 	if err != nil {
-		fmt.Fprintf(stdout, "Unable to send command to server: %v", err)
+		fmt.Fprintf(stdout, "Error: Unable to send command to server: %v", err)
 		return err
 	}
 
@@ -75,12 +84,12 @@ func (a *CreateNewClusterCommand) Exec(args []string) error {
 	var body glusterfs.ClusterInfoResponse
 	err = utils.GetJsonFromResponse(r, &body)
 	if err != nil {
-		fmt.Println("bad json response from server")
+		fmt.Println("Error: Bad json response from server")
 		return err
 	}
 
 	//if all is well, print stuff
-	fmt.Fprintf(stdout, "Cluster id:%v", body.Id)
+	fmt.Fprintf(stdout, "Cluster id: %v", body.Id)
 
 	return nil
 

@@ -22,20 +22,27 @@ import (
 	"fmt"
 	"github.com/heketi/heketi/apps/glusterfs"
 	"github.com/heketi/heketi/utils"
+	"github.com/lpabon/godbc"
 	"net/http"
 )
 
 type GetClusterInfoCommand struct {
 	Cmd
-	options   *Options
-	clusterId string
+	options *Options
 }
 
 func NewGetClusterInfoCommand(options *Options) *GetClusterInfoCommand {
+
+	godbc.Require(options != nil)
+	godbc.Require(options.Url != "")
+
 	cmd := &GetClusterInfoCommand{}
 	cmd.name = "info"
 	cmd.options = options
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
+
+	godbc.Ensure(cmd.flags != nil)
+	godbc.Ensure(cmd.name == "info")
 
 	return cmd
 }
@@ -46,25 +53,27 @@ func (a *GetClusterInfoCommand) Name() string {
 }
 
 func (a *GetClusterInfoCommand) Exec(args []string) error {
+	//parse flags and set id
+	a.flags.Parse(args)
+
+	s := a.flags.Args()
 
 	//ensure correct number of args
-	if len(args) < 1 {
+	if len(s) < 1 {
 		return errors.New("Not enough arguments!")
 	}
-	if len(args) >= 2 {
+	if len(s) >= 2 {
 		return errors.New("Too many arguments!")
 	}
 
-	//parse flags and set id
-	a.flags.Parse(args)
-	a.clusterId = a.flags.Arg(0)
+	clusterId := a.flags.Arg(0)
 
 	url := a.options.Url
 
 	//do http GET and check if sent to server
-	r, err := http.Get(url + "/clusters/" + a.clusterId)
+	r, err := http.Get(url + "/clusters/" + clusterId)
 	if err != nil {
-		fmt.Fprintf(stdout, "Unable to send command to server: %v", err)
+		fmt.Fprintf(stdout, "Error: Unable to send command to server: %v", err)
 		return err
 	}
 
@@ -86,12 +95,12 @@ func (a *GetClusterInfoCommand) Exec(args []string) error {
 	}
 
 	//print revelent results
-	s := "For cluster: " + a.clusterId + " \n" + "Nodes are: \n"
+	s := "Cluster: " + clusterId + " \n" + "Nodes: \n"
 	for _, node := range body.Nodes {
 		s += node + "\n"
 	}
 
-	s += "Volumes are: \n"
+	s += "Volumes: \n"
 	for _, volume := range body.Volumes {
 		s += volume + "\n"
 	}

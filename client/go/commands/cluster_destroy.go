@@ -21,20 +21,27 @@ import (
 	"flag"
 	"fmt"
 	"github.com/heketi/heketi/utils"
+	"github.com/lpabon/godbc"
 	"net/http"
 )
 
 type DestroyClusterCommand struct {
 	Cmd
-	options   *Options
-	clusterId string
+	options *Options
 }
 
 func NewDestroyClusterCommand(options *Options) *DestroyClusterCommand {
+
+	godbc.Require(options != nil)
+	godbc.Require(options.Url != "")
+
 	cmd := &DestroyClusterCommand{}
 	cmd.name = "destroy"
 	cmd.options = options
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
+
+	godbc.Ensure(cmd.flags != nil)
+	godbc.Ensure(cmd.name == "destroy")
 
 	return cmd
 }
@@ -46,32 +53,36 @@ func (a *DestroyClusterCommand) Name() string {
 
 func (a *DestroyClusterCommand) Exec(args []string) error {
 
+	//parse args
+	a.flags.Parse(args)
+
+	s := a.flags.Args()
+
 	//ensure proper number of args
-	if len(args) < 1 {
+	if len(s) < 1 {
 		return errors.New("Not enough arguments!")
 	}
-	if len(args) >= 2 {
+	if len(s) >= 2 {
 		return errors.New("Too many arguments!")
 	}
 
-	//parse args and set id
-	a.flags.Parse(args)
-	a.clusterId = a.flags.Arg(0)
+	//set clusterId
+	clusterId := a.flags.Arg(0)
 
 	//set url
 	url := a.options.Url
 
 	//create destroy request object
-	req, err := http.NewRequest("DELETE", url+"/clusters/"+a.clusterId, nil)
+	req, err := http.NewRequest("DELETE", url+"/clusters/"+clusterId, nil)
 	if err != nil {
-		fmt.Fprintf(stdout, "Unable to initiate destroy: %v", err)
+		fmt.Fprintf(stdout, "Error: Unable to initiate destroy: %v", err)
 		return err
 	}
 
 	//destroy cluster
 	r, err := http.DefaultClient.Do(req)
 	if err != nil {
-		fmt.Fprintf(stdout, "Unable to send command to server: %v", err)
+		fmt.Fprintf(stdout, "Error: Unable to send command to server: %v", err)
 		return err
 	}
 
@@ -85,7 +96,7 @@ func (a *DestroyClusterCommand) Exec(args []string) error {
 	}
 
 	//if all is well, print stuff
-	fmt.Fprintf(stdout, "Successfully destroyed cluster with id: %v ", a.clusterId)
+	fmt.Fprintf(stdout, "Successfully destroyed cluster with id: %v ", clusterId)
 
 	return nil
 

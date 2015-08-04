@@ -26,7 +26,6 @@ type ClusterCommand struct {
 	Cmd
 	cmds    Commands
 	options *Options
-	cmd     Command
 }
 
 //function to create new cluster command
@@ -40,6 +39,8 @@ func NewClusterCommand(options *Options) *ClusterCommand {
 	cmd := &ClusterCommand{}
 	cmd.name = "cluster"
 	cmd.options = options
+
+	//setup subcommands
 	cmd.cmds = Commands{
 		NewCreateNewClusterCommand(options),
 		NewGetClusterInfoCommand(options),
@@ -76,8 +77,6 @@ func (a *ClusterCommand) Exec(args []string) error {
 			if err != nil {
 				return err
 			}
-			a.cmd = cmd
-
 			return nil
 		}
 	}

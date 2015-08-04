@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"github.com/heketi/heketi/apps/glusterfs"
 	"github.com/heketi/heketi/utils"
+	"github.com/lpabon/godbc"
 	"net/http"
 )
 
@@ -31,10 +32,17 @@ type GetClusterListCommand struct {
 }
 
 func NewGetClusterListCommand(options *Options) *GetClusterListCommand {
+
+	godbc.Require(options != nil)
+	godbc.Require(options.Url != "")
+
 	cmd := &GetClusterListCommand{}
 	cmd.name = "list"
 	cmd.options = options
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
+
+	godbc.Ensure(cmd.flags != nil)
+	godbc.Ensure(cmd.name == "list")
 
 	return cmd
 }
@@ -46,8 +54,10 @@ func (a *GetClusterListCommand) Name() string {
 
 func (a *GetClusterListCommand) Exec(args []string) error {
 
+	s := a.flags.Args()
+
 	//ensure number of args
-	if len(args) > 0 {
+	if len(s) > 0 {
 		return errors.New("Too many arguments!")
 
 	}
@@ -57,7 +67,7 @@ func (a *GetClusterListCommand) Exec(args []string) error {
 	//do http GET and check if sent to server
 	r, err := http.Get(url + "/clusters")
 	if err != nil {
-		fmt.Fprintf(stdout, "Unable to send command to server: %v", err)
+		fmt.Fprintf(stdout, "Error: Unable to send command to server: %v", err)
 		return err
 	}
 
