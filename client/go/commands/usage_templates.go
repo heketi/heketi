@@ -20,7 +20,7 @@ var usageTemplateCluster = `Cluster is a command used for managing heketi cluste
 
 Usage:
 
-    heketi -server [server] [options] cluster [subcommands]
+    heketi -server [server] [options] cluster [subcommand]
 
 The subcommands are:
     
@@ -71,7 +71,7 @@ Usage:
 
 The args are:
 
-    cluster id    The id of the cluster you want to destroy
+    cluster id    The id of the cluster you want more information about.
 
 Example:
 
@@ -90,5 +90,61 @@ This command takes no arguments.
 Example:
 
     heketi -server http://localhost:8080 cluster list
+
+`
+var usageTemplateNode = `Node is a command used for managing Heketi nodes.
+
+Usage:
+    heketi -server [server] [options] node [subcommand]
+
+The subcommands are:
+    add        Adds a new node to the designated cluster.
+    info       Returns information about the specific node.
+    destroy    Destroys node with specified id.
+
+Use "heketi node [subcommand] -help" for more information about a subcommand
+
+`
+var usageTemplateNodeAdd = `node add is a command used for adding a node to the specified cluster.
+
+Usage:
+    heketi -server [server] [options] node add [flags]
+
+The flags are:
+    -zone                  The zone in which the node should reside.
+    -cluster               The cluster in which the node should reside.
+    -managment-host-name   List of node managment hostnames.
+    -storage-host-name     List of node storage hostnames.
+
+Example:
+
+    heketi -server http://localhost:8080 node add -zone 3 -cluster 3e098cb4407d7109806bb196d9e8f095 -managment-host-name node1-manage.gluster.lab.com -storage-host-name node1-storage.gluster.lab.com
+`
+var usageTemplateNodeDestroy = `node destroy is a command used for destroying a node.
+
+Usage:
+    heketi -server [server] [options] node add [args]
+
+The args are:
+    node id     The id of the node you want to destroy
+
+Example:
+
+    heketi -server http://localhost:8080 node destroy 22d4d9fe40ac1d24805af036dc820657
+
+`
+var usageTemplateNodeInfo = `node info is a command used for getting more information about a node.
+
+Usage:
+
+    heketi -server [server] [options] node info [args] 
+
+The args are:
+
+    node id    The id of the node you want to to get more information about
+
+Example:
+
+    heketi -server http://localhost:8080 node info 22d4d9fe40ac1d24805af036dc820657
 
 `

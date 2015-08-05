@@ -25,41 +25,42 @@ import (
 	"github.com/lpabon/godbc"
 	"net/http"
 	"os"
+	"strconv"
 )
 
-type ClusterListCommand struct {
+type GetNodeInfoCommand struct {
 	Cmd
 	options *Options
+	nodeId  string
 }
 
-func NewClusterListCommand(options *Options) *ClusterListCommand {
+func NewNodeInfoCommand(options *Options) *GetNodeInfoCommand {
 
 	godbc.Require(options != nil)
 
-	cmd := &ClusterListCommand{}
-	cmd.name = "list"
+	cmd := &GetNodeInfoCommand{}
+	cmd.name = "info"
 	cmd.options = options
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
 
 	//usage on -help
 	cmd.flags.Usage = func() {
-		fmt.Println(usageTemplateClusterList)
+		fmt.Println(usageTemplateNodeInfo)
 	}
 
 	godbc.Ensure(cmd.flags != nil)
-	godbc.Ensure(cmd.name == "list")
+	godbc.Ensure(cmd.name == "info")
 
 	return cmd
 }
 
-func (a *ClusterListCommand) Name() string {
+func (a *GetNodeInfoCommand) Name() string {
 	return a.name
 
 }
 
-func (a *ClusterListCommand) Exec(args []string) error {
+func (a *GetNodeInfoCommand) Exec(args []string) error {
 
-	//parse args
 	a.flags.Parse(args)
 
 	//ensure we have Url
@@ -68,20 +69,19 @@ func (a *ClusterListCommand) Exec(args []string) error {
 		os.Exit(1)
 	}
 
-	s := a.flags.Args()
-
-	//ensure number of args
-	if len(s) > 0 {
-		return errors.New("Too many arguments!")
-
+	if len(args) < 1 {
+		return errors.New("Not enough arguments!")
 	}
-	//set url
+	if len(args) >= 2 {
+		return errors.New("Too many arguments!")
+	}
+	a.nodeId = a.flags.Arg(0)
 	url := a.options.Url
 
 	//do http GET and check if sent to server
-	r, err := http.Get(url + "/clusters")
+	r, err := http.Get(url + "/nodes/" + a.nodeId)
 	if err != nil {
-		fmt.Fprintf(stdout, "Error: Unable to send command to server: %v", err)
+		fmt.Fprintf(stdout, "Unable to send command to server: %v", err)
 		return err
 	}
 
@@ -104,19 +104,28 @@ func (a *ClusterListCommand) Exec(args []string) error {
 	} else {
 
 		//check json response
-		var body glusterfs.ClusterListResponse
+		var body glusterfs.NodeInfoResponse
 		err = utils.GetJsonFromResponse(r, &body)
 		if err != nil {
 			fmt.Println("Error: Bad json response from server")
 			return err
 		}
-
-		// Print to user cluster lists
-		str := "Clusters: \n"
-		for _, cluster := range body.Clusters {
-			str += cluster + "\n"
+		//print revelent results
+		s := "Node: " + a.nodeId + "\n\nZone: " + strconv.Itoa(body.Zone) + "\n\nCluster: " + body.ClusterId + "\n\nManage hostnames:\n"
+		for _, hostname := range body.Hostnames.Manage {
+			s += hostname + "\n"
 		}
-		fmt.Fprintf(stdout, str)
+		s += "\nStorage hostnames:\n"
+		for _, hostname := range body.Hostnames.Storage {
+			s += hostname + "\n"
+		}
+		s += "\nDevices:\n"
+		for _, device := range body.DevicesInfo {
+			s += device.Name + "\n"
+
+		}
+
+		fmt.Fprintf(stdout, s)
 	}
 	return nil
 

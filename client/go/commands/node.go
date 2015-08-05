@@ -23,51 +23,44 @@ import (
 	"github.com/lpabon/godbc"
 )
 
-type ClusterCommand struct {
+type NodeCommand struct {
 	Cmd
 	cmds    Commands
 	options *Options
+	cmd     Command
 }
 
 //function to create new cluster command
-func NewClusterCommand(options *Options) *ClusterCommand {
-
-	//require before we do any work
+func NewNodeCommand(options *Options) *NodeCommand {
 	godbc.Require(options != nil)
 
-	//create ClusterCommand object
-	cmd := &ClusterCommand{}
-	cmd.name = "cluster"
+	cmd := &NodeCommand{}
+	cmd.name = "node"
 	cmd.options = options
-
-	//setup subcommands
 	cmd.cmds = Commands{
-		NewClusterCreateCommand(options),
-		NewClusterInfoCommand(options),
-		NewClusterListCommand(options),
-		NewClusterDestroyCommand(options),
+		NewNodeAddCommand(options),
+		NewNodeInfoCommand(options),
+		NewNodeDestroyCommand(options),
 	}
 
-	//create flags
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
 
 	//usage on -help
 	cmd.flags.Usage = func() {
-		fmt.Println(usageTemplateCluster)
+		fmt.Println(usageTemplateNode)
 	}
 
-	//ensure before we return
 	godbc.Ensure(cmd.flags != nil)
-	godbc.Ensure(cmd.name == "cluster")
+	godbc.Ensure(cmd.name == "node")
 	return cmd
 }
 
-func (a *ClusterCommand) Name() string {
+func (a *NodeCommand) Name() string {
 	return a.name
 
 }
 
-func (a *ClusterCommand) Exec(args []string) error {
+func (a *NodeCommand) Exec(args []string) error {
 	a.flags.Parse(args)
 
 	//check number of args
@@ -82,6 +75,8 @@ func (a *ClusterCommand) Exec(args []string) error {
 			if err != nil {
 				return err
 			}
+			a.cmd = cmd
+
 			return nil
 		}
 	}

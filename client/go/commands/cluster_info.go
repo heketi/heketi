@@ -27,16 +27,16 @@ import (
 	"os"
 )
 
-type GetClusterInfoCommand struct {
+type ClusterInfoCommand struct {
 	Cmd
 	options *Options
 }
 
-func NewGetClusterInfoCommand(options *Options) *GetClusterInfoCommand {
+func NewClusterInfoCommand(options *Options) *ClusterInfoCommand {
 
 	godbc.Require(options != nil)
 
-	cmd := &GetClusterInfoCommand{}
+	cmd := &ClusterInfoCommand{}
 	cmd.name = "info"
 	cmd.options = options
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
@@ -52,12 +52,12 @@ func NewGetClusterInfoCommand(options *Options) *GetClusterInfoCommand {
 	return cmd
 }
 
-func (a *GetClusterInfoCommand) Name() string {
+func (a *ClusterInfoCommand) Name() string {
 	return a.name
 
 }
 
-func (a *GetClusterInfoCommand) Exec(args []string) error {
+func (a *ClusterInfoCommand) Exec(args []string) error {
 	//parse flags and set id
 	a.flags.Parse(args)
 
@@ -68,6 +68,7 @@ func (a *GetClusterInfoCommand) Exec(args []string) error {
 	}
 
 	s := a.flags.Args()
+	fmt.Println(len(s))
 
 	//ensure correct number of args
 	if len(s) < 1 {

@@ -26,16 +26,16 @@ import (
 	"os"
 )
 
-type DestroyClusterCommand struct {
+type ClusterDestroyCommand struct {
 	Cmd
 	options *Options
 }
 
-func NewDestroyClusterCommand(options *Options) *DestroyClusterCommand {
+func NewClusterDestroyCommand(options *Options) *ClusterDestroyCommand {
 
 	godbc.Require(options != nil)
 
-	cmd := &DestroyClusterCommand{}
+	cmd := &ClusterDestroyCommand{}
 	cmd.name = "destroy"
 	cmd.options = options
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
@@ -51,12 +51,12 @@ func NewDestroyClusterCommand(options *Options) *DestroyClusterCommand {
 	return cmd
 }
 
-func (a *DestroyClusterCommand) Name() string {
+func (a *ClusterDestroyCommand) Name() string {
 	return a.name
 
 }
 
-func (a *DestroyClusterCommand) Exec(args []string) error {
+func (a *ClusterDestroyCommand) Exec(args []string) error {
 
 	//parse args
 	a.flags.Parse(args)

@@ -30,22 +30,22 @@ import (
 /*** GENERAL COMMAND LINE TESTS BEGIN ***/
 
 //tests object creation
-func TestNewClusterCommand(t *testing.T) {
+func TestNewNodeCommand(t *testing.T) {
 
 	options := &Options{
 		Url: "soaps",
 	}
 
 	//assert object creation is correct
-	c := NewClusterCommand(options)
+	c := NewNodeCommand(options)
 	tests.Assert(t, c.options == options)
-	tests.Assert(t, c.name == "cluster")
+	tests.Assert(t, c.name == "node")
 	tests.Assert(t, c.flags != nil)
-	tests.Assert(t, len(c.cmds) == 4)
+	tests.Assert(t, len(c.cmds) == 3)
 }
 
 //tests too little args
-func TestClusterCommandTooLittleArguments(t *testing.T) {
+func TestNodeCommandTooLittleArguments(t *testing.T) {
 	defer os.Remove("heketi.db")
 
 	// Create the app
@@ -67,10 +67,10 @@ func TestClusterCommandTooLittleArguments(t *testing.T) {
 	var b bytes.Buffer
 	defer tests.Patch(&stdout, &b).Restore()
 
-	ClusterCommand := NewClusterCommand(options)
+	NodeCommand := NewNodeCommand(options)
 
 	//too little args
-	err := ClusterCommand.Exec([]string{})
+	err := NodeCommand.Exec([]string{})
 
 	//make sure not enough args
 	tests.Assert(t, err != nil, err)
@@ -79,7 +79,7 @@ func TestClusterCommandTooLittleArguments(t *testing.T) {
 }
 
 //tests too many arguments
-func TestClusterCommandTooManyArguments(t *testing.T) {
+func TestNodeCommandTooManyArguments(t *testing.T) {
 	defer os.Remove("heketi.db")
 
 	// Create the app
@@ -101,11 +101,11 @@ func TestClusterCommandTooManyArguments(t *testing.T) {
 	var b bytes.Buffer
 	defer tests.Patch(&stdout, &b).Restore()
 
-	ClusterCommand := NewClusterCommand(options)
+	NodeCommand := NewNodeCommand(options)
 
 	//add too many args
-	var str = []string{"create", "one", "two", "three"}
-	err := ClusterCommand.Exec(str)
+	var str = []string{"info", "one", "two", "three"}
+	err := NodeCommand.Exec(str)
 
 	//make sure too many args
 	tests.Assert(t, err != nil, err)
@@ -114,7 +114,7 @@ func TestClusterCommandTooManyArguments(t *testing.T) {
 }
 
 //tests command not found
-func TestClusterCommandNotFound(t *testing.T) {
+func TestNodeCommandNotFound(t *testing.T) {
 	defer os.Remove("heketi.db")
 
 	// Create the app
@@ -136,11 +136,11 @@ func TestClusterCommandNotFound(t *testing.T) {
 	var b bytes.Buffer
 	defer tests.Patch(&stdout, &b).Restore()
 
-	ClusterCommand := NewClusterCommand(options)
+	NodeCommand := NewNodeCommand(options)
 
 	//make first arg not a recognized command
 	var str = []string{"NotACommand"}
-	err := ClusterCommand.Exec(str)
+	err := NodeCommand.Exec(str)
 
 	//make sure command not found
 	tests.Assert(t, err != nil, err)
@@ -148,12 +148,8 @@ func TestClusterCommandNotFound(t *testing.T) {
 
 }
 
-/*** GENERAL COMMAND LINE TESTS END ***/
-
-/*** MAIN TESTS BEGIN ***/
-
-//tests cluster info and destroy
-func TestNewGetClusterInfoAndDestroy(t *testing.T) {
+//tests Node info and destroy
+func TestNewGetNodeAddAndInfoAndDestroy(t *testing.T) {
 	defer os.Remove("heketi.db")
 
 	// Create the app
@@ -188,29 +184,47 @@ func TestNewGetClusterInfoAndDestroy(t *testing.T) {
 	MockClusterId := MockClusterIdArray[1]
 	b.Reset()
 
-	//set destroy id to our id
-	clusterInfo := NewClusterInfoCommand(options)
+	//create mock Node
+	mockNode := NewNodeAddCommand(options)
 
-	//assert that cluster info Exec succeeds and prints correctly
-	args := []string{MockClusterId}
-	err = clusterInfo.Exec(args)
+	//create new Node
+	mockNode.zone = 1
+	mockNode.clusterId = MockClusterId
+	mockNode.storageHostNames = "storage.hostname.com"
+	mockNode.managmentHostNames = "manage.hostname.com"
+	err = mockNode.Exec([]string{})
+	tests.Assert(t, err == nil)
+	b.Reset()
+
+	//get Node id
+	mockClusterNodeId := NewClusterInfoCommand(options)
+	err = mockClusterNodeId.Exec([]string{MockClusterId})
+	tests.Assert(t, err == nil)
+	nodeIdArray := strings.SplitAfter(b.String(), "\n")
+	tests.Assert(t, len(nodeIdArray) >= 2)
+	nodeId := strings.TrimSpace(nodeIdArray[2])
+
+	// //assert that Node info Exec succeeds and prints correctly
+	nodeInfo := NewNodeInfoCommand(options)
+	args := []string{nodeId}
+	err = nodeInfo.Exec(args)
 	tests.Assert(t, err == nil, err)
-	tests.Assert(t, strings.Contains(b.String(), "Cluster: "), b.String())
+	tests.Assert(t, strings.Contains(b.String(), "Zone: "), b.String())
 
-	//create destroy struct and destroy it
-	mockClusterDestroy := NewClusterDestroyCommand(options)
-	args = []string{MockClusterId}
-	err = mockClusterDestroy.Exec(args)
+	// //create destroy struct and destroy node
+	mockNodeDestroy := NewNodeDestroyCommand(options)
+	args = []string{nodeId}
+	err = mockNodeDestroy.Exec(args)
 	tests.Assert(t, err == nil)
 
-	//assert that we cannot get info on destroyed cluster
-	err = clusterInfo.Exec([]string{})
+	// //assert that we cannot get info on destroyed Node
+	err = nodeInfo.Exec([]string{})
 	tests.Assert(t, err != nil)
 
 }
 
 //tests for bad id
-func TestNewGetClusterInfoBadID(t *testing.T) {
+func TestNewGetNodeInfoBadID(t *testing.T) {
 	defer os.Remove("heketi.db")
 
 	// Create the app
@@ -233,93 +247,18 @@ func TestNewGetClusterInfoBadID(t *testing.T) {
 	defer tests.Patch(&stdout, &b).Restore()
 
 	//set destroy id to our id
-	clusterInfo := NewClusterInfoCommand(options)
-	clusterId := "penguins are the key to something"
+	nodeInfo := NewNodeInfoCommand(options)
+	nodeId := "penguins are the key to something"
 
 	//assert that cluster info Exec FAILS and with bad id
-	args := []string{clusterId}
-	err := clusterInfo.Exec(args)
+	args := []string{nodeId}
+	err := nodeInfo.Exec(args)
 	tests.Assert(t, err != nil, err)
 	tests.Assert(t, err.Error() != "")
 
 }
 
-// test cluster list
-func TestNewGetClusterList(t *testing.T) {
-	defer os.Remove("heketi.db")
-
-	// Create the app
-	app := glusterfs.NewApp()
-	defer app.Close()
-	router := mux.NewRouter()
-	app.SetRoutes(router)
-
-	// Setup the server
-	ts := httptest.NewServer(router)
-	defer ts.Close()
-
-	//set options
-	options := &Options{
-		Url: ts.URL,
-	}
-
-	//create b to get values of stdout
-	var b bytes.Buffer
-	defer tests.Patch(&stdout, &b).Restore()
-
-	//create mock cluster and mock destroy
-	mockCluster := NewClusterCreateCommand(options)
-
-	//create new cluster
-	err := mockCluster.Exec([]string{})
-	tests.Assert(t, err == nil)
-
-	//assert cluster was created
-	tests.Assert(t, strings.Contains(b.String(), "Cluster id: "), b.String())
-	b.Reset()
-
-	//create new list command
-	listCommand := NewClusterListCommand(options)
-	err = listCommand.Exec([]string{})
-	tests.Assert(t, err == nil)
-
-	//asert stdout is correct
-	tests.Assert(t, strings.Contains(b.String(), "Clusters: "), b.String())
-	tests.Assert(t, len(b.String()) > len("Clusters : "))
-}
-
-//test cluster create
-func TestClusterPostSuccess(t *testing.T) {
-	defer os.Remove("heketi.db")
-	// Create the app
-	app := glusterfs.NewApp()
-	defer app.Close()
-	router := mux.NewRouter()
-	app.SetRoutes(router)
-
-	// Setup the server
-	ts := httptest.NewServer(router)
-	defer ts.Close()
-
-	options := &Options{
-		Url: ts.URL,
-	}
-
-	//create bytes.Buffer so we can read stdout
-	var b bytes.Buffer
-	defer tests.Patch(&stdout, &b).Restore()
-
-	//assert cluster creation
-	cluster := NewClusterCreateCommand(options)
-	tests.Assert(t, cluster != nil)
-
-	//execute and assert works
-	err := cluster.Exec([]string{})
-	tests.Assert(t, err == nil)
-	tests.Assert(t, strings.Contains(b.String(), "Cluster id:"), b.String())
-}
-
-func TestClusterPostFailure(t *testing.T) {
+func TestNodePostFailure(t *testing.T) {
 	defer os.Remove("heketi.db")
 
 	// Create the app
@@ -341,7 +280,7 @@ func TestClusterPostFailure(t *testing.T) {
 	defer tests.Patch(&stdout, &b).Restore()
 
 	//create cluster
-	cluster := NewClusterCreateCommand(options)
+	cluster := NewNodeAddCommand(options)
 	tests.Assert(t, cluster != nil)
 
 	//execute

@@ -66,6 +66,7 @@ func main() {
 	//all first level commands go here (cluster, node, device, volume)
 	cmds := commands.Commands{
 		commands.NewClusterCommand(&options),
+		commands.NewNodeCommand(&options),
 	}
 
 	for _, cmd := range cmds {

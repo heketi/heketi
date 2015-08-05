@@ -20,44 +20,43 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/heketi/heketi/apps/glusterfs"
 	"github.com/heketi/heketi/utils"
 	"github.com/lpabon/godbc"
 	"net/http"
 	"os"
 )
 
-type ClusterListCommand struct {
+type NodeDestroyCommand struct {
 	Cmd
 	options *Options
 }
 
-func NewClusterListCommand(options *Options) *ClusterListCommand {
+func NewNodeDestroyCommand(options *Options) *NodeDestroyCommand {
 
 	godbc.Require(options != nil)
 
-	cmd := &ClusterListCommand{}
-	cmd.name = "list"
+	cmd := &NodeDestroyCommand{}
+	cmd.name = "destroy"
 	cmd.options = options
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
 
 	//usage on -help
 	cmd.flags.Usage = func() {
-		fmt.Println(usageTemplateClusterList)
+		fmt.Println(usageTemplateNodeDestroy)
 	}
 
 	godbc.Ensure(cmd.flags != nil)
-	godbc.Ensure(cmd.name == "list")
+	godbc.Ensure(cmd.name == "destroy")
 
 	return cmd
 }
 
-func (a *ClusterListCommand) Name() string {
+func (a *NodeDestroyCommand) Name() string {
 	return a.name
 
 }
 
-func (a *ClusterListCommand) Exec(args []string) error {
+func (a *NodeDestroyCommand) Exec(args []string) error {
 
 	//parse args
 	a.flags.Parse(args)
@@ -70,16 +69,29 @@ func (a *ClusterListCommand) Exec(args []string) error {
 
 	s := a.flags.Args()
 
-	//ensure number of args
-	if len(s) > 0 {
-		return errors.New("Too many arguments!")
-
+	//ensure proper number of args
+	if len(s) < 1 {
+		return errors.New("Not enough arguments!")
 	}
+	if len(s) >= 2 {
+		return errors.New("Too many arguments!")
+	}
+
+	//set clusterId
+	nodeId := a.flags.Arg(0)
+
 	//set url
 	url := a.options.Url
 
-	//do http GET and check if sent to server
-	r, err := http.Get(url + "/clusters")
+	//create destroy request object
+	req, err := http.NewRequest("DELETE", url+"/nodes/"+nodeId, nil)
+	if err != nil {
+		fmt.Fprintf(stdout, "Error: Unable to initiate destroy: %v", err)
+		return err
+	}
+
+	//destroy node
+	r, err := http.DefaultClient.Do(req)
 	if err != nil {
 		fmt.Fprintf(stdout, "Error: Unable to send command to server: %v", err)
 		return err
@@ -94,29 +106,11 @@ func (a *ClusterListCommand) Exec(args []string) error {
 		return errors.New(s)
 	}
 
-	if a.options.Json {
-		// Print JSON body
-		s, err := utils.GetStringFromResponse(r)
-		if err != nil {
-			return err
-		}
-		fmt.Fprint(stdout, s)
+	//if all is well, print stuff
+	if !a.options.Json {
+		fmt.Fprintf(stdout, "Successfully destroyed node with id: %v ", nodeId)
 	} else {
-
-		//check json response
-		var body glusterfs.ClusterListResponse
-		err = utils.GetJsonFromResponse(r, &body)
-		if err != nil {
-			fmt.Println("Error: Bad json response from server")
-			return err
-		}
-
-		// Print to user cluster lists
-		str := "Clusters: \n"
-		for _, cluster := range body.Clusters {
-			str += cluster + "\n"
-		}
-		fmt.Fprintf(stdout, str)
+		return errors.New("Cannot return json for node destroy")
 	}
 	return nil
 

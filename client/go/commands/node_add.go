@@ -18,6 +18,7 @@ package commands
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -28,37 +29,45 @@ import (
 	"os"
 )
 
-type ClusterCreateCommand struct {
+type NodeAddCommand struct {
 	Cmd
-	options *Options
+	options            *Options
+	zone               int
+	managmentHostNames string
+	storageHostNames   string
+	clusterId          string
 }
 
-func NewClusterCreateCommand(options *Options) *ClusterCreateCommand {
+func NewNodeAddCommand(options *Options) *NodeAddCommand {
 
 	godbc.Require(options != nil)
 
-	cmd := &ClusterCreateCommand{}
-	cmd.name = "create"
+	cmd := &NodeAddCommand{}
+	cmd.name = "add"
 	cmd.options = options
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
+	cmd.flags.IntVar(&cmd.zone, "zone", 0, "give zone for node")
+	cmd.flags.StringVar(&cmd.clusterId, "cluster", "", "which cluster to add node to")
+	cmd.flags.StringVar(&cmd.managmentHostNames, "managment-host-name", "", "managment host name")
+	cmd.flags.StringVar(&cmd.storageHostNames, "storage-host-name", "", "storage host name")
 
 	//usage on -help
 	cmd.flags.Usage = func() {
-		fmt.Println(usageTemplateClusterCreate)
+		fmt.Println(usageTemplateNodeAdd)
 	}
 
 	godbc.Ensure(cmd.flags != nil)
-	godbc.Ensure(cmd.name == "create")
+	godbc.Ensure(cmd.name == "add")
 
 	return cmd
 }
 
-func (a *ClusterCreateCommand) Name() string {
+func (a *NodeAddCommand) Name() string {
 	return a.name
 
 }
 
-func (a *ClusterCreateCommand) Exec(args []string) error {
+func (a *NodeAddCommand) Exec(args []string) error {
 
 	//parse args
 	a.flags.Parse(args)
@@ -70,23 +79,33 @@ func (a *ClusterCreateCommand) Exec(args []string) error {
 	}
 
 	s := a.flags.Args()
-	//ensure length
-	if len(s) > 0 {
+	if len(s) != 0 {
 		return errors.New("Too many arguments!")
 	}
-
 	//set url
 	url := a.options.Url
 
-	//do http POST and check if sent to server
-	r, err := http.Post(url+"/clusters", "application/json", bytes.NewBuffer([]byte("{}")))
+	//create request blob
+	requestBlob := glusterfs.NodeAddRequest{}
+	requestBlob.ClusterId = a.clusterId
+	requestBlob.Hostnames.Manage = []string{a.managmentHostNames}
+	requestBlob.Hostnames.Storage = []string{a.storageHostNames}
+	requestBlob.Zone = a.zone
+
+	//marshal blob to get []byte to be Post'd
+	request, err := json.Marshal(requestBlob)
+	if err != nil {
+		return errors.New("json marshaling did not work")
+	}
+	//do Post and check if sent to server
+	r, err := http.Post(url+"/nodes", "application/json", bytes.NewBuffer(request))
 	if err != nil {
 		fmt.Fprintf(stdout, "Error: Unable to send command to server: %v", err)
 		return err
 	}
 
 	//check status code
-	if r.StatusCode != http.StatusCreated {
+	if r.StatusCode != http.StatusAccepted {
 		s, err := utils.GetStringFromResponse(r)
 		if err != nil {
 			return err
@@ -94,25 +113,10 @@ func (a *ClusterCreateCommand) Exec(args []string) error {
 		return errors.New(s)
 	}
 
-	if a.options.Json {
-		// Print JSON body
-		s, err := utils.GetStringFromResponse(r)
-		if err != nil {
-			return err
-		}
-		fmt.Fprint(stdout, s)
+	if !a.options.Json {
+		fmt.Fprintf(stdout, "Successfully created node! on cluster %v", a.clusterId)
 	} else {
-
-		//check json response
-		var body glusterfs.ClusterInfoResponse
-		err = utils.GetJsonFromResponse(r, &body)
-		if err != nil {
-			fmt.Println("Error: Bad json response from server")
-			return err
-		}
-		//if all is well, print stuff
-		fmt.Fprintf(stdout, "Cluster id: %v", body.Id)
+		return errors.New("Cannot return json for node add")
 	}
 	return nil
-
 }
