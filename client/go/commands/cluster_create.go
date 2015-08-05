@@ -83,17 +83,25 @@ func (a *CreateNewClusterCommand) Exec(args []string) error {
 		return errors.New(s)
 	}
 
-	//check json response
-	var body glusterfs.ClusterInfoResponse
-	err = utils.GetJsonFromResponse(r, &body)
-	if err != nil {
-		fmt.Println("Error: Bad json response from server")
-		return err
+	if a.options.Json {
+		// Print JSON body
+		s, err := utils.GetStringFromResponse(r)
+		if err != nil {
+			return err
+		}
+		fmt.Fprint(stdout, s)
+	} else {
+
+		//check json response
+		var body glusterfs.ClusterInfoResponse
+		err = utils.GetJsonFromResponse(r, &body)
+		if err != nil {
+			fmt.Println("Error: Bad json response from server")
+			return err
+		}
+		//if all is well, print stuff
+		fmt.Fprintf(stdout, "Cluster id: %v", body.Id)
 	}
-
-	//if all is well, print stuff
-	fmt.Fprintf(stdout, "Cluster id: %v", body.Id)
-
 	return nil
 
 }
