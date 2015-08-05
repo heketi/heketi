@@ -40,6 +40,11 @@ func NewDestroyClusterCommand(options *Options) *DestroyClusterCommand {
 	cmd.options = options
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
 
+	//usage on -help
+	cmd.flags.Usage = func() {
+		fmt.Println(usageTemplateClusterDestroy)
+	}
+
 	godbc.Ensure(cmd.flags != nil)
 	godbc.Ensure(cmd.name == "destroy")
 

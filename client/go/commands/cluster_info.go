@@ -41,6 +41,11 @@ func NewGetClusterInfoCommand(options *Options) *GetClusterInfoCommand {
 	cmd.options = options
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
 
+	//usage on -help
+	cmd.flags.Usage = func() {
+		fmt.Println(usageTemplateClusterInfo)
+	}
+
 	godbc.Ensure(cmd.flags != nil)
 	godbc.Ensure(cmd.name == "info")
 

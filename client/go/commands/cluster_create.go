@@ -42,6 +42,11 @@ func NewCreateNewClusterCommand(options *Options) *CreateNewClusterCommand {
 	cmd.options = options
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
 
+	//usage on -help
+	cmd.flags.Usage = func() {
+		fmt.Println(usageTemplateClusterCreate)
+	}
+
 	godbc.Ensure(cmd.flags != nil)
 	godbc.Ensure(cmd.name == "create")
 

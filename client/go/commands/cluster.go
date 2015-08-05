@@ -19,6 +19,7 @@ package commands
 import (
 	"errors"
 	"flag"
+	"fmt"
 	"github.com/lpabon/godbc"
 )
 
@@ -50,6 +51,11 @@ func NewClusterCommand(options *Options) *ClusterCommand {
 
 	//create flags
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
+
+	//usage on -help
+	cmd.flags.Usage = func() {
+		fmt.Println(usageTemplateCluster)
+	}
 
 	//ensure before we return
 	godbc.Ensure(cmd.flags != nil)
