@@ -17,7 +17,6 @@
 package commands
 
 import (
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -84,25 +83,29 @@ func (a *GetClusterListCommand) Exec(args []string) error {
 		return errors.New(s)
 	}
 
-	//check json response
-	var body glusterfs.ClusterListResponse
-	err = utils.GetJsonFromResponse(r, &body)
-	if err != nil {
-		fmt.Println("Error: Bad json response from server")
-		return err
-	}
+	if a.options.Json {
+		// Print JSON body
+		s, err := utils.GetStringFromResponse(r)
+		if err != nil {
+			return err
+		}
+		fmt.Fprint(stdout, s)
+	} else {
 
-	//if all is well, print stuff
-	if a.options.Json == false {
+		//check json response
+		var body glusterfs.ClusterListResponse
+		err = utils.GetJsonFromResponse(r, &body)
+		if err != nil {
+			fmt.Println("Error: Bad json response from server")
+			return err
+		}
+
+		// Print to user cluster lists
 		str := "Clusters: \n"
 		for _, cluster := range body.Clusters {
 			str += cluster + "\n"
 		}
 		fmt.Fprintf(stdout, str)
-	}
-	if a.options.Json == true {
-		res, _ := json.Marshal(body)
-		fmt.Fprintf(stdout, string(res))
 	}
 	return nil
 

@@ -17,7 +17,6 @@
 package commands
 
 import (
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -86,34 +85,34 @@ func (a *GetClusterInfoCommand) Exec(args []string) error {
 		}
 		return errors.New(s)
 	}
+	if a.options.Json {
+		// Print JSON body
+		s, err := utils.GetStringFromResponse(r)
+		if err != nil {
+			return err
+		}
+		fmt.Fprint(stdout, s)
+	} else {
 
-	//check json response
-	var body glusterfs.ClusterInfoResponse
-	err = utils.GetJsonFromResponse(r, &body)
-	if err != nil {
-		fmt.Println("Error: Bad json response from server")
-		return err
-	}
+		//check json response
+		var body glusterfs.ClusterInfoResponse
+		err = utils.GetJsonFromResponse(r, &body)
+		if err != nil {
+			fmt.Println("Error: Bad json response from server")
+			return err
+		}
 
-	//print revelent results
-	if a.options.Json == false {
-		s := "Cluster: " + clusterId + " \n" + "Nodes: \n"
+		//print revelent results
+		str := "Cluster: " + clusterId + " \n" + "Nodes: \n"
 		for _, node := range body.Nodes {
-			s += node + "\n"
+			str += node + "\n"
 		}
 
-		s += "Volumes: \n"
+		str += "Volumes: \n"
 		for _, volume := range body.Volumes {
-			s += volume + "\n"
+			str += volume + "\n"
 		}
-
-		fmt.Fprintf(stdout, s)
-	}
-
-	//if json is yes, pass back some json
-	if a.options.Json == true {
-		res, _ := json.Marshal(body)
-		fmt.Fprintf(stdout, string(res))
+		fmt.Fprintf(stdout, str)
 	}
 	return nil
 

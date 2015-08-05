@@ -53,11 +53,6 @@ func main() {
 		fmt.Fprintf(stdout, "You need a server!\n")
 		os.Exit(1)
 	}
-	if options.Json != false && options.Json != true {
-		fmt.Fprintf(stdout, "Invalid Argument for '-json'\n")
-		os.Exit(1)
-	}
-
 	//all first level commands go here (cluster, node, device, volume)
 	cmds := commands.Commands{
 		commands.NewClusterCommand(&options),
