@@ -16,22 +16,21 @@
 
 package ssh
 
-// :TODO: This file needs logging
-
 import (
 	"bytes"
 	"fmt"
+	"github.com/heketi/heketi/utils"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 	"io/ioutil"
 	"log"
 	"net"
 	"os"
-	"sync"
 )
 
 type SshExec struct {
 	clientConfig *ssh.ClientConfig
+	logger       *utils.Logger
 }
 
 func getKeyFile(file string) (key ssh.Signer, err error) {
@@ -47,9 +46,10 @@ func getKeyFile(file string) (key ssh.Signer, err error) {
 	return
 }
 
-func NewSshExecWithAuth(user string) *SshExec {
+func NewSshExecWithAuth(logger *utils.Logger, user string) *SshExec {
 
 	sshexec := &SshExec{}
+	sshexec.logger = logger
 
 	authSocket := os.Getenv("SSH_AUTH_SOCK")
 	if authSocket == "" {
@@ -78,12 +78,14 @@ func NewSshExecWithAuth(user string) *SshExec {
 	return sshexec
 }
 
-func NewSshExecWithKeyFile(user string, file string) *SshExec {
+func NewSshExecWithKeyFile(logger *utils.Logger, user string, file string) *SshExec {
 
 	var key ssh.Signer
 	var err error
 
 	sshexec := &SshExec{}
+	sshexec.logger = logger
+
 	// Now in the main function DO:
 	if key, err = getKeyFile(file); err != nil {
 		fmt.Println("Unable to get keyfile")
@@ -101,39 +103,36 @@ func NewSshExecWithKeyFile(user string, file string) *SshExec {
 }
 
 // This function was taken from https://github.com/coreos/etcd-manager/blob/master/main.go
-func (s *SshExec) ConnectAndExec(host string, commands []string, wg *sync.WaitGroup) ([]string, error) {
-	if wg != nil {
-		defer wg.Done()
-	}
+func (s *SshExec) ConnectAndExec(host string, commands []string) ([]string, error) {
 
 	buffers := make([]string, len(commands))
 
 	// :TODO: Will need a timeout here in case the server does not respond
 	client, err := ssh.Dial("tcp", host, s.clientConfig)
 	if err != nil {
-		//logStderr(host, fmt.Sprintf("failed to create SSH connection: %s\n", err))
+		s.logger.Warning("Failed to create SSH connection to %v: %v", host, err)
 		return nil, err
 	}
 
+	// Execute each command
 	for index, command := range commands {
 
 		session, err := client.NewSession()
 		if err != nil {
-			fmt.Printf("Unable to connect to [%v]: %v\n", command, err)
-			//logStderr(host, fmt.Sprintf("failed to create SSH session: %s", err))
+			s.logger.LogError("Unable to create SSH session: %v", err)
 			return nil, err
 		}
-
 		defer session.Close()
 
+		// Create a buffer to trap session output
 		var b bytes.Buffer
 		session.Stdout = &b
+		session.Stderr = &b
 
 		// Save the buffer for the caller
-
 		if err := session.Run(command); err != nil {
-			fmt.Printf("Failed to run command [%v] on [%v]: %v\n", command, host, err)
-			// logStderr(host, fmt.Sprintf("error running command: %s", err))
+			s.logger.LogError("Failed to run command [%v] on %v: %v",
+				command, host, err)
 			return nil, err
 		}
 		buffers[index] = b.String()

@@ -42,11 +42,8 @@ func TestVolumeCreateBadJson(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -70,11 +67,8 @@ func TestVolumeCreateNoTopology(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -98,11 +92,8 @@ func TestVolumeCreateSmallSize(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -130,11 +121,8 @@ func TestVolumeCreateBadClusters(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -175,11 +163,8 @@ func TestVolumeCreateBadSnapshotFactor(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -247,11 +232,8 @@ func TestVolumeCreate(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -313,11 +295,8 @@ func TestVolumeInfoIdNotFound(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -337,11 +316,8 @@ func TestVolumeInfo(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -396,11 +372,8 @@ func TestVolumeListEmpty(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -426,11 +399,8 @@ func TestVolumeList(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -487,11 +457,8 @@ func TestVolumeDeleteIdNotFound(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -513,11 +480,8 @@ func TestVolumeDelete(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -575,11 +539,8 @@ func TestVolumeExpandBadJson(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -603,11 +564,8 @@ func TestVolumeExpandIdNotFound(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -638,11 +596,8 @@ func TestVolumeExpandSizeTooSmall(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -670,11 +625,8 @@ func TestVolumeExpand(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)

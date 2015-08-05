@@ -121,6 +121,20 @@ func (c *ClusterEntry) Unmarshal(buffer []byte) error {
 	return nil
 }
 
+func (c *ClusterEntry) PeerNode(tx *bolt.Tx) (*NodeEntry, error) {
+
+	if len(c.Info.Nodes) > 0 {
+		node, err := NewNodeEntryFromId(tx, c.Info.Nodes[0])
+		if err != nil {
+			return nil, err
+		}
+
+		return node, nil
+	}
+
+	return nil, nil
+}
+
 func (c *ClusterEntry) NodeAdd(id string) {
 	c.Info.Nodes = append(c.Info.Nodes, id)
 	c.Info.Nodes.Sort()

@@ -137,11 +137,8 @@ func TestNewClusterEntryFromIdNotFound(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 
 	// Test for ID not found
@@ -157,11 +154,8 @@ func TestNewClusterEntryFromId(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 
 	// Create a cluster
@@ -201,11 +195,8 @@ func TestNewClusterEntrySaveDelete(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 
 	// Create a cluster
@@ -332,11 +323,8 @@ func TestNewClusterEntryNewInfoResponse(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 
 	// Create a cluster

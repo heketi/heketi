@@ -17,29 +17,79 @@
 package main
 
 import (
+	"encoding/json"
+	"flag"
 	"fmt"
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
+	"github.com/heketi/heketi/apps"
 	"github.com/heketi/heketi/apps/glusterfs"
-	"github.com/heketi/heketi/rest"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 )
 
+type Config struct {
+	Port string `json:"port"`
+}
+
 var (
 	HEKETI_VERSION = "(dev)"
+	configfile     string
+	showVersion    bool
 )
 
-func main() {
+func init() {
+	flag.StringVar(&configfile, "config", "", "Configuration file")
+	flag.BoolVar(&showVersion, "version", false, "Show version")
+}
 
+func printVersion() {
 	fmt.Printf("Heketi %v\n", HEKETI_VERSION)
+}
 
-	var app rest.Application
+func main() {
+	flag.Parse()
+	printVersion()
+
+	// Quit here if all we needed to do was show version
+	if showVersion {
+		return
+	}
+
+	// Check configuration file was given
+	if configfile == "" {
+		fmt.Fprintln(os.Stderr, "Please provide configuration file")
+		os.Exit(1)
+	}
+
+	// Read configuration
+	fp, err := os.Open(configfile)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to open config file %v: %v\n",
+			configfile,
+			err.Error())
+		os.Exit(1)
+	}
+	defer fp.Close()
+
+	configParser := json.NewDecoder(fp)
+	var options Config
+	if err = configParser.Decode(&options); err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to parse %v: %v\n",
+			configfile,
+			err.Error())
+		os.Exit(1)
+	}
+
+	// Go to the beginning of the file when we pass it
+	// to the application
+	fp.Seek(0, os.SEEK_SET)
 
 	// Setup a new GlusterFS application
-	app = glusterfs.NewApp()
+	var app apps.Application
+	app = glusterfs.NewApp(fp)
 	if app == nil {
 		fmt.Println("Unable to start application")
 		os.Exit(1)
@@ -48,7 +98,7 @@ func main() {
 	// Create a router and do not allow any routes
 	// unless defined.
 	router := mux.NewRouter().StrictSlash(true)
-	err := app.SetRoutes(router)
+	err = app.SetRoutes(router)
 	if err != nil {
 		fmt.Println("Unable to create http server endpoints")
 		os.Exit(1)
@@ -79,6 +129,6 @@ func main() {
 	}()
 
 	// Start the server.
-	log.Fatal(http.ListenAndServe(":8080", n))
+	log.Fatal(http.ListenAndServe(":"+options.Port, n))
 
 }

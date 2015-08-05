@@ -18,7 +18,7 @@ package glusterfs
 
 import (
 	"bytes"
-	"fmt"
+	"errors"
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/tests"
@@ -27,6 +27,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 )
@@ -40,11 +41,8 @@ func TestNodeAddBadRequests(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -113,18 +111,15 @@ func TestNodeAddBadRequests(t *testing.T) {
 	// Check that it returns that the cluster id is not found
 	r, err = http.Post(ts.URL+"/nodes", "application/json", bytes.NewBuffer(request))
 	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusNotFound)
+	tests.Assert(t, r.StatusCode == http.StatusNotFound, r.StatusCode)
 }
 
 func TestNodeAddDelete(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -149,16 +144,16 @@ func TestNodeAddDelete(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Create node on this cluster
-	request = []byte(fmt.Sprintf(`{
-		"cluster" : "%v",
+	request = []byte(`{
+		"cluster" : "` + clusterinfo.Id + `",
 		"hostnames" : {
 			"storage" : [ "storage.hostname.com" ],
 			"manage" : [ "manage.hostname.com"  ]
 		},
 		"zone" : 1
-    }`, clusterinfo.Id))
+    }`)
 
-	// Post nothing
+	// Create node
 	r, err = http.Post(ts.URL+"/nodes", "application/json", bytes.NewBuffer(request))
 	tests.Assert(t, err == nil)
 	tests.Assert(t, r.StatusCode == http.StatusAccepted)
@@ -311,11 +306,8 @@ func TestNodeInfoIdNotFound(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -335,11 +327,8 @@ func TestNodeInfo(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -383,11 +372,8 @@ func TestNodeDeleteErrors(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -417,12 +403,201 @@ func TestNodeDeleteErrors(t *testing.T) {
 	tests.Assert(t, err == nil)
 	tests.Assert(t, r.StatusCode == http.StatusNotFound)
 
-	// Delete node without a cluster there.. that's probably a really
-	// bad situation
-	req, err = http.NewRequest("DELETE", ts.URL+"/nodes/"+node.Info.Id, nil)
-	tests.Assert(t, err == nil)
-	r, err = http.DefaultClient.Do(req)
-	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusInternalServerError)
+}
 
+func TestNodePeerProbeFailure(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Create a cluster.  We at least one
+	// other node in the same cluster to execute a probe
+	err := setupSampleDbWithTopology(app.db,
+		1,     // clusters
+		4,     // nodes_per_cluster
+		4,     // devices_per_node,
+		50*GB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	// Setup the mock peer probe to fail
+	peerprobe_called := false
+	peerprobe_calls := 0
+	app.xo.MockPeerProbe = func(exec_host, newnode string) error {
+		peerprobe_calls++
+		peerprobe_called = true
+		return errors.New("Mock")
+	}
+
+	// Get cluter id
+	var clusterlist []string
+	err = app.db.View(func(tx *bolt.Tx) error {
+		var err error
+		clusterlist, err = ClusterList(tx)
+		return err
+	})
+	tests.Assert(t, err == nil)
+	tests.Assert(t, len(clusterlist) == 1)
+	clusterid := clusterlist[0]
+
+	// Create a node
+	request := []byte(`{
+		"cluster" : "` + clusterid + `",
+		"hostnames" : {
+			"storage" : [ "storage.hostname.com" ],
+			"manage" : [ "manage.hostname.com"  ]
+		},
+		"zone" : 1
+    }`)
+
+	// Create node
+	r, err := http.Post(ts.URL+"/nodes", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	location, err := r.Location()
+	tests.Assert(t, err == nil)
+
+	// Since we forced the MockPeerProbe above to fail, the request should fail
+	for {
+		r, err = http.Get(location.String())
+		tests.Assert(t, err == nil)
+		if r.Header.Get("X-Pending") == "true" {
+			tests.Assert(t, r.StatusCode == http.StatusOK)
+			time.Sleep(time.Millisecond * 10)
+		} else {
+			tests.Assert(t, r.StatusCode == http.StatusInternalServerError)
+			s, err := utils.GetStringFromResponse(r)
+			tests.Assert(t, err == nil)
+			tests.Assert(t, strings.TrimSpace(s) == "Mock")
+			tests.Assert(t, peerprobe_called == true)
+			tests.Assert(t, peerprobe_calls == 1)
+			break
+		}
+	}
+
+	// Check that the node has not been added to the db
+	var nodelist []string
+	var cluster *ClusterEntry
+	err = app.db.View(func(tx *bolt.Tx) error {
+		var err error
+		cluster, err = NewClusterEntryFromId(tx, clusterid)
+		if err != nil {
+			return err
+		}
+
+		nodelist = EntryKeys(tx, BOLTDB_BUCKET_NODE)
+		return nil
+	})
+	tests.Assert(t, err == nil)
+	tests.Assert(t, len(nodelist) == 4)
+	tests.Assert(t, len(cluster.Info.Nodes) == 4)
+}
+
+func TestNodePeerDetachFailure(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Create a cluster.  We do not want
+	// any drives in the node so we can delete easily
+	err := setupSampleDbWithTopology(app.db,
+		1,     // clusters
+		4,     // nodes_per_cluster
+		0,     // devices_per_node,
+		50*GB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	// Setup the mock peer probe to fail
+	peer_called := false
+	peer_calls := 0
+	app.xo.MockPeerDetach = func(exec_host, newnode string) error {
+		peer_calls++
+		peer_called = true
+		return errors.New("Mock")
+	}
+
+	// Get a node id
+	var nodeid string
+	err = app.db.View(func(tx *bolt.Tx) error {
+		clusterlist, err := ClusterList(tx)
+		if err != nil {
+			return err
+		}
+
+		cluster, err := NewClusterEntryFromId(tx, clusterlist[0])
+		if err != nil {
+			return err
+		}
+
+		nodeid = cluster.Info.Nodes[0]
+
+		return nil
+
+	})
+	tests.Assert(t, err == nil)
+	tests.Assert(t, nodeid != "")
+
+	// Delete node
+	req, err := http.NewRequest("DELETE", ts.URL+"/nodes/"+nodeid, nil)
+	tests.Assert(t, err == nil)
+	r, err := http.DefaultClient.Do(req)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	location, err := r.Location()
+	tests.Assert(t, err == nil)
+
+	// Since we forced the MockPeerDetach above to fail, the request should fail
+	for {
+		r, err = http.Get(location.String())
+		tests.Assert(t, err == nil)
+		if r.Header.Get("X-Pending") == "true" {
+			tests.Assert(t, r.StatusCode == http.StatusOK)
+			time.Sleep(time.Millisecond * 10)
+		} else {
+			tests.Assert(t, r.StatusCode == http.StatusInternalServerError)
+			s, err := utils.GetStringFromResponse(r)
+			tests.Assert(t, err == nil)
+			tests.Assert(t, strings.TrimSpace(s) == "Mock")
+			tests.Assert(t, peer_called == true)
+			tests.Assert(t, peer_calls == 1)
+			break
+		}
+	}
+
+	// Check that the node is still in the db
+	err = app.db.View(func(tx *bolt.Tx) error {
+		clusters, err := ClusterList(tx)
+		if err != nil {
+			return err
+		}
+
+		cluster, err := NewClusterEntryFromId(tx, clusters[0])
+		if err != nil {
+			return err
+		}
+		tests.Assert(t, utils.SortedStringHas(cluster.Info.Nodes, nodeid))
+
+		_, err = NewNodeEntryFromId(tx, nodeid)
+		return err
+	})
+	tests.Assert(t, err == nil)
 }
