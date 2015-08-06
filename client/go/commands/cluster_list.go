@@ -94,20 +94,30 @@ func (a *GetClusterListCommand) Exec(args []string) error {
 		return errors.New(s)
 	}
 
-	//check json response
-	var body glusterfs.ClusterListResponse
-	err = utils.GetJsonFromResponse(r, &body)
-	if err != nil {
-		fmt.Println("Error: Bad json response from server")
-		return err
-	}
+	if a.options.Json {
+		// Print JSON body
+		s, err := utils.GetStringFromResponse(r)
+		if err != nil {
+			return err
+		}
+		fmt.Fprint(stdout, s)
+	} else {
 
-	//if all is well, print stuff
-	str := "Clusters: \n"
-	for _, cluster := range body.Clusters {
-		str += cluster + "\n"
+		//check json response
+		var body glusterfs.ClusterListResponse
+		err = utils.GetJsonFromResponse(r, &body)
+		if err != nil {
+			fmt.Println("Error: Bad json response from server")
+			return err
+		}
+
+		// Print to user cluster lists
+		str := "Clusters: \n"
+		for _, cluster := range body.Clusters {
+			str += cluster + "\n"
+		}
+		fmt.Fprintf(stdout, str)
 	}
-	fmt.Fprintf(stdout, str)
 	return nil
 
 }

@@ -52,6 +52,7 @@ Use "heketi [command] -help" for more information about a command
 func init() {
 
 	flag.StringVar(&options.Url, "server", "", "server url goes here.")
+	flag.BoolVar(&options.Json, "json", false, "get response as json")
 
 	flag.Usage = func() {
 		fmt.Println(usageTemplateMain)
@@ -70,7 +71,6 @@ func main() {
 	for _, cmd := range cmds {
 		if flag.Arg(0) == cmd.Name() {
 
-			//check for err
 			err := cmd.Exec(flag.Args()[1:])
 			if err != nil {
 				fmt.Fprintf(stdout, "Error: %v\n", err)

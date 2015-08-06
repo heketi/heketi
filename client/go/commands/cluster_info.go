@@ -58,7 +58,6 @@ func (a *GetClusterInfoCommand) Name() string {
 }
 
 func (a *GetClusterInfoCommand) Exec(args []string) error {
-
 	//parse flags and set id
 	a.flags.Parse(args)
 
@@ -97,27 +96,35 @@ func (a *GetClusterInfoCommand) Exec(args []string) error {
 		}
 		return errors.New(s)
 	}
+	if a.options.Json {
+		// Print JSON body
+		s, err := utils.GetStringFromResponse(r)
+		if err != nil {
+			return err
+		}
+		fmt.Fprint(stdout, s)
+	} else {
 
-	//check json response
-	var body glusterfs.ClusterInfoResponse
-	err = utils.GetJsonFromResponse(r, &body)
-	if err != nil {
-		fmt.Println("Error: Bad json response from server")
-		return err
+		//check json response
+		var body glusterfs.ClusterInfoResponse
+		err = utils.GetJsonFromResponse(r, &body)
+		if err != nil {
+			fmt.Println("Error: Bad json response from server")
+			return err
+		}
+
+		//print revelent results
+		str := "Cluster: " + clusterId + " \n" + "Nodes: \n"
+		for _, node := range body.Nodes {
+			str += node + "\n"
+		}
+
+		str += "Volumes: \n"
+		for _, volume := range body.Volumes {
+			str += volume + "\n"
+		}
+		fmt.Fprintf(stdout, str)
 	}
-
-	//print revelent results
-	str := "Cluster: " + clusterId + " \n" + "Nodes: \n"
-	for _, node := range body.Nodes {
-		str += node + "\n"
-	}
-
-	str += "Volumes: \n"
-	for _, volume := range body.Volumes {
-		str += volume + "\n"
-	}
-
-	fmt.Fprintf(stdout, str)
 	return nil
 
 }
