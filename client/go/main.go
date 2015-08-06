@@ -62,12 +62,6 @@ func init() {
 func main() {
 	flag.Parse()
 
-	//ensure that we pass a server
-	if options.Url == "" {
-		fmt.Fprintf(stdout, "You need a server!\n")
-		os.Exit(1)
-	}
-
 	//all first level commands go here (cluster, node, device, volume)
 	cmds := commands.Commands{
 		commands.NewClusterCommand(&options),

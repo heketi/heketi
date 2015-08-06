@@ -24,6 +24,7 @@ import (
 	"github.com/heketi/heketi/utils"
 	"github.com/lpabon/godbc"
 	"net/http"
+	"os"
 )
 
 type GetClusterInfoCommand struct {
@@ -34,7 +35,6 @@ type GetClusterInfoCommand struct {
 func NewGetClusterInfoCommand(options *Options) *GetClusterInfoCommand {
 
 	godbc.Require(options != nil)
-	godbc.Require(options.Url != "")
 
 	cmd := &GetClusterInfoCommand{}
 	cmd.name = "info"
@@ -61,6 +61,12 @@ func (a *GetClusterInfoCommand) Exec(args []string) error {
 
 	//parse flags and set id
 	a.flags.Parse(args)
+
+	//ensure we have Url
+	if a.options.Url == "" {
+		fmt.Fprintf(stdout, "You need a server!\n")
+		os.Exit(1)
+	}
 
 	s := a.flags.Args()
 

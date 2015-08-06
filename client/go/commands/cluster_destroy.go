@@ -23,6 +23,7 @@ import (
 	"github.com/heketi/heketi/utils"
 	"github.com/lpabon/godbc"
 	"net/http"
+	"os"
 )
 
 type DestroyClusterCommand struct {
@@ -33,7 +34,6 @@ type DestroyClusterCommand struct {
 func NewDestroyClusterCommand(options *Options) *DestroyClusterCommand {
 
 	godbc.Require(options != nil)
-	godbc.Require(options.Url != "")
 
 	cmd := &DestroyClusterCommand{}
 	cmd.name = "destroy"
@@ -60,6 +60,12 @@ func (a *DestroyClusterCommand) Exec(args []string) error {
 
 	//parse args
 	a.flags.Parse(args)
+
+	//ensure we have Url
+	if a.options.Url == "" {
+		fmt.Fprintf(stdout, "You need a server!\n")
+		os.Exit(1)
+	}
 
 	s := a.flags.Args()
 

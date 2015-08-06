@@ -34,7 +34,6 @@ func NewClusterCommand(options *Options) *ClusterCommand {
 
 	//require before we do any work
 	godbc.Require(options != nil)
-	godbc.Require(options.Url != "")
 
 	//create ClusterCommand object
 	cmd := &ClusterCommand{}
