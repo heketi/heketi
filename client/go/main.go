@@ -25,8 +25,28 @@ import (
 )
 
 var (
-	stdout  io.Writer = os.Stdout
-	options commands.Options
+	stdout            io.Writer = os.Stdout
+	options           commands.Options
+	usageTemplateMain = `Heketi is a tool for managing gluster volumes.
+
+Usage:
+
+    heketi -server [server] [options] command [arguments]
+
+Options are:
+
+    -json      Returns any command in JSON format.
+
+The commands are:
+    
+    cluster    Manage a cluster (a set of storage nodes)
+    node       Register a storage system to be managed
+    device     Manage raw devices in a cluster
+    volume     Manage a network file system of a certain size available to be used by clients.
+
+Use "heketi [command] -help" for more information about a command
+
+`
 )
 
 func init() {
@@ -35,12 +55,7 @@ func init() {
 	flag.BoolVar(&options.Json, "json", false, "get response as json")
 
 	flag.Usage = func() {
-		fmt.Println("USAGE: ")
-		fmt.Println("heketi cluster <n>")
-		fmt.Println("where n can be one of the following: ")
-		fmt.Println("create <id> \n info <id> \n list \n destroy <id>")
-
-		//TODO:  add other first level commands
+		fmt.Println(usageTemplateMain)
 	}
 }
 
@@ -48,11 +63,6 @@ func init() {
 func main() {
 	flag.Parse()
 
-	//ensure that we pass a server
-	if options.Url == "" {
-		fmt.Fprintf(stdout, "You need a server!\n")
-		os.Exit(1)
-	}
 	//all first level commands go here (cluster, node, device, volume)
 	cmds := commands.Commands{
 		commands.NewClusterCommand(&options),

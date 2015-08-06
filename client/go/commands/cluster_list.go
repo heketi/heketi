@@ -24,6 +24,7 @@ import (
 	"github.com/heketi/heketi/utils"
 	"github.com/lpabon/godbc"
 	"net/http"
+	"os"
 )
 
 type GetClusterListCommand struct {
@@ -34,12 +35,16 @@ type GetClusterListCommand struct {
 func NewGetClusterListCommand(options *Options) *GetClusterListCommand {
 
 	godbc.Require(options != nil)
-	godbc.Require(options.Url != "")
 
 	cmd := &GetClusterListCommand{}
 	cmd.name = "list"
 	cmd.options = options
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
+
+	//usage on -help
+	cmd.flags.Usage = func() {
+		fmt.Println(usageTemplateClusterList)
+	}
 
 	godbc.Ensure(cmd.flags != nil)
 	godbc.Ensure(cmd.name == "list")
@@ -56,6 +61,12 @@ func (a *GetClusterListCommand) Exec(args []string) error {
 
 	//parse args
 	a.flags.Parse(args)
+
+	//ensure we have Url
+	if a.options.Url == "" {
+		fmt.Fprintf(stdout, "You need a server!\n")
+		os.Exit(1)
+	}
 
 	s := a.flags.Args()
 
