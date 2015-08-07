@@ -272,7 +272,23 @@ func TestNodeAddDelete(t *testing.T) {
 	tests.Assert(t, err == nil)
 	r, err = http.DefaultClient.Do(req)
 	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusOK)
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	location, err = r.Location()
+	tests.Assert(t, err == nil)
+
+	// Wait for deletion
+	for {
+		r, err := http.Get(location.String())
+		tests.Assert(t, err == nil)
+		if r.Header.Get("X-Pending") == "true" {
+			tests.Assert(t, r.StatusCode == http.StatusOK)
+			time.Sleep(time.Millisecond * 10)
+			continue
+		} else {
+			tests.Assert(t, r.StatusCode == http.StatusNoContent)
+			break
+		}
+	}
 
 	// Check db to make sure key is removed
 	err = app.db.View(func(tx *bolt.Tx) error {
