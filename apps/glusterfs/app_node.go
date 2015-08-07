@@ -181,9 +181,10 @@ func (a *App) NodeDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Show that the key has been deleted
-	logger.Info("Deleted node [%s]", id)
-
-	// Write msg
-	w.WriteHeader(http.StatusOK)
+	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
+		time.Sleep(1 * time.Second)
+		// Show that the key has been deleted
+		logger.Info("Deleted node [%s]", id)
+		return "", nil
+	})
 }
