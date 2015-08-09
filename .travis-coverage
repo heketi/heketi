@@ -5,9 +5,9 @@
 # capturing the coverage
 # This is why we need this little script here.
 packages="./rest ./apps/glusterfs ./utils"
-packages="${packages} ./executor/sshexec"
-packages="${packages} ./executor/mockexec"
-packages="${packages} ./executor ./apps"
+packages="${packages} ./executors/sshexec"
+packages="${packages} ./executors/mockexec"
+packages="${packages} ./executors ./apps"
 packages="${packages} ./client/go/commands"
 COVERFILE=packagecover.out
 
