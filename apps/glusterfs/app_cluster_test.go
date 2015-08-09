@@ -39,11 +39,8 @@ func TestClusterCreate(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -89,11 +86,8 @@ func TestClusterList(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -154,11 +148,8 @@ func TestClusterInfoIdNotFound(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -178,11 +169,8 @@ func TestClusterInfo(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -245,15 +233,34 @@ func TestClusterInfo(t *testing.T) {
 	tests.Assert(t, entry.Info.Nodes[2] == msg.Nodes[2])
 }
 
+func TestClusterDeleteBadId(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Delete cluster with no elements
+	req, err := http.NewRequest("DELETE", ts.URL+"/clusters/12345", nil)
+	tests.Assert(t, err == nil)
+	r, err := http.DefaultClient.Do(req)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusNotFound)
+}
+
 func TestClusterDelete(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
