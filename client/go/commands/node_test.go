@@ -46,10 +46,11 @@ func TestNewNodeCommand(t *testing.T) {
 
 //tests too little args
 func TestNodeCommandTooLittleArguments(t *testing.T) {
-	defer os.Remove("heketi.db")
+	db := tests.Tempfile()
+	defer os.Remove(db)
 
 	// Create the app
-	app := glusterfs.NewApp()
+	app := glusterfs.NewTestApp(db)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -80,10 +81,11 @@ func TestNodeCommandTooLittleArguments(t *testing.T) {
 
 //tests too many arguments
 func TestNodeCommandTooManyArguments(t *testing.T) {
-	defer os.Remove("heketi.db")
+	db := tests.Tempfile()
+	defer os.Remove(db)
 
 	// Create the app
-	app := glusterfs.NewApp()
+	app := glusterfs.NewTestApp(db)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -115,10 +117,11 @@ func TestNodeCommandTooManyArguments(t *testing.T) {
 
 //tests command not found
 func TestNodeCommandNotFound(t *testing.T) {
-	defer os.Remove("heketi.db")
+	db := tests.Tempfile()
+	defer os.Remove(db)
 
 	// Create the app
-	app := glusterfs.NewApp()
+	app := glusterfs.NewTestApp(db)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -150,10 +153,11 @@ func TestNodeCommandNotFound(t *testing.T) {
 
 //tests Node info and destroy
 func TestNewGetNodeAddAndInfoAndDestroy(t *testing.T) {
-	defer os.Remove("heketi.db")
+	db := tests.Tempfile()
+	defer os.Remove(db)
 
 	// Create the app
-	app := glusterfs.NewApp()
+	app := glusterfs.NewTestApp(db)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -225,10 +229,11 @@ func TestNewGetNodeAddAndInfoAndDestroy(t *testing.T) {
 
 //tests for bad id
 func TestNewGetNodeInfoBadID(t *testing.T) {
-	defer os.Remove("heketi.db")
+	db := tests.Tempfile()
+	defer os.Remove(db)
 
 	// Create the app
-	app := glusterfs.NewApp()
+	app := glusterfs.NewTestApp(db)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -259,10 +264,11 @@ func TestNewGetNodeInfoBadID(t *testing.T) {
 }
 
 func TestNodePostFailure(t *testing.T) {
-	defer os.Remove("heketi.db")
+	db := tests.Tempfile()
+	defer os.Remove(db)
 
 	// Create the app
-	app := glusterfs.NewApp()
+	app := glusterfs.NewTestApp(db)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)

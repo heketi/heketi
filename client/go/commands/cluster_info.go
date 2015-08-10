@@ -91,11 +91,7 @@ func (a *ClusterInfoCommand) Exec(args []string) error {
 
 	//check status code
 	if r.StatusCode != http.StatusOK {
-		s, err := utils.GetStringFromResponse(r)
-		if err != nil {
-			return err
-		}
-		return errors.New(s)
+		utils.GetStringFromResponseCheck(r)
 	}
 	if a.options.Json {
 		// Print JSON body

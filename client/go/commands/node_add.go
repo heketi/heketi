@@ -47,16 +47,32 @@ func NewNodeAddCommand(options *Options) *NodeAddCommand {
 	cmd.name = "add"
 	cmd.options = options
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
-	cmd.flags.IntVar(&cmd.zone, "zone", 0, "give zone for node")
-	cmd.flags.StringVar(&cmd.clusterId, "cluster", "", "which cluster to add node to")
-	cmd.flags.StringVar(&cmd.managmentHostNames, "managment-host-name", "", "managment host name")
-	cmd.flags.StringVar(&cmd.storageHostNames, "storage-host-name", "", "storage host name")
+	cmd.flags.IntVar(&cmd.zone, "zone", 0, "The zone in which the node should reside")
+	cmd.flags.StringVar(&cmd.clusterId, "cluster", "", "The cluster in which the node should reside")
+	cmd.flags.StringVar(&cmd.managmentHostNames, "managment-host-name", "", "Managment host name")
+	cmd.flags.StringVar(&cmd.storageHostNames, "storage-host-name", "", "Storage host name")
 
 	//usage on -help
 	cmd.flags.Usage = func() {
-		fmt.Println(usageTemplateNodeAdd)
-	}
+		fmt.Println(`
+Node add is a command used for adding a node to the specified cluster.
 
+USAGE
+	heketi node add [options]
+
+OPTIONS`)
+
+		//print flags
+		cmd.flags.PrintDefaults()
+		fmt.Println(`
+EXAMPLES
+	Add a node to heketi
+		$ heketi -server http://localhost:8080 node add \
+	  		 -zone 3 \
+	  		 -cluster 3e098cb4407d7109806bb196d9e8f095 \
+	  		 -managment-host-name node1-manage.gluster.lab.com \
+	  		 -storage-host-name node1-storage.gluster.lab.com`)
+	}
 	godbc.Ensure(cmd.flags != nil)
 	godbc.Ensure(cmd.name == "add")
 

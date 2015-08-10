@@ -99,11 +99,7 @@ func (a *ClusterDestroyCommand) Exec(args []string) error {
 
 	//check status code
 	if r.StatusCode != http.StatusOK {
-		s, err := utils.GetStringFromResponse(r)
-		if err != nil {
-			return err
-		}
-		return errors.New(s)
+		utils.GetStringFromResponseCheck(r)
 	}
 
 	//if all is well, print stuff
