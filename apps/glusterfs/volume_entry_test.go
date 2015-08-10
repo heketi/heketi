@@ -43,6 +43,7 @@ func setupSampleDbWithTopology(db *bolt.DB,
 	return db.Update(func(tx *bolt.Tx) error {
 		for c := 0; c < clusters; c++ {
 			cluster := createSampleClusterEntry()
+
 			for n := 0; n < nodes_per_cluster; n++ {
 				node := createSampleNodeEntry()
 				node.Info.ClusterId = cluster.Info.Id
@@ -257,11 +258,8 @@ func TestVolumeEntryFromIdNotFound(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 
 	// Test for ID not found
@@ -277,11 +275,8 @@ func TestVolumeEntryFromId(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 
 	// Create a volume entry
@@ -309,11 +304,8 @@ func TestVolumeEntrySaveDelete(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 
 	// Create a volume entry
@@ -361,11 +353,8 @@ func TestNewVolumeEntryNewInfoResponse(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 
 	// Create a volume entry
@@ -410,11 +399,8 @@ func TestVolumeEntryCreateMissingCluster(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 
 	// Create a volume entry
@@ -436,11 +422,8 @@ func TestVolumeEntryCreateRunOutOfSpaceMinBrickSizeLimit(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 
 	// Total 80GB
@@ -485,11 +468,8 @@ func TestVolumeEntryCreateRunOutOfSpaceMaxBrickLimit(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 
 	// Lots of nodes with little drives
@@ -534,11 +514,8 @@ func TestVolumeEntryCreateFourBricks(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 
 	// Lots of nodes with little drives
@@ -589,11 +566,8 @@ func TestVolumeEntryCreateBrickDivision(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 
 	// Create 50TB of storage
@@ -644,11 +618,8 @@ func TestVolumeEntryCreateMaxBrickSize(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 
 	// Create 50TB of storage
@@ -700,11 +671,8 @@ func TestVolumeEntryCreateOnClustersRequested(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 
 	// Create 50TB of storage
@@ -786,11 +754,8 @@ func TestVolumeEntryCreateCheckingClustersForSpace(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 
 	// Create 100 small clusters
@@ -865,11 +830,8 @@ func TestVolumeEntryCreateWithSnapshot(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 
 	// Lots of nodes with little drives
@@ -930,11 +892,8 @@ func TestVolumeEntryDestroy(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 
 	// Lots of nodes with little drives
@@ -995,11 +954,8 @@ func TestVolumeEntryExpandNoSpace(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 
 	// Create cluster
@@ -1044,11 +1000,8 @@ func TestVolumeEntryExpandCreateBricksFailure(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 
 	// Create large cluster
@@ -1096,11 +1049,8 @@ func TestVolumeEntryExpand(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 
 	// Create large cluster

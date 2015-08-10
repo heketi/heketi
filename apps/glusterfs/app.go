@@ -17,11 +17,16 @@
 package glusterfs
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
+	"github.com/heketi/heketi/executors"
+	"github.com/heketi/heketi/executors/mockexec"
+	"github.com/heketi/heketi/executors/sshexec"
 	"github.com/heketi/heketi/rest"
 	"github.com/heketi/heketi/utils"
+	"io"
 	"net/http"
 	"time"
 )
@@ -40,16 +45,68 @@ var (
 	dbfilename = "heketi.db"
 )
 
+type GlusterFSConfig struct {
+	DBfile    string            `json:"db"`
+	Executor  string            `json:"executor"`
+	SshConfig sshexec.SshConfig `json:"sshexec"`
+}
+
+type ConfigFile struct {
+	GlusterFS GlusterFSConfig `json:"glusterfs"`
+}
+
 type App struct {
 	asyncManager *rest.AsyncHttpManager
 	db           *bolt.DB
+	executor     executors.Executor
+	conf         *GlusterFSConfig
+
+	// For testing only.  Keep access to the object
+	// not through the interface
+	xo *mockexec.MockExecutor
 }
 
-func NewApp() *App {
+func loadConfiguration(configIo io.Reader) *GlusterFSConfig {
+	configParser := json.NewDecoder(configIo)
+
+	var config ConfigFile
+	if err := configParser.Decode(&config); err != nil {
+		logger.LogError("Unable to parse config file: %v\n",
+			err.Error())
+		return nil
+	}
+
+	return &config.GlusterFS
+}
+
+func NewApp(configIo io.Reader) *App {
 	app := &App{}
+
+	// Load configuration file
+	app.conf = loadConfiguration(configIo)
+	if app.conf == nil {
+		return nil
+	}
 
 	// Setup asynchronous manager
 	app.asyncManager = rest.NewAsyncHttpManager(ASYNC_ROUTE)
+
+	// Setup executor
+	switch app.conf.Executor {
+	case "mock":
+		app.xo = mockexec.NewMockExecutor()
+		app.executor = app.xo
+	case "ssh":
+		app.executor = sshexec.NewSshExecutor(&app.conf.SshConfig)
+	default:
+		return nil
+	}
+	logger.Debug("Loaded %v executor", app.conf.Executor)
+
+	// Set db is set in the configuration file
+	if app.conf.DBfile != "" {
+		dbfilename = app.conf.DBfile
+	}
 
 	// Setup BoltDB database
 	var err error

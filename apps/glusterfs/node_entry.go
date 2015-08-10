@@ -73,11 +73,33 @@ func (n *NodeEntry) Save(tx *bolt.Tx) error {
 
 }
 
+func (n *NodeEntry) ManageHostName() string {
+	godbc.Require(n.Info.Hostnames.Manage != nil)
+	godbc.Require(len(n.Info.Hostnames.Manage) > 0)
+
+	return n.Info.Hostnames.Manage[0]
+}
+
+func (n *NodeEntry) StorageHostName() string {
+	godbc.Require(n.Info.Hostnames.Storage != nil)
+	godbc.Require(len(n.Info.Hostnames.Storage) > 0)
+
+	return n.Info.Hostnames.Storage[0]
+}
+
+func (n *NodeEntry) IsDeleteOk() bool {
+	// Check if the nodes still has drives
+	if len(n.Devices) > 0 {
+		return false
+	}
+	return true
+}
+
 func (n *NodeEntry) Delete(tx *bolt.Tx) error {
 	godbc.Require(tx != nil)
 
 	// Check if the nodes still has drives
-	if len(n.Devices) > 0 {
+	if !n.IsDeleteOk() {
 		logger.Warning("Unable to delete node [%v] because it contains devices", n.Info.Id)
 		return ErrConflict
 	}

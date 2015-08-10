@@ -38,11 +38,8 @@ func TestDeviceAddBadRequests(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -94,11 +91,8 @@ func TestDeviceAddDelete(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -303,11 +297,8 @@ func TestDeviceInfoIdNotFound(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -327,11 +318,8 @@ func TestDeviceInfo(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -376,11 +364,8 @@ func TestDeviceDeleteErrors(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
-	// Patch dbfilename so that it is restored at the end of the tests
-	defer tests.Patch(&dbfilename, tmpfile).Restore()
-
 	// Create the app
-	app := NewApp()
+	app := NewTestApp(tmpfile)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)

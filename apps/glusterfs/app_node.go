@@ -22,7 +22,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/utils"
 	"net/http"
-	"time"
 )
 
 func (a *App) NodeAdd(w http.ResponseWriter, r *http.Request) {
@@ -44,12 +43,12 @@ func (a *App) NodeAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create a node entry
-	node := NewNodeEntryFromRequest(&msg)
-
-	// Add node entry into the db
-	err = a.db.Update(func(tx *bolt.Tx) error {
-		cluster, err := NewClusterEntryFromId(tx, msg.ClusterId)
+	// Get cluster and peer node
+	var cluster *ClusterEntry
+	var peer_node *NodeEntry
+	err = a.db.View(func(tx *bolt.Tx) error {
+		var err error
+		cluster, err = NewClusterEntryFromId(tx, msg.ClusterId)
 		if err == ErrNotFound {
 			http.Error(w, "Cluster id does not exist", http.StatusNotFound)
 			return err
@@ -58,33 +57,69 @@ func (a *App) NodeAdd(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		// Add node to cluster
-		cluster.NodeAdd(node.Info.Id)
-
-		// Save cluster
-		err = cluster.Save(tx)
+		// Get a node in the cluster to execute the Gluster peer command
+		peer_node, err = cluster.PeerNode(tx)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return err
-		}
-
-		// Save node
-		err = node.Save(tx)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			logger.Err(err)
 			return err
 		}
 
 		return nil
-
 	})
 	if err != nil {
 		return
 	}
 
-	logger.Info("Adding node %v", node.Info.Hostnames.Manage[0])
+	// Create a node entry
+	node := NewNodeEntryFromRequest(&msg)
+
+	// Add node
+	logger.Info("Adding node %v", node.ManageHostName())
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
-		time.Sleep(1 * time.Second)
+
+		// Peer probe if there is at least one other node
+		// TODO: What happens if the peer_node is not responding.. we need to chose another.
+		if peer_node != nil {
+			err := a.executor.PeerProbe(peer_node.ManageHostName(), node.ManageHostName())
+			if err != nil {
+				return "", err
+			}
+		}
+
+		// Add node entry into the db
+		err = a.db.Update(func(tx *bolt.Tx) error {
+			cluster, err := NewClusterEntryFromId(tx, msg.ClusterId)
+			if err == ErrNotFound {
+				http.Error(w, "Cluster id does not exist", http.StatusNotFound)
+				return err
+			} else if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return err
+			}
+
+			// Add node to cluster
+			cluster.NodeAdd(node.Info.Id)
+
+			// Save cluster
+			err = cluster.Save(tx)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return err
+			}
+
+			// Save node
+			err = node.Save(tx)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return err
+			}
+
+			return nil
+
+		})
+		if err != nil {
+			return "", err
+		}
 		logger.Info("Added node " + node.Info.Id)
 		return "/nodes/" + node.Info.Id, nil
 	})
@@ -134,11 +169,16 @@ func (a *App) NodeDelete(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	// Get info from db
-	err := a.db.Update(func(tx *bolt.Tx) error {
+	// Get node info
+	var (
+		peer_node, node *NodeEntry
+		cluster         *ClusterEntry
+	)
+	err := a.db.View(func(tx *bolt.Tx) error {
 
 		// Access node entry
-		node, err := NewNodeEntryFromId(tx, id)
+		var err error
+		node, err = NewNodeEntryFromId(tx, id)
 		if err == ErrNotFound {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return err
@@ -147,43 +187,92 @@ func (a *App) NodeDelete(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		// Get Cluster
-		cluster, err := NewClusterEntryFromId(tx, node.Info.ClusterId)
+		// Check the node can be deleted
+		if !node.IsDeleteOk() {
+			http.Error(w, ErrConflict.Error(), http.StatusConflict)
+			return ErrConflict
+		}
+
+		// Access cluster information and peer node
+		cluster, err = NewClusterEntryFromId(tx, node.Info.ClusterId)
 		if err == ErrNotFound {
-			http.Error(w, "Cluster id does not exist", http.StatusInternalServerError)
-			logger.Critical("Cluster id %v is expected be in db. Pointed to by node %v",
-				node.Info.ClusterId,
-				node.Info.Id)
-			return err
-		} else if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return err
-		}
-		cluster.NodeDelete(node.Info.Id)
-
-		// Save cluster
-		cluster.Save(tx)
-
-		// Delete node from db
-		err = node.Delete(tx)
-		if err == ErrConflict {
-			http.Error(w, err.Error(), http.StatusConflict)
+			http.Error(w, "Cluster id does not exist", http.StatusNotFound)
 			return err
 		} else if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return err
 		}
 
+		// Get a node in the cluster to execute the Gluster peer command
+		peer_node, err = cluster.PeerNode(tx)
+		if err != nil {
+			logger.Err(err)
+			return err
+		}
 		return nil
-
 	})
 	if err != nil {
 		return
 	}
 
-	// Show that the key has been deleted
-	logger.Info("Deleted node [%s]", id)
+	// Check the node can be deleted
+	if !node.IsDeleteOk() {
+		http.Error(w, ErrConflict.Error(), http.StatusConflict)
+		return
+	}
 
-	// Write msg
-	w.WriteHeader(http.StatusOK)
+	// Delete node asynchronously
+	logger.Info("Deleting node %v [%v]", node.ManageHostName(), node.Info.Id)
+	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
+
+		// Remove from trusted pool
+		if peer_node != nil {
+			err := a.executor.PeerDetach(peer_node.ManageHostName(), node.ManageHostName())
+			if err != nil {
+				return "", err
+			}
+		}
+
+		// Remove from db
+		err = a.db.Update(func(tx *bolt.Tx) error {
+
+			// Get Cluster
+			cluster, err := NewClusterEntryFromId(tx, node.Info.ClusterId)
+			if err == ErrNotFound {
+				logger.Critical("Cluster id %v is expected be in db. Pointed to by node %v",
+					node.Info.ClusterId,
+					node.Info.Id)
+				return err
+			} else if err != nil {
+				logger.Err(err)
+				return err
+			}
+			cluster.NodeDelete(node.Info.Id)
+
+			// Save cluster
+			err = cluster.Save(tx)
+			if err != nil {
+				logger.Err(err)
+				return err
+			}
+
+			// Delete node from db
+			err = node.Delete(tx)
+			if err != nil {
+				logger.Err(err)
+				return err
+			}
+
+			return nil
+
+		})
+		if err != nil {
+			return "", err
+		}
+		// Show that the key has been deleted
+		logger.Info("Deleted node [%s]", id)
+
+		return "", nil
+
+	})
 }

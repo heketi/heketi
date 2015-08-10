@@ -46,10 +46,11 @@ func TestNewClusterCommand(t *testing.T) {
 
 //tests too little args
 func TestClusterCommandTooLittleArguments(t *testing.T) {
-	defer os.Remove("heketi.db")
+	db := tests.Tempfile()
+	defer os.Remove(db)
 
 	// Create the app
-	app := glusterfs.NewApp()
+	app := glusterfs.NewTestApp(db)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -80,10 +81,11 @@ func TestClusterCommandTooLittleArguments(t *testing.T) {
 
 //tests too many arguments
 func TestClusterCommandTooManyArguments(t *testing.T) {
-	defer os.Remove("heketi.db")
+	db := tests.Tempfile()
+	defer os.Remove(db)
 
 	// Create the app
-	app := glusterfs.NewApp()
+	app := glusterfs.NewTestApp(db)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -115,10 +117,11 @@ func TestClusterCommandTooManyArguments(t *testing.T) {
 
 //tests command not found
 func TestClusterCommandNotFound(t *testing.T) {
-	defer os.Remove("heketi.db")
+	db := tests.Tempfile()
+	defer os.Remove(db)
 
 	// Create the app
-	app := glusterfs.NewApp()
+	app := glusterfs.NewTestApp(db)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -154,10 +157,11 @@ func TestClusterCommandNotFound(t *testing.T) {
 
 //tests cluster info and destroy
 func TestNewGetClusterInfoAndDestroy(t *testing.T) {
-	defer os.Remove("heketi.db")
+	db := tests.Tempfile()
+	defer os.Remove(db)
 
 	// Create the app
-	app := glusterfs.NewApp()
+	app := glusterfs.NewTestApp(db)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -211,10 +215,11 @@ func TestNewGetClusterInfoAndDestroy(t *testing.T) {
 
 //tests for bad id
 func TestNewGetClusterInfoBadID(t *testing.T) {
-	defer os.Remove("heketi.db")
+	db := tests.Tempfile()
+	defer os.Remove(db)
 
 	// Create the app
-	app := glusterfs.NewApp()
+	app := glusterfs.NewTestApp(db)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -246,10 +251,11 @@ func TestNewGetClusterInfoBadID(t *testing.T) {
 
 // test cluster list
 func TestNewGetClusterList(t *testing.T) {
-	defer os.Remove("heketi.db")
+	db := tests.Tempfile()
+	defer os.Remove(db)
 
 	// Create the app
-	app := glusterfs.NewApp()
+	app := glusterfs.NewTestApp(db)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -290,9 +296,11 @@ func TestNewGetClusterList(t *testing.T) {
 
 //test cluster create
 func TestClusterPostSuccess(t *testing.T) {
-	defer os.Remove("heketi.db")
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
 	// Create the app
-	app := glusterfs.NewApp()
+	app := glusterfs.NewTestApp(db)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
@@ -320,10 +328,11 @@ func TestClusterPostSuccess(t *testing.T) {
 }
 
 func TestClusterPostFailure(t *testing.T) {
-	defer os.Remove("heketi.db")
+	db := tests.Tempfile()
+	defer os.Remove(db)
 
 	// Create the app
-	app := glusterfs.NewApp()
+	app := glusterfs.NewTestApp(db)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)

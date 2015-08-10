@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-package rest
+package apps
 
 import (
 	"github.com/gorilla/mux"
