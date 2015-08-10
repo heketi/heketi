@@ -27,6 +27,7 @@ import (
 	"github.com/lpabon/godbc"
 	"net/http"
 	"os"
+	"time"
 )
 
 type NodeAddCommand struct {
@@ -106,17 +107,41 @@ func (a *NodeAddCommand) Exec(args []string) error {
 
 	//check status code
 	if r.StatusCode != http.StatusAccepted {
-		s, err := utils.GetStringFromResponse(r)
+		utils.GetStringFromResponseCheck(r)
+	}
+
+	//Query queue until finished
+	location, err := r.Location()
+	for {
+		r, err := http.Get(location.String())
 		if err != nil {
 			return err
 		}
-		return errors.New(s)
-	}
-
-	if !a.options.Json {
-		fmt.Fprintf(stdout, "Successfully created node! on cluster %v", a.clusterId)
-	} else {
-		return errors.New("Cannot return json for node add")
+		if r.Header.Get("X-Pending") == "true" {
+			if r.StatusCode == http.StatusOK {
+				time.Sleep(time.Millisecond * 3)
+				continue
+			} else {
+				utils.GetStringFromResponseCheck(r)
+			}
+		} else {
+			if r.StatusCode == http.StatusOK {
+				if a.options.Json {
+					s, err := utils.GetStringFromResponse(r)
+					if err != nil {
+						return err
+					}
+					fmt.Fprint(stdout, s)
+				} else {
+					var body glusterfs.NodeInfoResponse
+					err = utils.GetJsonFromResponse(r, &body)
+					fmt.Fprintf(stdout, "Successfully created node with id: %v", body.Id)
+				}
+				break
+			} else {
+				utils.GetStringFromResponseCheck(r)
+			}
+		}
 	}
 	return nil
 }

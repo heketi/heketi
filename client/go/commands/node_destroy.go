@@ -24,6 +24,7 @@ import (
 	"github.com/lpabon/godbc"
 	"net/http"
 	"os"
+	"time"
 )
 
 type NodeDestroyCommand struct {
@@ -98,20 +99,38 @@ func (a *NodeDestroyCommand) Exec(args []string) error {
 	}
 
 	//check status code
-	if r.StatusCode != http.StatusOK {
-		s, err := utils.GetStringFromResponse(r)
+	if r.StatusCode != http.StatusAccepted {
+		utils.GetStringFromResponseCheck(r)
+	}
+
+	location, err := r.Location()
+	for {
+		r, err := http.Get(location.String())
 		if err != nil {
 			return err
 		}
-		return errors.New(s)
+		if r.Header.Get("X-Pending") == "true" {
+			if r.StatusCode == http.StatusOK {
+				time.Sleep(time.Millisecond * 10)
+				continue
+			} else {
+				utils.GetStringFromResponseCheck(r)
+			}
+		} else {
+			if r.StatusCode == http.StatusNoContent {
+				if !a.options.Json {
+					fmt.Fprintf(stdout, "Successfully destroyed node with id: %v ", nodeId)
+				} else {
+					return nil
+				}
+				break
+			} else {
+				utils.GetStringFromResponseCheck(r)
+			}
+		}
 	}
 
 	//if all is well, print stuff
-	if !a.options.Json {
-		fmt.Fprintf(stdout, "Successfully destroyed node with id: %v ", nodeId)
-	} else {
-		return errors.New("Cannot return json for node destroy")
-	}
 	return nil
 
 }

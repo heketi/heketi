@@ -87,11 +87,7 @@ func (a *GetNodeInfoCommand) Exec(args []string) error {
 
 	//check status code
 	if r.StatusCode != http.StatusOK {
-		s, err := utils.GetStringFromResponse(r)
-		if err != nil {
-			return err
-		}
-		return errors.New(s)
+		utils.GetStringFromResponseCheck(r)
 	}
 
 	if a.options.Json {
@@ -111,7 +107,8 @@ func (a *GetNodeInfoCommand) Exec(args []string) error {
 			return err
 		}
 		//print revelent results
-		s := "Node: " + a.nodeId + "\n\nZone: " + strconv.Itoa(body.Zone) + "\n\nCluster: " + body.ClusterId + "\n\nManage hostnames:\n"
+		s := "Node: " + a.nodeId + "\n\nZone: " + strconv.Itoa(body.Zone) +
+			"\n\nCluster: " + body.ClusterId + "\n\nManage hostnames:\n"
 		for _, hostname := range body.Hostnames.Manage {
 			s += hostname + "\n"
 		}
