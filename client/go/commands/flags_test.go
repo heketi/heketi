@@ -28,11 +28,12 @@ import (
 	"testing"
 )
 
-func TestJsonFlags(t *testing.T) {
-	defer os.Remove("heketi.db")
+func TestJsonFlagsCreate(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
 
 	// Create the app
-	app := glusterfs.NewApp()
+	app := glusterfs.NewTestApp(db)
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
