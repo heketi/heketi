@@ -26,7 +26,7 @@ import (
 	"github.com/heketi/heketi/utils"
 	"github.com/lpabon/godbc"
 	"net/http"
-	"os"
+	"strconv"
 	"time"
 )
 
@@ -91,8 +91,7 @@ func (a *NodeAddCommand) Exec(args []string) error {
 
 	//ensure we have Url
 	if a.options.Url == "" {
-		fmt.Fprintf(stdout, "You need a server!\n")
-		os.Exit(1)
+		return errors.New("You need a server!\n")
 	}
 
 	s := a.flags.Args()
@@ -151,7 +150,23 @@ func (a *NodeAddCommand) Exec(args []string) error {
 				} else {
 					var body glusterfs.NodeInfoResponse
 					err = utils.GetJsonFromResponse(r, &body)
-					fmt.Fprintf(stdout, "Successfully created node with id: %v", body.Id)
+					zone := strconv.Itoa(body.Zone)
+					fmt.Fprintf(stdout, `Successfully created node!
+ZONE:
+	%v
+
+CLUSTER ID:
+	%v
+
+MANAGMENT HOSTNAME:
+	%v
+
+STORAGE HOSTNAME:
+	%v
+
+NODE ID:
+	%v
+`, zone, body.ClusterId, body.Hostnames.Manage[0], body.Hostnames.Storage[0], body.Id)
 				}
 				break
 			} else {

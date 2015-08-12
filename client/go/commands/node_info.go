@@ -24,7 +24,6 @@ import (
 	"github.com/heketi/heketi/utils"
 	"github.com/lpabon/godbc"
 	"net/http"
-	"os"
 	"strconv"
 )
 
@@ -65,8 +64,7 @@ func (a *GetNodeInfoCommand) Exec(args []string) error {
 
 	//ensure we have Url
 	if a.options.Url == "" {
-		fmt.Fprintf(stdout, "You need a server!\n")
-		os.Exit(1)
+		return errors.New("You need a server!\n")
 	}
 
 	if len(args) < 1 {

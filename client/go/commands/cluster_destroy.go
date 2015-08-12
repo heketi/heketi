@@ -23,7 +23,6 @@ import (
 	"github.com/heketi/heketi/utils"
 	"github.com/lpabon/godbc"
 	"net/http"
-	"os"
 )
 
 type ClusterDestroyCommand struct {
@@ -63,8 +62,7 @@ func (a *ClusterDestroyCommand) Exec(args []string) error {
 
 	//ensure we have Url
 	if a.options.Url == "" {
-		fmt.Fprintf(stdout, "You need a server!\n")
-		os.Exit(1)
+		return errors.New("You need a server!\n")
 	}
 
 	s := a.flags.Args()

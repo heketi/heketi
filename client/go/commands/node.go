@@ -75,8 +75,6 @@ func (a *NodeCommand) Exec(args []string) error {
 			if err != nil {
 				return err
 			}
-			a.cmd = cmd
-
 			return nil
 		}
 	}
