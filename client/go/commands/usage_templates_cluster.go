@@ -20,7 +20,7 @@ var usageTemplateCluster = `Cluster is a command used for managing heketi cluste
 
 Usage:
 
-    heketi -server [server] [options] cluster [subcommands]
+    heketi -server [server] [options] cluster [subcommand]
 
 The subcommands are:
     
@@ -71,7 +71,7 @@ Usage:
 
 The args are:
 
-    cluster id    The id of the cluster you want to destroy
+    cluster id    The id of the cluster you want more information about.
 
 Example:
 

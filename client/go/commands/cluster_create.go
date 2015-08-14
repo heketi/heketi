@@ -25,19 +25,18 @@ import (
 	"github.com/heketi/heketi/utils"
 	"github.com/lpabon/godbc"
 	"net/http"
-	"os"
 )
 
-type CreateNewClusterCommand struct {
+type ClusterCreateCommand struct {
 	Cmd
 	options *Options
 }
 
-func NewCreateNewClusterCommand(options *Options) *CreateNewClusterCommand {
+func NewClusterCreateCommand(options *Options) *ClusterCreateCommand {
 
 	godbc.Require(options != nil)
 
-	cmd := &CreateNewClusterCommand{}
+	cmd := &ClusterCreateCommand{}
 	cmd.name = "create"
 	cmd.options = options
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
@@ -53,20 +52,19 @@ func NewCreateNewClusterCommand(options *Options) *CreateNewClusterCommand {
 	return cmd
 }
 
-func (a *CreateNewClusterCommand) Name() string {
+func (a *ClusterCreateCommand) Name() string {
 	return a.name
 
 }
 
-func (a *CreateNewClusterCommand) Exec(args []string) error {
+func (a *ClusterCreateCommand) Exec(args []string) error {
 
 	//parse args
 	a.flags.Parse(args)
 
 	//ensure we have Url
 	if a.options.Url == "" {
-		fmt.Fprintf(stdout, "You need a server!\n")
-		os.Exit(1)
+		return errors.New("You need a server!\n")
 	}
 
 	s := a.flags.Args()
@@ -87,11 +85,7 @@ func (a *CreateNewClusterCommand) Exec(args []string) error {
 
 	//check status code
 	if r.StatusCode != http.StatusCreated {
-		s, err := utils.GetStringFromResponse(r)
-		if err != nil {
-			return err
-		}
-		return errors.New(s)
+		return utils.GetErrorFromResponse(r)
 	}
 
 	if a.options.Json {

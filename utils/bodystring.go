@@ -17,6 +17,7 @@
 package utils
 
 import (
+	"errors"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -29,4 +30,12 @@ func GetStringFromResponse(r *http.Response) (string, error) {
 	}
 	r.Body.Close()
 	return string(body), nil
+}
+
+func GetErrorFromResponse(r *http.Response) error {
+	s, err := GetStringFromResponse(r)
+	if err != nil {
+		return err
+	}
+	return errors.New(s)
 }

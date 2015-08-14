@@ -53,7 +53,7 @@ func TestJsonFlagsCreate(t *testing.T) {
 	defer tests.Patch(&stdout, &b).Restore()
 
 	//create mock cluster and mock destroy
-	mockCluster := NewCreateNewClusterCommand(options)
+	mockCluster := NewClusterCreateCommand(options)
 
 	//create new cluster and assert json
 	err := mockCluster.Exec([]string{})
@@ -65,7 +65,7 @@ func TestJsonFlagsCreate(t *testing.T) {
 	b.Reset()
 
 	//get cluster info and assert json
-	clusterInfo := NewGetClusterInfoCommand(options)
+	clusterInfo := NewClusterInfoCommand(options)
 	args := []string{clusterInfoResCreate.Id}
 	err = clusterInfo.Exec(args)
 	tests.Assert(t, err == nil)
@@ -73,7 +73,7 @@ func TestJsonFlagsCreate(t *testing.T) {
 	b.Reset()
 
 	//get cluster list and assert json
-	clusterList := NewGetClusterListCommand(options)
+	clusterList := NewClusterListCommand(options)
 	err = clusterList.Exec([]string{})
 	tests.Assert(t, err == nil)
 	var clusterListResList glusterfs.ClusterInfoResponse
@@ -82,7 +82,7 @@ func TestJsonFlagsCreate(t *testing.T) {
 	b.Reset()
 
 	//destroy cluster and assert proper json response
-	clusterDestroy := NewDestroyClusterCommand(options)
+	clusterDestroy := NewClusterDestroyCommand(options)
 	err = clusterDestroy.Exec(args)
 	tests.Assert(t, err != nil)
 	tests.Assert(t, strings.Contains(b.String(), ""))

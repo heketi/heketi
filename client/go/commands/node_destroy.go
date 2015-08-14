@@ -20,44 +20,45 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/heketi/heketi/apps/glusterfs"
 	"github.com/heketi/heketi/utils"
 	"github.com/lpabon/godbc"
 	"net/http"
+	"time"
 )
 
-type ClusterInfoCommand struct {
+type NodeDestroyCommand struct {
 	Cmd
 	options *Options
 }
 
-func NewClusterInfoCommand(options *Options) *ClusterInfoCommand {
+func NewNodeDestroyCommand(options *Options) *NodeDestroyCommand {
 
 	godbc.Require(options != nil)
 
-	cmd := &ClusterInfoCommand{}
-	cmd.name = "info"
+	cmd := &NodeDestroyCommand{}
+	cmd.name = "destroy"
 	cmd.options = options
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
 
 	//usage on -help
 	cmd.flags.Usage = func() {
-		fmt.Println(usageTemplateClusterInfo)
+		fmt.Println(usageTemplateNodeDestroy)
 	}
 
 	godbc.Ensure(cmd.flags != nil)
-	godbc.Ensure(cmd.name == "info")
+	godbc.Ensure(cmd.name == "destroy")
 
 	return cmd
 }
 
-func (a *ClusterInfoCommand) Name() string {
+func (a *NodeDestroyCommand) Name() string {
 	return a.name
 
 }
 
-func (a *ClusterInfoCommand) Exec(args []string) error {
-	//parse flags and set id
+func (a *NodeDestroyCommand) Exec(args []string) error {
+
+	//parse args
 	a.flags.Parse(args)
 
 	//ensure we have Url
@@ -66,9 +67,8 @@ func (a *ClusterInfoCommand) Exec(args []string) error {
 	}
 
 	s := a.flags.Args()
-	fmt.Println(len(s))
 
-	//ensure correct number of args
+	//ensure proper number of args
 	if len(s) < 1 {
 		return errors.New("Not enough arguments!")
 	}
@@ -76,50 +76,59 @@ func (a *ClusterInfoCommand) Exec(args []string) error {
 		return errors.New("Too many arguments!")
 	}
 
-	clusterId := a.flags.Arg(0)
+	//set clusterId
+	nodeId := a.flags.Arg(0)
 
+	//set url
 	url := a.options.Url
 
-	//do http GET and check if sent to server
-	r, err := http.Get(url + "/clusters/" + clusterId)
+	//create destroy request object
+	req, err := http.NewRequest("DELETE", url+"/nodes/"+nodeId, nil)
+	if err != nil {
+		fmt.Fprintf(stdout, "Error: Unable to initiate destroy: %v", err)
+		return err
+	}
+
+	//destroy node
+	r, err := http.DefaultClient.Do(req)
 	if err != nil {
 		fmt.Fprintf(stdout, "Error: Unable to send command to server: %v", err)
 		return err
 	}
 
 	//check status code
-	if r.StatusCode != http.StatusOK {
+	if r.StatusCode != http.StatusAccepted {
 		return utils.GetErrorFromResponse(r)
 	}
-	if a.options.Json {
-		// Print JSON body
-		s, err := utils.GetStringFromResponse(r)
+
+	location, err := r.Location()
+	for {
+		r, err := http.Get(location.String())
 		if err != nil {
 			return err
 		}
-		fmt.Fprint(stdout, s)
-	} else {
-
-		//check json response
-		var body glusterfs.ClusterInfoResponse
-		err = utils.GetJsonFromResponse(r, &body)
-		if err != nil {
-			fmt.Println("Error: Bad json response from server")
-			return err
+		if r.Header.Get("X-Pending") == "true" {
+			if r.StatusCode == http.StatusOK {
+				time.Sleep(time.Millisecond * 10)
+				continue
+			} else {
+				return utils.GetErrorFromResponse(r)
+			}
+		} else {
+			if r.StatusCode == http.StatusNoContent {
+				if !a.options.Json {
+					fmt.Fprintf(stdout, "Successfully destroyed node with id: %v ", nodeId)
+				} else {
+					return nil
+				}
+				break
+			} else {
+				return utils.GetErrorFromResponse(r)
+			}
 		}
-
-		//print revelent results
-		str := "Cluster: " + clusterId + " \n" + "Nodes: \n"
-		for _, node := range body.Nodes {
-			str += node + "\n"
-		}
-
-		str += "Volumes: \n"
-		for _, volume := range body.Volumes {
-			str += volume + "\n"
-		}
-		fmt.Fprintf(stdout, str)
 	}
+
+	//if all is well, print stuff
 	return nil
 
 }
