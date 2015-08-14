@@ -358,3 +358,307 @@ func TestClusterPostFailure(t *testing.T) {
 	tests.Assert(t, err != nil)
 	tests.Assert(t, strings.Contains(b.String(), "Unable to send "))
 }
+
+func TestNewClusterDestroyNoServer(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	//set options
+	options := &Options{
+		Url: "",
+	}
+
+	//create b to get values of stdout
+	var b bytes.Buffer
+	defer tests.Patch(&stdout, &b).Restore()
+
+	clusterDestroy := NewClusterDestroyCommand(options)
+	err := clusterDestroy.Exec([]string{})
+	tests.Assert(t, err != nil)
+	tests.Assert(t, err.Error() == "You need a server!\n")
+
+}
+
+func TestNewClusterDestroyFailTooManyArgs(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	//set options
+	options := &Options{
+		Url: ts.URL,
+	}
+
+	//create b to get values of stdout
+	var b bytes.Buffer
+	defer tests.Patch(&stdout, &b).Restore()
+
+	clusterDestroy := NewClusterDestroyCommand(options)
+	err := clusterDestroy.Exec([]string{"too", "many", "args"})
+	tests.Assert(t, err != nil)
+	tests.Assert(t, err.Error() == "Too many arguments!")
+
+}
+
+func TestNewClusterDestroyFailTooLittleArgs(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	//set options
+	options := &Options{
+		Url: ts.URL,
+	}
+
+	//create b to get values of stdout
+	var b bytes.Buffer
+	defer tests.Patch(&stdout, &b).Restore()
+
+	clusterDestroy := NewClusterDestroyCommand(options)
+	err := clusterDestroy.Exec([]string{})
+	tests.Assert(t, err != nil)
+	tests.Assert(t, err.Error() == "Not enough arguments!")
+
+}
+
+func TestNewClusterDestroyBadStatus(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	//set options
+	options := &Options{
+		Url: ts.URL,
+	}
+
+	//create b to get values of stdout
+	var b bytes.Buffer
+	defer tests.Patch(&stdout, &b).Restore()
+
+	//create mock add node
+	clusterDestroy := NewClusterDestroyCommand(options)
+
+	err := clusterDestroy.Exec([]string{"nah"})
+	tests.Assert(t, err != nil)
+	tests.Assert(t, strings.Contains(err.Error(), "404"), err.Error())
+
+}
+
+func TestClusterPostFailureClusterDestroy(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	options := &Options{
+		Url: "http://nottherightthing:8080",
+	}
+
+	//create b so we can see stdout
+	var b bytes.Buffer
+	defer tests.Patch(&stdout, &b).Restore()
+
+	//create cluster
+	clusterDestroy := NewClusterDestroyCommand(options)
+	tests.Assert(t, clusterDestroy != nil)
+
+	//execute
+	err := clusterDestroy.Exec([]string{"a"})
+	tests.Assert(t, err != nil)
+	tests.Assert(t, strings.Contains(b.String(), "Unable to send "), err.Error())
+}
+
+func TestNewClusterCreateNoServer(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	//set options
+	options := &Options{
+		Url: "",
+	}
+
+	//create b to get values of stdout
+	var b bytes.Buffer
+	defer tests.Patch(&stdout, &b).Restore()
+
+	clusterCreate := NewClusterCreateCommand(options)
+	err := clusterCreate.Exec([]string{})
+	tests.Assert(t, err != nil)
+	tests.Assert(t, err.Error() == "You need a server!\n")
+
+}
+
+func TestNewClusterInfoNoServer(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	//set options
+	options := &Options{
+		Url: "",
+	}
+
+	//create b to get values of stdout
+	var b bytes.Buffer
+	defer tests.Patch(&stdout, &b).Restore()
+
+	clusterInfo := NewClusterInfoCommand(options)
+	err := clusterInfo.Exec([]string{"ba"})
+	tests.Assert(t, err != nil)
+	tests.Assert(t, err.Error() == "You need a server!\n")
+
+}
+
+func TestNewClusterInfoFailTooManyArgs(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	//set options
+	options := &Options{
+		Url: ts.URL,
+	}
+
+	//create b to get values of stdout
+	var b bytes.Buffer
+	defer tests.Patch(&stdout, &b).Restore()
+
+	clusterInfo := NewClusterInfoCommand(options)
+	err := clusterInfo.Exec([]string{"too", "many", "args"})
+	tests.Assert(t, err != nil)
+	tests.Assert(t, err.Error() == "Too many arguments!")
+
+}
+
+func TestNewClusterListNoServer(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	//set options
+	options := &Options{
+		Url: "",
+	}
+
+	//create b to get values of stdout
+	var b bytes.Buffer
+	defer tests.Patch(&stdout, &b).Restore()
+
+	clusterList := NewClusterListCommand(options)
+	err := clusterList.Exec([]string{})
+	tests.Assert(t, err != nil)
+	tests.Assert(t, err.Error() == "You need a server!\n")
+
+}
+
+func TestNewClusterListFailTooManyArgs(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	//set options
+	options := &Options{
+		Url: ts.URL,
+	}
+
+	//create b to get values of stdout
+	var b bytes.Buffer
+	defer tests.Patch(&stdout, &b).Restore()
+
+	clusterList := NewClusterListCommand(options)
+	err := clusterList.Exec([]string{"too", "many", "args"})
+	tests.Assert(t, err != nil)
+	tests.Assert(t, err.Error() == "Too many arguments!")
+
+}

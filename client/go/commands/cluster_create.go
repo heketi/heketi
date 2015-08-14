@@ -85,7 +85,7 @@ func (a *ClusterCreateCommand) Exec(args []string) error {
 
 	//check status code
 	if r.StatusCode != http.StatusCreated {
-		utils.GetStringFromResponseCheck(r)
+		return utils.GetErrorFromResponse(r)
 	}
 
 	if a.options.Json {

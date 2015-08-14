@@ -32,7 +32,7 @@ func GetStringFromResponse(r *http.Response) (string, error) {
 	return string(body), nil
 }
 
-func GetStringFromResponseCheck(r *http.Response) error {
+func GetErrorFromResponse(r *http.Response) error {
 	s, err := GetStringFromResponse(r)
 	if err != nil {
 		return err

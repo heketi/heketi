@@ -175,7 +175,7 @@ func TestNewGetNodeAddAndInfoAndDestroy(t *testing.T) {
 	var b bytes.Buffer
 	defer tests.Patch(&stdout, &b).Restore()
 
-	//create mock cluster and mock destroy
+	//create mock cluster
 	mockCluster := NewClusterCreateCommand(options)
 
 	//create new cluster
@@ -263,7 +263,225 @@ func TestNewGetNodeInfoBadID(t *testing.T) {
 
 }
 
-func TestNodePostFailure(t *testing.T) {
+func TestNewNodeAddFailId(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	//set options
+	options := &Options{
+		Url: ts.URL,
+	}
+
+	//create b to get values of stdout
+	var b bytes.Buffer
+	defer tests.Patch(&stdout, &b).Restore()
+
+	//create mock add node
+	mockNode := NewNodeAddCommand(options)
+
+	mockNode.zone = 1
+	mockNode.clusterId = "no no no!"
+	mockNode.storageHostNames = "storage.hostname.com"
+	mockNode.managmentHostNames = "manage.hostname.com"
+	err := mockNode.Exec([]string{})
+	tests.Assert(t, err != nil)
+	tests.Assert(t, err.Error() == "Cluster id does not exist\n", err.Error())
+
+}
+
+func TestNewNodeDestroyBadStatus(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	//set options
+	options := &Options{
+		Url: ts.URL,
+	}
+
+	//create b to get values of stdout
+	var b bytes.Buffer
+	defer tests.Patch(&stdout, &b).Restore()
+
+	//create mock add node
+	mockNode := NewNodeDestroyCommand(options)
+
+	err := mockNode.Exec([]string{"nah"})
+	tests.Assert(t, err != nil)
+	tests.Assert(t, strings.Contains(err.Error(), "404"), err.Error())
+
+}
+
+func TestNewNodeAddFailServer(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	//set options
+	options := &Options{
+		Url: "",
+	}
+
+	//create b to get values of stdout
+	var b bytes.Buffer
+	defer tests.Patch(&stdout, &b).Restore()
+
+	nodeAdd := NewNodeAddCommand(options)
+	err := nodeAdd.Exec([]string{})
+	tests.Assert(t, err != nil)
+	tests.Assert(t, err.Error() == "You need a server!\n")
+
+}
+
+func TestNewNodeAddFailTooManyArgs(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	//set options
+	options := &Options{
+		Url: ts.URL,
+	}
+
+	//create b to get values of stdout
+	var b bytes.Buffer
+	defer tests.Patch(&stdout, &b).Restore()
+
+	nodeAdd := NewNodeAddCommand(options)
+	err := nodeAdd.Exec([]string{"too", "many", "args"})
+	tests.Assert(t, err != nil)
+	tests.Assert(t, err.Error() == "Too many arguments!")
+
+}
+
+func TestNewNodeDestroyNoServer(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	//set options
+	options := &Options{
+		Url: "",
+	}
+
+	//create b to get values of stdout
+	var b bytes.Buffer
+	defer tests.Patch(&stdout, &b).Restore()
+
+	nodeDestroy := NewNodeDestroyCommand(options)
+	err := nodeDestroy.Exec([]string{})
+	tests.Assert(t, err != nil)
+	tests.Assert(t, err.Error() == "You need a server!\n")
+
+}
+
+func TestNewNodeDestroyFailTooManyArgs(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	//set options
+	options := &Options{
+		Url: ts.URL,
+	}
+
+	//create b to get values of stdout
+	var b bytes.Buffer
+	defer tests.Patch(&stdout, &b).Restore()
+
+	nodeDestroy := NewNodeDestroyCommand(options)
+	err := nodeDestroy.Exec([]string{"too", "many", "args"})
+	tests.Assert(t, err != nil)
+	tests.Assert(t, err.Error() == "Too many arguments!")
+
+}
+
+func TestNewNodeDestroyFailTooLittleArgs(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	//set options
+	options := &Options{
+		Url: ts.URL,
+	}
+
+	//create b to get values of stdout
+	var b bytes.Buffer
+	defer tests.Patch(&stdout, &b).Restore()
+
+	nodeDestroy := NewNodeDestroyCommand(options)
+	err := nodeDestroy.Exec([]string{})
+	tests.Assert(t, err != nil)
+	tests.Assert(t, err.Error() == "Not enough arguments!")
+
+}
+
+func TestNodePostFailureNodeAdd(t *testing.T) {
 	db := tests.Tempfile()
 	defer os.Remove(db)
 
@@ -293,4 +511,66 @@ func TestNodePostFailure(t *testing.T) {
 	err := cluster.Exec([]string{})
 	tests.Assert(t, err != nil)
 	tests.Assert(t, strings.Contains(b.String(), "Unable to send "))
+}
+
+func TestNodePostFailureNodeDestroy(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	options := &Options{
+		Url: "http://nottherightthing:8080",
+	}
+
+	//create b so we can see stdout
+	var b bytes.Buffer
+	defer tests.Patch(&stdout, &b).Restore()
+
+	//create cluster
+	cluster := NewNodeDestroyCommand(options)
+	tests.Assert(t, cluster != nil)
+
+	//execute
+	err := cluster.Exec([]string{"id"})
+	tests.Assert(t, err != nil)
+	tests.Assert(t, strings.Contains(b.String(), "Unable to send "))
+}
+
+func TestNewNodeInfoNoServer(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	//set options
+	options := &Options{
+		Url: "",
+	}
+
+	//create b to get values of stdout
+	var b bytes.Buffer
+	defer tests.Patch(&stdout, &b).Restore()
+
+	nodeInfo := NewNodeInfoCommand(options)
+	err := nodeInfo.Exec([]string{})
+	tests.Assert(t, err != nil)
+	tests.Assert(t, err.Error() == "You need a server!\n")
+
 }

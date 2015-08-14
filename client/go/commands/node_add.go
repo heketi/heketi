@@ -122,7 +122,7 @@ func (a *NodeAddCommand) Exec(args []string) error {
 
 	//check status code
 	if r.StatusCode != http.StatusAccepted {
-		utils.GetStringFromResponseCheck(r)
+		return utils.GetErrorFromResponse(r)
 	}
 
 	//Query queue until finished
@@ -137,7 +137,7 @@ func (a *NodeAddCommand) Exec(args []string) error {
 				time.Sleep(time.Millisecond * 3)
 				continue
 			} else {
-				utils.GetStringFromResponseCheck(r)
+				return utils.GetErrorFromResponse(r)
 			}
 		} else {
 			if r.StatusCode == http.StatusOK {
@@ -170,7 +170,7 @@ NODE ID:
 				}
 				break
 			} else {
-				utils.GetStringFromResponseCheck(r)
+				return utils.GetErrorFromResponse(r)
 			}
 		}
 	}

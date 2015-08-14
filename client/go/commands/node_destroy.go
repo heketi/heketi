@@ -98,7 +98,7 @@ func (a *NodeDestroyCommand) Exec(args []string) error {
 
 	//check status code
 	if r.StatusCode != http.StatusAccepted {
-		utils.GetStringFromResponseCheck(r)
+		return utils.GetErrorFromResponse(r)
 	}
 
 	location, err := r.Location()
@@ -112,7 +112,7 @@ func (a *NodeDestroyCommand) Exec(args []string) error {
 				time.Sleep(time.Millisecond * 10)
 				continue
 			} else {
-				utils.GetStringFromResponseCheck(r)
+				return utils.GetErrorFromResponse(r)
 			}
 		} else {
 			if r.StatusCode == http.StatusNoContent {
@@ -123,7 +123,7 @@ func (a *NodeDestroyCommand) Exec(args []string) error {
 				}
 				break
 			} else {
-				utils.GetStringFromResponseCheck(r)
+				return utils.GetErrorFromResponse(r)
 			}
 		}
 	}
