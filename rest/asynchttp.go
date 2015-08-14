@@ -21,6 +21,11 @@ import (
 	"github.com/lpabon/godbc"
 	"net/http"
 	"sync"
+	"time"
+)
+
+var (
+	logger = utils.NewLogger("[asynchttp]", utils.LEVEL_INFO)
 )
 
 // Contains information about the asynchronous operation
@@ -117,7 +122,12 @@ func (a *AsyncHttpManager) AsyncHttpRedirectFunc(w http.ResponseWriter,
 
 	handler := a.NewHandler()
 	go func() {
+		logger.Info("Started job %v", handler.id)
+
+		ts := time.Now()
 		url, err := handlerfunc()
+		logger.Info("Completed job %v in %v", handler.id, time.Since(ts))
+
 		if err != nil {
 			handler.CompletedWithError(err)
 		} else if url != "" {

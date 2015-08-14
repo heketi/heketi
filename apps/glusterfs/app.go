@@ -17,7 +17,6 @@
 package glusterfs
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
@@ -41,19 +40,9 @@ const (
 )
 
 var (
-	logger     = utils.NewLogger("[heketi]", utils.LEVEL_DEBUG)
+	logger     = utils.NewLogger("[heketi]", utils.LEVEL_INFO)
 	dbfilename = "heketi.db"
 )
-
-type GlusterFSConfig struct {
-	DBfile    string            `json:"db"`
-	Executor  string            `json:"executor"`
-	SshConfig sshexec.SshConfig `json:"sshexec"`
-}
-
-type ConfigFile struct {
-	GlusterFS GlusterFSConfig `json:"glusterfs"`
-}
 
 type App struct {
 	asyncManager *rest.AsyncHttpManager
@@ -64,19 +53,6 @@ type App struct {
 	// For testing only.  Keep access to the object
 	// not through the interface
 	xo *mockexec.MockExecutor
-}
-
-func loadConfiguration(configIo io.Reader) *GlusterFSConfig {
-	configParser := json.NewDecoder(configIo)
-
-	var config ConfigFile
-	if err := configParser.Decode(&config); err != nil {
-		logger.LogError("Unable to parse config file: %v\n",
-			err.Error())
-		return nil
-	}
-
-	return &config.GlusterFS
 }
 
 func NewApp(configIo io.Reader) *App {
@@ -295,8 +271,4 @@ func (a *App) Hello(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "HelloWorld from GlusterFS Application")
-}
-
-func (a *App) NotImplemented(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Function not yet supported", http.StatusNotImplemented)
 }

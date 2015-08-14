@@ -71,8 +71,8 @@ func (s *SshExecutor) PeerProbe(exec_host, newnode string) error {
 	godbc.Require(exec_host != "")
 	godbc.Require(newnode != "")
 
-	sshexec := ssh.NewSshExecWithKeyFile(logger, s.user, s.private_keyfile)
-	if sshexec == nil {
+	exec := ssh.NewSshExecWithKeyFile(logger, s.user, s.private_keyfile)
+	if exec == nil {
 		return ErrSshPrivateKey
 	}
 
@@ -81,7 +81,7 @@ func (s *SshExecutor) PeerProbe(exec_host, newnode string) error {
 	commands := []string{
 		fmt.Sprintf("sudo gluster peer probe %v", newnode),
 	}
-	_, err := sshexec.ConnectAndExec(exec_host+":22", commands)
+	_, err := exec.ConnectAndExec(exec_host+":22", commands)
 	if err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func (s *SshExecutor) PeerProbe(exec_host, newnode string) error {
 	commands = []string{
 		fmt.Sprintf("sudo gluster peer probe %v", exec_host),
 	}
-	_, err = sshexec.ConnectAndExec(newnode+":22", commands)
+	_, err = exec.ConnectAndExec(newnode+":22", commands)
 	if err != nil {
 		return err
 	}
@@ -103,8 +103,8 @@ func (s *SshExecutor) PeerDetach(exec_host, detachnode string) error {
 	godbc.Require(exec_host != "")
 	godbc.Require(detachnode != "")
 
-	sshexec := ssh.NewSshExecWithKeyFile(logger, s.user, s.private_keyfile)
-	if sshexec == nil {
+	exec := ssh.NewSshExecWithKeyFile(logger, s.user, s.private_keyfile)
+	if exec == nil {
 		return ErrSshPrivateKey
 	}
 
@@ -113,7 +113,7 @@ func (s *SshExecutor) PeerDetach(exec_host, detachnode string) error {
 	commands := []string{
 		fmt.Sprintf("sudo gluster peer detach %v", detachnode),
 	}
-	_, err := sshexec.ConnectAndExec(exec_host+":22", commands)
+	_, err := exec.ConnectAndExec(exec_host+":22", commands)
 	if err != nil {
 		return err
 	}

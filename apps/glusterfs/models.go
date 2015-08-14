@@ -36,8 +36,6 @@ type HostAddresses struct {
 	Storage sort.StringSlice `json:"storage"`
 }
 
-// Volume
-
 // Brick
 type BrickInfo struct {
 	Id       string `json:"id"`
@@ -50,15 +48,14 @@ type BrickInfo struct {
 }
 
 // Device
-
 type Device struct {
 	Name   string `json:"name"`
 	Weight int    `json:"weight"`
 }
 
 type DeviceAddRequest struct {
-	NodeId  string   `json:"node"`
-	Devices []Device `json:"devices"`
+	Device
+	NodeId string `json:"node"`
 }
 
 type DeviceInfo struct {

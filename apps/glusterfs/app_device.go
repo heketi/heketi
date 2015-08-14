@@ -22,7 +22,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/utils"
 	"net/http"
-	"time"
 )
 
 func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
@@ -35,14 +34,16 @@ func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check the message has devices
-	if len(msg.Devices) <= 0 {
+	if msg.Name == "" {
 		http.Error(w, "no devices added", http.StatusBadRequest)
 		return
 	}
 
 	// Check the node is in the db
+	var node *NodeEntry
 	err = a.db.View(func(tx *bolt.Tx) error {
-		_, err := NewNodeEntryFromId(tx, msg.NodeId)
+		var err error
+		node, err = NewNodeEntryFromId(tx, msg.NodeId)
 		if err == ErrNotFound {
 			http.Error(w, "Node id does not exist", http.StatusNotFound)
 			return err
@@ -58,63 +59,59 @@ func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Log the devices are being added
-	logger.Info("Adding devices %+v to node %v", msg.Devices, msg.NodeId)
+	logger.Info("Adding device %v to node %v", msg.Name, msg.NodeId)
 
 	// Add device in an asynchronous function
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
 
-		sg := utils.NewStatusGroup()
-		for index := range msg.Devices {
-			sg.Add(1)
+		// Create device entry
+		device := NewDeviceEntryFromRequest(&msg)
 
-			// Add each drive
-			go func(dev *Device) {
-				defer sg.Done()
-
-				device := NewDeviceEntryFromRequest(dev, msg.NodeId)
-
-				// Pretend work
-				time.Sleep(1 * time.Second)
-				// :TODO: Fake work
-				device.StorageSet(10 * TB)
-
-				err := a.db.Update(func(tx *bolt.Tx) error {
-					node, err := NewNodeEntryFromId(tx, msg.NodeId)
-					if err != nil {
-						return err
-					}
-
-					// Add device to node
-					node.DeviceAdd(device.Info.Id)
-
-					// Commit
-					err = node.Save(tx)
-					if err != nil {
-						return err
-					}
-
-					// Save drive
-					err = device.Save(tx)
-					if err != nil {
-						return err
-					}
-
-					return nil
-
-				})
-				if err != nil {
-					sg.Err(err)
-				}
-
-				logger.Info("Added device %v", dev.Name)
-
-			}(&msg.Devices[index])
+		// Setup device on node
+		info, err := a.executor.DeviceSetup(node.ManageHostName(),
+			device.Info.Name, device.Info.Id)
+		if err != nil {
+			return "", err
 		}
+
+		// Create an entry for the device and set the size
+		device.StorageSet(info.Size)
+
+		// Save on db
+		err = a.db.Update(func(tx *bolt.Tx) error {
+			node, err := NewNodeEntryFromId(tx, msg.NodeId)
+			if err != nil {
+				return err
+			}
+
+			// Add device to node
+			node.DeviceAdd(device.Info.Id)
+
+			// Commit
+			err = node.Save(tx)
+			if err != nil {
+				return err
+			}
+
+			// Save drive
+			err = device.Save(tx)
+			if err != nil {
+				return err
+			}
+
+			return nil
+
+		})
+		if err != nil {
+			return "", err
+		}
+
+		logger.Info("Added device %v", msg.Name)
 
 		// Done
 		// Returning a null string instructs the async manager
 		// to return http status of 204 (No Content)
-		return "", sg.Result()
+		return "", nil
 	})
 
 }
@@ -163,59 +160,95 @@ func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	// Get info from db
-	err := a.db.Update(func(tx *bolt.Tx) error {
-
+	// Check request
+	var (
+		device *DeviceEntry
+		node   *NodeEntry
+	)
+	err := a.db.View(func(tx *bolt.Tx) error {
+		var err error
 		// Access device entry
-		device, err := NewDeviceEntryFromId(tx, id)
+		device, err = NewDeviceEntryFromId(tx, id)
 		if err == ErrNotFound {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return err
 		} else if err != nil {
+			logger.Err(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return err
+		}
+
+		// Check if we can delete the device
+		if !device.IsDeleteOk() {
+			http.Error(w, ErrConflict.Error(), http.StatusConflict)
+			return ErrConflict
 		}
 
 		// Access node entry
-		node, err := NewNodeEntryFromId(tx, device.NodeId)
-		if err == ErrNotFound {
-			http.Error(w, "Node id does not exist", http.StatusInternalServerError)
-			logger.Critical(
-				"Node id %v pointed to by device %v, but it is not in the db",
-				device.NodeId,
-				device.Info.Id)
-			return err
-		} else if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return err
-		}
-
-		// Delete device from node
-		node.DeviceDelete(device.Info.Id)
-
-		// Save node
-		node.Save(tx)
-
-		// Delete device from db
-		err = device.Delete(tx)
-		if err == ErrConflict {
-			http.Error(w, err.Error(), http.StatusConflict)
-			return err
-		} else if err != nil {
+		node, err = NewNodeEntryFromId(tx, device.NodeId)
+		if err != nil {
+			logger.Err(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return err
 		}
 
 		return nil
-
 	})
 	if err != nil {
 		return
 	}
 
-	// Show that the key has been deleted
-	logger.Info("Deleted node [%s]", id)
+	// Delete device
+	logger.Info("Deleting device %v on node %v", device.Info.Id, device.NodeId)
+	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
 
-	// Write msg
-	w.WriteHeader(http.StatusOK)
+		// Teardown device
+		err := a.executor.DeviceTeardown(node.ManageHostName(),
+			device.Info.Name, device.Info.Id)
+		if err != nil {
+			return "", err
+		}
+
+		// Get info from db
+		err = a.db.Update(func(tx *bolt.Tx) error {
+
+			// Access node entry
+			node, err := NewNodeEntryFromId(tx, device.NodeId)
+			if err == ErrNotFound {
+				logger.Critical(
+					"Node id %v pointed to by device %v, but it is not in the db",
+					device.NodeId,
+					device.Info.Id)
+				return err
+			} else if err != nil {
+				logger.Err(err)
+				return err
+			}
+
+			// Delete device from node
+			node.DeviceDelete(device.Info.Id)
+
+			// Save node
+			node.Save(tx)
+
+			// Delete device from db
+			err = device.Delete(tx)
+			if err != nil {
+				logger.Err(err)
+				return err
+			}
+
+			return nil
+
+		})
+		if err != nil {
+			return "", err
+		}
+
+		// Show that the key has been deleted
+		logger.Info("Deleted node [%s]", id)
+
+		return "", nil
+	})
+
 }

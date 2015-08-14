@@ -47,14 +47,14 @@ func NewDeviceEntry() *DeviceEntry {
 	return entry
 }
 
-func NewDeviceEntryFromRequest(req *Device, nodeid string) *DeviceEntry {
+func NewDeviceEntryFromRequest(req *DeviceAddRequest) *DeviceEntry {
 	godbc.Require(req != nil)
 
 	device := NewDeviceEntry()
 	device.Info.Id = utils.GenUUID()
 	device.Info.Name = req.Name
 	device.Info.Weight = req.Weight
-	device.NodeId = nodeid
+	device.NodeId = req.NodeId
 
 	return device
 }
@@ -91,11 +91,19 @@ func (d *DeviceEntry) Save(tx *bolt.Tx) error {
 
 }
 
+func (d *DeviceEntry) IsDeleteOk() bool {
+	// Check if the nodes still has drives
+	if len(d.Bricks) > 0 {
+		return false
+	}
+	return true
+}
+
 func (d *DeviceEntry) Delete(tx *bolt.Tx) error {
 	godbc.Require(tx != nil)
 
 	// Check if the devices still has drives
-	if len(d.Bricks) > 0 {
+	if !d.IsDeleteOk() {
 		logger.Warning("Unable to delete device [%v] because it contains bricks", d.Info.Id)
 		return ErrConflict
 	}

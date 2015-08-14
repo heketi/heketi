@@ -102,7 +102,7 @@ func NewSshExecWithKeyFile(logger *utils.Logger, user string, file string) *SshE
 	return sshexec
 }
 
-// This function was taken from https://github.com/coreos/etcd-manager/blob/master/main.go
+// This function was based from https://github.com/coreos/etcd-manager/blob/master/main.go
 func (s *SshExec) ConnectAndExec(host string, commands []string) ([]string, error) {
 
 	buffers := make([]string, len(commands))
@@ -135,6 +135,7 @@ func (s *SshExec) ConnectAndExec(host string, commands []string) ([]string, erro
 				command, host, err)
 			return nil, err
 		}
+		s.logger.Debug("Host: %v Command: %v\nResult: %v", host, command, b.String())
 		buffers[index] = b.String()
 	}
 
