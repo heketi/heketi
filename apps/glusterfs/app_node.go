@@ -43,6 +43,14 @@ func (a *App) NodeAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check for correct values
+	for _, name := range append(msg.Hostnames.Manage, msg.Hostnames.Storage...) {
+		if name == "" {
+			http.Error(w, "Hostname cannot be an empty string", http.StatusBadRequest)
+			return
+		}
+	}
+
 	// Get cluster and peer node
 	var cluster *ClusterEntry
 	var peer_node *NodeEntry
@@ -78,7 +86,7 @@ func (a *App) NodeAdd(w http.ResponseWriter, r *http.Request) {
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
 
 		// Peer probe if there is at least one other node
-		// TODO: What happens if the peer_node is not responding.. we need to chose another.
+		// TODO: What happens if the peer_node is not responding.. we need to choose another.
 		if peer_node != nil {
 			err := a.executor.PeerProbe(peer_node.ManageHostName(), node.ManageHostName())
 			if err != nil {
