@@ -19,4 +19,11 @@ package executors
 type Executor interface {
 	PeerProbe(exec_host, newnode string) error
 	PeerDetach(exec_host, detachnode string) error
+	DeviceSetup(host, device, vgid string) (*DeviceInfo, error)
+	DeviceTeardown(host, device, vgid string) error
+}
+
+type DeviceInfo struct {
+	// Size in KB
+	Size uint64
 }

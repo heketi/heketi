@@ -45,6 +45,18 @@ var (
 		storage2,
 		storage3,
 	}
+
+	disks = []string{
+		"/dev/sdb",
+		"/dev/sdc",
+		"/dev/sdd",
+		"/dev/sde",
+
+		"/dev/sdf",
+		"/dev/sdg",
+		"/dev/sdh",
+		"/dev/sdi",
+	}
 )
 
 func TestConnection(t *testing.T) {
@@ -100,6 +112,35 @@ func TestCreateTopology(t *testing.T) {
 				err = utils.GetJsonFromResponse(r, &node)
 				tests.Assert(t, err == nil)
 				break
+			}
+		}
+
+		// Add devices
+		for _, disk := range disks {
+			request := []byte(`{
+				"node" : "` + node.Id + `",
+				"name" : "` + disk + `",
+				"weight": 100
+			}`)
+
+			// Add device
+			r, err := http.Post(heketiUrl+"/devices", "application/json", bytes.NewBuffer(request))
+			tests.Assert(t, err == nil)
+			tests.Assert(t, r.StatusCode == http.StatusAccepted)
+			location, err := r.Location()
+			tests.Assert(t, err == nil)
+
+			// Query queue until finished
+			for {
+				r, err = http.Get(location.String())
+				tests.Assert(t, err == nil)
+				if r.Header.Get("X-Pending") == "true" {
+					tests.Assert(t, r.StatusCode == http.StatusOK)
+					time.Sleep(time.Millisecond * 10)
+				} else {
+					tests.Assert(t, r.StatusCode == http.StatusNoContent)
+					break
+				}
 			}
 		}
 	}

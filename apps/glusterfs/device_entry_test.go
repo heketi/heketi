@@ -27,12 +27,12 @@ import (
 
 func createSampleDeviceEntry(nodeid string, disksize uint64) *DeviceEntry {
 
-	req := &Device{
-		Name:   "dev",
-		Weight: 123,
-	}
+	req := &DeviceAddRequest{}
+	req.NodeId = nodeid
+	req.Name = "/dev/" + utils.GenUUID()
+	req.Weight = 123
 
-	d := NewDeviceEntryFromRequest(req, nodeid)
+	d := NewDeviceEntryFromRequest(req)
 	d.StorageSet(disksize)
 
 	return d
@@ -54,12 +54,12 @@ func TestNewDeviceEntry(t *testing.T) {
 }
 
 func TestNewDeviceEntryFromRequest(t *testing.T) {
-	req := &Device{
-		Name:   "dev",
-		Weight: 123,
-	}
+	req := &DeviceAddRequest{}
+	req.NodeId = "123"
+	req.Name = "/dev/" + utils.GenUUID()
+	req.Weight = 123
 
-	d := NewDeviceEntryFromRequest(req, "123")
+	d := NewDeviceEntryFromRequest(req)
 	tests.Assert(t, d != nil)
 	tests.Assert(t, d.Info.Id != "")
 	tests.Assert(t, d.Info.Name == req.Name)
@@ -74,13 +74,12 @@ func TestNewDeviceEntryFromRequest(t *testing.T) {
 }
 
 func TestNewDeviceEntryMarshal(t *testing.T) {
-	req := &Device{
-		Name:   "dev",
-		Weight: 123,
-	}
-	nodeid := "abc"
+	req := &DeviceAddRequest{}
+	req.NodeId = "abc"
+	req.Name = "/dev/" + utils.GenUUID()
+	req.Weight = 123
 
-	d := NewDeviceEntryFromRequest(req, nodeid)
+	d := NewDeviceEntryFromRequest(req)
 	d.Info.Storage.Free = 10
 	d.Info.Storage.Total = 100
 	d.Info.Storage.Used = 1000
@@ -148,13 +147,12 @@ func TestNewDeviceEntryFromId(t *testing.T) {
 	defer app.Close()
 
 	// Create a device
-	req := &Device{
-		Name:   "dev",
-		Weight: 123,
-	}
-	nodeid := "abc"
+	req := &DeviceAddRequest{}
+	req.NodeId = "abc"
+	req.Name = "/dev/" + utils.GenUUID()
+	req.Weight = 123
 
-	d := NewDeviceEntryFromRequest(req, nodeid)
+	d := NewDeviceEntryFromRequest(req)
 	d.Info.Storage.Free = 10
 	d.Info.Storage.Total = 100
 	d.Info.Storage.Used = 1000
@@ -190,13 +188,12 @@ func TestNewDeviceEntrySaveDelete(t *testing.T) {
 	defer app.Close()
 
 	// Create a device
-	req := &Device{
-		Name:   "dev",
-		Weight: 123,
-	}
-	nodeid := "abc"
+	req := &DeviceAddRequest{}
+	req.NodeId = "abc"
+	req.Name = "/dev/" + utils.GenUUID()
+	req.Weight = 123
 
-	d := NewDeviceEntryFromRequest(req, nodeid)
+	d := NewDeviceEntryFromRequest(req)
 	d.Info.Storage.Free = 10
 	d.Info.Storage.Total = 100
 	d.Info.Storage.Used = 1000
@@ -289,13 +286,12 @@ func TestNewDeviceEntryNewInfoResponse(t *testing.T) {
 	defer app.Close()
 
 	// Create a device
-	req := &Device{
-		Name:   "dev",
-		Weight: 123,
-	}
-	nodeid := "abc"
+	req := &DeviceAddRequest{}
+	req.NodeId = "abc"
+	req.Name = "/dev/" + utils.GenUUID()
+	req.Weight = 123
 
-	d := NewDeviceEntryFromRequest(req, nodeid)
+	d := NewDeviceEntryFromRequest(req)
 	d.Info.Storage.Free = 10
 	d.Info.Storage.Total = 100
 	d.Info.Storage.Used = 1000

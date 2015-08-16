@@ -58,10 +58,9 @@ func TestDeviceAddBadRequests(t *testing.T) {
 	tests.Assert(t, err == nil)
 	tests.Assert(t, r.StatusCode == 422)
 
-	// Make a request with no devices
+	// Make a request with no device
 	request = []byte(`{
-        "node" : "123",
-        "devices" : []
+        "node" : "123"
     }`)
 
 	// Post bad JSON
@@ -72,15 +71,11 @@ func TestDeviceAddBadRequests(t *testing.T) {
 	// Make a request with unknown node
 	request = []byte(`{
         "node" : "123",
-        "devices" : [
-            {
-                "name" : "/dev/fake",
-                "weight" : 20
-            }
-        ]
+        "name" : "/dev/fake",
+        "weight" : 20
     }`)
 
-	// Post bad JSON
+	// Post unknown node
 	r, err = http.Post(ts.URL+"/devices", "application/json", bytes.NewBuffer(request))
 	tests.Assert(t, err == nil)
 	tests.Assert(t, r.StatusCode == http.StatusNotFound)
@@ -130,34 +125,17 @@ func TestDeviceAddDelete(t *testing.T) {
 	})
 	tests.Assert(t, err == nil)
 
-	// Create a request to add four devices
+	// Create a request to a device
 	request := []byte(`{
         "node" : "` + node.Info.Id + `",
-        "devices" : [
-            {
-                "name" : "/dev/fake1",
-                "weight" : 10
-            },
-            {
-                "name" : "/dev/fake2",
-                "weight" : 20
-            },
-            {
-                "name" : "/dev/fake3",
-                "weight" : 30
-            },
-            {
-                "name" : "/dev/fake4",
-                "weight" : 40
-            }
-        ]
+        "name" : "/dev/fake1",
+        "weight" : 10
     }`)
 
 	// Add device using POST
 	r, err := http.Post(ts.URL+"/devices", "application/json", bytes.NewBuffer(request))
 	tests.Assert(t, err == nil)
 	tests.Assert(t, r.StatusCode == http.StatusAccepted)
-
 	location, err := r.Location()
 	tests.Assert(t, err == nil)
 
@@ -168,7 +146,33 @@ func TestDeviceAddDelete(t *testing.T) {
 		if r.Header.Get("X-Pending") == "true" {
 			tests.Assert(t, r.StatusCode == http.StatusOK)
 			time.Sleep(time.Millisecond * 10)
-			continue
+		} else {
+			tests.Assert(t, r.StatusCode == http.StatusNoContent)
+			break
+		}
+	}
+
+	// Add a second device
+	request = []byte(`{
+        "node" : "` + node.Info.Id + `",
+        "name" : "/dev/fake2",
+        "weight" : 20
+    }`)
+
+	// Add device using POST
+	r, err = http.Post(ts.URL+"/devices", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	location, err = r.Location()
+	tests.Assert(t, err == nil)
+
+	// Query queue until finished
+	for {
+		r, err = http.Get(location.String())
+		tests.Assert(t, err == nil)
+		if r.Header.Get("X-Pending") == "true" {
+			tests.Assert(t, r.StatusCode == http.StatusOK)
+			time.Sleep(time.Millisecond * 10)
 		} else {
 			tests.Assert(t, r.StatusCode == http.StatusNoContent)
 			break
@@ -205,18 +209,6 @@ func TestDeviceAddDelete(t *testing.T) {
 	tests.Assert(t, ok)
 	tests.Assert(t, val.Info.Name == "/dev/fake2")
 	tests.Assert(t, val.Info.Weight == 20)
-	tests.Assert(t, len(val.Bricks) == 0)
-
-	val, ok = devicemap["/dev/fake3"]
-	tests.Assert(t, ok)
-	tests.Assert(t, val.Info.Name == "/dev/fake3")
-	tests.Assert(t, val.Info.Weight == 30)
-	tests.Assert(t, len(val.Bricks) == 0)
-
-	val, ok = devicemap["/dev/fake4"]
-	tests.Assert(t, ok)
-	tests.Assert(t, val.Info.Name == "/dev/fake4")
-	tests.Assert(t, val.Info.Weight == 40)
 	tests.Assert(t, len(val.Bricks) == 0)
 
 	// Add some bricks to check if delete conflicts works
@@ -275,7 +267,23 @@ func TestDeviceAddDelete(t *testing.T) {
 	tests.Assert(t, err == nil)
 	r, err = http.DefaultClient.Do(req)
 	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusOK)
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	location, err = r.Location()
+	tests.Assert(t, err == nil)
+
+	// Wait for deletion
+	for {
+		r, err := http.Get(location.String())
+		tests.Assert(t, err == nil)
+		if r.Header.Get("X-Pending") == "true" {
+			tests.Assert(t, r.StatusCode == http.StatusOK)
+			time.Sleep(time.Millisecond * 10)
+			continue
+		} else {
+			tests.Assert(t, r.StatusCode == http.StatusNoContent)
+			break
+		}
+	}
 
 	// Check db
 	err = app.db.View(func(tx *bolt.Tx) error {
@@ -403,5 +411,4 @@ func TestDeviceDeleteErrors(t *testing.T) {
 	r, err = http.DefaultClient.Do(req)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, r.StatusCode == http.StatusInternalServerError)
-
 }

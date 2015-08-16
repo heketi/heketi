@@ -16,10 +16,16 @@
 
 package mockexec
 
+import (
+	"github.com/heketi/heketi/executors"
+)
+
 type MockExecutor struct {
 	// These functions can be overwritten for testing
-	MockPeerProbe  func(exec_host, newnode string) error
-	MockPeerDetach func(exec_host, newnode string) error
+	MockPeerProbe      func(exec_host, newnode string) error
+	MockPeerDetach     func(exec_host, newnode string) error
+	MockDeviceSetup    func(host, device, vgid string) (*executors.DeviceInfo, error)
+	MockDeviceTeardown func(host, device, vgid string) error
 }
 
 func NewMockExecutor() *MockExecutor {
@@ -33,6 +39,16 @@ func NewMockExecutor() *MockExecutor {
 		return nil
 	}
 
+	m.MockDeviceSetup = func(host, device, vgid string) (*executors.DeviceInfo, error) {
+		d := &executors.DeviceInfo{}
+		d.Size = 10 * 1024 * 1024 // Size in KB
+		return d, nil
+	}
+
+	m.MockDeviceTeardown = func(host, device, vgid string) error {
+		return nil
+	}
+
 	return m
 }
 
@@ -42,4 +58,12 @@ func (m *MockExecutor) PeerProbe(exec_host, newnode string) error {
 
 func (m *MockExecutor) PeerDetach(exec_host, newnode string) error {
 	return m.MockPeerDetach(exec_host, newnode)
+}
+
+func (m *MockExecutor) DeviceSetup(host, device, vgid string) (*executors.DeviceInfo, error) {
+	return m.MockDeviceSetup(host, device, vgid)
+}
+
+func (m *MockExecutor) DeviceTeardown(host, device, vgid string) error {
+	return m.MockDeviceTeardown(host, device, vgid)
 }

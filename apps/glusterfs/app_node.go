@@ -223,12 +223,6 @@ func (a *App) NodeDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check the node can be deleted
-	if !node.IsDeleteOk() {
-		http.Error(w, ErrConflict.Error(), http.StatusConflict)
-		return
-	}
-
 	// Delete node asynchronously
 	logger.Info("Deleting node %v [%v]", node.ManageHostName(), node.Info.Id)
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
