@@ -27,21 +27,24 @@ import (
 func TestNewBrickEntry(t *testing.T) {
 
 	size := uint64(10)
+	tpsize := size * 2
 	deviceid := "abc"
 	nodeid := "def"
 
-	c := NewBrickEntry(size, deviceid, nodeid)
-	tests.Assert(t, c.Info.Id != "")
-	tests.Assert(t, c.Info.DeviceId == deviceid)
-	tests.Assert(t, c.Info.NodeId == nodeid)
-	tests.Assert(t, c.Info.Size == size)
+	b := NewBrickEntry(size, tpsize, deviceid, nodeid)
+	tests.Assert(t, b.Info.Id != "")
+	tests.Assert(t, b.TpSize == tpsize)
+	tests.Assert(t, b.Info.DeviceId == deviceid)
+	tests.Assert(t, b.Info.NodeId == nodeid)
+	tests.Assert(t, b.Info.Size == size)
 }
 
 func TestBrickEntryMarshal(t *testing.T) {
 	size := uint64(10)
+	tpsize := size * 2
 	deviceid := "abc"
 	nodeid := "def"
-	m := NewBrickEntry(size, deviceid, nodeid)
+	m := NewBrickEntry(size, tpsize, deviceid, nodeid)
 
 	buffer, err := m.Marshal()
 	tests.Assert(t, err == nil)
@@ -81,7 +84,7 @@ func TestNewBrickEntryFromId(t *testing.T) {
 	defer app.Close()
 
 	// Create a brick
-	b := NewBrickEntry(10, "abc", "def")
+	b := NewBrickEntry(10, 20, "abc", "def")
 
 	// Save element in database
 	err := app.db.Update(func(tx *bolt.Tx) error {
@@ -109,7 +112,7 @@ func TestNewBrickEntrySaveDelete(t *testing.T) {
 	defer app.Close()
 
 	// Create a brick
-	b := NewBrickEntry(10, "abc", "def")
+	b := NewBrickEntry(10, 20, "abc", "def")
 
 	// Save element in database
 	err := app.db.Update(func(tx *bolt.Tx) error {
@@ -154,7 +157,7 @@ func TestNewBrickEntryNewInfoResponse(t *testing.T) {
 	defer app.Close()
 
 	// Create a brick
-	b := NewBrickEntry(10, "abc", "def")
+	b := NewBrickEntry(10, 20, "abc", "def")
 
 	// Save element in database
 	err := app.db.Update(func(tx *bolt.Tx) error {

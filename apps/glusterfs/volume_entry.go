@@ -19,7 +19,9 @@ package glusterfs
 import (
 	"bytes"
 	"encoding/gob"
+	"fmt"
 	"github.com/boltdb/bolt"
+	"github.com/heketi/heketi/executors"
 	"github.com/heketi/heketi/utils"
 	"github.com/lpabon/godbc"
 	"sort"
@@ -41,10 +43,6 @@ const (
 	BRICK_MIN_SIZE = uint64(1 * GB)
 	BRICK_MAX_SIZE = uint64(4 * TB)
 	BRICK_MAX_NUM  = 200
-)
-
-var (
-	createBricks = CreateBricks
 )
 
 type VolumeEntry struct {
@@ -90,6 +88,7 @@ func NewVolumeEntryFromRequest(req *VolumeCreateRequest) *VolumeEntry {
 	}
 
 	// Set default thinp factor
+	// :TODO: Are forgetting to add the requested snapshot?
 	if vol.Info.Snapshot.Enable && vol.Info.Snapshot.Factor == 0 {
 		vol.Info.Snapshot.Factor = DEFAULT_THINP_SNAPSHOT_FACTOR
 	} else if !vol.Info.Snapshot.Enable {
@@ -135,8 +134,7 @@ func (v *VolumeEntry) NewInfoResponse(tx *bolt.Tx) (*VolumeInfoResponse, error) 
 	info := NewVolumeInfoResponse()
 	info.Id = v.Info.Id
 	info.Cluster = v.Info.Cluster
-	info.Mount.GlusterFS.MountPoint = "/some/mount"
-	info.Mount.GlusterFS.Options["some"] = "options"
+	info.Mount = v.Info.Mount
 	info.Snapshot = v.Info.Snapshot
 	info.Size = v.Info.Size
 	info.Replica = v.Info.Replica
@@ -192,17 +190,19 @@ func (v *VolumeEntry) BrickDelete(id string) {
 	v.Bricks = utils.SortedStringsDelete(v.Bricks, id)
 }
 
-func (v *VolumeEntry) Create(db *bolt.DB) (e error) {
+func (v *VolumeEntry) Create(db *bolt.DB, executor executors.Executor) (e error) {
 
+	// On any error, remove the volume
 	defer func() {
 		if e != nil {
 			db.Update(func(tx *bolt.Tx) error {
-				err := v.Delete(tx)
-				godbc.Check(err == nil)
+				v.Delete(tx)
+
 				return nil
 			})
 		}
 	}()
+
 	// Get list of clusters
 	var clusters []string
 	if len(v.Info.Clusters) == 0 {
@@ -227,89 +227,156 @@ func (v *VolumeEntry) Create(db *bolt.DB) (e error) {
 	logger.Debug("Using the following clusters: %+v", clusters)
 
 	// For each cluster look for storage space for this volume
+	var brick_entries []*BrickEntry
 	for _, cluster := range clusters {
-		brick_entries, err := v.allocBricksInCluster(db, cluster, v.Info.Size)
-		if err != nil {
-			continue
+		var err error
+
+		// Check this cluster for space
+		brick_entries, err = v.allocBricksInCluster(db, cluster, v.Info.Size)
+
+		// Check if allocation was successfull
+		if err == nil {
+			v.Info.Cluster = cluster
+			logger.Debug("Volume to be created on cluster %v", cluster)
+			break
 		}
-
-		// Volume has been allocated
-		logger.Debug("Volume to be created on cluster %v", cluster)
-
-		// Create bricks
-		err = createBricks(db, brick_entries)
-		if err != nil {
-			return err
-		}
-
-		// :TODO: Create GlusterFS volume
-
-		// Save information on db
-		v.Info.Cluster = cluster
-		err = db.Update(func(tx *bolt.Tx) error {
-
-			// Save volume information
-			err = v.Save(tx)
-			if err != nil {
-				return err
-			}
-
-			// Save cluster
-			entry, err := NewClusterEntryFromId(tx, cluster)
-			if err != nil {
-				return err
-			}
-			entry.VolumeAdd(v.Info.Id)
-			return entry.Save(tx)
-		})
-		if err != nil {
-			return err
-		}
-
-		return nil
+	}
+	if brick_entries == nil {
+		return ErrNoSpace
 	}
 
-	return ErrNoSpace
+	// Make sure to clean up bricks on error
+	defer func() {
+		if e != nil {
+			db.Update(func(tx *bolt.Tx) error {
+				for _, brick := range brick_entries {
+					v.removeBrickFromDb(tx, brick)
+				}
+				return nil
+			})
+		}
+	}()
+
+	// Create bricks
+	err := CreateBricks(db, executor, brick_entries)
+	if err != nil {
+		return err
+	}
+
+	// Clean up created bricks on failure
+	defer func() {
+		if e != nil {
+			DestroyBricks(db, executor, brick_entries)
+		}
+	}()
+
+	// Create GlusterFS volume
+	err = v.createVolume(db, executor, brick_entries)
+	if err != nil {
+		return err
+	}
+
+	// Destroy volume on failure
+	defer func() {
+		if e != nil {
+			v.Destroy(db, executor)
+		}
+	}()
+
+	// Save information on db
+	err = db.Update(func(tx *bolt.Tx) error {
+
+		// Save volume information
+		err = v.Save(tx)
+		if err != nil {
+			return err
+		}
+
+		// Save cluster
+		cluster, err := NewClusterEntryFromId(tx, v.Info.Cluster)
+		if err != nil {
+			return err
+		}
+		cluster.VolumeAdd(v.Info.Id)
+		return cluster.Save(tx)
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 
 }
 
-func (v *VolumeEntry) Destroy(db *bolt.DB) error {
+func (v *VolumeEntry) Destroy(db *bolt.DB, executor executors.Executor) error {
 	logger.Info("Destroying volume %v", v.Info.Id)
 
-	// :TODO: Stop volume
-
-	// :TODO: Destroy the volume
-
-	// Destroy bricks - create a list of brick entries
-	brick_entries := make([]*BrickEntry, 0)
+	// Get the entries from the database
+	brick_entries := make([]*BrickEntry, len(v.Bricks))
+	var sshhost string
 	db.View(func(tx *bolt.Tx) error {
-		for _, id := range v.BricksIds() {
+		for index, id := range v.BricksIds() {
 			brick, err := NewBrickEntryFromId(tx, id)
 			if err != nil {
 				logger.LogError("Brick %v not found in db: %v", id, err)
 				continue
 			}
-			brick_entries = append(brick_entries, brick)
+			brick_entries[index] = brick
+
+			// Set ssh host to send volume commands
+			if sshhost == "" {
+				node, err := NewNodeEntryFromId(tx, brick.Info.NodeId)
+				if err != nil {
+					logger.LogError("Unable to determine brick node: %v", err)
+					return err
+				}
+				sshhost = node.ManageHostName()
+			}
 		}
 		return nil
 	})
 
+	// :TODO: What if the host is no longer available, we may need to try others
+	// Stop volume
+	err := executor.VolumeDestroy(sshhost, v.Info.Name)
+	if err != nil {
+		logger.LogError("Unable to delete volume: %v", err)
+		return err
+	}
+
 	// Destroy bricks
-	err := DestroyBricks(db, brick_entries)
+	err = DestroyBricks(db, executor, brick_entries)
 	if err != nil {
 		logger.LogError("Unable to delete bricks: %v", err)
 		return err
 	}
 
-	// Remove from db
+	// Remove from entries from the db
 	err = db.Update(func(tx *bolt.Tx) error {
 		for _, brick := range brick_entries {
 			err = v.removeBrickFromDb(tx, brick)
 			if err != nil {
 				logger.Err(err)
-				return err
+				// Everything is destroyed anyways, just keep deleting the others
+				// Do not return here
 			}
 		}
+
+		// Remove volume from cluster
+		cluster, err := NewClusterEntryFromId(tx, v.Info.Cluster)
+		if err != nil {
+			logger.Err(err)
+			// Do not return here.. keep going
+		}
+		cluster.VolumeDelete(v.Info.Id)
+
+		err = cluster.Save(tx)
+		if err != nil {
+			logger.Err(err)
+			// Do not return here.. keep going
+		}
+
+		// Delete volume
 		v.Delete(tx)
 
 		return nil
@@ -318,7 +385,9 @@ func (v *VolumeEntry) Destroy(db *bolt.DB) error {
 	return err
 }
 
-func (v *VolumeEntry) Expand(db *bolt.DB, sizeGB int) (e error) {
+func (v *VolumeEntry) Expand(db *bolt.DB,
+	executor executors.Executor,
+	sizeGB int) (e error) {
 
 	// Allocate new bricks in the cluster
 	brick_entries, err := v.allocBricksInCluster(db, v.Info.Cluster, sizeGB)
@@ -345,7 +414,7 @@ func (v *VolumeEntry) Expand(db *bolt.DB, sizeGB int) (e error) {
 	}()
 
 	// Create bricks
-	err = createBricks(db, brick_entries)
+	err = CreateBricks(db, executor, brick_entries)
 	if err != nil {
 		logger.Err(err)
 		return err
@@ -355,7 +424,7 @@ func (v *VolumeEntry) Expand(db *bolt.DB, sizeGB int) (e error) {
 	defer func() {
 		if err != nil {
 			logger.Debug("Error detected, cleaning up")
-			DestroyBricks(db, brick_entries)
+			DestroyBricks(db, executor, brick_entries)
 		}
 	}()
 
@@ -447,9 +516,7 @@ func (v *VolumeEntry) allocBricks(
 			logger.Debug("Error detected.  Cleaning up volume %v: Len(%v) ", v.Info.Id, len(brick_entries))
 			db.Update(func(tx *bolt.Tx) error {
 				for _, brick := range brick_entries {
-					logger.Debug("Destroying brick %v", brick.Id())
-					err := v.removeBrickFromDb(tx, brick)
-					godbc.Check(err == nil)
+					v.removeBrickFromDb(tx, brick)
 				}
 				return nil
 			})
@@ -526,7 +593,10 @@ func (v *VolumeEntry) allocBricks(
 					if device.StorageCheck(tpsize) {
 
 						// Create a new brick element
-						brick := NewBrickEntry(brick_size, device.Id(), device.NodeId)
+						brick := NewBrickEntry(brick_size,
+							tpsize,
+							device.Id(),
+							device.NodeId)
 						if i == 0 {
 							brick.SetId(brickId)
 						}
@@ -611,4 +681,62 @@ func (v *VolumeEntry) BricksIds() sort.StringSlice {
 	ids := make(sort.StringSlice, len(v.Bricks))
 	copy(ids, v.Bricks)
 	return ids
+}
+
+func (v *VolumeEntry) createVolume(db *bolt.DB,
+	executor executors.Executor,
+	brick_entries []*BrickEntry) error {
+
+	godbc.Require(db != nil)
+	godbc.Require(brick_entries != nil)
+
+	// Setup list of bricks
+	vr := &executors.VolumeRequest{}
+	vr.Bricks = make([]executors.BrickInfo, len(brick_entries))
+	var sshhost string
+	for i, b := range brick_entries {
+
+		// Setup path
+		vr.Bricks[i].Path = b.Info.Path
+
+		// Get storage host name from Node entry
+		err := db.View(func(tx *bolt.Tx) error {
+			node, err := NewNodeEntryFromId(tx, b.Info.NodeId)
+			if err != nil {
+				return err
+			}
+
+			if sshhost == "" {
+				sshhost = node.ManageHostName()
+			}
+			vr.Bricks[i].Host = node.StorageHostName()
+			godbc.Check(vr.Bricks[i].Host != "")
+
+			return nil
+		})
+		if err != nil {
+			logger.Err(err)
+			return nil
+		}
+	}
+	godbc.Check(sshhost != "")
+
+	// Setup volume information in the request
+	vr.Name = v.Info.Name
+	vr.Replica = v.Info.Replica
+
+	// Create the volume
+	_, err := executor.VolumeCreate(sshhost, vr)
+	if err != nil {
+		return err
+	}
+
+	// Save volume information
+	v.Info.Mount.GlusterFS.MountPoint = fmt.Sprintf("%v:%v",
+		vr.Bricks[0].Host, vr.Name)
+
+	// :TODO: add the options here
+
+	godbc.Ensure(v.Info.Mount.GlusterFS.MountPoint != "")
+	return nil
 }

@@ -113,6 +113,7 @@ func (s *SshExec) ConnectAndExec(host string, commands []string) ([]string, erro
 		s.logger.Warning("Failed to create SSH connection to %v: %v", host, err)
 		return nil, err
 	}
+	defer client.Close()
 
 	// Execute each command
 	for index, command := range commands {
@@ -126,13 +127,14 @@ func (s *SshExec) ConnectAndExec(host string, commands []string) ([]string, erro
 
 		// Create a buffer to trap session output
 		var b bytes.Buffer
+		var berr bytes.Buffer
 		session.Stdout = &b
-		session.Stderr = &b
+		session.Stderr = &berr
 
 		// Save the buffer for the caller
 		if err := session.Run(command); err != nil {
-			s.logger.LogError("Failed to run command [%v] on %v: %v",
-				command, host, err)
+			s.logger.LogError("Failed to run command [%v] on %v: Err[%v]: Stdout [%v]: Stderr [%v]",
+				command, host, err, b.String(), berr.String())
 			return nil, err
 		}
 		s.logger.Debug("Host: %v Command: %v\nResult: %v", host, command, b.String())

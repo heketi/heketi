@@ -18,6 +18,7 @@ package glusterfs
 
 import (
 	"github.com/boltdb/bolt"
+	"github.com/heketi/heketi/executors"
 	"github.com/heketi/heketi/utils"
 )
 
@@ -28,33 +29,39 @@ const (
 	CREATOR_DESTROY
 )
 
-func createDestroyConcurrently(db *bolt.DB, brick_entries []*BrickEntry, create_type CreateType) error {
+func createDestroyConcurrently(db *bolt.DB,
+	executor executors.Executor,
+	brick_entries []*BrickEntry,
+	create_type CreateType) error {
+
 	sg := utils.NewStatusGroup()
 
+	// Create a goroutine for each brick
 	for _, brick := range brick_entries {
 		sg.Add(1)
 		go func(b *BrickEntry) {
 			defer sg.Done()
 			if create_type == CREATOR_CREATE {
-				sg.Err(b.Create(db))
+				sg.Err(b.Create(db, executor))
 			} else {
-				sg.Err(b.Destroy(db))
+				sg.Err(b.Destroy(db, executor))
 			}
 		}(brick)
 	}
 
+	// Wait here until all goroutines have returned.  If
+	// any of errored, it would be cought here
 	err := sg.Result()
 	if err != nil {
 		logger.Err(err)
 	}
-
 	return err
 }
 
-func CreateBricks(db *bolt.DB, brick_entries []*BrickEntry) error {
-	return createDestroyConcurrently(db, brick_entries, CREATOR_CREATE)
+func CreateBricks(db *bolt.DB, executor executors.Executor, brick_entries []*BrickEntry) error {
+	return createDestroyConcurrently(db, executor, brick_entries, CREATOR_CREATE)
 }
 
-func DestroyBricks(db *bolt.DB, brick_entries []*BrickEntry) error {
-	return createDestroyConcurrently(db, brick_entries, CREATOR_DESTROY)
+func DestroyBricks(db *bolt.DB, executor executors.Executor, brick_entries []*BrickEntry) error {
+	return createDestroyConcurrently(db, executor, brick_entries, CREATOR_DESTROY)
 }

@@ -132,6 +132,111 @@ func TestNodeAddBadRequests(t *testing.T) {
 	tests.Assert(t, r.StatusCode == http.StatusNotFound, r.StatusCode)
 }
 
+func TestPeerProbe(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// ClusterCreate JSON Request
+	request := []byte(`{
+    }`)
+
+	// Post nothing
+	r, err := http.Post(ts.URL+"/clusters", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusCreated)
+	tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
+
+	// Read cluster information
+	var clusterinfo ClusterInfoResponse
+	err = utils.GetJsonFromResponse(r, &clusterinfo)
+	tests.Assert(t, err == nil)
+
+	// Override mock to check if the peer function was called
+	probe_called := false
+	app.xo.MockPeerProbe = func(exec_host, newnode string) error {
+		probe_called = true
+		return nil
+	}
+
+	// Create node on this cluster
+	request = []byte(`{
+		"cluster" : "` + clusterinfo.Id + `",
+		"hostnames" : {
+			"storage" : [ "storage0.hostname.com" ],
+			"manage" : [ "manage0.hostname.com"  ]
+		},
+		"zone" : 1
+    }`)
+
+	// Create node
+	r, err = http.Post(ts.URL+"/nodes", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	location, err := r.Location()
+	tests.Assert(t, err == nil)
+
+	// Query queue until finished
+	for {
+		r, err = http.Get(location.String())
+		tests.Assert(t, err == nil)
+		tests.Assert(t, r.StatusCode == http.StatusOK)
+		if r.ContentLength <= 0 {
+			time.Sleep(time.Millisecond * 10)
+			continue
+		} else {
+			// Should have node information here
+			tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
+			tests.Assert(t, err == nil)
+			break
+		}
+	}
+	tests.Assert(t, probe_called == false)
+
+	// Now add another and check that probe was called
+	request = []byte(`{
+		"cluster" : "` + clusterinfo.Id + `",
+		"hostnames" : {
+			"storage" : [ "storage1.hostname.com" ],
+			"manage" : [ "manage1.hostname.com"  ]
+		},
+		"zone" : 1
+    }`)
+
+	// Create node
+	r, err = http.Post(ts.URL+"/nodes", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	location, err = r.Location()
+	tests.Assert(t, err == nil)
+
+	// Query queue until finished
+	for {
+		r, err = http.Get(location.String())
+		tests.Assert(t, err == nil)
+		tests.Assert(t, r.StatusCode == http.StatusOK)
+		if r.ContentLength <= 0 {
+			time.Sleep(time.Millisecond * 10)
+			continue
+		} else {
+			// Should have node information here
+			tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
+			tests.Assert(t, err == nil)
+			break
+		}
+	}
+	tests.Assert(t, probe_called == true)
+}
+
 func TestNodeAddDelete(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
@@ -618,4 +723,88 @@ func TestNodePeerDetachFailure(t *testing.T) {
 		return err
 	})
 	tests.Assert(t, err == nil)
+}
+
+func TestNodePeerDetach(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Create a cluster.  We do not want
+	// any drives in the node so we can delete easily
+	err := setupSampleDbWithTopology(app.db,
+		1,     // clusters
+		4,     // nodes_per_cluster
+		0,     // devices_per_node,
+		50*GB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	// Setup the mock peer probe to fail
+	peer_called := false
+	app.xo.MockPeerDetach = func(exec_host, newnode string) error {
+		peer_called = true
+		return nil
+	}
+
+	// get list of nodes
+	var nodes []string
+	err = app.db.View(func(tx *bolt.Tx) error {
+		clusters, err := ClusterList(tx)
+		if err != nil {
+			return err
+		}
+
+		cluster, err := NewClusterEntryFromId(tx, clusters[0])
+		if err != nil {
+			return err
+		}
+
+		nodes = cluster.Info.Nodes
+		return nil
+	})
+	tests.Assert(t, err == nil)
+
+	// Delete nodes, peer detach should be called for each except the last one
+	for index, node := range nodes {
+		peer_called = false
+
+		// Delete node
+		req, err := http.NewRequest("DELETE", ts.URL+"/nodes/"+node, nil)
+		tests.Assert(t, err == nil)
+		r, err := http.DefaultClient.Do(req)
+		tests.Assert(t, err == nil)
+		tests.Assert(t, r.StatusCode == http.StatusAccepted)
+		location, err := r.Location()
+		tests.Assert(t, err == nil)
+
+		for {
+			r, err = http.Get(location.String())
+			tests.Assert(t, err == nil)
+			if r.Header.Get("X-Pending") == "true" {
+				tests.Assert(t, r.StatusCode == http.StatusOK)
+				time.Sleep(time.Millisecond * 10)
+			} else {
+				tests.Assert(t, r.StatusCode == http.StatusNoContent)
+				tests.Assert(t, err == nil)
+				break
+			}
+		}
+
+		// Check if detach was called
+		if index == len(nodes)-1 {
+			tests.Assert(t, peer_called == false)
+		} else {
+			tests.Assert(t, peer_called == true)
+		}
+	}
 }

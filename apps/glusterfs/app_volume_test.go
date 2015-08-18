@@ -342,7 +342,7 @@ func TestVolumeInfo(t *testing.T) {
 		return v.Save(tx)
 	})
 	tests.Assert(t, err == nil)
-	err = v.Create(app.db)
+	err = v.Create(app.db, app.executor)
 	tests.Assert(t, err == nil)
 
 	// Now that we have some data in the database, we can
@@ -502,7 +502,7 @@ func TestVolumeDelete(t *testing.T) {
 	// Create a volume
 	v := createSampleVolumeEntry(100)
 	tests.Assert(t, v != nil)
-	err = v.Create(app.db)
+	err = v.Create(app.db, app.executor)
 	tests.Assert(t, err == nil)
 
 	// Delete the volume
@@ -647,7 +647,7 @@ func TestVolumeExpand(t *testing.T) {
 	// Create a volume
 	v := createSampleVolumeEntry(100)
 	tests.Assert(t, v != nil)
-	err = v.Create(app.db)
+	err = v.Create(app.db, app.executor)
 	tests.Assert(t, err == nil)
 
 	// Keep a copy
