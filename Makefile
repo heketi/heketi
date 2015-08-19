@@ -67,6 +67,7 @@ $(PACKAGE): all
 	@echo Packaging Binaries...
 	@mkdir -p tmp/$(APP_NAME)
 	@cp $(APP_NAME) tmp/$(APP_NAME)/
+	@cp etc/heketi.json tmp/$(APP_NAME)/
 	@mkdir -p $(DIR)/dist/
 	tar -czf $@ -C tmp $(APP_NAME);
 	@rm -rf tmp
