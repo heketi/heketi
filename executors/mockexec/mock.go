@@ -26,6 +26,10 @@ type MockExecutor struct {
 	MockPeerDetach     func(exec_host, newnode string) error
 	MockDeviceSetup    func(host, device, vgid string) (*executors.DeviceInfo, error)
 	MockDeviceTeardown func(host, device, vgid string) error
+	MockBrickCreate    func(host string, brick *executors.BrickRequest) (*executors.BrickInfo, error)
+	MockBrickDestroy   func(host string, brick *executors.BrickRequest) error
+	MockVolumeCreate   func(host string, volume *executors.VolumeRequest) (*executors.VolumeInfo, error)
+	MockVolumeDestroy  func(host string, volume string) error
 }
 
 func NewMockExecutor() *MockExecutor {
@@ -49,6 +53,25 @@ func NewMockExecutor() *MockExecutor {
 		return nil
 	}
 
+	m.MockBrickCreate = func(host string, brick *executors.BrickRequest) (*executors.BrickInfo, error) {
+		b := &executors.BrickInfo{
+			Path: "/mockpath",
+		}
+		return b, nil
+	}
+
+	m.MockBrickDestroy = func(host string, brick *executors.BrickRequest) error {
+		return nil
+	}
+
+	m.MockVolumeCreate = func(host string, volume *executors.VolumeRequest) (*executors.VolumeInfo, error) {
+		return &executors.VolumeInfo{}, nil
+	}
+
+	m.MockVolumeDestroy = func(host string, volume string) error {
+		return nil
+	}
+
 	return m
 }
 
@@ -66,4 +89,20 @@ func (m *MockExecutor) DeviceSetup(host, device, vgid string) (*executors.Device
 
 func (m *MockExecutor) DeviceTeardown(host, device, vgid string) error {
 	return m.MockDeviceTeardown(host, device, vgid)
+}
+
+func (m *MockExecutor) BrickCreate(host string, brick *executors.BrickRequest) (*executors.BrickInfo, error) {
+	return m.MockBrickCreate(host, brick)
+}
+
+func (m *MockExecutor) BrickDestroy(host string, brick *executors.BrickRequest) error {
+	return m.MockBrickDestroy(host, brick)
+}
+
+func (m *MockExecutor) VolumeCreate(host string, volume *executors.VolumeRequest) (*executors.VolumeInfo, error) {
+	return m.MockVolumeCreate(host, volume)
+}
+
+func (m *MockExecutor) VolumeDestroy(host string, volume string) error {
+	return m.MockVolumeDestroy(host, volume)
 }

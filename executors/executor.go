@@ -21,9 +21,34 @@ type Executor interface {
 	PeerDetach(exec_host, detachnode string) error
 	DeviceSetup(host, device, vgid string) (*DeviceInfo, error)
 	DeviceTeardown(host, device, vgid string) error
+	BrickCreate(host string, brick *BrickRequest) (*BrickInfo, error)
+	BrickDestroy(host string, brick *BrickRequest) error
+	VolumeCreate(host string, volume *VolumeRequest) (*VolumeInfo, error)
+	VolumeDestroy(host string, volume string) error
 }
 
 type DeviceInfo struct {
 	// Size in KB
 	Size uint64
+}
+
+type BrickRequest struct {
+	VgId   string
+	Name   string
+	TpSize uint64
+	Size   uint64
+}
+
+type BrickInfo struct {
+	Path string
+	Host string
+}
+
+type VolumeRequest struct {
+	Bricks  []BrickInfo
+	Name    string
+	Replica int
+}
+
+type VolumeInfo struct {
 }

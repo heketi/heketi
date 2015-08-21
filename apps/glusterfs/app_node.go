@@ -66,10 +66,13 @@ func (a *App) NodeAdd(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Get a node in the cluster to execute the Gluster peer command
-		peer_node, err = cluster.PeerNode(tx)
-		if err != nil {
-			logger.Err(err)
-			return err
+		// only if there is more than one node
+		if len(cluster.Info.Nodes) > 0 {
+			peer_node, err = cluster.NodeEntryFromClusterIndex(tx, 0)
+			if err != nil {
+				logger.Err(err)
+				return err
+			}
 		}
 
 		return nil
@@ -212,10 +215,22 @@ func (a *App) NodeDelete(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Get a node in the cluster to execute the Gluster peer command
-		peer_node, err = cluster.PeerNode(tx)
-		if err != nil {
-			logger.Err(err)
-			return err
+		// If it only has one in the list, then there is no need to do a
+		// peer detach.
+		if len(cluster.Info.Nodes) > 1 {
+			for index := range cluster.Info.Nodes {
+				peer_node, err = cluster.NodeEntryFromClusterIndex(tx, index)
+				if err != nil {
+					logger.Err(err)
+					return err
+				}
+
+				// Cannot peer detach from the same node, we need to execute
+				// the command from another node
+				if peer_node.Info.Id != node.Info.Id {
+					break
+				}
+			}
 		}
 		return nil
 	})
