@@ -24,6 +24,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/apps"
 	"github.com/heketi/heketi/apps/glusterfs"
+	"github.com/heketi/heketi/middleware"
 	"log"
 	"net/http"
 	"os"
@@ -31,7 +32,9 @@ import (
 )
 
 type Config struct {
-	Port string `json:"port"`
+	Port        string                   `json:"port"`
+	AuthEnabled bool                     `json:"use_auth"`
+	JwtConfig   middleware.JwtAuthConfig `json:"jwt"`
 }
 
 var (
@@ -100,7 +103,7 @@ func main() {
 	router := mux.NewRouter().StrictSlash(true)
 	err = app.SetRoutes(router)
 	if err != nil {
-		fmt.Println("Unable to create http server endpoints")
+		fmt.Fprintln(os.Stderr, "Unable to create http server endpoints")
 		os.Exit(1)
 	}
 
@@ -108,6 +111,25 @@ func main() {
 	// middlewares: Recovery and Logger, which come with
 	// Negroni
 	n := negroni.New(negroni.NewRecovery(), negroni.NewLogger())
+
+	// Load authorization JWT middleware
+	if options.AuthEnabled {
+		jwtauth := middleware.NewJwtAuth(&options.JwtConfig)
+		if jwtauth == nil {
+			fmt.Fprintln(os.Stderr, "Missing JWT information in config file")
+			os.Exit(1)
+		}
+
+		// Add Token parser
+		n.Use(jwtauth)
+
+		// Add application middleware check
+		n.UseFunc(app.Auth)
+
+		fmt.Println("Authorization loaded")
+	}
+
+	// Setup routes
 	n.UseHandler(router)
 
 	// Shutdown on CTRL-C signal
