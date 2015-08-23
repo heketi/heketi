@@ -9,6 +9,7 @@ packages="${packages} ./executors/sshexec"
 packages="${packages} ./executors/mockexec"
 packages="${packages} ./executors ./apps"
 packages="${packages} ./client/go/commands"
+packages="${packages} ./middleware"
 COVERFILE=packagecover.out
 
 coverage()

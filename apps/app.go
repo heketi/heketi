@@ -18,9 +18,11 @@ package apps
 
 import (
 	"github.com/gorilla/mux"
+	"net/http"
 )
 
 type Application interface {
 	SetRoutes(router *mux.Router) error
 	Close()
+	Auth(w http.ResponseWriter, r *http.Request, next http.HandlerFunc)
 }
