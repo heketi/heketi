@@ -25,6 +25,7 @@ import (
 	"os"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -519,7 +520,7 @@ func TestVolumeEntryCreateFourBricks(t *testing.T) {
 	app := NewTestApp(tmpfile)
 	defer app.Close()
 
-	// Lots of nodes with little drives
+	// Create a cluster in the database
 	err := setupSampleDbWithTopology(app.db,
 		1,      // clusters
 		4,      // nodes_per_cluster
@@ -529,13 +530,13 @@ func TestVolumeEntryCreateFourBricks(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Create a volume who will be broken down to
-	// Shouldn't be able to break it down enough to allocate volume
 	v := createSampleVolumeEntry(250)
 	err = v.Create(app.db, app.executor)
 	tests.Assert(t, err == nil)
 
-	// Check database volume does not exist
+	// Check database
 	var info *VolumeInfoResponse
+	var nodelist sort.StringSlice
 	err = app.db.View(func(tx *bolt.Tx) error {
 		entry, err := NewVolumeEntryFromId(tx, v.Info.Id)
 		if err != nil {
@@ -546,6 +547,21 @@ func TestVolumeEntryCreateFourBricks(t *testing.T) {
 		if err != nil {
 			return err
 		}
+
+		cluster, err := NewClusterEntryFromId(tx, v.Info.Cluster)
+		if err != nil {
+			return err
+		}
+		nodelist = make(sort.StringSlice, len(cluster.Info.Nodes))
+
+		for i, id := range cluster.Info.Nodes {
+			node, err := NewNodeEntryFromId(tx, id)
+			if err != nil {
+				return err
+			}
+			nodelist[i] = node.StorageHostName()
+		}
+		nodelist.Sort()
 
 		return nil
 
@@ -559,7 +575,13 @@ func TestVolumeEntryCreateFourBricks(t *testing.T) {
 	tests.Assert(t, info.Bricks[0].Size == info.Bricks[3].Size)
 	tests.Assert(t, info.Cluster == v.Info.Cluster)
 
-	// :TODO: Check mount
+	// Check mount information
+	host := strings.Split(info.Mount.GlusterFS.MountPoint, ":")[0]
+	tests.Assert(t, utils.SortedStringHas(nodelist, host), host, nodelist)
+	volfileServers := strings.Split(info.Mount.GlusterFS.Options["backupvolfile-servers"], ",")
+	for index, node := range volfileServers {
+		tests.Assert(t, node != host, index, node, host)
+	}
 
 }
 
@@ -588,6 +610,7 @@ func TestVolumeEntryCreateBrickDivision(t *testing.T) {
 
 	// Check database volume does not exist
 	var info *VolumeInfoResponse
+	var nodelist sort.StringSlice
 	err = app.db.View(func(tx *bolt.Tx) error {
 		entry, err := NewVolumeEntryFromId(tx, v.Info.Id)
 		if err != nil {
@@ -598,6 +621,21 @@ func TestVolumeEntryCreateBrickDivision(t *testing.T) {
 		if err != nil {
 			return err
 		}
+
+		cluster, err := NewClusterEntryFromId(tx, v.Info.Cluster)
+		if err != nil {
+			return err
+		}
+		nodelist = make(sort.StringSlice, len(cluster.Info.Nodes))
+
+		for i, id := range cluster.Info.Nodes {
+			node, err := NewNodeEntryFromId(tx, id)
+			if err != nil {
+				return err
+			}
+			nodelist[i] = node.StorageHostName()
+		}
+		nodelist.Sort()
 
 		return nil
 
@@ -611,7 +649,13 @@ func TestVolumeEntryCreateBrickDivision(t *testing.T) {
 	}
 	tests.Assert(t, info.Cluster == v.Info.Cluster)
 
-	// :TODO: Check mount
+	// Check mount information
+	host := strings.Split(info.Mount.GlusterFS.MountPoint, ":")[0]
+	tests.Assert(t, utils.SortedStringHas(nodelist, host), host, nodelist)
+	volfileServers := strings.Split(info.Mount.GlusterFS.Options["backupvolfile-servers"], ",")
+	for index, node := range volfileServers {
+		tests.Assert(t, node != host, index, node, host)
+	}
 
 }
 

@@ -25,6 +25,7 @@ import (
 	"github.com/heketi/heketi/utils"
 	"github.com/lpabon/godbc"
 	"sort"
+	"strings"
 )
 
 const (
@@ -735,7 +736,16 @@ func (v *VolumeEntry) createVolume(db *bolt.DB,
 	v.Info.Mount.GlusterFS.MountPoint = fmt.Sprintf("%v:%v",
 		vr.Bricks[0].Host, vr.Name)
 
-	// :TODO: add the options here
+	// Set glusterfs mount volfile-servers options
+	v.Info.Mount.GlusterFS.Options = make(map[string]string)
+	stringset := utils.NewStringSet()
+	for _, brick := range vr.Bricks[1:] {
+		if vr.Bricks[0].Host != brick.Host {
+			stringset.Add(brick.Host)
+		}
+	}
+	v.Info.Mount.GlusterFS.Options["backupvolfile-servers"] =
+		strings.Join(stringset.Strings(), ",")
 
 	godbc.Ensure(v.Info.Mount.GlusterFS.MountPoint != "")
 	return nil
