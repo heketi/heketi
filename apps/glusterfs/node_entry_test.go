@@ -29,8 +29,8 @@ func createSampleNodeEntry() *NodeEntry {
 	req := &NodeAddRequest{
 		ClusterId: "123",
 		Hostnames: HostAddresses{
-			Manage:  []string{"manage"},
-			Storage: []string{"storage"},
+			Manage:  []string{"manage" + utils.GenUUID()[:8]},
+			Storage: []string{"storage" + utils.GenUUID()[:8]},
 		},
 		Zone: 99,
 	}

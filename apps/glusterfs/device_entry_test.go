@@ -29,7 +29,7 @@ func createSampleDeviceEntry(nodeid string, disksize uint64) *DeviceEntry {
 
 	req := &DeviceAddRequest{}
 	req.NodeId = nodeid
-	req.Name = "/dev/" + utils.GenUUID()
+	req.Name = "/dev/" + utils.GenUUID()[:8]
 	req.Weight = 123
 
 	d := NewDeviceEntryFromRequest(req)
