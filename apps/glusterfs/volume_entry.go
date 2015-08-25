@@ -40,9 +40,9 @@ const (
 	DEFAULT_THINP_SNAPSHOT_FACTOR = 1.5
 
 	// Default limits
-	BRICK_MIN_SIZE = uint64(1 * GB)
+	BRICK_MIN_SIZE = uint64(4 * GB)
 	BRICK_MAX_SIZE = uint64(4 * TB)
-	BRICK_MAX_NUM  = 200
+	BRICK_MAX_NUM  = 500
 )
 
 type VolumeEntry struct {
