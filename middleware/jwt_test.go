@@ -365,3 +365,120 @@ func TestJwt(t *testing.T) {
 	tests.Assert(t, r.StatusCode == http.StatusOK)
 	tests.Assert(t, called == true)
 }
+
+func TestJwtUnknownUser(t *testing.T) {
+
+	// Setup jwt
+	c := &JwtAuthConfig{}
+	c.Admin.PrivateKey = "Key"
+	c.User.PrivateKey = "UserKey"
+	j := NewJwtAuth(c)
+	tests.Assert(t, j != nil)
+
+	// Setup middleware framework
+	n := negroni.New(j)
+	tests.Assert(t, n != nil)
+
+	// Create a simple middleware to check if it was called
+	called := false
+	mw := func(rw http.ResponseWriter, r *http.Request) {
+		called = true
+	}
+	n.UseHandlerFunc(mw)
+
+	// Create test server
+	ts := httptest.NewServer(n)
+
+	// Create token with invalid user
+	token := jwt.New(jwt.SigningMethodHS256)
+	token.Claims["iat"] = time.Now().Unix()
+	token.Claims["exp"] = time.Now().Add(time.Second * 5).Unix()
+	token.Claims["iss"] = "someotheruser"
+	tokenString, err := token.SignedString([]byte("Key"))
+	tests.Assert(t, err == nil)
+
+	// Setup header
+	req, err := http.NewRequest("GET", ts.URL, nil)
+	tests.Assert(t, err == nil)
+
+	// Miss 'bearer' string
+	req.Header.Set("Authorization", "bearer "+tokenString)
+	r, err := http.DefaultClient.Do(req)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusUnauthorized)
+	tests.Assert(t, called == false)
+
+	s, err := utils.GetStringFromResponse(r)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, strings.Contains(s, "Unknown user"))
+}
+
+func TestJwtInvalidKeys(t *testing.T) {
+
+	// Setup jwt
+	c := &JwtAuthConfig{}
+	c.Admin.PrivateKey = "Key"
+	c.User.PrivateKey = "UserKey"
+	j := NewJwtAuth(c)
+	tests.Assert(t, j != nil)
+
+	// Setup middleware framework
+	n := negroni.New(j)
+	tests.Assert(t, n != nil)
+
+	// Create a simple middleware to check if it was called
+	called := false
+	mw := func(rw http.ResponseWriter, r *http.Request) {
+		called = true
+	}
+	n.UseHandlerFunc(mw)
+
+	// Create test server
+	ts := httptest.NewServer(n)
+
+	// Invalid user key
+	token := jwt.New(jwt.SigningMethodHS256)
+	token.Claims["iat"] = time.Now().Unix()
+	token.Claims["exp"] = time.Now().Add(time.Second * 5).Unix()
+	token.Claims["iss"] = "user"
+	tokenString, err := token.SignedString([]byte("Badkey"))
+	tests.Assert(t, err == nil)
+
+	// Setup header
+	req, err := http.NewRequest("GET", ts.URL, nil)
+	tests.Assert(t, err == nil)
+
+	// Miss 'bearer' string
+	req.Header.Set("Authorization", "bearer "+tokenString)
+	r, err := http.DefaultClient.Do(req)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusUnauthorized)
+	tests.Assert(t, called == false)
+
+	s, err := utils.GetStringFromResponse(r)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, strings.Contains(s, "signature is invalid"))
+
+	// Send invalid admin key
+	token = jwt.New(jwt.SigningMethodHS256)
+	token.Claims["iat"] = time.Now().Unix()
+	token.Claims["exp"] = time.Now().Add(time.Second * 5).Unix()
+	token.Claims["iss"] = "admin"
+	tokenString, err = token.SignedString([]byte("Badkey"))
+	tests.Assert(t, err == nil)
+
+	// Setup header
+	req, err = http.NewRequest("GET", ts.URL, nil)
+	tests.Assert(t, err == nil)
+
+	// Miss 'bearer' string
+	req.Header.Set("Authorization", "bearer "+tokenString)
+	r, err = http.DefaultClient.Do(req)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusUnauthorized)
+	tests.Assert(t, called == false)
+
+	s, err = utils.GetStringFromResponse(r)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, strings.Contains(s, "signature is invalid"))
+}
