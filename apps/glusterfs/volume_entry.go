@@ -287,6 +287,14 @@ func (v *VolumeEntry) Create(db *bolt.DB, executor executors.Executor) (e error)
 	// Save information on db
 	err = db.Update(func(tx *bolt.Tx) error {
 
+		// Save brick entries
+		for _, brick := range brick_entries {
+			err := brick.Save(tx)
+			if err != nil {
+				return err
+			}
+		}
+
 		// Save volume information
 		err = v.Save(tx)
 		if err != nil {

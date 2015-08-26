@@ -120,32 +120,21 @@ func (d *DeviceEntry) NewInfoResponse(tx *bolt.Tx) (*DeviceInfoResponse, error) 
 	info.Name = d.Info.Name
 	info.Weight = d.Info.Weight
 	info.Storage = d.Info.Storage
-
 	info.Bricks = make([]BrickInfo, 0)
 
-	/*
-	   // Access device information
-	   b := tx.Bucket([]byte(BOLTDB_BUCKET_BRI))
-	   if b == nil {
-	       logger.LogError("Unable to open device bucket")
-	       return asdfasdf nil
-	   }
+	// Add each drive information
+	for _, id := range d.Bricks {
+		brick, err := NewBrickEntryFromId(tx, id)
+		if err != nil {
+			return nil, err
+		}
 
-	   // Add each drive information
-	       for _, driveid := range d.Bricks {
-	           entry, err := NewDriveEntryFromId(tx, driveid)
-	           godbc.Check(err != ErrNotFound, driveid, d.Bricks)
-	           if err != nil {
-	               return err
-	           }
-
-	           driveinfo, err := entry.NewInfoResponse(tx)
-	           if err != nil {
-	               return err
-	           }
-	           info.DeviceInfo = append(info.DeviceInfo, driveinfo)
-	       }
-	*/
+		brickinfo, err := brick.NewInfoResponse(tx)
+		if err != nil {
+			return nil, err
+		}
+		info.Bricks = append(info.Bricks, *brickinfo)
+	}
 
 	return info, nil
 }
