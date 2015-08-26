@@ -36,7 +36,6 @@ type SshConfig struct {
 var (
 	logger           = utils.NewLogger("[sshexec]", utils.LEVEL_DEBUG)
 	ErrSshPrivateKey = errors.New("Unable to read private key file")
-	//ErrSshConnectionRefused = errors.New("Unable to ssh to destination")
 )
 
 func NewSshExecutor(config *SshConfig) *SshExecutor {

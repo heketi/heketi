@@ -39,10 +39,11 @@ func (s *SshExecutor) VolumeCreate(host string,
 	}
 
 	// Setup volume create command
+	// There could many, many bricks which could make the command line
+	// too long.  Instead, create the volume first, then add each brick set.
 	cmd := fmt.Sprintf("sudo gluster volume create %v replica %v ",
 		volume.Name, volume.Replica)
-
-	for _, brick := range volume.Bricks {
+	for _, brick := range volume.Bricks[:volume.Replica] {
 		cmd += fmt.Sprintf("%v:%v ", brick.Host, brick.Path)
 	}
 
@@ -50,11 +51,42 @@ func (s *SshExecutor) VolumeCreate(host string,
 	// to work.  Please remove once we add the intelligent ring
 	cmd += " force"
 
-	// Create the commands to create the volume and place it online
-	commands := []string{
-		cmd,
-		fmt.Sprintf("sudo gluster volume start %v", volume.Name),
+	// Initialize the commands with the create command
+	commands := []string{cmd}
+
+	// Now add all the commands to add the bricks
+	commands = append(commands, s.createAddBrickCommands(volume, volume.Replica)...)
+
+	// Add command to start the volume
+	commands = append(commands, fmt.Sprintf("sudo gluster volume start %v", volume.Name))
+
+	// Execute command
+	_, err := exec.ConnectAndExec(host+":22", commands)
+	if err != nil {
+		return nil, err
 	}
+
+	return &executors.VolumeInfo{}, nil
+}
+
+func (s *SshExecutor) VolumeExpand(host string,
+	volume *executors.VolumeRequest) (*executors.VolumeInfo, error) {
+
+	godbc.Require(volume != nil)
+	godbc.Require(host != "")
+	godbc.Require(len(volume.Bricks) > 0)
+	godbc.Require(volume.Name != "")
+
+	// Setup ssh key
+	exec := ssh.NewSshExecWithKeyFile(logger, s.user, s.private_keyfile)
+	if exec == nil {
+		return nil, ErrSshPrivateKey
+	}
+
+	// Setup volume create command
+	commands := s.createAddBrickCommands(volume, 0 /* start at the beginning of the brick list */)
+	commands = append(commands,
+		fmt.Sprintf("sudo gluster volume rebalance %v start", volume.Name))
 
 	// Execute command
 	_, err := exec.ConnectAndExec(host+":22", commands)
@@ -89,4 +121,22 @@ func (s *SshExecutor) VolumeDestroy(host string, volume string) error {
 	}
 
 	return nil
+}
+
+func (s *SshExecutor) createAddBrickCommands(volume *executors.VolumeRequest, start int) []string {
+
+	commands := []string{}
+	var cmd string
+	for index, brick := range volume.Bricks[start:] {
+		if index%(volume.Replica*10) == 0 {
+			if cmd != "" {
+				commands = append(commands, cmd)
+			}
+			cmd = fmt.Sprintf("sudo gluster volume add-brick %v ", volume.Name)
+		}
+		cmd += fmt.Sprintf("%v:%v ", brick.Host, brick.Path)
+	}
+	commands = append(commands, cmd)
+
+	return commands
 }

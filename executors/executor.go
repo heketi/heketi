@@ -25,6 +25,7 @@ type Executor interface {
 	BrickDestroy(host string, brick *BrickRequest) error
 	VolumeCreate(host string, volume *VolumeRequest) (*VolumeInfo, error)
 	VolumeDestroy(host string, volume string) error
+	VolumeExpand(host string, volume *VolumeRequest) (*VolumeInfo, error)
 }
 
 type DeviceInfo struct {
