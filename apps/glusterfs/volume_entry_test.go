@@ -393,8 +393,6 @@ func TestNewVolumeEntryNewInfoResponse(t *testing.T) {
 	tests.Assert(t, info.Size == v.Info.Size)
 	tests.Assert(t, info.Replica == v.Info.Replica)
 	tests.Assert(t, len(info.Bricks) == 0)
-
-	// :TODO: Add Mount check
 }
 
 func TestVolumeEntryCreateMissingCluster(t *testing.T) {
@@ -575,6 +573,13 @@ func TestVolumeEntryCreateFourBricks(t *testing.T) {
 	tests.Assert(t, info.Bricks[0].Size == info.Bricks[3].Size)
 	tests.Assert(t, info.Cluster == v.Info.Cluster)
 
+	// Check information on the bricks
+	for _, brick := range info.Bricks {
+		tests.Assert(t, brick.DeviceId != "")
+		tests.Assert(t, brick.NodeId != "")
+		tests.Assert(t, brick.Path != "")
+	}
+
 	// Check mount information
 	host := strings.Split(info.Mount.GlusterFS.MountPoint, ":")[0]
 	tests.Assert(t, utils.SortedStringHas(nodelist, host), host, nodelist)
@@ -707,8 +712,6 @@ func TestVolumeEntryCreateMaxBrickSize(t *testing.T) {
 		tests.Assert(t, info.Bricks[0].Size == info.Bricks[b].Size, b)
 	}
 	tests.Assert(t, info.Cluster == v.Info.Cluster)
-
-	// :TODO: Check mount
 
 }
 

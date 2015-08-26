@@ -277,7 +277,7 @@ func TestNewDeviceEntrySaveDelete(t *testing.T) {
 	tests.Assert(t, err == ErrNotFound)
 }
 
-func TestNewDeviceEntryNewInfoResponse(t *testing.T) {
+func TestNewDeviceEntryNewInfoResponseBadBrickIds(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
@@ -291,6 +291,7 @@ func TestNewDeviceEntryNewInfoResponse(t *testing.T) {
 	req.Name = "/dev/" + utils.GenUUID()
 	req.Weight = 123
 
+	// Add bad brick ids
 	d := NewDeviceEntryFromRequest(req)
 	d.Info.Storage.Free = 10
 	d.Info.Storage.Total = 100
@@ -319,12 +320,77 @@ func TestNewDeviceEntryNewInfoResponse(t *testing.T) {
 		return nil
 
 	})
+	tests.Assert(t, err == ErrNotFound)
+}
+
+func TestNewDeviceEntryNewInfoResponse(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	// Create a device
+	req := &DeviceAddRequest{}
+	req.NodeId = "abc"
+	req.Name = "/dev/" + utils.GenUUID()
+	req.Weight = 123
+
+	d := NewDeviceEntryFromRequest(req)
+	d.Info.Storage.Free = 10
+	d.Info.Storage.Total = 100
+	d.Info.Storage.Used = 1000
+
+	// Create a brick
+	b := &BrickEntry{}
+	b.Info.Id = "bbb"
+	b.Info.Size = 10
+	b.Info.NodeId = "abc"
+	b.Info.DeviceId = d.Info.Id
+	b.Info.Path = "/somepath"
+
+	// Add brick to device
+	d.BrickAdd("bbb")
+
+	// Save element in database
+	err := app.db.Update(func(tx *bolt.Tx) error {
+		err := d.Save(tx)
+		if err != nil {
+			return err
+		}
+
+		return b.Save(tx)
+	})
+	tests.Assert(t, err == nil)
+
+	var info *DeviceInfoResponse
+	err = app.db.View(func(tx *bolt.Tx) error {
+		device, err := NewDeviceEntryFromId(tx, d.Info.Id)
+		if err != nil {
+			return err
+		}
+
+		info, err = device.NewInfoResponse(tx)
+		if err != nil {
+			return err
+		}
+
+		return nil
+
+	})
 	tests.Assert(t, err == nil)
 	tests.Assert(t, info.Id == d.Info.Id)
 	tests.Assert(t, info.Name == d.Info.Name)
 	tests.Assert(t, info.Weight == d.Info.Weight)
 	tests.Assert(t, reflect.DeepEqual(info.Storage, d.Info.Storage))
-	tests.Assert(t, len(info.Bricks) == 0)
+	tests.Assert(t, len(info.Bricks) == 1)
+	tests.Assert(t, info.Bricks[0].Id == "bbb")
+	tests.Assert(t, info.Bricks[0].Path == "/somepath")
+	tests.Assert(t, info.Bricks[0].NodeId == "abc")
+	tests.Assert(t, info.Bricks[0].DeviceId == d.Info.Id)
+	tests.Assert(t, info.Bricks[0].Size == 10)
+
 }
 
 func TestDeviceEntryStorage(t *testing.T) {
