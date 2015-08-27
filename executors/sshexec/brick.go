@@ -78,6 +78,8 @@ func (s *SshExecutor) BrickCreate(host string,
 		return nil, err
 	}
 
+	// :TODO: Add to fstab!
+
 	// Save brick location
 	b := &executors.BrickInfo{
 		Path: fmt.Sprintf("/brick_%v/brick", brick.Name),
@@ -111,6 +113,8 @@ func (s *SshExecutor) BrickDestroy(host string,
 	if err != nil {
 		return err
 	}
+
+	// :TODO: Remove from fstab
 
 	return nil
 }

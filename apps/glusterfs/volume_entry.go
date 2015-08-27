@@ -431,19 +431,39 @@ func (v *VolumeEntry) Expand(db *bolt.DB,
 
 	// Setup cleanup function
 	defer func() {
-		if err != nil {
+		if e != nil {
 			logger.Debug("Error detected, cleaning up")
 			DestroyBricks(db, executor, brick_entries)
 		}
 	}()
 
-	// :TODO: Add them to the volume
+	// Create a volume request to send to executor
+	// so that it can add the new bricks
+	vr, host, err := v.createVolumeRequest(db, brick_entries)
+	if err != nil {
+		return err
+	}
+
+	// Expand the volume
+	_, err = executor.VolumeExpand(host, vr)
+	if err != nil {
+		return err
+	}
 
 	// Increase the recorded volume size
 	v.Info.Size += sizeGB
 
 	// Save volume entry
 	err = db.Update(func(tx *bolt.Tx) error {
+
+		// Save brick entries
+		for _, brick := range brick_entries {
+			err := brick.Save(tx)
+			if err != nil {
+				return err
+			}
+		}
+
 		return v.Save(tx)
 	})
 
@@ -625,14 +645,6 @@ func (v *VolumeEntry) allocBricks(
 						if err != nil {
 							return err
 						}
-						err = brick.Save(tx)
-						if err != nil {
-							return err
-						}
-						err = v.Save(tx)
-						if err != nil {
-							return err
-						}
 
 						break
 					}
@@ -658,6 +670,9 @@ func (v *VolumeEntry) removeBrickFromDb(tx *bolt.Tx, brick *BrickEntry) error {
 		logger.Err(err)
 		return err
 	}
+
+	// Deallocate space on device
+	device.StorageFree(brick.TpSize)
 
 	// Delete brick from device
 	device.BrickDelete(brick.Info.Id)
@@ -699,6 +714,43 @@ func (v *VolumeEntry) createVolume(db *bolt.DB,
 	godbc.Require(db != nil)
 	godbc.Require(brick_entries != nil)
 
+	// Create a volume request for executor with
+	// the bricks allocated
+	vr, host, err := v.createVolumeRequest(db, brick_entries)
+	if err != nil {
+		return err
+	}
+
+	// Create the volume
+	_, err = executor.VolumeCreate(host, vr)
+	if err != nil {
+		return err
+	}
+
+	// Save volume information
+	v.Info.Mount.GlusterFS.MountPoint = fmt.Sprintf("%v:%v",
+		vr.Bricks[0].Host, vr.Name)
+
+	// Set glusterfs mount volfile-servers options
+	v.Info.Mount.GlusterFS.Options = make(map[string]string)
+	stringset := utils.NewStringSet()
+	for _, brick := range vr.Bricks[1:] {
+		if vr.Bricks[0].Host != brick.Host {
+			stringset.Add(brick.Host)
+		}
+	}
+	v.Info.Mount.GlusterFS.Options["backupvolfile-servers"] =
+		strings.Join(stringset.Strings(), ",")
+
+	godbc.Ensure(v.Info.Mount.GlusterFS.MountPoint != "")
+	return nil
+}
+
+func (v *VolumeEntry) createVolumeRequest(db *bolt.DB,
+	brick_entries []*BrickEntry) (*executors.VolumeRequest, string, error) {
+	godbc.Require(db != nil)
+	godbc.Require(brick_entries != nil)
+
 	// Setup list of bricks
 	vr := &executors.VolumeRequest{}
 	vr.Bricks = make([]executors.BrickInfo, len(brick_entries))
@@ -725,36 +777,13 @@ func (v *VolumeEntry) createVolume(db *bolt.DB,
 		})
 		if err != nil {
 			logger.Err(err)
-			return nil
+			return nil, "", err
 		}
 	}
-	godbc.Check(sshhost != "")
 
 	// Setup volume information in the request
 	vr.Name = v.Info.Name
 	vr.Replica = v.Info.Replica
 
-	// Create the volume
-	_, err := executor.VolumeCreate(sshhost, vr)
-	if err != nil {
-		return err
-	}
-
-	// Save volume information
-	v.Info.Mount.GlusterFS.MountPoint = fmt.Sprintf("%v:%v",
-		vr.Bricks[0].Host, vr.Name)
-
-	// Set glusterfs mount volfile-servers options
-	v.Info.Mount.GlusterFS.Options = make(map[string]string)
-	stringset := utils.NewStringSet()
-	for _, brick := range vr.Bricks[1:] {
-		if vr.Bricks[0].Host != brick.Host {
-			stringset.Add(brick.Host)
-		}
-	}
-	v.Info.Mount.GlusterFS.Options["backupvolfile-servers"] =
-		strings.Join(stringset.Strings(), ",")
-
-	godbc.Ensure(v.Info.Mount.GlusterFS.MountPoint != "")
-	return nil
+	return vr, sshhost, nil
 }
