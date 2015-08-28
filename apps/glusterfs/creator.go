@@ -54,6 +54,11 @@ func createDestroyConcurrently(db *bolt.DB,
 	err := sg.Result()
 	if err != nil {
 		logger.Err(err)
+
+		// Destroy all bricks and cleanup
+		if create_type == CREATOR_CREATE {
+			createDestroyConcurrently(db, executor, brick_entries, CREATOR_DESTROY)
+		}
 	}
 	return err
 }

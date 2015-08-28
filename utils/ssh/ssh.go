@@ -18,6 +18,7 @@ package ssh
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"github.com/heketi/heketi/utils"
 	"golang.org/x/crypto/ssh"
@@ -26,6 +27,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
 )
 
 type SshExec struct {
@@ -107,7 +109,7 @@ func NewSshExecWithKeyFile(logger *utils.Logger, user string, file string) *SshE
 }
 
 // This function was based from https://github.com/coreos/etcd-manager/blob/master/main.go
-func (s *SshExec) ConnectAndExec(host string, commands []string) ([]string, error) {
+func (s *SshExec) ConnectAndExec(host string, commands []string, timeoutMinutes int) ([]string, error) {
 
 	// Wait here for a turn
 	maxconnections <- true
@@ -141,14 +143,41 @@ func (s *SshExec) ConnectAndExec(host string, commands []string) ([]string, erro
 		session.Stdout = &b
 		session.Stderr = &berr
 
-		// Save the buffer for the caller
-		if err := session.Run(command); err != nil {
-			s.logger.LogError("Failed to run command [%v] on %v: Err[%v]: Stdout [%v]: Stderr [%v]",
-				command, host, err, b.String(), berr.String())
+		err = session.Start(command)
+		if err != nil {
 			return nil, err
 		}
-		s.logger.Debug("Host: %v Command: %v\nResult: %v", host, command, b.String())
-		buffers[index] = b.String()
+
+		// Spawn function to wait for results
+		errch := make(chan error)
+		go func() {
+			errch <- session.Wait()
+		}()
+
+		// Set the timeout
+		timeout := time.After(time.Minute * time.Duration(timeoutMinutes))
+
+		// Wait for either the command completion or timeout
+		select {
+		case err := <-errch:
+			if err != nil {
+				s.logger.LogError("Failed to run command [%v] on %v: Err[%v]: Stdout [%v]: Stderr [%v]",
+					command, host, err, b.String(), berr.String())
+				return nil, err
+			}
+			s.logger.Debug("Host: %v Command: %v\nResult: %v", host, command, b.String())
+			buffers[index] = b.String()
+
+		case <-timeout:
+			s.logger.LogError("Timeout on command [%v] on %v: Err[%v]: Stdout [%v]: Stderr [%v]",
+				command, host, err, b.String(), berr.String())
+			err := session.Signal(ssh.SIGKILL)
+			if err != nil {
+				s.logger.LogError("Unable to send kill signal to command [%v] on host [%v]: %v",
+					command, host, err)
+			}
+			return nil, errors.New("SSH command timeout")
+		}
 	}
 
 	return buffers, nil

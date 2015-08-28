@@ -37,7 +37,7 @@ func (s *SshExecutor) PeerProbe(exec_host, newnode string) error {
 	commands := []string{
 		fmt.Sprintf("sudo gluster peer probe %v", newnode),
 	}
-	_, err := exec.ConnectAndExec(exec_host+":22", commands)
+	_, err := exec.ConnectAndExec(exec_host+":22", commands, 5)
 	if err != nil {
 		return err
 	}
@@ -47,7 +47,7 @@ func (s *SshExecutor) PeerProbe(exec_host, newnode string) error {
 	commands = []string{
 		fmt.Sprintf("sudo gluster peer probe %v", exec_host),
 	}
-	_, err = exec.ConnectAndExec(newnode+":22", commands)
+	_, err = exec.ConnectAndExec(newnode+":22", commands, 5)
 	if err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func (s *SshExecutor) PeerDetach(exec_host, detachnode string) error {
 	commands := []string{
 		fmt.Sprintf("sudo gluster peer detach %v", detachnode),
 	}
-	_, err := exec.ConnectAndExec(exec_host+":22", commands)
+	_, err := exec.ConnectAndExec(exec_host+":22", commands, 5)
 	if err != nil {
 		return err
 	}
