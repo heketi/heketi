@@ -62,7 +62,7 @@ func (s *SshExecutor) BrickCreate(host string,
 			brick.Name),
 
 		// Format
-		fmt.Sprintf("sudo mkfs.xfs -i size=512 /dev/vg_%v/brick_%v", brick.VgId, brick.Name),
+		fmt.Sprintf("sudo mkfs.xfs -i size=512 -n size=8192 /dev/vg_%v/brick_%v", brick.VgId, brick.Name),
 
 		// Mount
 		fmt.Sprintf("sudo mount /dev/vg_%v/brick_%v /brick_%v",
@@ -73,7 +73,7 @@ func (s *SshExecutor) BrickCreate(host string,
 	}
 
 	// Execute commands
-	_, err := exec.ConnectAndExec(host+":22", commands)
+	_, err := exec.ConnectAndExec(host+":22", commands, 10)
 	if err != nil {
 		return nil, err
 	}
@@ -101,17 +101,31 @@ func (s *SshExecutor) BrickDestroy(host string,
 		return ErrSshPrivateKey
 	}
 
-	// Setup commands to delete brick
+	// Try to unmount first
 	commands := []string{
 		fmt.Sprintf("sudo umount /brick_%v", brick.Name),
-		fmt.Sprintf("sudo lvremove -f vg_%v/tp_%v", brick.VgId, brick.Name),
-		fmt.Sprintf("sudo rmdir /brick_%v", brick.Name),
+	}
+	_, err := exec.ConnectAndExec(host+":22", commands, 5)
+	if err != nil {
+		logger.Err(err)
 	}
 
-	// Execute commands
-	_, err := exec.ConnectAndExec(host+":22", commands)
+	// Now try to remove the LV
+	commands = []string{
+		fmt.Sprintf("sudo lvremove -f vg_%v/tp_%v", brick.VgId, brick.Name),
+	}
+	_, err = exec.ConnectAndExec(host+":22", commands, 5)
 	if err != nil {
-		return err
+		logger.Err(err)
+	}
+
+	// Now cleanup the mount point
+	commands = []string{
+		fmt.Sprintf("sudo rmdir /brick_%v", brick.Name),
+	}
+	_, err = exec.ConnectAndExec(host+":22", commands, 5)
+	if err != nil {
+		logger.Err(err)
 	}
 
 	// :TODO: Remove from fstab

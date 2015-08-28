@@ -61,7 +61,7 @@ func (s *SshExecutor) VolumeCreate(host string,
 	commands = append(commands, fmt.Sprintf("sudo gluster volume start %v", volume.Name))
 
 	// Execute command
-	_, err := exec.ConnectAndExec(host+":22", commands)
+	_, err := exec.ConnectAndExec(host+":22", commands, 10)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func (s *SshExecutor) VolumeExpand(host string,
 		fmt.Sprintf("sudo gluster volume rebalance %v start", volume.Name))
 
 	// Execute command
-	_, err := exec.ConnectAndExec(host+":22", commands)
+	_, err := exec.ConnectAndExec(host+":22", commands, 10)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +115,7 @@ func (s *SshExecutor) VolumeDestroy(host string, volume string) error {
 	}
 
 	// Execute command
-	_, err := exec.ConnectAndExec(host+":22", commands)
+	_, err := exec.ConnectAndExec(host+":22", commands, 5)
 	if err != nil {
 		return err
 	}

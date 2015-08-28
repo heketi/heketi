@@ -48,7 +48,7 @@ func (s *SshExecutor) DeviceSetup(host, device, vgid string) (d *executors.Devic
 	}
 
 	// Execute command
-	_, err := exec.ConnectAndExec(host+":22", commands)
+	_, err := exec.ConnectAndExec(host+":22", commands, 5)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func (s *SshExecutor) DeviceTeardown(host, device, vgid string) error {
 	}
 
 	// Execute command
-	_, err := exec.ConnectAndExec(host+":22", commands)
+	_, err := exec.ConnectAndExec(host+":22", commands, 5)
 	if err != nil {
 		return err
 	}
@@ -108,7 +108,7 @@ func (s *SshExecutor) getVgSizeFromNode(
 	}
 
 	// Execute command
-	b, err := exec.ConnectAndExec(host+":22", commands)
+	b, err := exec.ConnectAndExec(host+":22", commands, 5)
 	if err != nil {
 		return err
 	}
