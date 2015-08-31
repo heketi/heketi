@@ -42,16 +42,6 @@ func (s *SshExecutor) PeerProbe(exec_host, newnode string) error {
 		return err
 	}
 
-	logger.Info("Probing: %v -> %v", newnode, exec_host)
-	// --- Now we need to probe in the other direction.
-	commands = []string{
-		fmt.Sprintf("sudo gluster peer probe %v", exec_host),
-	}
-	_, err = exec.ConnectAndExec(newnode+":22", commands, 5)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -71,7 +61,7 @@ func (s *SshExecutor) PeerDetach(exec_host, detachnode string) error {
 	}
 	_, err := exec.ConnectAndExec(exec_host+":22", commands, 5)
 	if err != nil {
-		return err
+		logger.Err(err)
 	}
 	return nil
 }
