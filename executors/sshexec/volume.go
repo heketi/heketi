@@ -23,6 +23,10 @@ import (
 	"github.com/lpabon/godbc"
 )
 
+const (
+	MAX_SETS_PER_ADDBRICK = 5
+)
+
 func (s *SshExecutor) VolumeCreate(host string,
 	volume *executors.VolumeRequest) (*executors.VolumeInfo, error) {
 
@@ -85,8 +89,12 @@ func (s *SshExecutor) VolumeExpand(host string,
 
 	// Setup volume create command
 	commands := s.createAddBrickCommands(volume, 0 /* start at the beginning of the brick list */)
-	commands = append(commands,
-		fmt.Sprintf("sudo gluster volume rebalance %v start", volume.Name))
+
+	// Rebalance if configured
+	if s.config.RebalanceOnExpansion {
+		commands = append(commands,
+			fmt.Sprintf("sudo gluster volume rebalance %v start", volume.Name))
+	}
 
 	// Execute command
 	_, err := exec.ConnectAndExec(host+":22", commands, 10)
@@ -127,15 +135,24 @@ func (s *SshExecutor) createAddBrickCommands(volume *executors.VolumeRequest, st
 
 	commands := []string{}
 	var cmd string
+
+	// Go through all the bricks and create add-brick commands
 	for index, brick := range volume.Bricks[start:] {
-		if index%(volume.Replica*10) == 0 {
+		if index%(volume.Replica*MAX_SETS_PER_ADDBRICK) == 0 {
 			if cmd != "" {
+				// Add add-brick command to the command list
 				commands = append(commands, cmd)
 			}
+
+			// Create a new add-brick command
 			cmd = fmt.Sprintf("sudo gluster volume add-brick %v ", volume.Name)
 		}
+
+		// Add this brick to the add-brick command
 		cmd += fmt.Sprintf("%v:%v ", brick.Host, brick.Path)
 	}
+
+	// Add the last add-brick command to the command list
 	commands = append(commands, cmd)
 
 	return commands

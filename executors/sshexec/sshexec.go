@@ -26,11 +26,15 @@ import (
 type SshExecutor struct {
 	private_keyfile string
 	user            string
+	config          *SshConfig
 }
 
 type SshConfig struct {
 	PrivateKeyFile string `json:"keyfile"`
 	User           string `json:"user"`
+
+	// Experimental Settings
+	RebalanceOnExpansion bool `json:"rebalance_on_expansion"`
 }
 
 var (
@@ -55,8 +59,15 @@ func NewSshExecutor(config *SshConfig) *SshExecutor {
 	} else {
 		s.user = config.User
 	}
+	s.config = config
+
+	// Show experimental settings
+	if s.config.RebalanceOnExpansion {
+		logger.Warning("Rebalance on volume expansion has been enabled.  This is an EXPERIMENTAL feature")
+	}
 
 	godbc.Ensure(s != nil)
+	godbc.Ensure(s.config == config)
 	godbc.Ensure(s.user != "")
 	godbc.Ensure(s.private_keyfile != "")
 
