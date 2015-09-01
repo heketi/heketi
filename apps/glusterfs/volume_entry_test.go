@@ -1076,15 +1076,26 @@ func TestVolumeEntryDestroy(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Check database volume does not exist
-	var bricks []string
 	err = app.db.View(func(tx *bolt.Tx) error {
-		bricks, err = BrickList(tx)
-		return err
+
+		// Check that all devices have no used data
+		devices, err := DeviceList(tx)
+		tests.Assert(t, err == nil)
+		for _, id := range devices {
+			device, err := NewDeviceEntryFromId(tx, id)
+			tests.Assert(t, err == nil)
+			tests.Assert(t, device.Info.Storage.Used == 0)
+			tests.Assert(t, device.Info.Storage.Total == device.Info.Storage.Free)
+		}
+
+		// Check there are no bricks
+		bricks, err := BrickList(tx)
+		tests.Assert(t, len(bricks) == 0)
+
+		return nil
+
 	})
 	tests.Assert(t, err == nil)
-
-	// Check that there are no bricks
-	tests.Assert(t, len(bricks) == 0)
 
 	// Check that the devices have no bricks
 	err = app.db.View(func(tx *bolt.Tx) error {
