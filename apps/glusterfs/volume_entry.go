@@ -258,7 +258,7 @@ func (v *VolumeEntry) Create(db *bolt.DB, executor executors.Executor) (e error)
 		}
 	}()
 
-	// Create bricks
+	// Create the bricks on the nodes
 	err := CreateBricks(db, executor, brick_entries)
 	if err != nil {
 		return err
@@ -493,7 +493,7 @@ func (v *VolumeEntry) allocBricksInCluster(db *bolt.DB, cluster string, gbsize i
 		logger.Debug("num_bricks = %v", num_bricks)
 
 		// Check that the volume does not have too many bricks
-		if num_bricks > BRICK_MAX_NUM {
+		if (num_bricks + len(v.Bricks)) > BRICK_MAX_NUM {
 			logger.Debug("Maximum number of bricks reached")
 			// Try other clusters if possible
 			return nil, ErrMaxBricks

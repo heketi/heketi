@@ -1169,6 +1169,38 @@ func TestVolumeEntryExpandNoSpace(t *testing.T) {
 	tests.Assert(t, reflect.DeepEqual(vcopy, entry))
 }
 
+func TestVolumeEntryExpandMaxBrickLimit(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	// Create a large cluster
+	err := setupSampleDbWithTopology(app.db,
+		10,     // clusters
+		4,      // nodes_per_cluster
+		24,     // devices_per_node,
+		600*GB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	// Create large volume
+	v := createSampleVolumeEntry(100)
+	err = v.Create(app.db, app.executor)
+	tests.Assert(t, err == nil)
+
+	// Add a bunch of bricks until the limit
+	fakebricks := make(sort.StringSlice, BRICK_MAX_NUM-len(v.Bricks))
+	v.Bricks = append(v.Bricks, fakebricks...)
+
+	// Try to expand the volume, but it will return that the max number
+	// of bricks has been reached
+	err = v.Expand(app.db, app.executor, 100)
+	tests.Assert(t, err == ErrMaxBricks, err)
+}
+
 func TestVolumeEntryExpandCreateBricksFailure(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
