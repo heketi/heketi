@@ -53,6 +53,7 @@ var (
 
 func NewSshExecutor(config *SshConfig) *SshExecutor {
 	godbc.Require(config != nil)
+	godbc.Require(DEFAULT_MAX_CONNECTIONS > 1)
 
 	s := &SshExecutor{}
 	s.throttlemap = make(map[string]chan bool)
@@ -92,7 +93,6 @@ func NewSshExecutor(config *SshConfig) *SshExecutor {
 }
 
 func (s *SshExecutor) accessConnection(host string) {
-
 	var (
 		c  chan bool
 		ok bool
@@ -102,18 +102,37 @@ func (s *SshExecutor) accessConnection(host string) {
 	if c, ok = s.throttlemap[host]; !ok {
 		c = make(chan bool, DEFAULT_MAX_CONNECTIONS)
 		s.throttlemap[host] = c
+
+		// We know we are not going to pend here
+		// Do this inside the lock to remove the race
+		// condition of creating the channel, unlocking,
+		// then having freeConnection() lock, notice that the channel
+		// is empty and then remove it.  When this function tries
+		// to do c <- true, it will notice that the channel no longer exists
+		c <- true
+
+		s.lock.Unlock()
+
+		// Return here
+		return
 	}
 	s.lock.Unlock()
 
+	// Do this outside the locks to pend here
 	c <- true
 }
 
 func (s *SshExecutor) freeConnection(host string) {
 	s.lock.Lock()
 	c := s.throttlemap[host]
-	s.lock.Unlock()
 
 	<-c
+
+	if len(c) == 0 {
+		close(c)
+		delete(s.throttlemap, host)
+	}
+	s.lock.Unlock()
 }
 
 func (s *SshExecutor) sshExec(host string, commands []string, timeoutMinutes int) ([]string, error) {
