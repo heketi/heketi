@@ -19,19 +19,28 @@ package sshexec
 import (
 	"errors"
 	"github.com/heketi/heketi/utils"
+	"github.com/heketi/heketi/utils/ssh"
 	"github.com/lpabon/godbc"
 	"os"
+	"sync"
+)
+
+const (
+	DEFAULT_MAX_CONNECTIONS = 8
 )
 
 type SshExecutor struct {
 	private_keyfile string
 	user            string
+	throttlemap     map[string]chan bool
+	lock            sync.Mutex
+	exec            *ssh.SshExec
 	config          *SshConfig
 }
 
 type SshConfig struct {
-	PrivateKeyFile string `json:"keyfile"`
-	User           string `json:"user"`
+	PrivateKeyFile     string `json:"keyfile"`
+	User               string `json:"user"`
 
 	// Experimental Settings
 	RebalanceOnExpansion bool `json:"rebalance_on_expansion"`
@@ -46,6 +55,7 @@ func NewSshExecutor(config *SshConfig) *SshExecutor {
 	godbc.Require(config != nil)
 
 	s := &SshExecutor{}
+	s.throttlemap = make(map[string]chan bool)
 
 	// Set configuration
 	if config.PrivateKeyFile == "" {
@@ -66,10 +76,52 @@ func NewSshExecutor(config *SshConfig) *SshExecutor {
 		logger.Warning("Rebalance on volume expansion has been enabled.  This is an EXPERIMENTAL feature")
 	}
 
+	// Setup key
+	s.exec = ssh.NewSshExecWithKeyFile(logger, s.user, s.private_keyfile)
+	if s.exec == nil {
+		logger.LogError("Unable to load ssh user and private keyfile")
+		return nil
+	}
+
 	godbc.Ensure(s != nil)
 	godbc.Ensure(s.config == config)
 	godbc.Ensure(s.user != "")
 	godbc.Ensure(s.private_keyfile != "")
 
 	return s
+}
+
+func (s *SshExecutor) accessConnection(host string) {
+
+	var (
+		c  chan bool
+		ok bool
+	)
+
+	s.lock.Lock()
+	if c, ok = s.throttlemap[host]; !ok {
+		c = make(chan bool, DEFAULT_MAX_CONNECTIONS)
+		s.throttlemap[host] = c
+	}
+	s.lock.Unlock()
+
+	c <- true
+}
+
+func (s *SshExecutor) freeConnection(host string) {
+	s.lock.Lock()
+	c := s.throttlemap[host]
+	s.lock.Unlock()
+
+	<-c
+}
+
+func (s *SshExecutor) sshExec(host string, commands []string, timeoutMinutes int) ([]string, error) {
+
+	// Throttle
+	s.accessConnection(host)
+	defer s.freeConnection(host)
+
+	// Execute
+	return s.exec.ConnectAndExec(host+":22", commands, timeoutMinutes)
 }

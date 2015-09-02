@@ -79,6 +79,9 @@ func NewApp(configIo io.Reader) *App {
 	default:
 		return nil
 	}
+	if app.executor == nil {
+		return nil
+	}
 	logger.Debug("Loaded %v executor", app.conf.Executor)
 
 	// Set db is set in the configuration file

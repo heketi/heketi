@@ -18,26 +18,20 @@ package sshexec
 
 import (
 	"fmt"
-	"github.com/heketi/heketi/utils/ssh"
 	"github.com/lpabon/godbc"
 )
 
-func (s *SshExecutor) PeerProbe(exec_host, newnode string) error {
+func (s *SshExecutor) PeerProbe(host, newnode string) error {
 
-	godbc.Require(exec_host != "")
+	godbc.Require(host != "")
 	godbc.Require(newnode != "")
 
-	exec := ssh.NewSshExecWithKeyFile(logger, s.user, s.private_keyfile)
-	if exec == nil {
-		return ErrSshPrivateKey
-	}
-
-	logger.Info("Probing: %v -> %v", exec_host, newnode)
+	logger.Info("Probing: %v -> %v", host, newnode)
 	// create the commands
 	commands := []string{
 		fmt.Sprintf("sudo gluster peer probe %v", newnode),
 	}
-	_, err := exec.ConnectAndExec(exec_host+":22", commands, 5)
+	_, err := s.sshExec(host, commands, 5)
 	if err != nil {
 		return err
 	}
@@ -45,21 +39,16 @@ func (s *SshExecutor) PeerProbe(exec_host, newnode string) error {
 	return nil
 }
 
-func (s *SshExecutor) PeerDetach(exec_host, detachnode string) error {
-	godbc.Require(exec_host != "")
+func (s *SshExecutor) PeerDetach(host, detachnode string) error {
+	godbc.Require(host != "")
 	godbc.Require(detachnode != "")
-
-	exec := ssh.NewSshExecWithKeyFile(logger, s.user, s.private_keyfile)
-	if exec == nil {
-		return ErrSshPrivateKey
-	}
 
 	// create the commands
 	logger.Info("Detaching node %v", detachnode)
 	commands := []string{
 		fmt.Sprintf("sudo gluster peer detach %v", detachnode),
 	}
-	_, err := exec.ConnectAndExec(exec_host+":22", commands, 5)
+	_, err := s.sshExec(host, commands, 5)
 	if err != nil {
 		logger.Err(err)
 	}
