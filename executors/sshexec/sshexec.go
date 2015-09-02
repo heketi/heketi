@@ -39,8 +39,8 @@ type SshExecutor struct {
 }
 
 type SshConfig struct {
-	PrivateKeyFile     string `json:"keyfile"`
-	User               string `json:"user"`
+	PrivateKeyFile string `json:"keyfile"`
+	User           string `json:"user"`
 
 	// Experimental Settings
 	RebalanceOnExpansion bool `json:"rebalance_on_expansion"`
