@@ -19,7 +19,6 @@ package sshexec
 import (
 	"fmt"
 	"github.com/heketi/heketi/executors"
-	"github.com/heketi/heketi/utils/ssh"
 	"github.com/lpabon/godbc"
 )
 
@@ -32,11 +31,6 @@ func (s *SshExecutor) BrickCreate(host string,
 	godbc.Require(brick.Size > 0)
 	godbc.Require(brick.TpSize >= brick.Size)
 	godbc.Require(brick.VgId != "")
-
-	exec := ssh.NewSshExecWithKeyFile(logger, s.user, s.private_keyfile)
-	if exec == nil {
-		return nil, ErrSshPrivateKey
-	}
 
 	logger.Info("Creating brick on host %v", host)
 	commands := []string{
@@ -73,7 +67,7 @@ func (s *SshExecutor) BrickCreate(host string,
 	}
 
 	// Execute commands
-	_, err := exec.ConnectAndExec(host+":22", commands, 10)
+	_, err := s.sshExec(host, commands, 10)
 	if err != nil {
 		return nil, err
 	}
@@ -95,17 +89,11 @@ func (s *SshExecutor) BrickDestroy(host string,
 	godbc.Require(brick.Name != "")
 	godbc.Require(brick.VgId != "")
 
-	// Setup ssh session
-	exec := ssh.NewSshExecWithKeyFile(logger, s.user, s.private_keyfile)
-	if exec == nil {
-		return ErrSshPrivateKey
-	}
-
 	// Try to unmount first
 	commands := []string{
 		fmt.Sprintf("sudo umount /brick_%v", brick.Name),
 	}
-	_, err := exec.ConnectAndExec(host+":22", commands, 5)
+	_, err := s.sshExec(host, commands, 5)
 	if err != nil {
 		logger.Err(err)
 	}
@@ -114,7 +102,7 @@ func (s *SshExecutor) BrickDestroy(host string,
 	commands = []string{
 		fmt.Sprintf("sudo lvremove -f vg_%v/tp_%v", brick.VgId, brick.Name),
 	}
-	_, err = exec.ConnectAndExec(host+":22", commands, 5)
+	_, err = s.sshExec(host, commands, 5)
 	if err != nil {
 		logger.Err(err)
 	}
@@ -123,7 +111,7 @@ func (s *SshExecutor) BrickDestroy(host string,
 	commands = []string{
 		fmt.Sprintf("sudo rmdir /brick_%v", brick.Name),
 	}
-	_, err = exec.ConnectAndExec(host+":22", commands, 5)
+	_, err = s.sshExec(host, commands, 5)
 	if err != nil {
 		logger.Err(err)
 	}

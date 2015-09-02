@@ -19,7 +19,6 @@ package sshexec
 import (
 	"fmt"
 	"github.com/heketi/heketi/executors"
-	"github.com/heketi/heketi/utils/ssh"
 	"github.com/lpabon/godbc"
 )
 
@@ -35,12 +34,6 @@ func (s *SshExecutor) VolumeCreate(host string,
 	godbc.Require(len(volume.Bricks) > 0)
 	godbc.Require(volume.Name != "")
 	godbc.Require(volume.Replica > 1)
-
-	// Setup ssh key
-	exec := ssh.NewSshExecWithKeyFile(logger, s.user, s.private_keyfile)
-	if exec == nil {
-		return nil, ErrSshPrivateKey
-	}
 
 	// Setup volume create command
 	// There could many, many bricks which could make the command line
@@ -65,7 +58,7 @@ func (s *SshExecutor) VolumeCreate(host string,
 	commands = append(commands, fmt.Sprintf("sudo gluster volume start %v", volume.Name))
 
 	// Execute command
-	_, err := exec.ConnectAndExec(host+":22", commands, 10)
+	_, err := s.sshExec(host, commands, 10)
 	if err != nil {
 		return nil, err
 	}
@@ -81,12 +74,6 @@ func (s *SshExecutor) VolumeExpand(host string,
 	godbc.Require(len(volume.Bricks) > 0)
 	godbc.Require(volume.Name != "")
 
-	// Setup ssh key
-	exec := ssh.NewSshExecWithKeyFile(logger, s.user, s.private_keyfile)
-	if exec == nil {
-		return nil, ErrSshPrivateKey
-	}
-
 	// Setup volume create command
 	commands := s.createAddBrickCommands(volume, 0 /* start at the beginning of the brick list */)
 
@@ -97,7 +84,7 @@ func (s *SshExecutor) VolumeExpand(host string,
 	}
 
 	// Execute command
-	_, err := exec.ConnectAndExec(host+":22", commands, 10)
+	_, err := s.sshExec(host, commands, 10)
 	if err != nil {
 		return nil, err
 	}
@@ -109,12 +96,6 @@ func (s *SshExecutor) VolumeDestroy(host string, volume string) error {
 	godbc.Require(host != "")
 	godbc.Require(volume != "")
 
-	// Setup ssh key
-	exec := ssh.NewSshExecWithKeyFile(logger, s.user, s.private_keyfile)
-	if exec == nil {
-		return ErrSshPrivateKey
-	}
-
 	// Shutdown volume
 	commands := []string{
 		// stop gluster volume
@@ -123,7 +104,7 @@ func (s *SshExecutor) VolumeDestroy(host string, volume string) error {
 	}
 
 	// Execute command
-	_, err := exec.ConnectAndExec(host+":22", commands, 5)
+	_, err := s.sshExec(host, commands, 5)
 	if err != nil {
 		return err
 	}

@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/heketi/heketi/executors"
-	"github.com/heketi/heketi/utils/ssh"
 	"strconv"
 	"strings"
 )
@@ -35,12 +34,6 @@ const (
 
 func (s *SshExecutor) DeviceSetup(host, device, vgid string) (d *executors.DeviceInfo, e error) {
 
-	// Setup ssh session
-	exec := ssh.NewSshExecWithKeyFile(logger, s.user, s.private_keyfile)
-	if exec == nil {
-		return nil, ErrSshPrivateKey
-	}
-
 	// Setup commands
 	commands := []string{
 		fmt.Sprintf("sudo pvcreate %v", device),
@@ -48,7 +41,7 @@ func (s *SshExecutor) DeviceSetup(host, device, vgid string) (d *executors.Devic
 	}
 
 	// Execute command
-	_, err := exec.ConnectAndExec(host+":22", commands, 5)
+	_, err := s.sshExec(host, commands, 5)
 	if err != nil {
 		return nil, err
 	}
@@ -71,11 +64,6 @@ func (s *SshExecutor) DeviceSetup(host, device, vgid string) (d *executors.Devic
 }
 
 func (s *SshExecutor) DeviceTeardown(host, device, vgid string) error {
-	// Setup ssh session
-	exec := ssh.NewSshExecWithKeyFile(logger, s.user, s.private_keyfile)
-	if exec == nil {
-		return ErrSshPrivateKey
-	}
 
 	// Setup commands
 	commands := []string{
@@ -84,7 +72,7 @@ func (s *SshExecutor) DeviceTeardown(host, device, vgid string) error {
 	}
 
 	// Execute command
-	_, err := exec.ConnectAndExec(host+":22", commands, 5)
+	_, err := s.sshExec(host, commands, 5)
 	if err != nil {
 		return err
 	}
@@ -96,19 +84,13 @@ func (s *SshExecutor) getVgSizeFromNode(
 	d *executors.DeviceInfo,
 	host, device, vgid string) error {
 
-	// Setup ssh session
-	exec := ssh.NewSshExecWithKeyFile(logger, s.user, s.private_keyfile)
-	if exec == nil {
-		return ErrSshPrivateKey
-	}
-
 	// Setup command
 	commands := []string{
 		fmt.Sprintf("sudo vgdisplay -c vg_%v", vgid),
 	}
 
 	// Execute command
-	b, err := exec.ConnectAndExec(host+":22", commands, 5)
+	b, err := s.sshExec(host, commands, 5)
 	if err != nil {
 		return err
 	}

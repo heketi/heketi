@@ -35,10 +35,6 @@ type SshExec struct {
 	logger       *utils.Logger
 }
 
-var (
-	maxconnections = make(chan bool, 8)
-)
-
 func getKeyFile(file string) (key ssh.Signer, err error) {
 	buf, err := ioutil.ReadFile(file)
 	if err != nil {
@@ -110,12 +106,6 @@ func NewSshExecWithKeyFile(logger *utils.Logger, user string, file string) *SshE
 
 // This function was based from https://github.com/coreos/etcd-manager/blob/master/main.go
 func (s *SshExec) ConnectAndExec(host string, commands []string, timeoutMinutes int) ([]string, error) {
-
-	// Wait here for a turn
-	maxconnections <- true
-	defer func() {
-		<-maxconnections
-	}()
 
 	buffers := make([]string, len(commands))
 
