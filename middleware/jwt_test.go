@@ -348,7 +348,6 @@ func TestJwt(t *testing.T) {
 	qshstring := "GET&/"
 	hash := sha256.New()
 	hash.Write([]byte(qshstring))
-	hash.Sum(nil)
 	token.Claims["qsh"] = hex.EncodeToString(hash.Sum(nil))
 
 	tokenString, err := token.SignedString([]byte("Key"))
