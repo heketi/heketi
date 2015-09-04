@@ -138,12 +138,12 @@ func TestClientNode(t *testing.T) {
 	nodeReq.Hostnames.Manage = []string{"manage"}
 	nodeReq.Hostnames.Storage = []string{"storage"}
 	nodeReq.Zone = 10
-	_, err = c.NodeCreate(nodeReq)
+	_, err = c.NodeAdd(nodeReq)
 	tests.Assert(t, err != nil)
 
 	// Create node request packet
 	nodeReq.ClusterId = cluster.Id
-	node, err := c.NodeCreate(nodeReq)
+	node, err := c.NodeAdd(nodeReq)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, node.Zone == nodeReq.Zone)
 	tests.Assert(t, node.Id != "")
@@ -204,7 +204,7 @@ func TestClientDevice(t *testing.T) {
 	nodeReq.Zone = 10
 
 	// Create node
-	node, err := c.NodeCreate(nodeReq)
+	node, err := c.NodeAdd(nodeReq)
 	tests.Assert(t, err == nil)
 
 	// Create a device request
@@ -283,7 +283,7 @@ func TestClientVolume(t *testing.T) {
 	nodeReq.Zone = 10
 
 	// Create node
-	node, err := c.NodeCreate(nodeReq)
+	node, err := c.NodeAdd(nodeReq)
 	tests.Assert(t, err == nil)
 
 	// Create a device request

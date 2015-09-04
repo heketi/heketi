@@ -25,7 +25,7 @@ import (
 	"time"
 )
 
-func (c *Client) NodeCreate(request *glusterfs.NodeAddRequest) (*glusterfs.NodeInfoResponse, error) {
+func (c *Client) NodeAdd(request *glusterfs.NodeAddRequest) (*glusterfs.NodeInfoResponse, error) {
 
 	// Marshal request to JSON
 	buffer, err := json.Marshal(request)

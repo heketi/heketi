@@ -48,6 +48,33 @@ func NewClientNoAuth(host string) *Client {
 	return NewClient(host, "", "")
 }
 
+// Simple Hello test to check if the server is up
+func (c *Client) Hello() error {
+	// Create request
+	req, err := http.NewRequest("GET", c.host+"/hello", nil)
+	if err != nil {
+		return err
+	}
+
+	// Set token
+	err = c.setToken(req)
+	if err != nil {
+		return err
+	}
+
+	// Get info
+	httpClient := &http.Client{}
+	r, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	if r.StatusCode != http.StatusOK {
+		return utils.GetErrorFromResponse(r)
+	}
+
+	return nil
+}
+
 // This function is called by the http package if it detects that it needs to
 // be redirected.  This happens when the server returns a 303 HTTP Status.
 // Here we create a new token before it makes the next request.
