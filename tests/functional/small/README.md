@@ -9,15 +9,14 @@ This functional test can be used on a system with at least 8GB of RAM.
 
 ## Setup 
 
-* Go to `tests/functional/small/vagrant` and type:
-    * If using VirtualBox
+* Go to `tests/functional/small/vagrant`
+* If using VirtualBox type:
 
 ```
 $ vagrant up
 ```
 
-    * If using Libvirt
-
+* If using Libvirt type:
 
 ```
 $ vagrant up --provider=libvirt
