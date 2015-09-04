@@ -299,7 +299,7 @@ func TestClientVolume(t *testing.T) {
 			deviceReq.NodeId = node.Id
 
 			// Create device
-			err = c.DeviceAdd(deviceReq)
+			err := c.DeviceAdd(deviceReq)
 			sg.Err(err)
 
 		}()

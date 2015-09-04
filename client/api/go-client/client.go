@@ -78,11 +78,11 @@ func (c *Client) waitForResponseWithTimer(r *http.Response,
 			return nil, err
 		}
 
-		// Set redirect policy
-		http.DefaultClient.CheckRedirect = c.checkRedirect
+		client := &http.Client{}
+		client.CheckRedirect = c.checkRedirect
 
 		// Wait for response
-		r, err = http.DefaultClient.Do(req)
+		r, err = client.Do(req)
 		if err != nil {
 			return nil, err
 		}

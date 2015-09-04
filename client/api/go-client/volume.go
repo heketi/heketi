@@ -50,7 +50,8 @@ func (c *Client) VolumeCreate(request *glusterfs.VolumeCreateRequest) (
 	}
 
 	// Send request
-	r, err := http.DefaultClient.Do(req)
+	httpClient := &http.Client{}
+	r, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +105,8 @@ func (c *Client) VolumeExpand(id string, request *glusterfs.VolumeExpandRequest)
 	}
 
 	// Send request
-	r, err := http.DefaultClient.Do(req)
+	httpClient := &http.Client{}
+	r, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +150,8 @@ func (c *Client) VolumeList() (*glusterfs.VolumeListResponse, error) {
 	}
 
 	// Get info
-	r, err := http.DefaultClient.Do(req)
+	httpClient := &http.Client{}
+	r, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +184,8 @@ func (c *Client) VolumeInfo(id string) (*glusterfs.VolumeInfoResponse, error) {
 	}
 
 	// Get info
-	r, err := http.DefaultClient.Do(req)
+	httpClient := &http.Client{}
+	r, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +219,8 @@ func (c *Client) VolumeDelete(id string) error {
 	}
 
 	// Send request
-	r, err := http.DefaultClient.Do(req)
+	httpClient := &http.Client{}
+	r, err := httpClient.Do(req)
 	if err != nil {
 		return err
 	}
