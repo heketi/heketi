@@ -19,7 +19,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/heketi/heketi/client/go/commands"
+	"github.com/heketi/heketi/client/cli/go/commands"
 	"io"
 	"os"
 )

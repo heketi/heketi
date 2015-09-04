@@ -8,7 +8,8 @@ packages="./rest ./apps/glusterfs ./utils"
 packages="${packages} ./executors/sshexec"
 packages="${packages} ./executors/mockexec"
 packages="${packages} ./executors ./apps"
-packages="${packages} ./client/go/commands"
+packages="${packages} ./client/cli/go/commands"
+packages="${packages} ./client/api/go-client"
 packages="${packages} ./middleware"
 COVERFILE=packagecover.out
 
