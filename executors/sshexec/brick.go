@@ -32,7 +32,6 @@ func (s *SshExecutor) BrickCreate(host string,
 	godbc.Require(brick.TpSize >= brick.Size)
 	godbc.Require(brick.VgId != "")
 
-	logger.Info("Creating brick on host %v", host)
 	commands := []string{
 
 		// Create a directory

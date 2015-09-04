@@ -1,0 +1,23 @@
+- name: update system
+  yum: name=* state=latest
+
+- name: setup epel
+  command: yum -y install http://mirror.clarkson.edu/epel/7/x86_64/e/epel-release-7-5.noarch.rpm creates=/etc/yum.repos.d/epel.repo
+
+- name: install wget
+  yum: name={{ item }} state=present
+  with_items:
+    - wget
+
+- name: enable glusterfs repo
+  shell: wget -P /etc/yum.repos.d http://download.gluster.org/pub/gluster/glusterfs/LATEST/EPEL.repo/glusterfs-epel.repo creates=/etc/yum.repos.d/glusterfs-epel.repo
+
+- name: copy private key
+  copy: src=insecure_private_key owner=vagrant group=vagrant dest=/home/vagrant/.ssh/id_rsa force=no mode=0600
+
+- name: clean iptables
+  command: iptables -F
+
+- name: disable selinux
+  selinux: state=disabled
+
