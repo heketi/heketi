@@ -46,8 +46,7 @@ func (c *Client) DeviceAdd(request *glusterfs.DeviceAddRequest) error {
 	}
 
 	// Send request
-	httpClient := &http.Client{}
-	r, err := httpClient.Do(req)
+	r, err := c.do(req)
 	if err != nil {
 		return err
 	}
@@ -56,7 +55,7 @@ func (c *Client) DeviceAdd(request *glusterfs.DeviceAddRequest) error {
 	}
 
 	// Wait for response
-	r, err = c.waitForResponseWithTimer(r, time.Millisecond*250)
+	r, err = c.waitForResponseWithTimer(r, time.Second)
 	if err != nil {
 		return err
 	}
@@ -82,8 +81,7 @@ func (c *Client) DeviceInfo(id string) (*glusterfs.DeviceInfoResponse, error) {
 	}
 
 	// Get info
-	httpClient := &http.Client{}
-	r, err := httpClient.Do(req)
+	r, err := c.do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -117,8 +115,7 @@ func (c *Client) DeviceDelete(id string) error {
 	}
 
 	// Send request
-	httpClient := &http.Client{}
-	r, err := httpClient.Do(req)
+	r, err := c.do(req)
 	if err != nil {
 		return err
 	}
@@ -127,7 +124,7 @@ func (c *Client) DeviceDelete(id string) error {
 	}
 
 	// Wait for response
-	r, err = c.waitForResponseWithTimer(r, time.Millisecond*250)
+	r, err = c.waitForResponseWithTimer(r, time.Second)
 	if err != nil {
 		return err
 	}

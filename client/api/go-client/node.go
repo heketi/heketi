@@ -47,8 +47,7 @@ func (c *Client) NodeAdd(request *glusterfs.NodeAddRequest) (*glusterfs.NodeInfo
 	}
 
 	// Send request
-	httpClient := &http.Client{}
-	r, err := httpClient.Do(req)
+	r, err := c.do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -91,8 +90,7 @@ func (c *Client) NodeInfo(id string) (*glusterfs.NodeInfoResponse, error) {
 	}
 
 	// Get info
-	httpClient := &http.Client{}
-	r, err := httpClient.Do(req)
+	r, err := c.do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -126,8 +124,7 @@ func (c *Client) NodeDelete(id string) error {
 	}
 
 	// Send request
-	httpClient := &http.Client{}
-	r, err := httpClient.Do(req)
+	r, err := c.do(req)
 	if err != nil {
 		return err
 	}
