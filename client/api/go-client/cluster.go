@@ -39,8 +39,7 @@ func (c *Client) ClusterCreate() (*glusterfs.ClusterInfoResponse, error) {
 	}
 
 	// Send request
-	httpClient := &http.Client{}
-	r, err := httpClient.Do(req)
+	r, err := c.do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -74,8 +73,7 @@ func (c *Client) ClusterInfo(id string) (*glusterfs.ClusterInfoResponse, error) 
 	}
 
 	// Get info
-	httpClient := &http.Client{}
-	r, err := httpClient.Do(req)
+	r, err := c.do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -109,8 +107,7 @@ func (c *Client) ClusterList() (*glusterfs.ClusterListResponse, error) {
 	}
 
 	// Get info
-	httpClient := &http.Client{}
-	r, err := httpClient.Do(req)
+	r, err := c.do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -143,8 +140,7 @@ func (c *Client) ClusterDelete(id string) error {
 	}
 
 	// Send request
-	httpClient := &http.Client{}
-	r, err := httpClient.Do(req)
+	r, err := c.do(req)
 	if err != nil {
 		return err
 	}

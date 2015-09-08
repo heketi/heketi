@@ -2,7 +2,7 @@
 # vi: set ft=ruby :
 #
 
-NODES = 30
+NODES = 18
 DISKS = 24
 
 Vagrant.configure("2") do |config|

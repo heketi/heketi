@@ -25,11 +25,16 @@ import (
 	"time"
 )
 
+const (
+	MAX_CONCURRENT_REQUESTS = 32
+)
+
 // Client object
 type Client struct {
-	host string
-	key  string
-	user string
+	host     string
+	key      string
+	user     string
+	throttle chan bool
 }
 
 // Creates a new client to access a Heketi server
@@ -39,6 +44,9 @@ func NewClient(host, user, key string) *Client {
 	c.key = key
 	c.host = host
 	c.user = user
+
+	// Maximum concurrent requests
+	c.throttle = make(chan bool, MAX_CONCURRENT_REQUESTS)
 
 	return c
 }
@@ -63,8 +71,7 @@ func (c *Client) Hello() error {
 	}
 
 	// Get info
-	httpClient := &http.Client{}
-	r, err := httpClient.Do(req)
+	r, err := c.do(req)
 	if err != nil {
 		return err
 	}
@@ -73,6 +80,18 @@ func (c *Client) Hello() error {
 	}
 
 	return nil
+}
+
+// Make sure we do not run out of fds by throttling the requests
+func (c *Client) do(req *http.Request) (*http.Response, error) {
+	c.throttle <- true
+	defer func() {
+		<-c.throttle
+	}()
+
+	httpClient := &http.Client{}
+	httpClient.CheckRedirect = c.checkRedirect
+	return httpClient.Do(req)
 }
 
 // This function is called by the http package if it detects that it needs to
@@ -105,11 +124,8 @@ func (c *Client) waitForResponseWithTimer(r *http.Response,
 			return nil, err
 		}
 
-		client := &http.Client{}
-		client.CheckRedirect = c.checkRedirect
-
 		// Wait for response
-		r, err = client.Do(req)
+		r, err = c.do(req)
 		if err != nil {
 			return nil, err
 		}
