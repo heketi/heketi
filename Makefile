@@ -24,7 +24,7 @@ endif
 
 # Go setup
 GO=go
-TEST=go test
+TEST="go test"
 
 # Sources and Targets
 EXECUTABLES :=$(APP_NAME)

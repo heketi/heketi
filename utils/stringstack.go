@@ -14,27 +14,27 @@
 // limitations under the License.
 //
 
-package glusterfs
+package utils
 
-type AllocationList struct {
+type StringStack struct {
 	list []string
 }
 
-func NewAllocationList() *AllocationList {
-	a := &AllocationList{}
+func NewStringStack() *StringStack {
+	a := &StringStack{}
 	a.list = make([]string, 0)
 	return a
 }
 
-func (a *AllocationList) IsEmpty() bool {
+func (a *StringStack) IsEmpty() bool {
 	return len(a.list) == 0
 }
 
-func (a *AllocationList) Pop() (x string) {
+func (a *StringStack) Pop() (x string) {
 	x, a.list = a.list[0], a.list[1:len(a.list)]
 	return
 }
 
-func (a *AllocationList) Append(x string) {
+func (a *StringStack) Push(x string) {
 	a.list = append(a.list, x)
 }

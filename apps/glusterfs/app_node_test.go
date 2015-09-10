@@ -544,7 +544,7 @@ func TestNodePeerProbeFailure(t *testing.T) {
 
 	// Create a cluster.  We at least one
 	// other node in the same cluster to execute a probe
-	err := setupSampleDbWithTopology(app.db,
+	err := setupSampleDbWithTopology(app,
 		1,     // clusters
 		4,     // nodes_per_cluster
 		4,     // devices_per_node,
@@ -641,7 +641,7 @@ func TestNodePeerDetachFailure(t *testing.T) {
 
 	// Create a cluster.  We do not want
 	// any drives in the node so we can delete easily
-	err := setupSampleDbWithTopology(app.db,
+	err := setupSampleDbWithTopology(app,
 		1,     // clusters
 		4,     // nodes_per_cluster
 		0,     // devices_per_node,
@@ -741,7 +741,7 @@ func TestNodePeerDetach(t *testing.T) {
 
 	// Create a cluster.  We do not want
 	// any drives in the node so we can delete easily
-	err := setupSampleDbWithTopology(app.db,
+	err := setupSampleDbWithTopology(app,
 		1,     // clusters
 		4,     // nodes_per_cluster
 		0,     // devices_per_node,
