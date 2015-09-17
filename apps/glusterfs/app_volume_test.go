@@ -133,7 +133,7 @@ func TestVolumeCreateBadClusters(t *testing.T) {
 
 	// Create a cluster
 	// Setup database
-	err := setupSampleDbWithTopology(app.db,
+	err := setupSampleDbWithTopology(app,
 		1,    // clusters
 		10,   // nodes_per_cluster
 		10,   // devices_per_node,
@@ -243,7 +243,7 @@ func TestVolumeCreate(t *testing.T) {
 	defer ts.Close()
 
 	// Setup database
-	err := setupSampleDbWithTopology(app.db,
+	err := setupSampleDbWithTopology(app,
 		1,    // clusters
 		10,   // nodes_per_cluster
 		10,   // devices_per_node,
@@ -327,7 +327,7 @@ func TestVolumeInfo(t *testing.T) {
 	defer ts.Close()
 
 	// Setup database
-	err := setupSampleDbWithTopology(app.db,
+	err := setupSampleDbWithTopology(app,
 		1,    // clusters
 		10,   // nodes_per_cluster
 		10,   // devices_per_node,
@@ -342,7 +342,7 @@ func TestVolumeInfo(t *testing.T) {
 		return v.Save(tx)
 	})
 	tests.Assert(t, err == nil)
-	err = v.Create(app.db, app.executor)
+	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil)
 
 	// Now that we have some data in the database, we can
@@ -491,7 +491,7 @@ func TestVolumeDelete(t *testing.T) {
 	defer ts.Close()
 
 	// Setup database
-	err := setupSampleDbWithTopology(app.db,
+	err := setupSampleDbWithTopology(app,
 		1,    // clusters
 		10,   // nodes_per_cluster
 		10,   // devices_per_node,
@@ -502,7 +502,7 @@ func TestVolumeDelete(t *testing.T) {
 	// Create a volume
 	v := createSampleVolumeEntry(100)
 	tests.Assert(t, v != nil)
-	err = v.Create(app.db, app.executor)
+	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil)
 
 	// Delete the volume
@@ -636,7 +636,7 @@ func TestVolumeExpand(t *testing.T) {
 	defer ts.Close()
 
 	// Create a cluster
-	err := setupSampleDbWithTopology(app.db,
+	err := setupSampleDbWithTopology(app,
 		1,    // clusters
 		10,   // nodes_per_cluster
 		10,   // devices_per_node,
@@ -647,7 +647,7 @@ func TestVolumeExpand(t *testing.T) {
 	// Create a volume
 	v := createSampleVolumeEntry(100)
 	tests.Assert(t, v != nil)
-	err = v.Create(app.db, app.executor)
+	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil)
 
 	// Keep a copy

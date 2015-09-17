@@ -62,7 +62,7 @@ func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 	logger.Info("Adding device %v to node %v", msg.Name, msg.NodeId)
 
 	// Add device in an asynchronous function
-	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
+	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (seeOtherUrl string, e error) {
 
 		// Create device entry
 		device := NewDeviceEntryFromRequest(&msg)
@@ -77,24 +77,45 @@ func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 		// Create an entry for the device and set the size
 		device.StorageSet(info.Size)
 
+		// Setup garbage collector on error
+		defer func() {
+			if e != nil {
+				a.executor.DeviceTeardown(node.ManageHostName(),
+					device.Info.Name,
+					device.Info.Id)
+			}
+		}()
+
 		// Save on db
 		err = a.db.Update(func(tx *bolt.Tx) error {
-			node, err := NewNodeEntryFromId(tx, msg.NodeId)
+
+			nodeEntry, err := NewNodeEntryFromId(tx, msg.NodeId)
 			if err != nil {
 				return err
 			}
 
 			// Add device to node
-			node.DeviceAdd(device.Info.Id)
+			nodeEntry.DeviceAdd(device.Info.Id)
+
+			clusterEntry, err := NewClusterEntryFromId(tx, nodeEntry.Info.ClusterId)
+			if err != nil {
+				return err
+			}
 
 			// Commit
-			err = node.Save(tx)
+			err = nodeEntry.Save(tx)
 			if err != nil {
 				return err
 			}
 
 			// Save drive
 			err = device.Save(tx)
+			if err != nil {
+				return err
+			}
+
+			// Add to allocator
+			err = a.allocator.AddDevice(clusterEntry, nodeEntry, device)
 			if err != nil {
 				return err
 			}
@@ -162,8 +183,9 @@ func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
 
 	// Check request
 	var (
-		device *DeviceEntry
-		node   *NodeEntry
+		device  *DeviceEntry
+		node    *NodeEntry
+		cluster *ClusterEntry
 	)
 	err := a.db.View(func(tx *bolt.Tx) error {
 		var err error
@@ -192,6 +214,12 @@ func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
+		// Save cluster to update allocator
+		cluster, err = NewClusterEntryFromId(tx, node.Info.ClusterId)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 	if err != nil {
@@ -205,6 +233,12 @@ func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
 		// Teardown device
 		err := a.executor.DeviceTeardown(node.ManageHostName(),
 			device.Info.Name, device.Info.Id)
+		if err != nil {
+			return "", err
+		}
+
+		// Remove device from allocator
+		err = a.allocator.RemoveDevice(cluster, node, device)
 		if err != nil {
 			return "", err
 		}

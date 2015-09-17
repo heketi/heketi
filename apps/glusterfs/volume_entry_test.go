@@ -38,11 +38,12 @@ func createSampleVolumeEntry(size int) *VolumeEntry {
 	return v
 }
 
-func setupSampleDbWithTopology(db *bolt.DB,
+func setupSampleDbWithTopology(app *App,
 	clusters, nodes_per_cluster, devices_per_node int,
 	disksize uint64) error {
 
-	return db.Update(func(tx *bolt.Tx) error {
+	var clusterlist []string
+	err := app.db.Update(func(tx *bolt.Tx) error {
 		for c := 0; c < clusters; c++ {
 			cluster := createSampleClusterEntry()
 
@@ -57,7 +58,13 @@ func setupSampleDbWithTopology(db *bolt.DB,
 					device := createSampleDeviceEntry(node.Info.Id, disksize)
 					node.DeviceAdd(device.Id())
 
-					err := device.Save(tx)
+					// Update allocator
+					err := app.allocator.AddDevice(cluster, node, device)
+					if err != nil {
+						return nil
+					}
+
+					err = device.Save(tx)
 					if err != nil {
 						return err
 					}
@@ -73,9 +80,19 @@ func setupSampleDbWithTopology(db *bolt.DB,
 			}
 		}
 
+		var err error
+		clusterlist, err = ClusterList(tx)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
+	if err != nil {
+		return nil
+	}
 
+	return nil
 }
 
 func TestNewVolumeEntry(t *testing.T) {
@@ -413,7 +430,7 @@ func TestVolumeEntryCreateMissingCluster(t *testing.T) {
 	})
 	tests.Assert(t, err == nil)
 
-	err = v.Create(app.db, app.executor)
+	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == ErrNoSpace)
 
 }
@@ -427,7 +444,7 @@ func TestVolumeEntryCreateRunOutOfSpaceMinBrickSizeLimit(t *testing.T) {
 	defer app.Close()
 
 	// Total 80GB
-	err := setupSampleDbWithTopology(app.db,
+	err := setupSampleDbWithTopology(app,
 		1,     // clusters
 		2,     // nodes_per_cluster
 		4,     // devices_per_node,
@@ -438,7 +455,7 @@ func TestVolumeEntryCreateRunOutOfSpaceMinBrickSizeLimit(t *testing.T) {
 	// Create a 100 GB volume
 	// Shouldn't be able to break it down enough to allocate volume
 	v := createSampleVolumeEntry(100)
-	err = v.Create(app.db, app.executor)
+	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == ErrNoSpace)
 	tests.Assert(t, v.Info.Cluster == "")
 
@@ -473,7 +490,7 @@ func TestVolumeEntryCreateRunOutOfSpaceMaxBrickLimit(t *testing.T) {
 	defer app.Close()
 
 	// Lots of nodes with little drives
-	err := setupSampleDbWithTopology(app.db,
+	err := setupSampleDbWithTopology(app,
 		1,  // clusters
 		20, // nodes_per_cluster
 		40, // devices_per_node,
@@ -486,7 +503,7 @@ func TestVolumeEntryCreateRunOutOfSpaceMaxBrickLimit(t *testing.T) {
 	// Create a volume who will be broken down to
 	// Shouldn't be able to break it down enough to allocate volume
 	v := createSampleVolumeEntry(BRICK_MAX_NUM * 2 * int(BRICK_MIN_SIZE/GB))
-	err = v.Create(app.db, app.executor)
+	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == ErrNoSpace)
 
 	// Check database volume does not exist
@@ -519,7 +536,7 @@ func TestVolumeEntryCreateFourBricks(t *testing.T) {
 	defer app.Close()
 
 	// Create a cluster in the database
-	err := setupSampleDbWithTopology(app.db,
+	err := setupSampleDbWithTopology(app,
 		1,      // clusters
 		4,      // nodes_per_cluster
 		4,      // devices_per_node,
@@ -529,8 +546,8 @@ func TestVolumeEntryCreateFourBricks(t *testing.T) {
 
 	// Create a volume who will be broken down to
 	v := createSampleVolumeEntry(250)
-	err = v.Create(app.db, app.executor)
-	tests.Assert(t, err == nil)
+	err = v.Create(app.db, app.executor, app.allocator)
+	tests.Assert(t, err == nil, err)
 
 	// Check database
 	var info *VolumeInfoResponse
@@ -599,7 +616,7 @@ func TestVolumeEntryCreateBrickDivision(t *testing.T) {
 	defer app.Close()
 
 	// Create 50TB of storage
-	err := setupSampleDbWithTopology(app.db,
+	err := setupSampleDbWithTopology(app,
 		1,      // clusters
 		10,     // nodes_per_cluster
 		10,     // devices_per_node,
@@ -610,7 +627,7 @@ func TestVolumeEntryCreateBrickDivision(t *testing.T) {
 	// Create a volume who will be broken down to
 	// Shouldn't be able to break it down enough to allocate volume
 	v := createSampleVolumeEntry(2000)
-	err = v.Create(app.db, app.executor)
+	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil)
 
 	// Check database volume does not exist
@@ -673,7 +690,7 @@ func TestVolumeEntryCreateMaxBrickSize(t *testing.T) {
 	defer app.Close()
 
 	// Create 50TB of storage
-	err := setupSampleDbWithTopology(app.db,
+	err := setupSampleDbWithTopology(app,
 		1,    // clusters
 		10,   // nodes_per_cluster
 		10,   // devices_per_node,
@@ -684,7 +701,7 @@ func TestVolumeEntryCreateMaxBrickSize(t *testing.T) {
 	// Create a volume who will be broken down to
 	// Shouldn't be able to break it down enough to allocate volume
 	v := createSampleVolumeEntry(int(BRICK_MAX_SIZE / GB * 4))
-	err = v.Create(app.db, app.executor)
+	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil)
 
 	// Check database volume does not exist
@@ -724,7 +741,7 @@ func TestVolumeEntryCreateOnClustersRequested(t *testing.T) {
 	defer app.Close()
 
 	// Create 50TB of storage
-	err := setupSampleDbWithTopology(app.db,
+	err := setupSampleDbWithTopology(app,
 		10,   // clusters
 		10,   // nodes_per_cluster
 		10,   // devices_per_node,
@@ -749,7 +766,7 @@ func TestVolumeEntryCreateOnClustersRequested(t *testing.T) {
 	v.Info.Clusters = []string{clusters[0]}
 
 	// Create volume
-	err = v.Create(app.db, app.executor)
+	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil)
 
 	// Check database volume does not exist
@@ -775,7 +792,7 @@ func TestVolumeEntryCreateOnClustersRequested(t *testing.T) {
 	clusterset := clusters[2:5]
 	v = createSampleVolumeEntry(1024)
 	v.Info.Clusters = clusterset
-	err = v.Create(app.db, app.executor)
+	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil)
 
 	// Check database volume exists
@@ -807,7 +824,7 @@ func TestVolumeEntryCreateCheckingClustersForSpace(t *testing.T) {
 	defer app.Close()
 
 	// Create 100 small clusters
-	err := setupSampleDbWithTopology(app.db,
+	err := setupSampleDbWithTopology(app,
 		10,    // clusters
 		1,     // nodes_per_cluster
 		1,     // devices_per_node,
@@ -829,7 +846,14 @@ func TestVolumeEntryCreateCheckingClustersForSpace(t *testing.T) {
 				device := createSampleDeviceEntry(node.Info.Id, 4*TB)
 				node.DeviceAdd(device.Id())
 
-				err := device.Save(tx)
+				// update allocator
+				err := app.allocator.AddDevice(cluster, node, device)
+				if err != nil {
+					return nil
+				}
+
+				// Save
+				err = device.Save(tx)
 				if err != nil {
 					return err
 				}
@@ -851,7 +875,7 @@ func TestVolumeEntryCreateCheckingClustersForSpace(t *testing.T) {
 	v := createSampleVolumeEntry(1024)
 
 	// Create volume
-	err = v.Create(app.db, app.executor)
+	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil)
 
 	// Check database volume exists
@@ -883,7 +907,7 @@ func TestVolumeEntryCreateWithSnapshot(t *testing.T) {
 	defer app.Close()
 
 	// Lots of nodes with little drives
-	err := setupSampleDbWithTopology(app.db,
+	err := setupSampleDbWithTopology(app,
 		1,      // clusters
 		4,      // nodes_per_cluster
 		4,      // devices_per_node,
@@ -898,7 +922,7 @@ func TestVolumeEntryCreateWithSnapshot(t *testing.T) {
 	v.Info.Snapshot.Enable = true
 	v.Info.Snapshot.Factor = 1.5
 
-	err = v.Create(app.db, app.executor)
+	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil)
 
 	// Check database volume exists
@@ -945,7 +969,7 @@ func TestVolumeEntryCreateBrickCreationFailure(t *testing.T) {
 	defer app.Close()
 
 	// Lots of nodes with little drives
-	err := setupSampleDbWithTopology(app.db,
+	err := setupSampleDbWithTopology(app,
 		1,      // clusters
 		4,      // nodes_per_cluster
 		4,      // devices_per_node,
@@ -963,7 +987,7 @@ func TestVolumeEntryCreateBrickCreationFailure(t *testing.T) {
 	// For a 200G vol, it would get a brick size of 100G, with a thin pool
 	// size of 100G * 1.5 = 150GB.
 	v := createSampleVolumeEntry(200)
-	err = v.Create(app.db, app.executor)
+	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == mockerror)
 
 	// Check database is still clean. No bricks and No volumes
@@ -999,7 +1023,7 @@ func TestVolumeEntryCreateVolumeCreationFailure(t *testing.T) {
 	defer app.Close()
 
 	// Lots of nodes with little drives
-	err := setupSampleDbWithTopology(app.db,
+	err := setupSampleDbWithTopology(app,
 		1,      // clusters
 		4,      // nodes_per_cluster
 		4,      // devices_per_node,
@@ -1017,7 +1041,7 @@ func TestVolumeEntryCreateVolumeCreationFailure(t *testing.T) {
 	// For a 200G vol, it would get a brick size of 100G, with a thin pool
 	// size of 100G * 1.5 = 150GB.
 	v := createSampleVolumeEntry(200)
-	err = v.Create(app.db, app.executor)
+	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == mockerror)
 
 	// Check database is still clean. No bricks and No volumes
@@ -1053,7 +1077,7 @@ func TestVolumeEntryDestroy(t *testing.T) {
 	defer app.Close()
 
 	// Lots of nodes with little drives
-	err := setupSampleDbWithTopology(app.db,
+	err := setupSampleDbWithTopology(app,
 		1,      // clusters
 		4,      // nodes_per_cluster
 		4,      // devices_per_node,
@@ -1068,7 +1092,7 @@ func TestVolumeEntryDestroy(t *testing.T) {
 	v.Info.Snapshot.Enable = true
 	v.Info.Snapshot.Factor = 1.5
 
-	err = v.Create(app.db, app.executor)
+	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil)
 
 	// Destroy the volume
@@ -1143,7 +1167,7 @@ func TestVolumeEntryExpandNoSpace(t *testing.T) {
 	defer app.Close()
 
 	// Create cluster
-	err := setupSampleDbWithTopology(app.db,
+	err := setupSampleDbWithTopology(app,
 		10,     // clusters
 		1,      // nodes_per_cluster
 		2,      // devices_per_node,
@@ -1153,7 +1177,7 @@ func TestVolumeEntryExpandNoSpace(t *testing.T) {
 
 	// Create large volume
 	v := createSampleVolumeEntry(599)
-	err = v.Create(app.db, app.executor)
+	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil)
 
 	// Save a copy of the volume before expansion
@@ -1161,11 +1185,11 @@ func TestVolumeEntryExpandNoSpace(t *testing.T) {
 	*vcopy = *v
 
 	// Asking for a large amount will require too many little bricks
-	err = v.Expand(app.db, app.executor, 5000)
+	err = v.Expand(app.db, app.executor, app.allocator, 5000)
 	tests.Assert(t, err == ErrMaxBricks, err)
 
 	// Asking for a small amount will set the bricks too small
-	err = v.Expand(app.db, app.executor, 10)
+	err = v.Expand(app.db, app.executor, app.allocator, 10)
 	tests.Assert(t, err == ErrMininumBrickSize)
 
 	// Check db is the same as before expansion
@@ -1189,7 +1213,7 @@ func TestVolumeEntryExpandMaxBrickLimit(t *testing.T) {
 	defer app.Close()
 
 	// Create a large cluster
-	err := setupSampleDbWithTopology(app.db,
+	err := setupSampleDbWithTopology(app,
 		10,     // clusters
 		4,      // nodes_per_cluster
 		24,     // devices_per_node,
@@ -1199,7 +1223,7 @@ func TestVolumeEntryExpandMaxBrickLimit(t *testing.T) {
 
 	// Create large volume
 	v := createSampleVolumeEntry(100)
-	err = v.Create(app.db, app.executor)
+	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil)
 
 	// Add a bunch of bricks until the limit
@@ -1208,7 +1232,7 @@ func TestVolumeEntryExpandMaxBrickLimit(t *testing.T) {
 
 	// Try to expand the volume, but it will return that the max number
 	// of bricks has been reached
-	err = v.Expand(app.db, app.executor, 100)
+	err = v.Expand(app.db, app.executor, app.allocator, 100)
 	tests.Assert(t, err == ErrMaxBricks, err)
 }
 
@@ -1221,7 +1245,7 @@ func TestVolumeEntryExpandCreateBricksFailure(t *testing.T) {
 	defer app.Close()
 
 	// Create large cluster
-	err := setupSampleDbWithTopology(app.db,
+	err := setupSampleDbWithTopology(app,
 		10,     // clusters
 		10,     // nodes_per_cluster
 		20,     // devices_per_node,
@@ -1231,7 +1255,7 @@ func TestVolumeEntryExpandCreateBricksFailure(t *testing.T) {
 
 	// Create volume
 	v := createSampleVolumeEntry(100)
-	err = v.Create(app.db, app.executor)
+	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil)
 
 	// Save a copy of the volume before expansion
@@ -1245,7 +1269,7 @@ func TestVolumeEntryExpandCreateBricksFailure(t *testing.T) {
 	}
 
 	// Expand volume
-	err = v.Expand(app.db, app.executor, 500)
+	err = v.Expand(app.db, app.executor, app.allocator, 500)
 	tests.Assert(t, err == ErrMock)
 
 	// Check db is the same as before expansion
@@ -1269,7 +1293,7 @@ func TestVolumeEntryExpand(t *testing.T) {
 	defer app.Close()
 
 	// Create large cluster
-	err := setupSampleDbWithTopology(app.db,
+	err := setupSampleDbWithTopology(app,
 		1,    // clusters
 		10,   // nodes_per_cluster
 		20,   // devices_per_node,
@@ -1279,13 +1303,13 @@ func TestVolumeEntryExpand(t *testing.T) {
 
 	// Create volume
 	v := createSampleVolumeEntry(1024)
-	err = v.Create(app.db, app.executor)
+	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, v.Info.Size == 1024)
 	tests.Assert(t, len(v.Bricks) == 4)
 
 	// Expand volume
-	err = v.Expand(app.db, app.executor, 1234)
+	err = v.Expand(app.db, app.executor, app.allocator, 1234)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, v.Info.Size == 1024+1234)
 	tests.Assert(t, len(v.Bricks) == 8)

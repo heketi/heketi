@@ -156,6 +156,9 @@ func (a *App) ClusterDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Update allocator hat the cluster has been removed
+	a.allocator.RemoveCluster(id)
+
 	// Show that the key has been deleted
 	logger.Info("Deleted cluster [%s]", id)
 

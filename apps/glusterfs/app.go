@@ -50,6 +50,7 @@ type App struct {
 	asyncManager *rest.AsyncHttpManager
 	db           *bolt.DB
 	executor     executors.Executor
+	allocator    Allocator
 	conf         *GlusterFSConfig
 
 	// For testing only.  Keep access to the object
@@ -70,11 +71,11 @@ func NewApp(configIo io.Reader) *App {
 	app.asyncManager = rest.NewAsyncHttpManager(ASYNC_ROUTE)
 
 	// Setup executor
-	switch app.conf.Executor {
-	case "mock":
+	switch {
+	case app.conf.Executor == "mock":
 		app.xo = mockexec.NewMockExecutor()
 		app.executor = app.xo
-	case "ssh":
+	case app.conf.Executor == "ssh" || app.conf.Executor == "":
 		app.executor = sshexec.NewSshExecutor(&app.conf.SshConfig)
 	default:
 		return nil
@@ -82,7 +83,7 @@ func NewApp(configIo io.Reader) *App {
 	if app.executor == nil {
 		return nil
 	}
-	logger.Debug("Loaded %v executor", app.conf.Executor)
+	logger.Info("Loaded %v executor", app.conf.Executor)
 
 	// Set db is set in the configuration file
 	if app.conf.DBfile != "" {
@@ -141,6 +142,19 @@ func NewApp(configIo io.Reader) *App {
 		return nil
 	}
 
+	// Setup allocator
+	switch {
+	case app.conf.Allocator == "mock":
+		app.allocator = NewMockAllocator(app.db)
+	case app.conf.Allocator == "simple" || app.conf.Allocator == "":
+		app.conf.Allocator = "simple"
+		app.allocator = NewSimpleAllocatorFromDb(app.db)
+	default:
+		return nil
+	}
+	logger.Info("Loaded %v allocator", app.conf.Allocator)
+
+	// Show application has loaded
 	logger.Info("GlusterFS Application Loaded")
 
 	return app

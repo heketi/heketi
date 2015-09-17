@@ -191,7 +191,9 @@ func (v *VolumeEntry) BrickDelete(id string) {
 	v.Bricks = utils.SortedStringsDelete(v.Bricks, id)
 }
 
-func (v *VolumeEntry) Create(db *bolt.DB, executor executors.Executor) (e error) {
+func (v *VolumeEntry) Create(db *bolt.DB,
+	executor executors.Executor,
+	allocator Allocator) (e error) {
 
 	// On any error, remove the volume
 	defer func() {
@@ -233,7 +235,7 @@ func (v *VolumeEntry) Create(db *bolt.DB, executor executors.Executor) (e error)
 		var err error
 
 		// Check this cluster for space
-		brick_entries, err = v.allocBricksInCluster(db, cluster, v.Info.Size)
+		brick_entries, err = v.allocBricksInCluster(db, allocator, cluster, v.Info.Size)
 
 		// Check if allocation was successfull
 		if err == nil {
@@ -396,10 +398,11 @@ func (v *VolumeEntry) Destroy(db *bolt.DB, executor executors.Executor) error {
 
 func (v *VolumeEntry) Expand(db *bolt.DB,
 	executor executors.Executor,
+	allocator Allocator,
 	sizeGB int) (e error) {
 
 	// Allocate new bricks in the cluster
-	brick_entries, err := v.allocBricksInCluster(db, v.Info.Cluster, sizeGB)
+	brick_entries, err := v.allocBricksInCluster(db, allocator, v.Info.Cluster, sizeGB)
 	if err != nil {
 		return err
 	}
@@ -471,7 +474,10 @@ func (v *VolumeEntry) Expand(db *bolt.DB,
 
 }
 
-func (v *VolumeEntry) allocBricksInCluster(db *bolt.DB, cluster string, gbsize int) ([]*BrickEntry, error) {
+func (v *VolumeEntry) allocBricksInCluster(db *bolt.DB,
+	allocator Allocator,
+	cluster string,
+	gbsize int) ([]*BrickEntry, error) {
 
 	// This value will keep being halved until either
 	// space is found, or it is determined that the cluster is full
@@ -500,7 +506,7 @@ func (v *VolumeEntry) allocBricksInCluster(db *bolt.DB, cluster string, gbsize i
 		}
 
 		// Allocate bricks in the cluster
-		brick_entries, err := v.allocBricks(db, cluster, num_bricks, brick_size)
+		brick_entries, err := v.allocBricks(db, allocator, cluster, num_bricks, brick_size)
 		if err == ErrNoSpace {
 			logger.Debug("No space, need to reduce size and try again")
 			// Out of space for the specified brick size, try again
@@ -533,6 +539,7 @@ func (v *VolumeEntry) determineBrickSize(size uint64) (uint64, error) {
 
 func (v *VolumeEntry) allocBricks(
 	db *bolt.DB,
+	allocator Allocator,
 	cluster string,
 	num_bricks int,
 	brick_size uint64) (brick_entries []*BrickEntry, e error) {
@@ -564,37 +571,12 @@ func (v *VolumeEntry) allocBricks(
 		// Generate an id for the brick
 		brickId := utils.GenUUID()
 
-		// Get list of brick locations
-		// :TODO: Change this to ring XXXXXXXXXXXXXXXX
-		devicelist := NewAllocationList()
-		err := db.View(func(tx *bolt.Tx) error {
-			devices, err := DeviceList(tx)
-			if err != nil {
-				return err
-			}
-
-			for _, id := range devices {
-
-				device, err := NewDeviceEntryFromId(tx, id)
-				if err != nil {
-					return err
-				}
-
-				node, err := NewNodeEntryFromId(tx, device.NodeId)
-				if err != nil {
-					return err
-				}
-
-				if cluster == node.Info.ClusterId {
-					devicelist.Append(id)
-				}
-
-			}
-			return err
-		})
-		if err != nil {
-			return nil, err
-		}
+		// Get allocator generator
+		// The same generator should be used for the brick and its replicas
+		deviceCh, done, errc := allocator.GetNodes(cluster, brickId)
+		defer func() {
+			close(done)
+		}()
 
 		// Check location has space for each brick and its replicas
 		for i := 0; i < v.Info.Replica; i++ {
@@ -602,15 +584,10 @@ func (v *VolumeEntry) allocBricks(
 			// Do the work in the database context so that the cluster
 			// data does not change while determining brick location
 			err := db.Update(func(tx *bolt.Tx) error {
-				for {
-
-					// Check if we have no more nodes
-					if devicelist.IsEmpty() {
-						return ErrNoSpace
-					}
+				for deviceId := range deviceCh {
 
 					// Get device entry
-					device, err := NewDeviceEntryFromId(tx, devicelist.Pop())
+					device, err := NewDeviceEntryFromId(tx, deviceId)
 					if err != nil {
 						return err
 					}
@@ -629,6 +606,8 @@ func (v *VolumeEntry) allocBricks(
 						if i == 0 {
 							brick.SetId(brickId)
 						}
+
+						// Save the brick entry to create in on the node
 						brick_entries = append(brick_entries, brick)
 
 						// Allocate space on device
@@ -645,12 +624,18 @@ func (v *VolumeEntry) allocBricks(
 						if err != nil {
 							return err
 						}
-
-						break
+						return nil
 					}
 				}
 
-				return nil
+				// Check if allocator returned an error
+				if err := <-errc; err != nil {
+					return err
+				}
+
+				// No devices found
+				return ErrNoSpace
+
 			})
 			if err != nil {
 				return brick_entries, err

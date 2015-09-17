@@ -25,6 +25,7 @@ import (
 type GlusterFSConfig struct {
 	DBfile    string            `json:"db"`
 	Executor  string            `json:"executor"`
+	Allocator string            `json:"allocator"`
 	SshConfig sshexec.SshConfig `json:"sshexec"`
 }
 
