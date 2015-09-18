@@ -232,12 +232,14 @@ func TestHeketiVolumes(t *testing.T) {
 		volReq.Size = 40000
 		volReq.Snapshot.Enable = true
 		volReq.Snapshot.Factor = 1.5
+		volReq.Durability.Type = client.VOLUME_CREATE_DURABILITY_TYPE_REPLICATE
 
 		volInfo, err := heketi.VolumeCreate(volReq)
 		tests.Assert(t, err == nil)
 		tests.Assert(t, volInfo.Size == 40000)
 		tests.Assert(t, volInfo.Mount.GlusterFS.MountPoint != "")
-		tests.Assert(t, volInfo.Replica == 2)
+		tests.Assert(t, volInfo.Durability.Type == client.VOLUME_CREATE_DURABILITY_TYPE_REPLICATE)
+		tests.Assert(t, volInfo.Durability.Replicate.Replica == 2)
 		tests.Assert(t, volInfo.Name != "")
 
 		volumes, err := heketi.VolumeList()
@@ -274,18 +276,43 @@ func TestHeketiVolumes(t *testing.T) {
 	// Create a 10TB volume with replica 3
 	volReq = &glusterfs.VolumeCreateRequest{}
 	volReq.Size = 10000
-	volReq.Replica = 3
+	volReq.Durability.Type = client.VOLUME_CREATE_DURABILITY_TYPE_REPLICATE
+	volReq.Durability.Replicate.Replica = 3
 
 	volInfo, err = heketi.VolumeCreate(volReq)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, volInfo.Size == 10000)
 	tests.Assert(t, volInfo.Mount.GlusterFS.MountPoint != "")
-	tests.Assert(t, volInfo.Replica == 3)
+	tests.Assert(t, volInfo.Durability.Type == client.VOLUME_CREATE_DURABILITY_TYPE_REPLICATE)
+	tests.Assert(t, volInfo.Durability.Replicate.Replica == 3)
 	tests.Assert(t, volInfo.Name != "")
 
 	// Check there are two volumes
 	volumes, err = heketi.VolumeList()
 	tests.Assert(t, err == nil)
 	tests.Assert(t, len(volumes.Volumes) == 2)
+
+	// Create an EC volume
+	volReq = &glusterfs.VolumeCreateRequest{}
+	volReq.Size = 100
+	volReq.Durability.Type = client.VOLUME_CREATE_DURABILITY_TYPE_DISPERSION
+	volReq.Durability.Disperse.Data = 4
+	volReq.Durability.Disperse.Redundancy = 2
+
+	volInfo, err = heketi.VolumeCreate(volReq)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, volInfo.Size == 100)
+	tests.Assert(t, volInfo.Mount.GlusterFS.MountPoint != "")
+	tests.Assert(t, volInfo.Name != "")
+	tests.Assert(t, len(volInfo.Bricks) == 12)
+
+	// Expand volume
+	volExpReq = &glusterfs.VolumeExpandRequest{}
+	volExpReq.Size = 200
+
+	volInfo, err = heketi.VolumeExpand(volInfo.Id, volExpReq)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, volInfo.Size == 100+200)
+	tests.Assert(t, len(volInfo.Bricks) == 24)
 
 }

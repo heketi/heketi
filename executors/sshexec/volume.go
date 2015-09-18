@@ -22,10 +22,6 @@ import (
 	"github.com/lpabon/godbc"
 )
 
-const (
-	MAX_SETS_PER_ADDBRICK = 5
-)
-
 func (s *SshExecutor) VolumeCreate(host string,
 	volume *executors.VolumeRequest) (*executors.VolumeInfo, error) {
 
@@ -33,26 +29,49 @@ func (s *SshExecutor) VolumeCreate(host string,
 	godbc.Require(host != "")
 	godbc.Require(len(volume.Bricks) > 0)
 	godbc.Require(volume.Name != "")
-	godbc.Require(volume.Replica > 1)
+
+	// Create volume command
+	cmd := fmt.Sprintf("sudo gluster --mode=script volume create %v ", volume.Name)
+
+	// Add durability settings to the volume command
+	var (
+		inSet     int
+		maxPerSet int
+	)
+	switch volume.Type {
+	case executors.DurabilityNone:
+		logger.Info("Creating volume %v with no durability", volume.Name)
+		inSet = 1
+		maxPerSet = 15
+	case executors.DurabilityReplica:
+		logger.Info("Creating volume %v replica %v", volume.Name, volume.Replica)
+		cmd += fmt.Sprintf("replica %v ", volume.Replica)
+		inSet = volume.Replica
+		maxPerSet = 5
+	case executors.DurabilityDispersion:
+		logger.Info("Creating volume %v dispersion %v+%v",
+			volume.Name, volume.Data, volume.Redundancy)
+		cmd += fmt.Sprintf("disperse-data %v redundancy %v ", volume.Data, volume.Redundancy)
+		inSet = volume.Data + volume.Redundancy
+		maxPerSet = 1
+	}
 
 	// Setup volume create command
 	// There could many, many bricks which could make the command line
 	// too long.  Instead, create the volume first, then add each brick set.
-	cmd := fmt.Sprintf("sudo gluster volume create %v replica %v ",
-		volume.Name, volume.Replica)
-	for _, brick := range volume.Bricks[:volume.Replica] {
+	for _, brick := range volume.Bricks[:inSet] {
 		cmd += fmt.Sprintf("%v:%v ", brick.Host, brick.Path)
 	}
 
 	// :TODO: Add force for now.  It will allow silly bricks on the same systems
 	// to work.  Please remove once we add the intelligent ring
-	cmd += " force"
+	cmd += "force"
 
 	// Initialize the commands with the create command
 	commands := []string{cmd}
 
 	// Now add all the commands to add the bricks
-	commands = append(commands, s.createAddBrickCommands(volume, volume.Replica)...)
+	commands = append(commands, s.createAddBrickCommands(volume, inSet, inSet, maxPerSet)...)
 
 	// Add command to start the volume
 	commands = append(commands, fmt.Sprintf("sudo gluster volume start %v", volume.Name))
@@ -74,13 +93,33 @@ func (s *SshExecutor) VolumeExpand(host string,
 	godbc.Require(len(volume.Bricks) > 0)
 	godbc.Require(volume.Name != "")
 
+	// Add durability settings to the volume command
+	var (
+		inSet     int
+		maxPerSet int
+	)
+	switch volume.Type {
+	case executors.DurabilityNone:
+		inSet = 1
+		maxPerSet = 15
+	case executors.DurabilityReplica:
+		inSet = volume.Replica
+		maxPerSet = 5
+	case executors.DurabilityDispersion:
+		inSet = volume.Data + volume.Redundancy
+		maxPerSet = 1
+	}
+
 	// Setup volume create command
-	commands := s.createAddBrickCommands(volume, 0 /* start at the beginning of the brick list */)
+	commands := s.createAddBrickCommands(volume,
+		0, // start at the beginning of the brick list
+		inSet,
+		maxPerSet)
 
 	// Rebalance if configured
 	if s.config.RebalanceOnExpansion {
 		commands = append(commands,
-			fmt.Sprintf("sudo gluster volume rebalance %v start", volume.Name))
+			fmt.Sprintf("sudo gluster --mode=script volume rebalance %v start", volume.Name))
 	}
 
 	// Execute command
@@ -99,8 +138,8 @@ func (s *SshExecutor) VolumeDestroy(host string, volume string) error {
 	// Shutdown volume
 	commands := []string{
 		// stop gluster volume
-		fmt.Sprintf("yes | sudo gluster volume stop %v force", volume),
-		fmt.Sprintf("yes | sudo gluster volume delete %v", volume),
+		fmt.Sprintf("sudo gluster --mode=script volume stop %v force", volume),
+		fmt.Sprintf("sudo gluster --mode=script volume delete %v", volume),
 	}
 
 	// Execute command
@@ -112,21 +151,22 @@ func (s *SshExecutor) VolumeDestroy(host string, volume string) error {
 	return nil
 }
 
-func (s *SshExecutor) createAddBrickCommands(volume *executors.VolumeRequest, start int) []string {
+func (s *SshExecutor) createAddBrickCommands(volume *executors.VolumeRequest,
+	start, inSet, maxPerSet int) []string {
 
 	commands := []string{}
 	var cmd string
 
 	// Go through all the bricks and create add-brick commands
 	for index, brick := range volume.Bricks[start:] {
-		if index%(volume.Replica*MAX_SETS_PER_ADDBRICK) == 0 {
+		if index%(inSet*maxPerSet) == 0 {
 			if cmd != "" {
 				// Add add-brick command to the command list
 				commands = append(commands, cmd)
 			}
 
 			// Create a new add-brick command
-			cmd = fmt.Sprintf("sudo gluster volume add-brick %v ", volume.Name)
+			cmd = fmt.Sprintf("sudo gluster --mode=script volume add-brick %v ", volume.Name)
 		}
 
 		// Add this brick to the add-brick command

@@ -20,13 +20,17 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/heketi/heketi/apps/glusterfs"
 	"github.com/heketi/heketi/utils"
 	"net/http"
 	"time"
 )
 
 const (
-	MAX_CONCURRENT_REQUESTS = 32
+	MAX_CONCURRENT_REQUESTS                  = 32
+	VOLUME_CREATE_DURABILITY_TYPE_DISPERSION = glusterfs.DURABILITY_STRING_EC
+	VOLUME_CREATE_DURABILITY_TYPE_REPLICATE  = glusterfs.DURABILITY_STRING_REPLICATE
+	VOLUME_CREATE_DURABILITY_TYPE_NONE       = glusterfs.DURABILITY_STRING_DISTRIBUTE_ONLY
 )
 
 // Client object
