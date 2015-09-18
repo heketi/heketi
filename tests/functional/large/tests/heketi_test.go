@@ -34,7 +34,7 @@ const (
 
 	// VMs
 	DISKS = 24
-	NODES = 18
+	NODES = 30
 )
 
 var (
@@ -66,7 +66,7 @@ func getnodes() []string {
 func setupCluster(t *testing.T) {
 	tests.Assert(t, heketi != nil)
 
-	numclusters := 3
+	numclusters := 5
 	nodespercluster := NODES / numclusters
 	nodes := getnodes()
 	sg := utils.NewStatusGroup()
