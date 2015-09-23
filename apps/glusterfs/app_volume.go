@@ -50,6 +50,30 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Check replica values
+	if msg.Durability.Type == DURABILITY_STRING_REPLICATE {
+		if msg.Durability.Replicate.Replica > 3 {
+			http.Error(w, "Invalid replica value", http.StatusBadRequest)
+			return
+		}
+	}
+
+	// Check Disperse combinations
+	if msg.Durability.Type == DURABILITY_STRING_EC {
+		d := msg.Durability.Disperse
+		// Place here correct combinations
+		switch {
+		case d.Data == 4 && d.Redundancy == 2:
+		case d.Data == 8 && d.Redundancy == 3:
+		case d.Data == 8 && d.Redundancy == 4:
+		default:
+			http.Error(w,
+				fmt.Sprintf("Invalid dispersion combination: %v+%v", d.Data, d.Redundancy),
+				http.StatusBadRequest)
+			return
+		}
+	}
+
 	// Check that the clusters requested are avilable
 	err = a.db.View(func(tx *bolt.Tx) error {
 
@@ -211,7 +235,7 @@ func (a *App) VolumeDelete(w http.ResponseWriter, r *http.Request) {
 			return "", err
 		}
 
-		logger.Info("Deleted node [%s]", id)
+		logger.Info("Deleted volume [%s]", id)
 		return "", nil
 
 	})

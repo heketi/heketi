@@ -24,7 +24,7 @@ func tempfile_generate() func() string {
 	counter := 0
 	return func() string {
 		counter++
-		return fmt.Sprintf("/tmp/pblcache_test.%d-%d",
+		return fmt.Sprintf("/tmp/heketi_test.%d-%d",
 			os.Getpid(), counter)
 	}
 }

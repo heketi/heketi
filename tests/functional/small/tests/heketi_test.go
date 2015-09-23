@@ -172,12 +172,12 @@ func TestHeketiVolumes(t *testing.T) {
 		volReq.Size = 4000
 		volReq.Snapshot.Enable = true
 		volReq.Snapshot.Factor = 1.5
+		volReq.Durability.Type = client.VOLUME_CREATE_DURABILITY_TYPE_REPLICATE
 
 		volInfo, err := heketi.VolumeCreate(volReq)
 		tests.Assert(t, err == nil)
 		tests.Assert(t, volInfo.Size == 4000)
 		tests.Assert(t, volInfo.Mount.GlusterFS.MountPoint != "")
-		tests.Assert(t, volInfo.Replica == 2)
 		tests.Assert(t, volInfo.Name != "")
 
 		volumes, err := heketi.VolumeList()
@@ -194,17 +194,18 @@ func TestHeketiVolumes(t *testing.T) {
 	volReq.Size = 1024
 	volReq.Snapshot.Enable = true
 	volReq.Snapshot.Factor = 1.5
+	volReq.Durability.Type = client.VOLUME_CREATE_DURABILITY_TYPE_REPLICATE
 
 	simplevol, err := heketi.VolumeCreate(volReq)
 	tests.Assert(t, err == nil)
 
-	// Create a 4TB volume with 2TB of snapshot space
+	// Create a 12TB volume with 6TB of snapshot space
 	// There should be no space
 	volReq = &glusterfs.VolumeCreateRequest{}
-	volReq.Size = 4096
-	volReq.Replica = 3
+	volReq.Size = 12 * 1024
 	volReq.Snapshot.Enable = true
 	volReq.Snapshot.Factor = 1.5
+	volReq.Durability.Type = client.VOLUME_CREATE_DURABILITY_TYPE_REPLICATE
 
 	_, err = heketi.VolumeCreate(volReq)
 	tests.Assert(t, err != nil)
@@ -217,13 +218,13 @@ func TestHeketiVolumes(t *testing.T) {
 	// Create a 100G volume with replica 3
 	volReq = &glusterfs.VolumeCreateRequest{}
 	volReq.Size = 100
-	volReq.Replica = 3
+	volReq.Durability.Type = client.VOLUME_CREATE_DURABILITY_TYPE_REPLICATE
+	volReq.Durability.Replicate.Replica = 3
 
 	volInfo, err := heketi.VolumeCreate(volReq)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, volInfo.Size == 100)
 	tests.Assert(t, volInfo.Mount.GlusterFS.MountPoint != "")
-	tests.Assert(t, volInfo.Replica == 3)
 	tests.Assert(t, volInfo.Name != "")
 	tests.Assert(t, len(volInfo.Bricks) == 6)
 
@@ -240,4 +241,30 @@ func TestHeketiVolumes(t *testing.T) {
 	tests.Assert(t, err == nil)
 	tests.Assert(t, volInfo.Size == simplevol.Size+2000)
 
+	// Delete volume
+	err = heketi.VolumeDelete(volInfo.Id)
+	tests.Assert(t, err == nil)
+
+	// Create an EC volume
+	volReq = &glusterfs.VolumeCreateRequest{}
+	volReq.Size = 100
+	volReq.Durability.Type = client.VOLUME_CREATE_DURABILITY_TYPE_DISPERSION
+	volReq.Durability.Disperse.Data = 4
+	volReq.Durability.Disperse.Redundancy = 2
+
+	volInfo, err = heketi.VolumeCreate(volReq)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, volInfo.Size == 100)
+	tests.Assert(t, volInfo.Mount.GlusterFS.MountPoint != "")
+	tests.Assert(t, volInfo.Name != "")
+	tests.Assert(t, len(volInfo.Bricks) == 12)
+
+	// Expand volume
+	volExpReq = &glusterfs.VolumeExpandRequest{}
+	volExpReq.Size = 200
+
+	volInfo, err = heketi.VolumeExpand(volInfo.Id, volExpReq)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, volInfo.Size == 100+200)
+	tests.Assert(t, len(volInfo.Bricks) == 24)
 }

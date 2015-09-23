@@ -42,7 +42,7 @@ const (
 )
 
 var (
-	logger     = utils.NewLogger("[heketi]", utils.LEVEL_INFO)
+	logger     = utils.NewLogger("[heketi]", utils.LEVEL_DEBUG)
 	dbfilename = "heketi.db"
 )
 

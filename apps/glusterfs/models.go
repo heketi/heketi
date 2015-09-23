@@ -97,14 +97,32 @@ type ClusterListResponse struct {
 	Clusters []string `json:"clusters"`
 }
 
+// Durabilities
+
+type ReplicaDurability struct {
+	Replica int `json:"replica,omitempty"`
+}
+
+type DisperseDurability struct {
+	Data       int `json:"data,omitempty"`
+	Redundancy int `json:"redundancy,omitempty"`
+}
+
 // Volume
+
+type VolumeDurabilityInfo struct {
+	Type      string             `json:"type,omitempty"`
+	Replicate ReplicaDurability  `json:"replicate,omitempty"`
+	Disperse  DisperseDurability `json:"disperse,omitempty"`
+}
+
 type VolumeCreateRequest struct {
 	// Size in GB
-	Size     int      `json:"size"`
-	Clusters []string `json:"clusters,omitempty"`
-	Name     string   `json:"name"`
-	Replica  int      `json:"replica"`
-	Snapshot struct {
+	Size       int                  `json:"size"`
+	Clusters   []string             `json:"clusters,omitempty"`
+	Name       string               `json:"name"`
+	Durability VolumeDurabilityInfo `json:"durability,omitempty"`
+	Snapshot   struct {
 		Enable bool    `json:"enable"`
 		Factor float32 `json:"factor"`
 	} `json:"snapshot"`

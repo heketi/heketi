@@ -32,6 +32,8 @@ import (
 func createSampleVolumeEntry(size int) *VolumeEntry {
 	req := &VolumeCreateRequest{}
 	req.Size = size
+	req.Durability.Type = DURABILITY_STRING_REPLICATE
+	req.Durability.Replicate.Replica = 2
 
 	v := NewVolumeEntryFromRequest(req)
 
@@ -112,7 +114,6 @@ func TestNewVolumeEntryFromRequestOnlySize(t *testing.T) {
 	v := NewVolumeEntryFromRequest(req)
 	tests.Assert(t, v.Info.Name == "vol_"+v.Info.Id)
 	tests.Assert(t, len(v.Info.Clusters) == 0)
-	tests.Assert(t, v.Info.Replica == 2)
 	tests.Assert(t, v.Info.Snapshot.Enable == false)
 	tests.Assert(t, v.Info.Snapshot.Factor == 1)
 	tests.Assert(t, v.Info.Size == 1024)
@@ -124,14 +125,14 @@ func TestNewVolumeEntryFromRequestOnlySize(t *testing.T) {
 
 func TestNewVolumeEntryFromRequestReplica(t *testing.T) {
 
+	// :TODO: add tests for each durability
+
 	req := &VolumeCreateRequest{}
 	req.Size = 1024
-	req.Replica = 3
 
 	v := NewVolumeEntryFromRequest(req)
 	tests.Assert(t, v.Info.Name == "vol_"+v.Info.Id)
 	tests.Assert(t, len(v.Info.Clusters) == 0)
-	tests.Assert(t, v.Info.Replica == 3)
 	tests.Assert(t, v.Info.Snapshot.Enable == false)
 	tests.Assert(t, v.Info.Snapshot.Factor == 1)
 	tests.Assert(t, v.Info.Size == 1024)
@@ -145,12 +146,10 @@ func TestNewVolumeEntryFromRequestClusters(t *testing.T) {
 
 	req := &VolumeCreateRequest{}
 	req.Size = 1024
-	req.Replica = 3
 	req.Clusters = []string{"abc", "def"}
 
 	v := NewVolumeEntryFromRequest(req)
 	tests.Assert(t, v.Info.Name == "vol_"+v.Info.Id)
-	tests.Assert(t, v.Info.Replica == 3)
 	tests.Assert(t, v.Info.Snapshot.Enable == false)
 	tests.Assert(t, v.Info.Snapshot.Factor == 1)
 	tests.Assert(t, v.Info.Size == 1024)
@@ -164,13 +163,11 @@ func TestNewVolumeEntryFromRequestSnapshotEnabledDefaultFactor(t *testing.T) {
 
 	req := &VolumeCreateRequest{}
 	req.Size = 1024
-	req.Replica = 3
 	req.Clusters = []string{"abc", "def"}
 	req.Snapshot.Enable = true
 
 	v := NewVolumeEntryFromRequest(req)
 	tests.Assert(t, v.Info.Name == "vol_"+v.Info.Id)
-	tests.Assert(t, v.Info.Replica == 3)
 	tests.Assert(t, v.Info.Snapshot.Enable == true)
 	tests.Assert(t, v.Info.Snapshot.Factor == DEFAULT_THINP_SNAPSHOT_FACTOR)
 	tests.Assert(t, v.Info.Size == 1024)
@@ -184,14 +181,12 @@ func TestNewVolumeEntryFromRequestSnapshotFactor(t *testing.T) {
 
 	req := &VolumeCreateRequest{}
 	req.Size = 1024
-	req.Replica = 3
 	req.Clusters = []string{"abc", "def"}
 	req.Snapshot.Enable = true
 	req.Snapshot.Factor = 1.3
 
 	v := NewVolumeEntryFromRequest(req)
 	tests.Assert(t, v.Info.Name == "vol_"+v.Info.Id)
-	tests.Assert(t, v.Info.Replica == 3)
 	tests.Assert(t, v.Info.Snapshot.Enable == true)
 	tests.Assert(t, v.Info.Snapshot.Factor == 1.3)
 	tests.Assert(t, v.Info.Size == 1024)
@@ -205,7 +200,6 @@ func TestNewVolumeEntryFromRequestName(t *testing.T) {
 
 	req := &VolumeCreateRequest{}
 	req.Size = 1024
-	req.Replica = 3
 	req.Clusters = []string{"abc", "def"}
 	req.Snapshot.Enable = true
 	req.Snapshot.Factor = 1.3
@@ -213,7 +207,6 @@ func TestNewVolumeEntryFromRequestName(t *testing.T) {
 
 	v := NewVolumeEntryFromRequest(req)
 	tests.Assert(t, v.Info.Name == "myvol")
-	tests.Assert(t, v.Info.Replica == 3)
 	tests.Assert(t, v.Info.Snapshot.Enable == true)
 	tests.Assert(t, v.Info.Snapshot.Factor == 1.3)
 	tests.Assert(t, v.Info.Size == 1024)
@@ -227,7 +220,6 @@ func TestNewVolumeEntryMarshal(t *testing.T) {
 
 	req := &VolumeCreateRequest{}
 	req.Size = 1024
-	req.Replica = 3
 	req.Clusters = []string{"abc", "def"}
 	req.Snapshot.Enable = true
 	req.Snapshot.Factor = 1.3
@@ -408,7 +400,6 @@ func TestNewVolumeEntryNewInfoResponse(t *testing.T) {
 	tests.Assert(t, info.Name == v.Info.Name)
 	tests.Assert(t, info.Id == v.Info.Id)
 	tests.Assert(t, info.Size == v.Info.Size)
-	tests.Assert(t, info.Replica == v.Info.Replica)
 	tests.Assert(t, len(info.Bricks) == 0)
 }
 
@@ -689,7 +680,7 @@ func TestVolumeEntryCreateMaxBrickSize(t *testing.T) {
 	app := NewTestApp(tmpfile)
 	defer app.Close()
 
-	// Create 50TB of storage
+	// Create 500TB of storage
 	err := setupSampleDbWithTopology(app,
 		1,    // clusters
 		10,   // nodes_per_cluster
@@ -698,13 +689,12 @@ func TestVolumeEntryCreateMaxBrickSize(t *testing.T) {
 	)
 	tests.Assert(t, err == nil)
 
-	// Create a volume who will be broken down to
-	// Shouldn't be able to break it down enough to allocate volume
+	// Create a volume whose bricks must be at most BRICK_MAX_SIZE
 	v := createSampleVolumeEntry(int(BRICK_MAX_SIZE / GB * 4))
 	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil)
 
-	// Check database volume does not exist
+	// Get volume information
 	var info *VolumeInfoResponse
 	err = app.db.View(func(tx *bolt.Tx) error {
 		entry, err := NewVolumeEntryFromId(tx, v.Info.Id)
@@ -722,11 +712,10 @@ func TestVolumeEntryCreateMaxBrickSize(t *testing.T) {
 	})
 	tests.Assert(t, err == nil)
 
-	// Will need to split until less than BRICK_MAX_SIZE, then try to allocate
-	// the bricks.
+	// Check the size of the bricks are not bigger than BRICK_MAX_SIZE
 	tests.Assert(t, len(info.Bricks) == 8)
-	for b := 1; b < 8; b++ {
-		tests.Assert(t, info.Bricks[0].Size == info.Bricks[b].Size, b)
+	for b := 1; b < len(info.Bricks); b++ {
+		tests.Assert(t, info.Bricks[b].Size <= BRICK_MAX_SIZE)
 	}
 	tests.Assert(t, info.Cluster == v.Info.Cluster)
 

@@ -28,11 +28,22 @@ type Executor interface {
 	VolumeExpand(host string, volume *VolumeRequest) (*VolumeInfo, error)
 }
 
+// Enumerate durability types
+type DurabilityType int
+
+const (
+	DurabilityNone DurabilityType = iota
+	DurabilityReplica
+	DurabilityDispersion
+)
+
+// Returns the size of the device
 type DeviceInfo struct {
 	// Size in KB
 	Size uint64
 }
 
+// Brick description
 type BrickRequest struct {
 	VgId   string
 	Name   string
@@ -40,14 +51,22 @@ type BrickRequest struct {
 	Size   uint64
 }
 
+// Returns information about the location of the brick
 type BrickInfo struct {
 	Path string
 	Host string
 }
 
 type VolumeRequest struct {
-	Bricks  []BrickInfo
-	Name    string
+	Bricks []BrickInfo
+	Name   string
+	Type   DurabilityType
+
+	// Dispersion
+	Data       int
+	Redundancy int
+
+	// Replica
 	Replica int
 }
 

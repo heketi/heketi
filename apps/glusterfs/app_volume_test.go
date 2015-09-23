@@ -117,6 +117,118 @@ func TestVolumeCreateSmallSize(t *testing.T) {
 	tests.Assert(t, strings.Contains(string(body), "Invalid volume size"))
 }
 
+func TestVolumeCreateBadReplicaValues(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// VolumeCreate JSON Request
+	request := []byte(`{
+        "size" : 100,
+        "durability": {
+        	"type": "replicate",
+        	"replicate": {
+            	"replica": 100
+        	}
+    	}
+    }`)
+
+	// Send request
+	r, err := http.Post(ts.URL+"/volumes", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusBadRequest)
+	body, err := ioutil.ReadAll(io.LimitReader(r.Body, r.ContentLength))
+	tests.Assert(t, err == nil)
+	r.Body.Close()
+	tests.Assert(t, strings.Contains(string(body), "Invalid replica value"))
+
+	// VolumeCreate JSON Request
+	request = []byte(`{
+        "size" : 100,
+        "durability": {
+        	"type": "replicate",
+        	"replicate": {
+            	"replica": 4
+        	}
+    	}
+    }`)
+
+	// Send request
+	r, err = http.Post(ts.URL+"/volumes", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusBadRequest)
+	body, err = ioutil.ReadAll(io.LimitReader(r.Body, r.ContentLength))
+	tests.Assert(t, err == nil)
+	r.Body.Close()
+	tests.Assert(t, strings.Contains(string(body), "Invalid replica value"))
+}
+
+func TestVolumeCreateBadDispersionValues(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// VolumeCreate JSON Request
+	request := []byte(`{
+        "size" : 100,
+        "durability": {
+        	"type": "disperse",
+        	"disperse": {
+            	"data" : 8,
+            	"redundancy" : 1
+        	}
+    	}
+    }`)
+
+	// Send request
+	r, err := http.Post(ts.URL+"/volumes", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusBadRequest)
+	body, err := ioutil.ReadAll(io.LimitReader(r.Body, r.ContentLength))
+	tests.Assert(t, err == nil)
+	r.Body.Close()
+	tests.Assert(t, strings.Contains(string(body), "Invalid dispersion combination"))
+
+	// VolumeCreate JSON Request
+	request = []byte(`{
+        "size" : 100,
+        "durability": {
+        	"type": "disperse",
+        	"disperse": {
+            	"data" : 4,
+            	"redundancy" : 3
+        	}
+    	}
+    }`)
+
+	// Send request
+	r, err = http.Post(ts.URL+"/volumes", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusBadRequest)
+	body, err = ioutil.ReadAll(io.LimitReader(r.Body, r.ContentLength))
+	tests.Assert(t, err == nil)
+	r.Body.Close()
+	tests.Assert(t, strings.Contains(string(body), "Invalid dispersion combination"))
+}
+
 func TestVolumeCreateBadClusters(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
@@ -253,7 +365,10 @@ func TestVolumeCreate(t *testing.T) {
 
 	// VolumeCreate JSON Request
 	request := []byte(`{
-        "size" : 100
+        "size" : 100,
+        "durability" : {
+        	"type" : "replicate"
+        }
     }`)
 
 	// Send request
@@ -286,9 +401,10 @@ func TestVolumeCreate(t *testing.T) {
 	tests.Assert(t, info.Bricks[0].Size == 50*GB)
 	tests.Assert(t, info.Bricks[1].Size == 50*GB)
 	tests.Assert(t, info.Name == "vol_"+info.Id)
-	tests.Assert(t, info.Replica == DEFAULT_REPLICA)
 	tests.Assert(t, info.Snapshot.Enable == false)
 	tests.Assert(t, info.Snapshot.Factor == 1)
+	tests.Assert(t, info.Durability.Type == DURABILITY_STRING_REPLICATE)
+	tests.Assert(t, info.Durability.Replicate.Replica == DEFAULT_REPLICA)
 }
 
 func TestVolumeInfoIdNotFound(t *testing.T) {
@@ -336,12 +452,11 @@ func TestVolumeInfo(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Create a volume
-	v := createSampleVolumeEntry(100)
+	req := &VolumeCreateRequest{}
+	req.Size = 100
+	req.Durability.Type = DURABILITY_STRING_EC
+	v := NewVolumeEntryFromRequest(req)
 	tests.Assert(t, v != nil)
-	err = app.db.Update(func(tx *bolt.Tx) error {
-		return v.Save(tx)
-	})
-	tests.Assert(t, err == nil)
 	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil)
 
@@ -360,8 +475,8 @@ func TestVolumeInfo(t *testing.T) {
 	tests.Assert(t, msg.Id == v.Info.Id)
 	tests.Assert(t, msg.Cluster == v.Info.Cluster)
 	tests.Assert(t, msg.Name == v.Info.Name)
-	tests.Assert(t, msg.Replica == v.Info.Replica)
 	tests.Assert(t, msg.Size == v.Info.Size)
+	tests.Assert(t, reflect.DeepEqual(msg.Durability, v.Info.Durability))
 	tests.Assert(t, reflect.DeepEqual(msg.Snapshot, v.Info.Snapshot))
 	for _, brick := range msg.Bricks {
 		tests.Assert(t, utils.SortedStringHas(v.Bricks, brick.Id))
