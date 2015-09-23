@@ -22,6 +22,23 @@ import (
 	"github.com/lpabon/godbc"
 )
 
+const (
+	rootMountPoint = "/var/lib/heketi/mounts"
+)
+
+// Return the mount point for the brick
+func (s *SshExecutor) brickMountPoint(brick *executors.BrickRequest) string {
+	return rootMountPoint + "/" +
+		s.vgName(brick.VgId) + "/" +
+		s.brickName(brick.Name)
+}
+
+// Device node for the lvm volume
+func (s *SshExecutor) devnode(brick *executors.BrickRequest) string {
+	return "/dev/" + s.vgName(brick.VgId) +
+		"/" + s.brickName(brick.Name)
+}
+
 func (s *SshExecutor) BrickCreate(host string,
 	brick *executors.BrickRequest) (*executors.BrickInfo, error) {
 
@@ -32,50 +49,61 @@ func (s *SshExecutor) BrickCreate(host string,
 	godbc.Require(brick.TpSize >= brick.Size)
 	godbc.Require(brick.VgId != "")
 
+	// Create mountpoint name
+	mountpoint := s.brickMountPoint(brick)
+
+	// Create command set to execute on the node
 	commands := []string{
 
 		// Create a directory
-		fmt.Sprintf("sudo mkdir /brick_%v", brick.Name),
+		fmt.Sprintf("sudo mkdir -p %v", mountpoint),
 
 		// Setup the LV
-		fmt.Sprintf("sudo lvcreate -L %vKiB -T vg_%v/tp_%v -V %vKiB -n brick_%v",
+		fmt.Sprintf("sudo lvcreate --poolmetadatasize %vK -c 256K -L %vK -T %v/%v -V %vK -n %v",
+			// MetadataSize
+			brick.PoolMetadataSize,
+
 			//Thin Pool Size
 			brick.TpSize,
 
 			// volume group
-			brick.VgId,
+			s.vgName(brick.VgId),
 
 			// ThinP name
-			brick.Name,
+			s.tpName(brick.Name),
 
 			// Allocation size
 			brick.Size,
 
 			// Logical Vol name
-			brick.Name),
+			s.brickName(brick.Name)),
 
 		// Format
-		fmt.Sprintf("sudo mkfs.xfs -i size=512 -n size=8192 /dev/vg_%v/brick_%v", brick.VgId, brick.Name),
+		fmt.Sprintf("sudo mkfs.xfs -i size=512 -n size=8192 %v", s.devnode(brick)),
+
+		// Fstab
+		fmt.Sprintf("echo \"%v %v xfs rw,inode64,noatime,nouuid 1 2\" | sudo tee -a /etc/fstab > /dev/null ",
+			s.devnode(brick),
+			mountpoint),
 
 		// Mount
-		fmt.Sprintf("sudo mount /dev/vg_%v/brick_%v /brick_%v",
-			brick.VgId, brick.Name, brick.Name),
+		fmt.Sprintf("sudo mount %v %v", s.devnode(brick), mountpoint),
 
 		// Create a directory inside the formated volume for GlusterFS
-		fmt.Sprintf("sudo mkdir /brick_%v/brick", brick.Name),
+		fmt.Sprintf("sudo mkdir %v/brick", mountpoint),
 	}
 
 	// Execute commands
 	_, err := s.sshExec(host, commands, 10)
 	if err != nil {
+		// Cleanup
+		s.BrickDestroy(host, brick)
 		return nil, err
 	}
 
-	// :TODO: Add to fstab!
-
 	// Save brick location
 	b := &executors.BrickInfo{
-		Path: fmt.Sprintf("/brick_%v/brick", brick.Name),
+		Path: fmt.Sprintf("%v/brick", mountpoint),
 	}
 	return b, nil
 }
@@ -90,7 +118,7 @@ func (s *SshExecutor) BrickDestroy(host string,
 
 	// Try to unmount first
 	commands := []string{
-		fmt.Sprintf("sudo umount /brick_%v", brick.Name),
+		fmt.Sprintf("sudo umount %v", s.brickMountPoint(brick)),
 	}
 	_, err := s.sshExec(host, commands, 5)
 	if err != nil {
@@ -99,7 +127,7 @@ func (s *SshExecutor) BrickDestroy(host string,
 
 	// Now try to remove the LV
 	commands = []string{
-		fmt.Sprintf("sudo lvremove -f vg_%v/tp_%v", brick.VgId, brick.Name),
+		fmt.Sprintf("sudo lvremove -f %v/%v", s.vgName(brick.VgId), s.tpName(brick.Name)),
 	}
 	_, err = s.sshExec(host, commands, 5)
 	if err != nil {
@@ -108,14 +136,21 @@ func (s *SshExecutor) BrickDestroy(host string,
 
 	// Now cleanup the mount point
 	commands = []string{
-		fmt.Sprintf("sudo rmdir /brick_%v", brick.Name),
+		fmt.Sprintf("sudo rmdir %v", s.brickMountPoint(brick)),
 	}
 	_, err = s.sshExec(host, commands, 5)
 	if err != nil {
 		logger.Err(err)
 	}
 
-	// :TODO: Remove from fstab
+	// Remove from fstab
+	commands = []string{
+		fmt.Sprintf("sudo sed -i.save '/%v/d' /etc/fstab", s.brickName(brick.Name)),
+	}
+	_, err = s.sshExec(host, commands, 5)
+	if err != nil {
+		logger.Err(err)
+	}
 
 	return nil
 }

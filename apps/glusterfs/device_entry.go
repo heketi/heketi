@@ -25,10 +25,15 @@ import (
 	"sort"
 )
 
+const (
+	maxPoolMetadataSizeMb = 16 * GB
+)
+
 type DeviceEntry struct {
-	Info   DeviceInfo
-	Bricks sort.StringSlice
-	NodeId string
+	Info       DeviceInfo
+	Bricks     sort.StringSlice
+	NodeId     string
+	ExtentSize uint64
 }
 
 func DeviceList(tx *bolt.Tx) ([]string, error) {
@@ -43,6 +48,9 @@ func DeviceList(tx *bolt.Tx) ([]string, error) {
 func NewDeviceEntry() *DeviceEntry {
 	entry := &DeviceEntry{}
 	entry.Bricks = make(sort.StringSlice, 0)
+
+	// Default to 4096KB
+	entry.ExtentSize = 4096
 
 	return entry
 }
@@ -190,4 +198,55 @@ func (d *DeviceEntry) StorageFree(amount uint64) {
 
 func (d *DeviceEntry) StorageCheck(amount uint64) bool {
 	return d.Info.Storage.Free > amount
+}
+
+func (d *DeviceEntry) SetExtentSize(amount uint64) {
+	d.ExtentSize = amount
+}
+
+// Allocates a new brick if the space is available.  It will automatically reserve
+// the storage amount required from the device's used storage, but it will not add
+// the brick id to the brick list.  The caller is responsabile for adding the brick
+// id to the list.
+func (d *DeviceEntry) NewBrickEntry(amount uint64, snapFactor float64) *BrickEntry {
+
+	// Calculate thinpool size
+	tpsize := uint64(float64(amount) * snapFactor)
+
+	// Align tpsize to extent
+	tpsize += tpsize % d.ExtentSize
+
+	// Determine if we need to allocate space for the metadata
+	metadataSize := d.poolMetadataSize(tpsize)
+
+	// Align to extent
+	metadataSize += metadataSize % d.ExtentSize
+
+	// Total required size
+	total := tpsize + metadataSize
+
+	logger.Debug("device %v[%v] > required size [%v] ?",
+		d.Id(),
+		d.Info.Storage.Free, total)
+	if !d.StorageCheck(total) {
+		return nil
+	}
+
+	// Allocate amount from disk
+	d.StorageAllocate(total)
+
+	// Create brick
+	return NewBrickEntry(amount, tpsize, metadataSize, d.Info.Id, d.NodeId)
+}
+
+// Return poolmetadatasize in KB
+func (d *DeviceEntry) poolMetadataSize(tpsize uint64) uint64 {
+
+	// TP size is in KB
+	p := uint64(float64(tpsize) * 0.005)
+	if p > maxPoolMetadataSizeMb {
+		p = maxPoolMetadataSizeMb
+	}
+
+	return p
 }

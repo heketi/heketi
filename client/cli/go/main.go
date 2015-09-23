@@ -61,25 +61,27 @@ func init() {
 
 // ------ Main
 func main() {
-	flag.Parse()
+	/*
+		flag.Parse()
 
-	//all first level commands go here (cluster, node, device, volume)
-	cmds := commands.Commands{
-		commands.NewClusterCommand(&options),
-		commands.NewNodeCommand(&options),
-	}
-
-	for _, cmd := range cmds {
-		if flag.Arg(0) == cmd.Name() {
-
-			err := cmd.Exec(flag.Args()[1:])
-			if err != nil {
-				fmt.Fprintf(stdout, "Error: %v\n", err)
-				os.Exit(1)
-			}
-			return
+		//all first level commands go here (cluster, node, device, volume)
+		cmds := commands.Commands{
+			commands.NewClusterCommand(&options),
+			commands.NewNodeCommand(&options),
 		}
-	}
 
-	fmt.Println("Command not found")
+		for _, cmd := range cmds {
+			if flag.Arg(0) == cmd.Name() {
+
+				err := cmd.Exec(flag.Args()[1:])
+				if err != nil {
+					fmt.Fprintf(stdout, "Error: %v\n", err)
+					os.Exit(1)
+				}
+				return
+			}
+		}
+
+		fmt.Println("Command not found")
+	*/
 }

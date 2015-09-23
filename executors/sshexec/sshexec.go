@@ -144,3 +144,15 @@ func (s *SshExecutor) sshExec(host string, commands []string, timeoutMinutes int
 	// Execute
 	return s.exec.ConnectAndExec(host+":22", commands, timeoutMinutes)
 }
+
+func (s *SshExecutor) vgName(vgId string) string {
+	return "vg_" + vgId
+}
+
+func (s *SshExecutor) brickName(brickId string) string {
+	return "brick_" + brickId
+}
+
+func (s *SshExecutor) tpName(brickId string) string {
+	return "tp_" + brickId
+}

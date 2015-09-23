@@ -30,10 +30,12 @@ func TestNewBrickEntry(t *testing.T) {
 	tpsize := size * 2
 	deviceid := "abc"
 	nodeid := "def"
+	ps := size
 
-	b := NewBrickEntry(size, tpsize, deviceid, nodeid)
+	b := NewBrickEntry(size, tpsize, ps, deviceid, nodeid)
 	tests.Assert(t, b.Info.Id != "")
 	tests.Assert(t, b.TpSize == tpsize)
+	tests.Assert(t, b.PoolMetadataSize == ps)
 	tests.Assert(t, b.Info.DeviceId == deviceid)
 	tests.Assert(t, b.Info.NodeId == nodeid)
 	tests.Assert(t, b.Info.Size == size)
@@ -45,7 +47,8 @@ func TestBrickEntryMarshal(t *testing.T) {
 	tpsize := size * 2
 	deviceid := "abc"
 	nodeid := "def"
-	m := NewBrickEntry(size, tpsize, deviceid, nodeid)
+	ps := size
+	m := NewBrickEntry(size, tpsize, ps, deviceid, nodeid)
 
 	buffer, err := m.Marshal()
 	tests.Assert(t, err == nil)
@@ -85,7 +88,7 @@ func TestNewBrickEntryFromId(t *testing.T) {
 	defer app.Close()
 
 	// Create a brick
-	b := NewBrickEntry(10, 20, "abc", "def")
+	b := NewBrickEntry(10, 20, 5, "abc", "def")
 
 	// Save element in database
 	err := app.db.Update(func(tx *bolt.Tx) error {
@@ -113,7 +116,7 @@ func TestNewBrickEntrySaveDelete(t *testing.T) {
 	defer app.Close()
 
 	// Create a brick
-	b := NewBrickEntry(10, 20, "abc", "def")
+	b := NewBrickEntry(10, 20, 5, "abc", "def")
 
 	// Save element in database
 	err := app.db.Update(func(tx *bolt.Tx) error {
@@ -158,7 +161,7 @@ func TestNewBrickEntryNewInfoResponse(t *testing.T) {
 	defer app.Close()
 
 	// Create a brick
-	b := NewBrickEntry(10, 20, "abc", "def")
+	b := NewBrickEntry(10, 20, 5, "abc", "def")
 
 	// Save element in database
 	err := app.db.Update(func(tx *bolt.Tx) error {

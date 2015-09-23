@@ -1165,7 +1165,7 @@ func TestVolumeEntryExpandNoSpace(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Create large volume
-	v := createSampleVolumeEntry(599)
+	v := createSampleVolumeEntry(590)
 	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil)
 
@@ -1179,7 +1179,7 @@ func TestVolumeEntryExpandNoSpace(t *testing.T) {
 
 	// Asking for a small amount will set the bricks too small
 	err = v.Expand(app.db, app.executor, app.allocator, 10)
-	tests.Assert(t, err == ErrMininumBrickSize)
+	tests.Assert(t, err == ErrMininumBrickSize, err)
 
 	// Check db is the same as before expansion
 	var entry *VolumeEntry

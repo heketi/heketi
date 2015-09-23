@@ -35,9 +35,10 @@ const (
 )
 
 type BrickEntry struct {
-	Info   BrickInfo
-	TpSize uint64
-	State  BrickState
+	Info             BrickInfo
+	TpSize           uint64
+	PoolMetadataSize uint64
+	State            BrickState
 }
 
 func BrickList(tx *bolt.Tx) ([]string, error) {
@@ -49,7 +50,7 @@ func BrickList(tx *bolt.Tx) ([]string, error) {
 	return list, nil
 }
 
-func NewBrickEntry(size, tpsize uint64, deviceid, nodeid string) *BrickEntry {
+func NewBrickEntry(size, tpsize, poolMetadataSize uint64, deviceid, nodeid string) *BrickEntry {
 	godbc.Require(size > 0)
 	godbc.Require(tpsize > 0)
 	godbc.Require(deviceid != "")
@@ -57,6 +58,7 @@ func NewBrickEntry(size, tpsize uint64, deviceid, nodeid string) *BrickEntry {
 
 	entry := &BrickEntry{}
 	entry.TpSize = tpsize
+	entry.PoolMetadataSize = poolMetadataSize
 	entry.Info.Id = utils.GenUUID()
 	entry.Info.Size = size
 	entry.Info.NodeId = nodeid
@@ -158,6 +160,7 @@ func (b *BrickEntry) Create(db *bolt.DB, executor executors.Executor) error {
 	req.Size = b.Info.Size
 	req.TpSize = b.TpSize
 	req.VgId = b.Info.DeviceId
+	req.PoolMetadataSize = b.PoolMetadataSize
 
 	// Create brick on node
 	logger.Info("Creating brick %v", b.Info.Id)
@@ -219,4 +222,9 @@ func (b *BrickEntry) Destroy(db *bolt.DB, executor executors.Executor) error {
 
 	godbc.Ensure(b.State == BRICK_STATE_DELETED)
 	return nil
+}
+
+// Size consumed on device
+func (b *BrickEntry) TotalSize() uint64 {
+	return b.TpSize + b.PoolMetadataSize
 }

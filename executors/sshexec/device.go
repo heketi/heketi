@@ -32,12 +32,16 @@ const (
 	VGDISPLAY_FREE_NUMBER_EXTENTS      = 15
 )
 
+// Read:
+// https://access.redhat.com/documentation/en-US/Red_Hat_Storage/3.1/html/Administration_Guide/Brick_Configuration.html
+//
+
 func (s *SshExecutor) DeviceSetup(host, device, vgid string) (d *executors.DeviceInfo, e error) {
 
 	// Setup commands
 	commands := []string{
-		fmt.Sprintf("sudo pvcreate %v", device),
-		fmt.Sprintf("sudo vgcreate vg_%v %v", vgid, device),
+		fmt.Sprintf("sudo pvcreate --dataalignment 256K %v", device),
+		fmt.Sprintf("sudo vgcreate %v %v", s.vgName(vgid), device),
 	}
 
 	// Execute command
@@ -67,7 +71,7 @@ func (s *SshExecutor) DeviceTeardown(host, device, vgid string) error {
 
 	// Setup commands
 	commands := []string{
-		fmt.Sprintf("sudo vgremove vg_%v", vgid),
+		fmt.Sprintf("sudo vgremove %v", s.vgName(vgid)),
 		fmt.Sprintf("sudo pvremove %v", device),
 	}
 
@@ -86,7 +90,7 @@ func (s *SshExecutor) getVgSizeFromNode(
 
 	// Setup command
 	commands := []string{
-		fmt.Sprintf("sudo vgdisplay -c vg_%v", vgid),
+		fmt.Sprintf("sudo vgdisplay -c %v", s.vgName(vgid)),
 	}
 
 	// Execute command
@@ -96,7 +100,7 @@ func (s *SshExecutor) getVgSizeFromNode(
 	}
 
 	// Example:
-	// gfsm:r/w:772:-1:0:0:0:-1:0:4:4:2097135616:4096:511996:0:511996:rJ0bIG-3XNc-NoS0-fkKm-batK-dFyX-xbxHym
+	// sampleVg:r/w:772:-1:0:0:0:-1:0:4:4:2097135616:4096:511996:0:511996:rJ0bIG-3XNc-NoS0-fkKm-batK-dFyX-xbxHym
 	vginfo := strings.Split(b[0], ":")
 
 	// See vgdisplay manpage
@@ -117,6 +121,7 @@ func (s *SshExecutor) getVgSizeFromNode(
 	}
 
 	d.Size = free_extents * extent_size
+	d.ExtentSize = extent_size
 	logger.Debug("Size of %v in %v is %v", device, host, d.Size)
 	return nil
 }
