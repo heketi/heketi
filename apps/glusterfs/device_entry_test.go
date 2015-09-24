@@ -98,6 +98,51 @@ func TestNewDeviceEntryMarshal(t *testing.T) {
 
 }
 
+func TestDeviceEntryNewBrickEntry(t *testing.T) {
+	req := &DeviceAddRequest{}
+	req.NodeId = "abc"
+	req.Name = "/dev/" + utils.GenUUID()
+	req.Weight = 123
+
+	d := NewDeviceEntryFromRequest(req)
+	d.Info.Storage.Free = 900
+	d.Info.Storage.Total = 1000
+	d.Info.Storage.Used = 100
+
+	// Alignment
+	d.ExtentSize = 8
+
+	// Too large
+	brick := d.NewBrickEntry(1000000000, 1.5)
+	tests.Assert(t, brick == nil)
+
+	// --- Now check with a real value ---
+
+	// Check newly created brick
+	tpsize := uint64(200 * 1.5)
+
+	// Alignment
+	tpsize += tpsize % 8
+
+	// Calculate metadatasize
+	metadatasize := d.poolMetadataSize(tpsize)
+
+	// Alignment
+	metadatasize += metadatasize % 8
+	total := tpsize + metadatasize
+
+	brick = d.NewBrickEntry(200, 1.5)
+	tests.Assert(t, brick != nil)
+	tests.Assert(t, brick.TpSize == tpsize)
+	tests.Assert(t, brick.PoolMetadataSize == metadatasize, brick.PoolMetadataSize, metadatasize)
+	tests.Assert(t, brick.Info.Size == 200)
+
+	// Check it was substracted from device storage
+	tests.Assert(t, d.Info.Storage.Used == 100+total)
+	tests.Assert(t, d.Info.Storage.Free == 900-total)
+	tests.Assert(t, d.Info.Storage.Total == 1000)
+}
+
 func TestDeviceEntryAddDeleteBricks(t *testing.T) {
 	d := NewDeviceEntry()
 	tests.Assert(t, len(d.Bricks) == 0)

@@ -40,15 +40,17 @@ const (
 // Returns the size of the device
 type DeviceInfo struct {
 	// Size in KB
-	Size uint64
+	Size       uint64
+	ExtentSize uint64
 }
 
 // Brick description
 type BrickRequest struct {
-	VgId   string
-	Name   string
-	TpSize uint64
-	Size   uint64
+	VgId             string
+	Name             string
+	TpSize           uint64
+	Size             uint64
+	PoolMetadataSize uint64
 }
 
 // Returns information about the location of the brick

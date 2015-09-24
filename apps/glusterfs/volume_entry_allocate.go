@@ -96,9 +96,6 @@ func (v *VolumeEntry) allocBricks(
 	// Initialize brick_entries
 	brick_entries = make([]*BrickEntry, 0)
 
-	// Allocate size for the brick plus the snapshot
-	tpsize := uint64(float32(brick_size) * v.Info.Snapshot.Factor)
-
 	// Determine allocation for each brick required for this volume
 	for brick_num := 0; brick_num < bricksets; brick_num++ {
 		logger.Info("brick_num: %v", brick_num)
@@ -120,6 +117,8 @@ func (v *VolumeEntry) allocBricks(
 			// Do the work in the database context so that the cluster
 			// data does not change while determining brick location
 			err := db.Update(func(tx *bolt.Tx) error {
+
+				// Check the ring for devices to place the brick
 				for deviceId := range deviceCh {
 
 					// Get device entry
@@ -128,27 +127,19 @@ func (v *VolumeEntry) allocBricks(
 						return err
 					}
 
-					logger.Debug("device %v[%v] > tpsize [%v] ?",
-						device.Id(),
-						device.Info.Storage.Free, tpsize)
+					// Try to allocate a brick on this device
+					brick := device.NewBrickEntry(brick_size, float64(v.Info.Snapshot.Factor))
 
-					// Determine if we have space
-					if device.StorageCheck(tpsize) {
+					// Determine if it was successful
+					if brick != nil {
 
-						// Create a new brick element
-						brick := NewBrickEntry(brick_size,
-							tpsize,
-							device.Id(),
-							device.NodeId)
+						// If the first in the set, the reset the id
 						if i == 0 {
 							brick.SetId(brickId)
 						}
 
 						// Save the brick entry to create in on the node
 						brick_entries = append(brick_entries, brick)
-
-						// Allocate space on device
-						device.StorageAllocate(tpsize)
 
 						// Add brick to device
 						device.BrickAdd(brick.Id())
@@ -194,7 +185,7 @@ func (v *VolumeEntry) removeBrickFromDb(tx *bolt.Tx, brick *BrickEntry) error {
 	}
 
 	// Deallocate space on device
-	device.StorageFree(brick.TpSize)
+	device.StorageFree(brick.TotalSize())
 
 	// Delete brick from device
 	device.BrickDelete(brick.Info.Id)
