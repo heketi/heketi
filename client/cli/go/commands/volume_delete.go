@@ -17,70 +17,71 @@
 package commands
 
 import (
-	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/lpabon/godbc"
-	"strings"
 )
 
-type ClusterListCommand struct {
+type VolumeDeleteCommand struct {
 	Cmd
 }
 
-func NewClusterListCommand(options *Options) *ClusterListCommand {
+func NewVolumeDeleteCommand(options *Options) *VolumeDeleteCommand {
 
 	godbc.Require(options != nil)
 
-	cmd := &ClusterListCommand{}
-	cmd.name = "list"
+	cmd := &VolumeDeleteCommand{}
+	cmd.name = "delete"
 	cmd.options = options
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
 
 	//usage on -help
 	cmd.flags.Usage = func() {
 		fmt.Println(`
-Lists the clusters managed by Heketi
+Deletes the volume
 
 USAGE
-  heketi-cli [options] cluster list
+  heketi-cli [options] volume delete [id]
+
+  Where "id" is the id of the volume to be deleted
 
 EXAMPLE
-  $ heketi-cli cluster list
+  $ heketi-cli volume delete 886a86a868711bef83001
 
 `)
 	}
 
-	godbc.Ensure(cmd.name == "list")
+	godbc.Ensure(cmd.flags != nil)
+	godbc.Ensure(cmd.name == "delete")
 
 	return cmd
 }
 
-func (c *ClusterListCommand) Exec(args []string) error {
+func (c *VolumeDeleteCommand) Exec(args []string) error {
 
 	//parse args
 	c.flags.Parse(args)
 
+	s := c.flags.Args()
+
+	//ensure proper number of args
+	if len(s) < 1 {
+		return errors.New("Volume id missing")
+	}
+
+	//set volumeId
+	volumeId := c.flags.Arg(0)
+
 	// Create a client
 	heketi := client.NewClient(c.options.Url, c.options.User, c.options.Key)
 
-	// List clusters
-	list, err := heketi.ClusterList()
-	if err != nil {
-		return err
+	//set url
+	err := heketi.VolumeDelete(volumeId)
+	if err == nil {
+		fmt.Fprintf(stdout, "Volume %v deleted\n", volumeId)
 	}
 
-	if c.options.Json {
-		data, err := json.Marshal(list)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(stdout, string(data))
-	} else {
-		output := strings.Join(list.Clusters, "\n")
-		fmt.Fprintf(stdout, "Clusters:\n%v", output)
-	}
-
-	return nil
+	return err
 }

@@ -4,7 +4,7 @@
 
 .PHONY: version all run dist clean
 	
-APP_NAME := heketi
+APP_NAME := heketi-cli
 SHA := $(shell git rev-parse --short HEAD)
 BRANCH := $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
 VER := $(shell git describe)
@@ -29,13 +29,13 @@ TEST="go test"
 # Sources and Targets
 EXECUTABLES :=$(APP_NAME)
 # Build Binaries setting main.version and main.build vars
-LDFLAGS :=-ldflags "-X main.HEKETI_VERSION $(VERSION)"
+LDFLAGS :=-ldflags "-X main.HEKETI_CLI_VERSION $(VERSION)"
 # Package target
 PACKAGE :=$(DIR)/dist/$(APP_NAME)-$(VERSION).$(GOOS).$(ARCH).tar.gz
 
 .DEFAULT: all
 
-all: server client
+all: build
 
 # print the version
 version:
@@ -49,11 +49,8 @@ name:
 package:
 	@echo $(PACKAGE)
 
-server:
+build:
 	$(GO) build $(LDFLAGS) -o $(APP_NAME)
-
-client:
-	@$(MAKE) -C client/cli/go
 
 run: build
 	./$(APP_NAME)
@@ -65,13 +62,11 @@ clean:
 	@echo Cleaning Workspace...
 	rm -rf $(APP_NAME)
 	rm -rf dist
-	@$(MAKE) -C client/cli/go clean
 
 $(PACKAGE): all
 	@echo Packaging Binaries...
 	@mkdir -p tmp/$(APP_NAME)
 	@cp $(APP_NAME) tmp/$(APP_NAME)/
-	@cp client/cli/go/heketi-cli tmp/$(APP_NAME)/
 	@cp etc/heketi.json tmp/$(APP_NAME)/
 	@mkdir -p $(DIR)/dist/
 	tar -czf $@ -C tmp $(APP_NAME);
@@ -80,5 +75,3 @@ $(PACKAGE): all
 	@echo Package $@ saved in dist directory
 
 dist: $(PACKAGE)
-
-.PHONY: server client test clean name run version 

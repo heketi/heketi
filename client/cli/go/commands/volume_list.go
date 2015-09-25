@@ -25,15 +25,15 @@ import (
 	"strings"
 )
 
-type ClusterListCommand struct {
+type VolumeListCommand struct {
 	Cmd
 }
 
-func NewClusterListCommand(options *Options) *ClusterListCommand {
+func NewVolumeListCommand(options *Options) *VolumeListCommand {
 
 	godbc.Require(options != nil)
 
-	cmd := &ClusterListCommand{}
+	cmd := &VolumeListCommand{}
 	cmd.name = "list"
 	cmd.options = options
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
@@ -41,14 +41,13 @@ func NewClusterListCommand(options *Options) *ClusterListCommand {
 	//usage on -help
 	cmd.flags.Usage = func() {
 		fmt.Println(`
-Lists the clusters managed by Heketi
+Lists the volumes managed by Heketi
 
 USAGE
-  heketi-cli [options] cluster list
+  heketi-cli [options] volume list
 
 EXAMPLE
-  $ heketi-cli cluster list
-
+  $ heketi-cli volume list
 `)
 	}
 
@@ -57,7 +56,7 @@ EXAMPLE
 	return cmd
 }
 
-func (c *ClusterListCommand) Exec(args []string) error {
+func (c *VolumeListCommand) Exec(args []string) error {
 
 	//parse args
 	c.flags.Parse(args)
@@ -65,8 +64,8 @@ func (c *ClusterListCommand) Exec(args []string) error {
 	// Create a client
 	heketi := client.NewClient(c.options.Url, c.options.User, c.options.Key)
 
-	// List clusters
-	list, err := heketi.ClusterList()
+	// List volumes
+	list, err := heketi.VolumeList()
 	if err != nil {
 		return err
 	}
@@ -78,8 +77,8 @@ func (c *ClusterListCommand) Exec(args []string) error {
 		}
 		fmt.Fprintf(stdout, string(data))
 	} else {
-		output := strings.Join(list.Clusters, "\n")
-		fmt.Fprintf(stdout, "Clusters:\n%v", output)
+		output := strings.Join(list.Volumes, "\n")
+		fmt.Fprintf(stdout, "Volumes:\n%v", output)
 	}
 
 	return nil

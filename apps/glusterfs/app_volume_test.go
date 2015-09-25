@@ -117,6 +117,38 @@ func TestVolumeCreateSmallSize(t *testing.T) {
 	tests.Assert(t, strings.Contains(string(body), "Invalid volume size"))
 }
 
+func TestVolumeCreateDurabilityTypeInvalid(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// VolumeCreate JSON Request
+	request := []byte(`{
+        "size" : 100,
+        "durability" : {
+        	"type" : "bad type"
+        }
+    }`)
+
+	// Send request
+	r, err := http.Post(ts.URL+"/volumes", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusBadRequest)
+	body, err := ioutil.ReadAll(io.LimitReader(r.Body, r.ContentLength))
+	tests.Assert(t, err == nil)
+	r.Body.Close()
+	tests.Assert(t, strings.Contains(string(body), "Unknown durability type"))
+}
+
 func TestVolumeCreateBadReplicaValues(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
@@ -363,12 +395,9 @@ func TestVolumeCreate(t *testing.T) {
 	)
 	tests.Assert(t, err == nil)
 
-	// VolumeCreate JSON Request
+	// VolumeCreate using default durability
 	request := []byte(`{
-        "size" : 100,
-        "durability" : {
-        	"type" : "replicate"
-        }
+        "size" : 100
     }`)
 
 	// Send request
@@ -397,14 +426,13 @@ func TestVolumeCreate(t *testing.T) {
 	}
 	tests.Assert(t, info.Id != "")
 	tests.Assert(t, info.Cluster != "")
-	tests.Assert(t, len(info.Bricks) == 2*DEFAULT_REPLICA) // Only two 50GB bricks needed
+	tests.Assert(t, len(info.Bricks) == 2) // Only two 50GB bricks needed
 	tests.Assert(t, info.Bricks[0].Size == 50*GB)
 	tests.Assert(t, info.Bricks[1].Size == 50*GB)
 	tests.Assert(t, info.Name == "vol_"+info.Id)
 	tests.Assert(t, info.Snapshot.Enable == false)
 	tests.Assert(t, info.Snapshot.Factor == 1)
-	tests.Assert(t, info.Durability.Type == DURABILITY_STRING_REPLICATE)
-	tests.Assert(t, info.Durability.Replicate.Replica == DEFAULT_REPLICA)
+	tests.Assert(t, info.Durability.Type == DURABILITY_STRING_DISTRIBUTE_ONLY)
 }
 
 func TestVolumeInfoIdNotFound(t *testing.T) {

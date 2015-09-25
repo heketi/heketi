@@ -22,27 +22,26 @@ import (
 	"github.com/lpabon/godbc"
 )
 
-type ClusterCommand struct {
+type DeviceCommand struct {
 	Cmd
 }
 
 //function to create new cluster command
-func NewClusterCommand(options *Options) *ClusterCommand {
+func NewDeviceCommand(options *Options) *DeviceCommand {
 
 	//require before we do any work
 	godbc.Require(options != nil)
 
-	//create ClusterCommand object
-	cmd := &ClusterCommand{}
-	cmd.name = "cluster"
+	//create DeviceCommand object
+	cmd := &DeviceCommand{}
+	cmd.name = "device"
 	cmd.options = options
 
 	//setup subcommands
 	cmd.cmds = Commands{
-		NewClusterCreateCommand(options),
-		NewClusterInfoCommand(options),
-		NewClusterListCommand(options),
-		NewClusterDestroyCommand(options),
+		NewDeviceAddCommand(options),
+		NewDeviceInfoCommand(options),
+		NewDeviceDeleteCommand(options),
 	}
 
 	//create flags
@@ -51,23 +50,21 @@ func NewClusterCommand(options *Options) *ClusterCommand {
 	//usage on -help
 	cmd.flags.Usage = func() {
 		fmt.Println(`
-Heketi cluster management
+Heketi device management
 
 USAGE
-  heketi-cli [options] cluster [commands]
+  heketi-cli [options] device [commands]
 
 COMMANDS
-  create   Creates a new cluster for Heketi to manage.
-  list     Returns a list of all clusters
-  info     Returns information about a specific cluster.
-  delete   Delete a cluster
+  add      Adds a new raw device
+  info     Information about a device
+  delete   Delete device from being managed by Heketi
 
-Use "heketi-cli cluster [command] -help" for more information about a command
+Use "heketi-cli device [command] -help" for more information about a command
 `)
 	}
 
 	//ensure before we return
-	godbc.Ensure(cmd.flags != nil)
-	godbc.Ensure(cmd.name == "cluster")
+	godbc.Ensure(cmd.name == "device")
 	return cmd
 }
