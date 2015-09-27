@@ -17,6 +17,7 @@
 package commands
 
 import (
+	"errors"
 	"flag"
 	"io"
 	"os"
@@ -25,7 +26,14 @@ import (
 //make stdout "global" to command package
 var (
 	stdout io.Writer = os.Stdout
+	stderr io.Writer = os.Stderr
 )
+
+// Main arguments
+type Options struct {
+	Url, Key, User string
+	Json           bool
+}
 
 type Command interface {
 	Name() string
@@ -35,6 +43,35 @@ type Command interface {
 type Commands []Command
 
 type Cmd struct {
-	name  string
-	flags *flag.FlagSet
+	name    string
+	flags   *flag.FlagSet
+	options *Options
+	cmds    Commands
+}
+
+func (c *Cmd) Name() string {
+	return c.name
+}
+
+func (c *Cmd) Exec(args []string) error {
+	c.flags.Parse(args)
+
+	//check number of args
+	if len(c.flags.Args()) < 1 {
+		return errors.New("Not enough arguments")
+	}
+
+	// Check which of the subcommands we need to call the .Parse function
+	for _, cmd := range c.cmds {
+		if c.flags.Arg(0) == cmd.Name() {
+			err := cmd.Exec(c.flags.Args()[1:])
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+	}
+
+	// Done
+	return errors.New("Command not found")
 }

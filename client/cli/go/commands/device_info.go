@@ -25,15 +25,14 @@ import (
 	"github.com/lpabon/godbc"
 )
 
-type NodeInfoCommand struct {
+type DeviceInfoCommand struct {
 	Cmd
 }
 
-func NewNodeInfoCommand(options *Options) *NodeInfoCommand {
-
+func NewDeviceInfoCommand(options *Options) *DeviceInfoCommand {
 	godbc.Require(options != nil)
 
-	cmd := &NodeInfoCommand{}
+	cmd := &DeviceInfoCommand{}
 	cmd.name = "info"
 	cmd.options = options
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
@@ -41,76 +40,71 @@ func NewNodeInfoCommand(options *Options) *NodeInfoCommand {
 	//usage on -help
 	cmd.flags.Usage = func() {
 		fmt.Println(`
-Retreives information about the node 
+Retreives information about the device
 
 USAGE
-  heketi-cli [options] node info [id]
+  heketi-cli [options] node device [id]
 
-  Where "id" is the id of the node
+  Where "id" is the id of the device 
 
 EXAMPLE
   $ heketi-cli node info 886a86a868711bef83001
-
 `)
 	}
 
-	godbc.Ensure(cmd.flags != nil)
 	godbc.Ensure(cmd.name == "info")
 
 	return cmd
 }
 
-func (n *NodeInfoCommand) Exec(args []string) error {
+func (d *DeviceInfoCommand) Exec(args []string) error {
 
-	n.flags.Parse(args)
+	d.flags.Parse(args)
 
 	//ensure proper number of args
-	s := n.flags.Args()
+	s := d.flags.Args()
 	if len(s) < 1 {
-		return errors.New("Node id missing")
+		return errors.New("Device id missing")
 	}
 
 	// Set node id
-	nodeId := n.flags.Arg(0)
+	deviceId := d.flags.Arg(0)
 
 	// Create a client to talk to Heketi
-	heketi := client.NewClient(n.options.Url, n.options.User, n.options.Key)
+	heketi := client.NewClient(d.options.Url, d.options.User, d.options.Key)
 
 	// Create cluster
-	info, err := heketi.NodeInfo(nodeId)
+	info, err := heketi.DeviceInfo(deviceId)
 	if err != nil {
 		return err
 	}
 
-	if n.options.Json {
+	if d.options.Json {
 		data, err := json.Marshal(info)
 		if err != nil {
 			return err
 		}
 		fmt.Fprintf(stdout, string(data))
 	} else {
-		fmt.Fprintf(stdout, "Node Id: %v\n"+
-			"Cluster Id: %v\n"+
-			"Zone: %v\n"+
-			"Management Hostname: %v\n"+
-			"Storage Hostname: %v\n",
+		fmt.Fprintf(stdout, "Device Id: %v\n"+
+			"Name: %v\n"+
+			"Size (GiB): %v\n"+
+			"Used (GiB): %v\n"+
+			"Free (GiB): %v\n",
 			info.Id,
-			info.ClusterId,
-			info.Zone,
-			info.Hostnames.Manage[0],
-			info.Hostnames.Storage[0])
-		fmt.Fprintf(stdout, "Devices:\n")
-		for _, d := range info.DevicesInfo {
+			info.Name,
+			info.Storage.Total/(1024*1024),
+			info.Storage.Used/(1024*1024),
+			info.Storage.Free/(1024*1024))
+
+		fmt.Fprintf(stdout, "Bricks:\n")
+		for _, d := range info.Bricks {
 			fmt.Fprintf(stdout, "Id:%-35v"+
-				"Name:%-20v"+
 				"Size (GiB):%-8v"+
-				"Used (GiB):%-8v"+
-				"Free (GiB):%-8v\n",
+				"Path: %v\n",
 				d.Id,
-				d.Name,
-				d.Storage.Total/(1024*1024),
-				d.Storage.Used/(1024*1024),
-				d.Storage.Free/(1024*1024))
+				d.Size/(1024*1024),
+				d.Path)
 		}
 	}
 	return nil

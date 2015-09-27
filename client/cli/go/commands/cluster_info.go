@@ -17,18 +17,17 @@
 package commands
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/heketi/heketi/apps/glusterfs"
-	"github.com/heketi/heketi/utils"
+	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/lpabon/godbc"
-	"net/http"
+	"strings"
 )
 
 type ClusterInfoCommand struct {
 	Cmd
-	options *Options
 }
 
 func NewClusterInfoCommand(options *Options) *ClusterInfoCommand {
@@ -42,7 +41,18 @@ func NewClusterInfoCommand(options *Options) *ClusterInfoCommand {
 
 	//usage on -help
 	cmd.flags.Usage = func() {
-		fmt.Println(usageTemplateClusterInfo)
+		fmt.Println(`
+Retreives information about the cluster
+
+USAGE
+  heketi-cli [options] cluster info [id]
+
+  Where "id" is the id of the cluster
+
+EXAMPLE
+  $ heketi-cli cluster info 886a86a868711bef83001
+
+`)
 	}
 
 	godbc.Ensure(cmd.flags != nil)
@@ -51,75 +61,41 @@ func NewClusterInfoCommand(options *Options) *ClusterInfoCommand {
 	return cmd
 }
 
-func (a *ClusterInfoCommand) Name() string {
-	return a.name
+func (c *ClusterInfoCommand) Exec(args []string) error {
 
-}
+	//parse args
+	c.flags.Parse(args)
 
-func (a *ClusterInfoCommand) Exec(args []string) error {
-	//parse flags and set id
-	a.flags.Parse(args)
-
-	//ensure we have Url
-	if a.options.Url == "" {
-		return errors.New("You need a server!\n")
-	}
-
-	s := a.flags.Args()
-	fmt.Println(len(s))
-
-	//ensure correct number of args
+	//ensure proper number of args
+	s := c.flags.Args()
 	if len(s) < 1 {
-		return errors.New("Not enough arguments!")
-	}
-	if len(s) >= 2 {
-		return errors.New("Too many arguments!")
+		return errors.New("Cluster id missing")
 	}
 
-	clusterId := a.flags.Arg(0)
+	//set clusterId
+	clusterId := c.flags.Arg(0)
 
-	url := a.options.Url
+	// Create a client to talk to Heketi
+	heketi := client.NewClient(c.options.Url, c.options.User, c.options.Key)
 
-	//do http GET and check if sent to server
-	r, err := http.Get(url + "/clusters/" + clusterId)
+	// Create cluster
+	info, err := heketi.ClusterInfo(clusterId)
 	if err != nil {
-		fmt.Fprintf(stdout, "Error: Unable to send command to server: %v", err)
 		return err
 	}
 
-	//check status code
-	if r.StatusCode != http.StatusOK {
-		return utils.GetErrorFromResponse(r)
-	}
-	if a.options.Json {
-		// Print JSON body
-		s, err := utils.GetStringFromResponse(r)
+	// Check if JSON should be printed
+	if c.options.Json {
+		data, err := json.Marshal(info)
 		if err != nil {
 			return err
 		}
-		fmt.Fprint(stdout, s)
+		fmt.Fprintf(stdout, string(data))
 	} else {
-
-		//check json response
-		var body glusterfs.ClusterInfoResponse
-		err = utils.GetJsonFromResponse(r, &body)
-		if err != nil {
-			fmt.Println("Error: Bad json response from server")
-			return err
-		}
-
-		//print revelent results
-		str := "Cluster: " + clusterId + " \n" + "Nodes: \n"
-		for _, node := range body.Nodes {
-			str += node + "\n"
-		}
-
-		str += "Volumes: \n"
-		for _, volume := range body.Volumes {
-			str += volume + "\n"
-		}
-		fmt.Fprintf(stdout, str)
+		fmt.Fprintf(stdout, "Cluster id: %v\n", info.Id)
+		fmt.Fprintf(stdout, "Nodes:\n%v", strings.Join(info.Nodes, "\n"))
+		fmt.Fprintf(stdout, "\nVolumes:\n%v", strings.Join(info.Volumes, "\n"))
 	}
-	return nil
 
+	return nil
 }

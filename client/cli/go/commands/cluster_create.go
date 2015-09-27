@@ -17,19 +17,15 @@
 package commands
 
 import (
-	"bytes"
-	"errors"
+	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/heketi/heketi/apps/glusterfs"
-	"github.com/heketi/heketi/utils"
+	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/lpabon/godbc"
-	"net/http"
 )
 
 type ClusterCreateCommand struct {
 	Cmd
-	options *Options
 }
 
 func NewClusterCreateCommand(options *Options) *ClusterCreateCommand {
@@ -39,74 +35,57 @@ func NewClusterCreateCommand(options *Options) *ClusterCreateCommand {
 	cmd := &ClusterCreateCommand{}
 	cmd.name = "create"
 	cmd.options = options
+
+	// Set flags
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
 
 	//usage on -help
 	cmd.flags.Usage = func() {
-		fmt.Println(usageTemplateClusterCreate)
+		fmt.Println(`
+Create a cluster
+
+A cluster is used to group a collection of nodes.  It also provides
+the caller with the choice to specify clusters where volumes should
+be created.
+
+USAGE
+  heketi-cli [options] cluster create
+
+EXAMPLE
+  $ heketi-cli cluster create
+
+`)
 	}
 
-	godbc.Ensure(cmd.flags != nil)
 	godbc.Ensure(cmd.name == "create")
 
 	return cmd
 }
 
-func (a *ClusterCreateCommand) Name() string {
-	return a.name
-
-}
-
-func (a *ClusterCreateCommand) Exec(args []string) error {
+func (c *ClusterCreateCommand) Exec(args []string) error {
 
 	//parse args
-	a.flags.Parse(args)
+	c.flags.Parse(args)
 
-	//ensure we have Url
-	if a.options.Url == "" {
-		return errors.New("You need a server!\n")
-	}
+	// Create a client to talk to Heketi
+	heketi := client.NewClient(c.options.Url, c.options.User, c.options.Key)
 
-	s := a.flags.Args()
-	//ensure length
-	if len(s) > 0 {
-		return errors.New("Too many arguments!")
-	}
-
-	//set url
-	url := a.options.Url
-
-	//do http POST and check if sent to server
-	r, err := http.Post(url+"/clusters", "application/json", bytes.NewBuffer([]byte("{}")))
+	// Create cluster
+	cluster, err := heketi.ClusterCreate()
 	if err != nil {
-		fmt.Fprintf(stdout, "Error: Unable to send command to server: %v", err)
 		return err
 	}
 
-	//check status code
-	if r.StatusCode != http.StatusCreated {
-		return utils.GetErrorFromResponse(r)
-	}
-
-	if a.options.Json {
-		// Print JSON body
-		s, err := utils.GetStringFromResponse(r)
+	// Check if JSON should be printed
+	if c.options.Json {
+		data, err := json.Marshal(cluster)
 		if err != nil {
 			return err
 		}
-		fmt.Fprint(stdout, s)
+		fmt.Fprintf(stdout, string(data))
 	} else {
-
-		//check json response
-		var body glusterfs.ClusterInfoResponse
-		err = utils.GetJsonFromResponse(r, &body)
-		if err != nil {
-			fmt.Println("Error: Bad json response from server")
-			return err
-		}
-		//if all is well, print stuff
-		fmt.Fprintf(stdout, "Cluster id: %v", body.Id)
+		fmt.Fprintf(stdout, "Cluster id: %v", cluster.Id)
 	}
-	return nil
 
+	return nil
 }

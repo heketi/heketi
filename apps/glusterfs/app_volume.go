@@ -38,6 +38,18 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check durability type
+	switch msg.Durability.Type {
+	case DURABILITY_STRING_EC:
+	case DURABILITY_STRING_REPLICATE:
+	case DURABILITY_STRING_DISTRIBUTE_ONLY:
+	case "":
+		msg.Durability.Type = DURABILITY_STRING_DISTRIBUTE_ONLY
+	default:
+		http.Error(w, "Unknown durability type", http.StatusBadRequest)
+		return
+	}
+
 	// Check the message has devices
 	if msg.Size < 1 {
 		http.Error(w, "Invalid volume size", http.StatusBadRequest)

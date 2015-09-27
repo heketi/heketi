@@ -17,70 +17,70 @@
 package commands
 
 import (
-	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/lpabon/godbc"
-	"strings"
 )
 
-type ClusterListCommand struct {
+type DeviceDeleteCommand struct {
 	Cmd
 }
 
-func NewClusterListCommand(options *Options) *ClusterListCommand {
+func NewDeviceDeleteCommand(options *Options) *DeviceDeleteCommand {
 
 	godbc.Require(options != nil)
 
-	cmd := &ClusterListCommand{}
-	cmd.name = "list"
+	cmd := &DeviceDeleteCommand{}
+	cmd.name = "delete"
 	cmd.options = options
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
 
 	//usage on -help
 	cmd.flags.Usage = func() {
 		fmt.Println(`
-Lists the clusters managed by Heketi
+Deletes a device from Heketi node
 
 USAGE
-  heketi-cli [options] cluster list
+  heketi-cli [options] device delete [id]
+
+  Where "id" is the id of the cluster
 
 EXAMPLE
-  $ heketi-cli cluster list
-
+  $ heketi-cli device delete 886a86a868711bef83001
 `)
 	}
 
-	godbc.Ensure(cmd.name == "list")
+	godbc.Ensure(cmd.name == "delete")
 
 	return cmd
 }
 
-func (c *ClusterListCommand) Exec(args []string) error {
+func (n *DeviceDeleteCommand) Exec(args []string) error {
 
 	//parse args
-	c.flags.Parse(args)
+	n.flags.Parse(args)
+
+	s := n.flags.Args()
+
+	//ensure proper number of args
+	if len(s) < 1 {
+		return errors.New("Device id missing")
+	}
+
+	//set clusterId
+	deviceId := n.flags.Arg(0)
 
 	// Create a client
-	heketi := client.NewClient(c.options.Url, c.options.User, c.options.Key)
+	heketi := client.NewClient(n.options.Url, n.options.User, n.options.Key)
 
-	// List clusters
-	list, err := heketi.ClusterList()
-	if err != nil {
-		return err
+	//set url
+	err := heketi.DeviceDelete(deviceId)
+	if err == nil {
+		fmt.Fprintf(stdout, "Device %v deleted\n", deviceId)
 	}
 
-	if c.options.Json {
-		data, err := json.Marshal(list)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(stdout, string(data))
-	} else {
-		output := strings.Join(list.Clusters, "\n")
-		fmt.Fprintf(stdout, "Clusters:\n%v", output)
-	}
+	return err
 
-	return nil
 }

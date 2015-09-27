@@ -21,6 +21,7 @@
 package glusterfs
 
 import (
+	"fmt"
 	"sort"
 )
 
@@ -162,4 +163,57 @@ func NewVolumeInfoResponse() *VolumeInfoResponse {
 	info.Bricks = make([]BrickInfo, 0)
 
 	return info
+}
+
+// String functions
+func (v *VolumeInfoResponse) String() string {
+	s := fmt.Sprintf("Name: %v\n"+
+		"Size: %v\n"+
+		"Id: %v\n"+
+		"Cluster Id: %v\n"+
+		"Mount: %v\n"+
+		"Mount Options: %v\n"+
+		"Durability Type: %v\n",
+		v.Name,
+		v.Size,
+		v.Id,
+		v.Cluster,
+		v.Mount.GlusterFS.MountPoint,
+		v.Mount.GlusterFS.Options["backupvolfile-servers"],
+		v.Durability.Type)
+
+	switch v.Durability.Type {
+	case DURABILITY_STRING_EC:
+		s += fmt.Sprintf("Disperse Data: %v\n"+
+			"Disperse Redundancy: %v\n",
+			v.Durability.Disperse.Data,
+			v.Durability.Disperse.Redundancy)
+	case DURABILITY_STRING_REPLICATE:
+		s += fmt.Sprintf("Replica: %v\n",
+			v.Durability.Replicate.Replica)
+	}
+
+	if v.Snapshot.Enable {
+		s += fmt.Sprintf("Snapshot: Enabled\n"+
+			"Snapshot Factor: %.2f\n",
+			v.Snapshot.Factor)
+	} else {
+		s += "Snapshot: Disabled\n"
+	}
+
+	s += "\nBricks:\n"
+	for _, b := range v.Bricks {
+		s += fmt.Sprintf("Id: %v\n"+
+			"Path: %v\n"+
+			"Size (GiB): %v\n"+
+			"Node: %v\n"+
+			"Device: %v\n\n",
+			b.Id,
+			b.Path,
+			b.Size/(1024*1024),
+			b.NodeId,
+			b.DeviceId)
+	}
+
+	return s
 }

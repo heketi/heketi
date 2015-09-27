@@ -17,7 +17,6 @@
 package commands
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"github.com/lpabon/godbc"
@@ -25,12 +24,9 @@ import (
 
 type NodeCommand struct {
 	Cmd
-	cmds    Commands
-	options *Options
-	cmd     Command
 }
 
-//function to create new cluster command
+//function to create new node command
 func NewNodeCommand(options *Options) *NodeCommand {
 	godbc.Require(options != nil)
 
@@ -47,38 +43,21 @@ func NewNodeCommand(options *Options) *NodeCommand {
 
 	//usage on -help
 	cmd.flags.Usage = func() {
-		fmt.Println(usageTemplateNode)
+		fmt.Println(`
+Heketi node management
+
+USAGE
+  heketi-cli [options] node [commands]
+
+COMMANDS
+  add     Adds a node for Heketi to manage.
+  info    Returns information about a specific node.
+  delete  Delete node with specified id. 
+
+Use "heketi-cli node [command] -help" for more information about a command
+`)
 	}
 
-	godbc.Ensure(cmd.flags != nil)
 	godbc.Ensure(cmd.name == "node")
 	return cmd
-}
-
-func (a *NodeCommand) Name() string {
-	return a.name
-
-}
-
-func (a *NodeCommand) Exec(args []string) error {
-	a.flags.Parse(args)
-
-	//check number of args
-	if len(a.flags.Args()) < 1 {
-		return errors.New("Not enough arguments")
-	}
-
-	// Check which of the subcommands we need to call the .Parse function
-	for _, cmd := range a.cmds {
-		if a.flags.Arg(0) == cmd.Name() {
-			err := cmd.Exec(a.flags.Args()[1:])
-			if err != nil {
-				return err
-			}
-			return nil
-		}
-	}
-
-	// Done
-	return errors.New("Command not found")
 }

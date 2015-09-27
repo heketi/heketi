@@ -22,52 +22,46 @@ import (
 	"github.com/lpabon/godbc"
 )
 
-type ClusterCommand struct {
+type VolumeCommand struct {
 	Cmd
 }
 
 //function to create new cluster command
-func NewClusterCommand(options *Options) *ClusterCommand {
-
-	//require before we do any work
+func NewVolumeCommand(options *Options) *VolumeCommand {
 	godbc.Require(options != nil)
 
-	//create ClusterCommand object
-	cmd := &ClusterCommand{}
-	cmd.name = "cluster"
+	cmd := &VolumeCommand{}
+	cmd.name = "volume"
 	cmd.options = options
-
-	//setup subcommands
 	cmd.cmds = Commands{
-		NewClusterCreateCommand(options),
-		NewClusterInfoCommand(options),
-		NewClusterListCommand(options),
-		NewClusterDestroyCommand(options),
+		NewVolumeCreateCommand(options),
+		NewVolumeInfoCommand(options),
+		NewVolumeListCommand(options),
+		NewVolumeDeleteCommand(options),
+		NewVolumeExpandCommand(options),
 	}
 
-	//create flags
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
 
 	//usage on -help
 	cmd.flags.Usage = func() {
 		fmt.Println(`
-Heketi cluster management
+Heketi volume management
 
 USAGE
-  heketi-cli [options] cluster [commands]
+  heketi-cli [options] volume [commands]
 
 COMMANDS
-  create   Creates a new cluster for Heketi to manage.
-  list     Returns a list of all clusters
-  info     Returns information about a specific cluster.
-  delete   Delete a cluster
+  create    Creates a new volume
+  info      Returns information about a specific volume.
+  list      List all volumes
+  delete    Delete volume
+  expand    Expand volume
 
-Use "heketi-cli cluster [command] -help" for more information about a command
+Use "heketi-cli volume [command] -help" for more information about a command
 `)
 	}
 
-	//ensure before we return
-	godbc.Ensure(cmd.flags != nil)
-	godbc.Ensure(cmd.name == "cluster")
+	godbc.Ensure(cmd.name == "volume")
 	return cmd
 }

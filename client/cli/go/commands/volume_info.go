@@ -25,15 +25,15 @@ import (
 	"github.com/lpabon/godbc"
 )
 
-type NodeInfoCommand struct {
+type VolumeInfoCommand struct {
 	Cmd
 }
 
-func NewNodeInfoCommand(options *Options) *NodeInfoCommand {
+func NewVolumeInfoCommand(options *Options) *VolumeInfoCommand {
 
 	godbc.Require(options != nil)
 
-	cmd := &NodeInfoCommand{}
+	cmd := &VolumeInfoCommand{}
 	cmd.name = "info"
 	cmd.options = options
 	cmd.flags = flag.NewFlagSet(cmd.name, flag.ExitOnError)
@@ -41,16 +41,15 @@ func NewNodeInfoCommand(options *Options) *NodeInfoCommand {
 	//usage on -help
 	cmd.flags.Usage = func() {
 		fmt.Println(`
-Retreives information about the node 
+Retreives information about the volume 
 
 USAGE
-  heketi-cli [options] node info [id]
+  heketi-cli [options] volume info [id]
 
-  Where "id" is the id of the node
+  Where "id" is the id of the volume
 
 EXAMPLE
-  $ heketi-cli node info 886a86a868711bef83001
-
+  $ heketi-cli volume info 886a86a868711bef83001
 `)
 	}
 
@@ -60,24 +59,24 @@ EXAMPLE
 	return cmd
 }
 
-func (n *NodeInfoCommand) Exec(args []string) error {
+func (n *VolumeInfoCommand) Exec(args []string) error {
 
 	n.flags.Parse(args)
 
 	//ensure proper number of args
 	s := n.flags.Args()
 	if len(s) < 1 {
-		return errors.New("Node id missing")
+		return errors.New("Volume id missing")
 	}
 
-	// Set node id
-	nodeId := n.flags.Arg(0)
+	// Set volume id
+	volumeId := n.flags.Arg(0)
 
 	// Create a client to talk to Heketi
 	heketi := client.NewClient(n.options.Url, n.options.User, n.options.Key)
 
 	// Create cluster
-	info, err := heketi.NodeInfo(nodeId)
+	info, err := heketi.VolumeInfo(volumeId)
 	if err != nil {
 		return err
 	}
@@ -89,29 +88,7 @@ func (n *NodeInfoCommand) Exec(args []string) error {
 		}
 		fmt.Fprintf(stdout, string(data))
 	} else {
-		fmt.Fprintf(stdout, "Node Id: %v\n"+
-			"Cluster Id: %v\n"+
-			"Zone: %v\n"+
-			"Management Hostname: %v\n"+
-			"Storage Hostname: %v\n",
-			info.Id,
-			info.ClusterId,
-			info.Zone,
-			info.Hostnames.Manage[0],
-			info.Hostnames.Storage[0])
-		fmt.Fprintf(stdout, "Devices:\n")
-		for _, d := range info.DevicesInfo {
-			fmt.Fprintf(stdout, "Id:%-35v"+
-				"Name:%-20v"+
-				"Size (GiB):%-8v"+
-				"Used (GiB):%-8v"+
-				"Free (GiB):%-8v\n",
-				d.Id,
-				d.Name,
-				d.Storage.Total/(1024*1024),
-				d.Storage.Used/(1024*1024),
-				d.Storage.Free/(1024*1024))
-		}
+		fmt.Fprintf(stdout, "%v", info)
 	}
 	return nil
 
