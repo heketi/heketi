@@ -59,6 +59,7 @@ OPTIONS`)
 		flag.PrintDefaults()
 		fmt.Println(`
 COMMANDS
+  load       Load topology configuration file
   cluster    Manage a cluster (a set of storage nodes)
   node       Manage a storage node
   device     Manage devices in a node
@@ -89,7 +90,7 @@ func main() {
 	if options.Url == "" {
 		options.Url = os.Getenv("HEKETI_CLI_SERVER")
 		if options.Url == "" {
-			fmt.Fprintf(stderr, "Server must be provided")
+			fmt.Fprintf(stderr, "Server must be provided\n")
 			os.Exit(3)
 		}
 	}
@@ -110,6 +111,7 @@ func main() {
 		commands.NewNodeCommand(&options),
 		commands.NewDeviceCommand(&options),
 		commands.NewVolumeCommand(&options),
+		commands.NewLoadCommand(&options),
 	}
 
 	// Find command

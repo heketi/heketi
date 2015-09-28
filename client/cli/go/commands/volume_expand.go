@@ -51,7 +51,7 @@ func NewVolumeExpandCommand(options *Options) *VolumeExpandCommand {
 Expand a volume
 
 USAGE
-  heketi volume expand [options]
+  heketi-cli volume expand [options]
 
 OPTIONS`)
 
@@ -60,7 +60,7 @@ OPTIONS`)
 		fmt.Println(`
 EXAMPLES
   * Add 10GB to a volume
-      $ heketi volume expand -volume=60d46d518074b13a04ce1022c8c7193c -expand-size=10
+      $ heketi-cli volume expand -volume=60d46d518074b13a04ce1022c8c7193c -expand-size=10
 `)
 	}
 	godbc.Ensure(cmd.name == "expand")

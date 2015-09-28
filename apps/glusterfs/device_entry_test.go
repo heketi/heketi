@@ -119,16 +119,17 @@ func TestDeviceEntryNewBrickEntry(t *testing.T) {
 	// --- Now check with a real value ---
 
 	// Check newly created brick
-	tpsize := uint64(200 * 1.5)
+	size := 201
+	tpsize := uint64(float32(size) * 1.5)
 
 	// Alignment
-	tpsize += tpsize % 8
+	tpsize += d.ExtentSize - (tpsize % d.ExtentSize)
 
 	// Calculate metadatasize
 	metadatasize := d.poolMetadataSize(tpsize)
 
 	// Alignment
-	metadatasize += metadatasize % 8
+	metadatasize += d.ExtentSize - (metadatasize % d.ExtentSize)
 	total := tpsize + metadatasize
 
 	brick = d.NewBrickEntry(200, 1.5)

@@ -66,6 +66,10 @@ func NewVolumeEntry() *VolumeEntry {
 	entry := &VolumeEntry{}
 	entry.Bricks = make(sort.StringSlice, 0)
 
+	gob.Register(&ReplicaDurability{})
+	gob.Register(&DisperseDurability{})
+	gob.Register(&NoneDurability{})
+
 	return entry
 }
 
@@ -87,7 +91,6 @@ func NewVolumeEntryFromRequest(req *VolumeCreateRequest) *VolumeEntry {
 			vol.Info.Id,
 			vol.Info.Durability.Replicate.Replica)
 		vol.Durability = &vol.Info.Durability.Replicate
-		gob.Register(&ReplicaDurability{})
 
 	case durability == DURABILITY_STRING_EC:
 		logger.Debug("[%v] EC %v + %v ",
@@ -95,12 +98,10 @@ func NewVolumeEntryFromRequest(req *VolumeCreateRequest) *VolumeEntry {
 			vol.Info.Durability.Disperse.Data,
 			vol.Info.Durability.Disperse.Redundancy)
 		vol.Durability = &vol.Info.Durability.Disperse
-		gob.Register(&DisperseDurability{})
 
 	case durability == DURABILITY_STRING_DISTRIBUTE_ONLY || durability == "":
 		logger.Debug("[%v] Distributed", vol.Info.Id, vol.Info.Durability.Replicate.Replica)
 		vol.Durability = NewNoneDurability()
-		gob.Register(&NoneDurability{})
 
 	default:
 		panic(fmt.Sprintf("BUG: Unknown type: %v\n", vol.Info.Durability))

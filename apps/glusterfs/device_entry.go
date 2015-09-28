@@ -210,17 +210,25 @@ func (d *DeviceEntry) SetExtentSize(amount uint64) {
 // id to the list.
 func (d *DeviceEntry) NewBrickEntry(amount uint64, snapFactor float64) *BrickEntry {
 
+	// :TODO: This needs unit test
+
 	// Calculate thinpool size
 	tpsize := uint64(float64(amount) * snapFactor)
 
 	// Align tpsize to extent
-	tpsize += tpsize % d.ExtentSize
+	alignment := tpsize % d.ExtentSize
+	if alignment != 0 {
+		tpsize += d.ExtentSize - alignment
+	}
 
 	// Determine if we need to allocate space for the metadata
 	metadataSize := d.poolMetadataSize(tpsize)
 
 	// Align to extent
-	metadataSize += metadataSize % d.ExtentSize
+	alignment = metadataSize % d.ExtentSize
+	if alignment != 0 {
+		metadataSize += d.ExtentSize - alignment
+	}
 
 	// Total required size
 	total := tpsize + metadataSize

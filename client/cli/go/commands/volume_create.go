@@ -83,7 +83,7 @@ func NewVolumeCreateCommand(options *Options) *VolumeCreateCommand {
 Create a GlusterFS volume
 
 USAGE
-  heketi volume create [options]
+  heketi-cli volume create [options]
 
 OPTIONS`)
 
@@ -92,23 +92,23 @@ OPTIONS`)
 		fmt.Println(`
 EXAMPLES
   * Create a 100GB replica 3 volume:
-      $ heketi volume create -size=100
+      $ heketi-cli volume create -size=100
 
   * Create a 100GB replica 3 volume specifying two specific clusters:
-      $ heketi volume create -size=100 \
+      $ heketi-cli volume create -size=100 \
           -clusters=0995098e1284ddccb46c7752d142c832,60d46d518074b13a04ce1022c8c7193c
 
   * Create a 100GB replica 2 volume with 50GB of snapshot storage:
-      $ heketi volume create -size=100 -snapshot-factor=1.5 -replica=2 
+      $ heketi-cli volume create -size=100 -snapshot-factor=1.5 -replica=2 
 
   * Create a 100GB distributed volume
-      $ heketi volume create -size=100 -durabilty=none
+      $ heketi-cli volume create -size=100 -durabilty=none
 
   * Create a 100GB erasure coded 4+2 volume with 25GB snapshot storage:
-      $ heketi volume create -size=100 -durability=disperse -snapshot-factor=1.25
+      $ heketi-cli volume create -size=100 -durability=disperse -snapshot-factor=1.25
 
   * Create a 100GB erasure coded 8+3 volume with 25GB snapshot storage:
-      $ heketi volume create -size=100 -durability=disperse -snapshot-factor=1.25 \
+      $ heketi-cli volume create -size=100 -durability=disperse -snapshot-factor=1.25 \
           -disperse-data=8 -redundancy=3
 `)
 	}
