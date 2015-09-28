@@ -79,7 +79,7 @@ func (c *ClusterListCommand) Exec(args []string) error {
 		fmt.Fprintf(stdout, string(data))
 	} else {
 		output := strings.Join(list.Clusters, "\n")
-		fmt.Fprintf(stdout, "Clusters:\n%v", output)
+		fmt.Fprintf(stdout, "Clusters:\n%v\n", output)
 	}
 
 	return nil

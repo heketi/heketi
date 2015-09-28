@@ -172,7 +172,7 @@ func (v *VolumeInfoResponse) String() string {
 		"Id: %v\n"+
 		"Cluster Id: %v\n"+
 		"Mount: %v\n"+
-		"Mount Options: %v\n"+
+		"Mount Options: backupvolfile-servers=%v\n"+
 		"Durability Type: %v\n",
 		v.Name,
 		v.Size,

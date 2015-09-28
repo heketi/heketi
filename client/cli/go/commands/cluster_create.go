@@ -84,7 +84,7 @@ func (c *ClusterCreateCommand) Exec(args []string) error {
 		}
 		fmt.Fprintf(stdout, string(data))
 	} else {
-		fmt.Fprintf(stdout, "Cluster id: %v", cluster.Id)
+		fmt.Fprintf(stdout, "Cluster id: %v\n", cluster.Id)
 	}
 
 	return nil

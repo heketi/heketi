@@ -46,7 +46,7 @@ func NewDeviceAddCommand(options *Options) *DeviceAddCommand {
 Add new device to node to be managed by Heketi
 
 USAGE
-  heketi device add [options]
+  heketi-cli device add [options]
 
 OPTIONS`)
 
@@ -54,7 +54,7 @@ OPTIONS`)
 		cmd.flags.PrintDefaults()
 		fmt.Println(`
 EXAMPLES
-  $ heketi device add \
+  $ heketi-cli device add \
       -name=/dev/sdb
       -node=3e098cb4407d7109806bb196d9e8f095 
 `)

@@ -78,7 +78,7 @@ func (c *VolumeListCommand) Exec(args []string) error {
 		fmt.Fprintf(stdout, string(data))
 	} else {
 		output := strings.Join(list.Volumes, "\n")
-		fmt.Fprintf(stdout, "Volumes:\n%v", output)
+		fmt.Fprintf(stdout, "Volumes:\n%v\n", output)
 	}
 
 	return nil

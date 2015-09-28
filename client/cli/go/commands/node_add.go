@@ -53,7 +53,7 @@ func NewNodeAddCommand(options *Options) *NodeAddCommand {
 Add new node to be managed by Heketi
 
 USAGE
-  heketi node add [options]
+  heketi-cli node add [options]
 
 OPTIONS`)
 
@@ -61,7 +61,7 @@ OPTIONS`)
 		cmd.flags.PrintDefaults()
 		fmt.Println(`
 EXAMPLES
-  $ heketi node add \
+  $ heketi-cli node add \
       -zone=3 \
       -cluster=3e098cb4407d7109806bb196d9e8f095 \
       -managment-host-name=node1-manage.gluster.lab.com \
