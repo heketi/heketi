@@ -4,7 +4,7 @@
 [![Join the chat at https://gitter.im/heketi/heketi](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/heketi/heketi?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 # Heketi
-Heketi provides a RESTful management interface which can be used to manage the life cycle of GlusterFS volumes.  The goal of Heketi is to provide a simple way to create, list, and delete GlusterFS volumes in any number of GlusterFS clusters.  Heketi will intelligently manage the allocation, creation, and deletion of bricks throughout the disks across hundreds or thousands of clusters.  To acomplish this, Heketi must first be told about the topology of the clusters.
+Heketi provides a RESTful management interface which can be used to manage the life cycle of GlusterFS volumes.  With Heketi, cloud services like OpenStack Manila, Kubernetes, and OpenShift can dynamically provision GlusterFS volumes with any of the supported durability types.  Heketi will automatically determine the location for bricks across the cluster, making sure to place bricks and its replicas across different failure domains.  Heketi also supports any number of GlusterFS clusters, allowing cloud services to provide network file storage without being limited to a single GlusterFS cluster.
 
 # Workflow
 When a request is received to create a volume, Heketi will first allocate the appropriate storage in a cluster, making sure to place brick replicas across failure domains.  It will then format, then mount the storage to create bricks for the volume requested.  Once all bricks have been automatically created, Heketi will finally satisfy the request by creating, then starting the newly created GlusterFS volume.
