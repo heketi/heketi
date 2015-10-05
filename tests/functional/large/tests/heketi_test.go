@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"github.com/heketi/heketi/apps/glusterfs"
 	client "github.com/heketi/heketi/client/api/go-client"
-	"github.com/heketi/heketi/tests"
-	"github.com/heketi/heketi/utils"
+	"github.com/heketi/tests"
+	"github.com/heketi/utils"
 	"testing"
 )
 

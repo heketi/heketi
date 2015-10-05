@@ -18,7 +18,7 @@ package glusterfs
 
 import (
 	"github.com/boltdb/bolt"
-	"github.com/heketi/heketi/tests"
+	"github.com/heketi/tests"
 	"os"
 	"reflect"
 	"testing"

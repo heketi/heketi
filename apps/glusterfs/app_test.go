@@ -18,7 +18,7 @@ package glusterfs
 
 import (
 	"bytes"
-	"github.com/heketi/heketi/tests"
+	"github.com/heketi/tests"
 	"testing"
 )
 

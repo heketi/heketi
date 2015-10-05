@@ -18,7 +18,7 @@ package glusterfs
 
 import (
 	"github.com/boltdb/bolt"
-	"github.com/heketi/heketi/utils"
+	"github.com/heketi/utils"
 )
 
 func (v *VolumeEntry) allocBricksInCluster(db *bolt.DB,

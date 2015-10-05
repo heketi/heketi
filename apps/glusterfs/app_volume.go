@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
-	"github.com/heketi/heketi/utils"
+	"github.com/heketi/utils"
 	"net/http"
 )
 

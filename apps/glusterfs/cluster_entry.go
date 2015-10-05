@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"github.com/boltdb/bolt"
-	"github.com/heketi/heketi/utils"
+	"github.com/heketi/utils"
 	"github.com/lpabon/godbc"
 	"sort"
 )

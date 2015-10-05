@@ -18,8 +18,8 @@ package sshexec
 
 import (
 	"errors"
-	"github.com/heketi/heketi/utils"
-	"github.com/heketi/heketi/utils/ssh"
+	"github.com/heketi/utils"
+	"github.com/heketi/utils/ssh"
 	"github.com/lpabon/godbc"
 	"os"
 	"sync"

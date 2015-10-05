@@ -19,7 +19,7 @@ package client
 import (
 	"bytes"
 	"github.com/heketi/heketi/apps/glusterfs"
-	"github.com/heketi/heketi/utils"
+	"github.com/heketi/utils"
 	"net/http"
 )
 
