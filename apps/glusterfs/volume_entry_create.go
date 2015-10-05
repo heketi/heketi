@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
-	"github.com/heketi/heketi/utils"
+	"github.com/heketi/utils"
 	"github.com/lpabon/godbc"
 	"strings"
 )

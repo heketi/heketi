@@ -21,7 +21,7 @@ import (
 	"encoding/hex"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/heketi/heketi/apps/glusterfs"
-	"github.com/heketi/heketi/utils"
+	"github.com/heketi/utils"
 	"net/http"
 	"time"
 )

@@ -18,8 +18,8 @@ package glusterfs
 
 import (
 	"github.com/boltdb/bolt"
-	"github.com/heketi/heketi/tests"
-	"github.com/heketi/heketi/utils"
+	"github.com/heketi/tests"
+	"github.com/heketi/utils"
 	"os"
 	"testing"
 )
