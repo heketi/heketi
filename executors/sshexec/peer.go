@@ -52,5 +52,6 @@ func (s *SshExecutor) PeerDetach(host, detachnode string) error {
 	if err != nil {
 		logger.Err(err)
 	}
+
 	return nil
 }
