@@ -87,7 +87,7 @@ func (s *SshExecutor) BrickCreate(host string,
 			mountpoint),
 
 		// Mount
-		fmt.Sprintf("sudo mount %v %v", s.devnode(brick), mountpoint),
+		fmt.Sprintf("sudo mount -o rw,inode64,noatime,nouuid %v %v", s.devnode(brick), mountpoint),
 
 		// Create a directory inside the formated volume for GlusterFS
 		fmt.Sprintf("sudo mkdir %v/brick", mountpoint),
