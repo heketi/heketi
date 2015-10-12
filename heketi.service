@@ -1,0 +1,12 @@
+[Unit]
+Description=Heketi Service
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/heketi.json
+User=heketi
+ExecStart=/usr/bin/heketi -config=/etc/heketi.json
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
