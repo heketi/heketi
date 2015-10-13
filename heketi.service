@@ -1,5 +1,5 @@
 [Unit]
-Description=Heketi Service
+Description=Heketi Server
 
 [Service]
 Type=simple
