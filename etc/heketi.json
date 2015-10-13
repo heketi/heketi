@@ -24,6 +24,6 @@
 		"executor" : "mock",
 
 		"_db_comment": "Database file name",
-		"db" : "heketi.db"
+		"db" : "/var/lib/heketi/heketi.db"
 	}
 }
