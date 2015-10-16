@@ -25,10 +25,10 @@ import (
 	"github.com/heketi/heketi/apps"
 	"github.com/heketi/heketi/apps/glusterfs"
 	"github.com/heketi/heketi/middleware"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"syscall"
 )
 
 type Config struct {
@@ -70,7 +70,7 @@ func main() {
 	// Read configuration
 	fp, err := os.Open(configfile)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to open config file %v: %v\n",
+		fmt.Fprintf(os.Stderr, "ERROR: Unable to open config file %v: %v\n",
 			configfile,
 			err.Error())
 		os.Exit(1)
@@ -80,7 +80,7 @@ func main() {
 	configParser := json.NewDecoder(fp)
 	var options Config
 	if err = configParser.Decode(&options); err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to parse %v: %v\n",
+		fmt.Fprintf(os.Stderr, "ERROR: Unable to parse %v: %v\n",
 			configfile,
 			err.Error())
 		os.Exit(1)
@@ -92,18 +92,19 @@ func main() {
 
 	// Setup a new GlusterFS application
 	var app apps.Application
-	app = glusterfs.NewApp(fp)
-	if app == nil {
-		fmt.Println("Unable to start application")
+	glusterfsApp := glusterfs.NewApp(fp)
+	if glusterfsApp == nil {
+		fmt.Fprintln(os.Stderr, "ERROR: Unable to start application")
 		os.Exit(1)
 	}
+	app = glusterfsApp
 
 	// Create a router and do not allow any routes
 	// unless defined.
 	router := mux.NewRouter().StrictSlash(true)
 	err = app.SetRoutes(router)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Unable to create http server endpoints")
+		fmt.Fprintln(os.Stderr, "ERROR: Unable to create http server endpoints")
 		os.Exit(1)
 	}
 
@@ -116,7 +117,7 @@ func main() {
 	if options.AuthEnabled {
 		jwtauth := middleware.NewJwtAuth(&options.JwtConfig)
 		if jwtauth == nil {
-			fmt.Fprintln(os.Stderr, "Missing JWT information in config file")
+			fmt.Fprintln(os.Stderr, "ERROR: Missing JWT information in config file")
 			os.Exit(1)
 		}
 
@@ -135,22 +136,28 @@ func main() {
 	// Shutdown on CTRL-C signal
 	// For a better cleanup, we should shutdown the server and
 	signalch := make(chan os.Signal, 1)
-	signal.Notify(signalch, os.Interrupt)
+	signal.Notify(signalch, os.Interrupt, os.Kill, syscall.SIGINT, syscall.SIGTERM)
+
+	// Create a channel to know if the server was unable to start
+	done := make(chan bool)
 	go func() {
-		select {
-		case <-signalch:
-			fmt.Printf("Shutting down...\n")
-			// :TODO: Need to stop the server before closing the app
-
-			// Close the application
-			app.Close()
-
-			// Quit
-			os.Exit(0)
+		// Start the server.
+		err = http.ListenAndServe(":"+options.Port, n)
+		if err != nil {
+			fmt.Printf("ERROR: HTTP Server error: %v\n", err)
 		}
+		done <- true
 	}()
 
-	// Start the server.
-	log.Fatal(http.ListenAndServe(":"+options.Port, n))
+	// Block here for signals and errors from the HTTP server
+	select {
+	case <-signalch:
+	case <-done:
+	}
+	fmt.Printf("Shutting down...\n")
+
+	// Shutdown the application
+	// :TODO: Need to shutdown the server
+	app.Close()
 
 }
