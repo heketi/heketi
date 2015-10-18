@@ -25,10 +25,10 @@ import (
 	"github.com/heketi/heketi/apps"
 	"github.com/heketi/heketi/apps/glusterfs"
 	"github.com/heketi/heketi/middleware"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"syscall"
 )
 
 type Config struct {
@@ -135,22 +135,28 @@ func main() {
 	// Shutdown on CTRL-C signal
 	// For a better cleanup, we should shutdown the server and
 	signalch := make(chan os.Signal, 1)
-	signal.Notify(signalch, os.Interrupt)
+	signal.Notify(signalch, os.Interrupt, os.Kill, syscall.SIGINT, syscall.SIGTERM)
+
+	// Create a channel to know if the server was unable to start
+	done := make(chan bool)
 	go func() {
-		select {
-		case <-signalch:
-			fmt.Printf("Shutting down...\n")
-			// :TODO: Need to stop the server before closing the app
-
-			// Close the application
-			app.Close()
-
-			// Quit
-			os.Exit(0)
+		// Start the server.
+		err = http.ListenAndServe(":"+options.Port, n)
+		if err != nil {
+			fmt.Printf("HTTP Server error: %v\n", err)
 		}
+		done <- true
 	}()
 
-	// Start the server.
-	log.Fatal(http.ListenAndServe(":"+options.Port, n))
+	// Block here for signals and errors from the HTTP server
+	select {
+	case <-signalch:
+	case <-done:
+	}
+	fmt.Printf("Shutting down...\n")
+
+	// Shutdown the application
+	// :TODO: Need to shutdown the server
+	app.Close()
 
 }
