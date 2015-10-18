@@ -31,7 +31,7 @@ func TestAppBadConfigData(t *testing.T) {
 	app = NewApp(bytes.NewReader(data))
 	tests.Assert(t, app != nil)
 
-	data = []byte(`{ 
+	data = []byte(`{
 		"glusterfs" : {}
 		}`)
 	app = NewApp(bytes.NewReader(data))
@@ -39,7 +39,7 @@ func TestAppBadConfigData(t *testing.T) {
 }
 
 func TestAppUnknownExecutorInConfig(t *testing.T) {
-	data := []byte(`{ 
+	data := []byte(`{
 		"glusterfs" : {
 			"executor" : "unknown value here"
 		}
@@ -49,11 +49,21 @@ func TestAppUnknownExecutorInConfig(t *testing.T) {
 }
 
 func TestAppUnknownAllocatorInConfig(t *testing.T) {
-	data := []byte(`{ 
+	data := []byte(`{
 		"glusterfs" : {
 			"allocator" : "unknown value here"
 		}
 		}`)
+	app := NewApp(bytes.NewReader(data))
+	tests.Assert(t, app == nil)
+}
+
+func TestAppBadDbLocation(t *testing.T) {
+	data := []byte(`{
+		"glusterfs" : {
+			"db" : "/badlocation"
+		}
+	}`)
 	app := NewApp(bytes.NewReader(data))
 	tests.Assert(t, app == nil)
 }
