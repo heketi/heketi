@@ -70,7 +70,7 @@ func main() {
 	// Read configuration
 	fp, err := os.Open(configfile)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to open config file %v: %v\n",
+		fmt.Fprintf(os.Stderr, "ERROR: Unable to open config file %v: %v\n",
 			configfile,
 			err.Error())
 		os.Exit(1)
@@ -80,7 +80,7 @@ func main() {
 	configParser := json.NewDecoder(fp)
 	var options Config
 	if err = configParser.Decode(&options); err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to parse %v: %v\n",
+		fmt.Fprintf(os.Stderr, "ERROR: Unable to parse %v: %v\n",
 			configfile,
 			err.Error())
 		os.Exit(1)
@@ -92,18 +92,19 @@ func main() {
 
 	// Setup a new GlusterFS application
 	var app apps.Application
-	app = glusterfs.NewApp(fp)
-	if app == nil {
-		fmt.Println("Unable to start application")
+	glusterfsApp := glusterfs.NewApp(fp)
+	if glusterfsApp == nil {
+		fmt.Fprintln(os.Stderr, "ERROR: Unable to start application")
 		os.Exit(1)
 	}
+	app = glusterfsApp
 
 	// Create a router and do not allow any routes
 	// unless defined.
 	router := mux.NewRouter().StrictSlash(true)
 	err = app.SetRoutes(router)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Unable to create http server endpoints")
+		fmt.Fprintln(os.Stderr, "ERROR: Unable to create http server endpoints")
 		os.Exit(1)
 	}
 
@@ -116,7 +117,7 @@ func main() {
 	if options.AuthEnabled {
 		jwtauth := middleware.NewJwtAuth(&options.JwtConfig)
 		if jwtauth == nil {
-			fmt.Fprintln(os.Stderr, "Missing JWT information in config file")
+			fmt.Fprintln(os.Stderr, "ERROR: Missing JWT information in config file")
 			os.Exit(1)
 		}
 
@@ -143,7 +144,7 @@ func main() {
 		// Start the server.
 		err = http.ListenAndServe(":"+options.Port, n)
 		if err != nil {
-			fmt.Printf("HTTP Server error: %v\n", err)
+			fmt.Printf("ERROR: HTTP Server error: %v\n", err)
 		}
 		done <- true
 	}()
