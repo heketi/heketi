@@ -2,46 +2,46 @@
 FROM centos:centos7
 MAINTAINER Sid Carter <nospam@sidcarter.com>
 
-LABEL version="0.1"
-LABEL description="Centos 7 docker image for hekekti"
+LABEL version="0.3"
+LABEL description="Centos 7 docker image for heketi"
 
-# install dependencies for heketi
-RUN yum -y install epel-release
-RUN yum -y clean all
-
-RUN yum -y install golang git
-RUN yum -y install make
-RUN yum -y clean all
-
-# let's checkout heketi repo next
+# let's setup all the necessary environment variables
 ENV BUILD_HOME=/build
-RUN mkdir $BUILD_HOME
-RUN cd $BUILD_HOME
-RUN git clone https://github.com/heketi/heketi.git
-
-# prep go and dependencies
 ENV GOPATH=$BUILD_HOME/golang
-RUN mkdir $GOPATH
 ENV PATH=$GOPATH/bin:$PATH
-RUN go get github.com/heketi/heketi
-RUN go get github.com/robfig/glock
-RUN glock sync github.com/heketi/heketi
+ENV HEKETIC_CONF_DIR=/etc/heketi
 
-RUN cd heketi && make
+# install dependencies, build and cleanup
+RUN mkdir $BUILD_HOME $GOPATH $HEKETI_CONF_DIR && \
+    yum -y install epel-release && \
+    yum -y install golang git && \
+    yum -y install make && \
+    yum -y clean all && \
+    cd $BUILD_HOME && \
+    git clone https://github.com/heketi/heketi.git && \
+    go get github.com/heketi/heketi && \
+    go get github.com/robfig/glock && \
+    glock sync github.com/heketi/heketi && \
+    cd heketi && make && \
+    cp $GOPATH/bin/heketi /usr/bin/heketi && \
+    cd && rm -rf $BUILD_HOME && \
+    yum -y remove git golang make epel-release && \
+    yum -y autoremove && \
+    yum -y clean all
 
-RUN cp $GOPATH/bin/heketi /usr/bin/heketi
-ADD ../../etc/heketi.json /etc/heketi.json
+ADD ./heketi.json /etc/heketi/heketi.json
+
+VOLUME /etc/heketi
 
 # script to create directories and change ownership
 ADD ./post_setup.sh /tmp/post_setup.sh
 RUN chmod +x /tmp/post_setup.sh
 RUN /tmp/post_setup.sh
 
-# cleanup
-RUN rm -rf $BUILD_HOME
+VOLUME /var/lib/heketi
 
-# start heketi
+# expose pose and set entypoint with config option
 ENTRYPOINT ["/usr/bin/heketi"]
-
 EXPOSE 8080
-CMD ["-config=/etc/heketi.json"]
+
+CMD ["-config=/etc/heketi/heketi.json"]
