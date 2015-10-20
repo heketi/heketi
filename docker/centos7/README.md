@@ -1,11 +1,9 @@
-dockerfile-centos7-heketi
-========================
+dockerfile-heketi-centos7
+=========================
 
 CentOS 7 dockerfile for heketi
 
 To build:
-
-Copy the sources down -
 
     # docker build --rm --tag <username>/heketi:centos7 .
 
