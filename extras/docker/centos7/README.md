@@ -21,6 +21,7 @@ Here is an example:
 $ mkdir config
 $ cp custom_heketi.json config/heketi.json
 $ mkdir db
+$ chmod 777 db
 $ docker run -d -p 8080:8080 \
    --volume $PWD/config:/etc/heketi \
    --volume $PWD/db:/var/lib/heketi \
