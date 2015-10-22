@@ -19,7 +19,7 @@ Here is an example:
 
 ```
 $ mkdir config
-$ cp heketi.json config
+$ cp custom_heketi.json config/heketi.json
 $ mkdir db
 $ docker run -d -p 8080:8080 \
    --volume $PWD/config:/etc/heketi \
