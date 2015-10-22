@@ -4,10 +4,12 @@ Description=Heketi Server
 [Service]
 Type=simple
 WorkingDirectory=/var/lib/heketi
-EnvironmentFile=-/etc/heketi.json
+EnvironmentFile=-/etc/heketi/heketi.json
 User=heketi
-ExecStart=/usr/bin/heketi -config=/etc/heketi.json
+ExecStart=/usr/bin/heketi -config=/etc/heketi/heketi.json
 Restart=on-failure
+StandardOutput=syslog
+StandardError=syslog
 
 [Install]
 WantedBy=multi-user.target
