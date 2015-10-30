@@ -1158,14 +1158,14 @@ func TestVolumeEntryExpandNoSpace(t *testing.T) {
 	// Create cluster
 	err := setupSampleDbWithTopology(app,
 		10,     // clusters
-		1,      // nodes_per_cluster
+		2,      // nodes_per_cluster
 		2,      // devices_per_node,
 		600*GB, // disksize)
 	)
 	tests.Assert(t, err == nil)
 
 	// Create large volume
-	v := createSampleVolumeEntry(590)
+	v := createSampleVolumeEntry(1190)
 	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil)
 
@@ -1313,4 +1313,34 @@ func TestVolumeEntryExpand(t *testing.T) {
 	})
 	tests.Assert(t, err == nil)
 	tests.Assert(t, reflect.DeepEqual(entry, v))
+}
+
+func TestVolumeEntryDoNotAllowDeviceOnSameNode(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	// Create cluster with plenty of space, but
+	// it will not have enough nodes
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		1,    // nodes_per_cluster
+		200,  // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	// Create volume
+	v := createSampleVolumeEntry(100)
+	err = v.Create(app.db, app.executor, app.allocator)
+	tests.Assert(t, err != nil, err)
+	tests.Assert(t, err == ErrNoSpace)
+
+	v = createSampleVolumeEntry(10000)
+	err = v.Create(app.db, app.executor, app.allocator)
+	tests.Assert(t, err != nil, err)
+	tests.Assert(t, err == ErrNoSpace)
 }
