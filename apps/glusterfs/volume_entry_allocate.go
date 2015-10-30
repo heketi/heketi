@@ -100,6 +100,10 @@ func (v *VolumeEntry) allocBricks(
 	for brick_num := 0; brick_num < bricksets; brick_num++ {
 		logger.Info("brick_num: %v", brick_num)
 
+		// Create a brick set list to later make sure that the
+		// proposed bricks and devices are acceptable
+		setlist := make([]*BrickEntry, 0)
+
 		// Generate an id for the brick
 		brickId := utils.GenUUID()
 
@@ -112,7 +116,7 @@ func (v *VolumeEntry) allocBricks(
 
 		// Check location has space for each brick and its replicas
 		for i := 0; i < v.Durability.BricksInSet(); i++ {
-			logger.Info("%v / %v", i, v.Durability.BricksInSet())
+			logger.Debug("%v / %v", i, v.Durability.BricksInSet())
 
 			// Do the work in the database context so that the cluster
 			// data does not change while determining brick location
@@ -127,6 +131,19 @@ func (v *VolumeEntry) allocBricks(
 						return err
 					}
 
+					// Do not allow a device from the same node to be
+					// in the set
+					deviceOk := true
+					for _, brickInSet := range setlist {
+						if brickInSet.Info.NodeId == device.NodeId {
+							deviceOk = false
+						}
+					}
+
+					if !deviceOk {
+						continue
+					}
+
 					// Try to allocate a brick on this device
 					brick := device.NewBrickEntry(brick_size, float64(v.Info.Snapshot.Factor))
 
@@ -138,8 +155,11 @@ func (v *VolumeEntry) allocBricks(
 							brick.SetId(brickId)
 						}
 
-						// Save the brick entry to create in on the node
+						// Save the brick entry to create later
 						brick_entries = append(brick_entries, brick)
+
+						// Add to set list
+						setlist = append(setlist, brick)
 
 						// Add brick to device
 						device.BrickAdd(brick.Id())
