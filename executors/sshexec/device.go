@@ -78,7 +78,8 @@ func (s *SshExecutor) DeviceTeardown(host, device, vgid string) error {
 	// Execute command
 	_, err := s.sshExec(host, commands, 5)
 	if err != nil {
-		return err
+		logger.LogError("Error while deleting device %v on %v with id %v",
+			device, host, vgid)
 	}
 
 	return nil
