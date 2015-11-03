@@ -78,7 +78,7 @@ func setupCluster(t *testing.T) {
 		nodeReq.ClusterId = cluster.Id
 		nodeReq.Hostnames.Manage = []string{hostname}
 		nodeReq.Hostnames.Storage = []string{hostname}
-		nodeReq.Zone = index % 2
+		nodeReq.Zone = index%2 + 1
 
 		node, err := heketi.NodeAdd(nodeReq)
 		tests.Assert(t, err == nil)
