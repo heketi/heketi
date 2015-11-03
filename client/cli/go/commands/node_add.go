@@ -86,7 +86,7 @@ func (n *NodeAddCommand) Exec(args []string) error {
 		return errors.New("Missing management hostname")
 	}
 	if n.storageHostNames == "" {
-		return errors.New("Missing management hostname")
+		return errors.New("Missing storage hostname")
 	}
 	if n.clusterId == "" {
 		return errors.New("Missing cluster id")
