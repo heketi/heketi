@@ -77,20 +77,22 @@ func TestNodeAddBadRequests(t *testing.T) {
 		"cluster" : "123",
 		"hostnames" : {
 			"manage" : [ "manage.hostname.com" ]
-		}
+		},
+		"zone" : 10
     }`)
 
 	// Post bad JSON
 	r, err = http.Post(ts.URL+"/nodes", "application/json", bytes.NewBuffer(request))
 	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusBadRequest)
+	tests.Assert(t, r.StatusCode == http.StatusBadRequest, *r)
 
 	// Make a request with only storage hostname
 	request = []byte(`{
 		"cluster" : "123",
 		"hostnames" : {
 			"storage" : [ "storage.hostname.com" ]
-		}
+		},
+		"zone" : 10
     }`)
 
 	// Post bad JSON
@@ -115,6 +117,23 @@ func TestNodeAddBadRequests(t *testing.T) {
 	s, err := utils.GetStringFromResponse(r)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, strings.Contains(s, "empty string"))
+
+	// Make a request where the zone is missing
+	request = []byte(`{
+		"cluster" : "123",
+		"hostnames" : {
+			"storage" : [ "storage.hostname.com" ],
+			"manage" : [ "manage.hostname.com"  ]
+		}
+    }`)
+
+	// Check that it returns that the cluster id is not found
+	r, err = http.Post(ts.URL+"/nodes", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusBadRequest)
+	s, err = utils.GetStringFromResponse(r)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, strings.Contains(s, "Zone cannot be zero"))
 
 	// Make a request where the cluster id does not exist
 	request = []byte(`{

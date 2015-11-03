@@ -43,6 +43,14 @@ func (a *App) NodeAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Zone value of 0 is not allowed because we do not know
+	// if it is because it was set to zero, or it is the default
+	// value used for missing 'zone' in JSON
+	if msg.Zone == 0 {
+		http.Error(w, "Zone cannot be zero or value is missing", http.StatusBadRequest)
+		return
+	}
+
 	// Check for correct values
 	for _, name := range append(msg.Hostnames.Manage, msg.Hostnames.Storage...) {
 		if name == "" {
