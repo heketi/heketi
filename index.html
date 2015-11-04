@@ -5,7 +5,7 @@
     <title>Heketi by heketi</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
-    <link href='http://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
     <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
     <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
   </head>
@@ -19,8 +19,7 @@
     </section>
 
     <section class="main-content">
-      <p><a href="https://github.com/heketi/heketi/milestones"><img src="https://img.shields.io/badge/State-Under%20Construction-red.svg" alt="status"></a>
-<a href="https://waffle.io/heketi/heketi"><img src="https://badge.waffle.io/heketi/heketi.png?label=in%20progress&amp;title=In%20Progress" alt="Stories in Ready"></a>
+      <p><a href="https://waffle.io/heketi/heketi"><img src="https://badge.waffle.io/heketi/heketi.png?label=in%20progress&amp;title=In%20Progress" alt="Stories in Ready"></a>
 <a href="https://travis-ci.org/heketi/heketi"><img src="https://travis-ci.org/heketi/heketi.svg?branch=master" alt="Build Status"></a>
 <a href="https://coveralls.io/r/heketi/heketi"><img src="https://coveralls.io/repos/heketi/heketi/badge.svg" alt="Coverage Status"></a>
 <a href="https://gitter.im/heketi/heketi?utm_source=badge&amp;utm_medium=badge&amp;utm_campaign=pr-badge&amp;utm_content=badge"><img src="https://badges.gitter.im/Join%20Chat.svg" alt="Join the chat at https://gitter.im/heketi/heketi"></a></p>
@@ -28,12 +27,22 @@
 <h1>
 <a id="heketi" class="anchor" href="#heketi" aria-hidden="true"><span class="octicon octicon-link"></span></a>Heketi</h1>
 
-<p>Heketi provides a RESTful management interface which can be used to manage the life cycle of GlusterFS volumes.  The goal of Heketi is to provide a simple way to create, list, and delete GlusterFS volumes in multiple storage clusters.  Heketi intelligently will manage the allocation, creation, and deletion of bricks throughout the disks in the cluster.</p>
+<p>Heketi provides a RESTful management interface which can be used to manage the life cycle of GlusterFS volumes.  With Heketi, cloud services like OpenStack Manila, Kubernetes, and OpenShift can dynamically provision GlusterFS volumes with any of the supported durability types.  Heketi will automatically determine the location for bricks across the cluster, making sure to place bricks and its replicas across different failure domains.  Heketi also supports any number of GlusterFS clusters, allowing cloud services to provide network file storage without being limited to a single GlusterFS cluster.</p>
 
 <h1>
-<a id="status" class="anchor" href="#status" aria-hidden="true"><span class="octicon octicon-link"></span></a>Status</h1>
+<a id="workflow" class="anchor" href="#workflow" aria-hidden="true"><span class="octicon octicon-link"></span></a>Workflow</h1>
 
-<p>Heketi is currently under heavy development to provide the new approved <a href="https://github.com/heketi/heketi/wiki/API">API</a>.  The <a href="https://github.com/heketi/heketi/tree/prototype">prototype</a> can be used to experience what Heketi will provide.  The API for the prototype can be found <a href="https://github.com/heketi/heketi/wiki/API/c4be1ddcfd17e72117ebc584d646eec2987fcb58">here</a>.  You can also try out the demo below which is based on the prototype version. </p>
+<p>When a request is received to create a volume, Heketi will first allocate the appropriate storage in a cluster, making sure to place brick replicas across failure domains.  It will then format, then mount the storage to create bricks for the volume requested.  Once all bricks have been automatically created, Heketi will finally satisfy the request by creating, then starting the newly created GlusterFS volume.</p>
+
+<h1>
+<a id="downloads" class="anchor" href="#downloads" aria-hidden="true"><span class="octicon octicon-link"></span></a>Downloads</h1>
+
+<p>Please go to the <a href="https://github.com/heketi/heketi/releases">Releases</a> page for the latest release.</p>
+
+<h2>
+<a id="containers" class="anchor" href="#containers" aria-hidden="true"><span class="octicon octicon-link"></span></a>Containers</h2>
+
+<p>You can also install Heketi as a container.  Please see <a href="https://hub.docker.com/r/heketi/heketi">https://hub.docker.com/r/heketi/heketi</a> for more information</p>
 
 <h1>
 <a id="documentation" class="anchor" href="#documentation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Documentation</h1>
@@ -41,9 +50,9 @@
 <p>Please visit the <a href="http://github.com/heketi/heketi/wiki">WIKI</a> for project documentation and demo information</p>
 
 <h1>
-<a id="try-out-the-prototype-version" class="anchor" href="#try-out-the-prototype-version" aria-hidden="true"><span class="octicon octicon-link"></span></a>Try out the Prototype version</h1>
+<a id="demo" class="anchor" href="#demo" aria-hidden="true"><span class="octicon octicon-link"></span></a>Demo</h1>
 
-<p>Please visit <a href="https://github.com/heketi/vagrant-heketi">Vagrant-Heketi</a> to try out the demo using the <a href="https://github.com/heketi/heketi/tree/prototype">prototype</a> version of Heketi.</p>
+<p>Please visit <a href="https://github.com/heketi/vagrant-heketi">Vagrant-Heketi</a> to try out the demo.</p>
 
 <h1>
 <a id="licensing" class="anchor" href="#licensing" aria-hidden="true"><span class="octicon octicon-link"></span></a>Licensing</h1>
@@ -61,4 +70,3 @@
   
   </body>
 </html>
-
