@@ -19,6 +19,7 @@ package glusterfs
 import (
 	"bytes"
 	"github.com/heketi/heketi/tests"
+	"os"
 	"testing"
 )
 
@@ -66,4 +67,32 @@ func TestAppBadDbLocation(t *testing.T) {
 	}`)
 	app := NewApp(bytes.NewReader(data))
 	tests.Assert(t, app == nil)
+}
+
+func TestAppAdvsettings(t *testing.T) {
+
+	dbfile := tests.Tempfile()
+	defer os.Remove(dbfile)
+
+	data := []byte(`{
+		"glusterfs" : {
+			"executor" : "mock",
+			"allocator" : "simple",
+			"db" : "` + dbfile + `",
+			"brick_max_size_gb" : 1024,
+			"brick_min_size_gb" : 1,
+			"max_bricks_per_volume" : 33
+		}
+	}`)
+
+	bmax, bmin, bnum := BrickMaxSize, BrickMinSize, BrickMaxNum
+	defer func() {
+		BrickMaxSize, BrickMinSize, BrickMaxNum = bmax, bmin, bnum
+	}()
+
+	app := NewApp(bytes.NewReader(data))
+	tests.Assert(t, app != nil)
+	tests.Assert(t, BrickMaxNum == 33)
+	tests.Assert(t, BrickMaxSize == 1*TB)
+	tests.Assert(t, BrickMinSize == 1*GB)
 }

@@ -63,10 +63,6 @@ func (s *SshExecutor) VolumeCreate(host string,
 		cmd += fmt.Sprintf("%v:%v ", brick.Host, brick.Path)
 	}
 
-	// :TODO: Add force for now.  It will allow silly bricks on the same systems
-	// to work.  Please remove once we add the intelligent ring
-	cmd += "force"
-
 	// Initialize the commands with the create command
 	commands := []string{cmd}
 
@@ -79,6 +75,7 @@ func (s *SshExecutor) VolumeCreate(host string,
 	// Execute command
 	_, err := s.sshExec(host, commands, 10)
 	if err != nil {
+		s.VolumeDestroy(host, volume.Name)
 		return nil, err
 	}
 
@@ -139,13 +136,24 @@ func (s *SshExecutor) VolumeDestroy(host string, volume string) error {
 	commands := []string{
 		// stop gluster volume
 		fmt.Sprintf("sudo gluster --mode=script volume stop %v force", volume),
+	}
+
+	// Execute command
+	_, err := s.sshExec(host, commands, 10)
+	if err != nil {
+		logger.LogError("Unable to stop volume %v: %v", volume, err)
+	}
+
+	// Shutdown volume
+	commands = []string{
+		// stop gluster volume
 		fmt.Sprintf("sudo gluster --mode=script volume delete %v", volume),
 	}
 
 	// Execute command
-	_, err := s.sshExec(host, commands, 5)
+	_, err = s.sshExec(host, commands, 10)
 	if err != nil {
-		return err
+		logger.LogError("Unable to delete volume %v: %v", volume, err)
 	}
 
 	return nil
