@@ -1,0 +1,20 @@
+- name: setup epel
+  command: yum -y install epel-release
+
+- name: install wget
+  yum: name={{ item }} state=present
+  with_items:
+    - wget
+
+- name: enable glusterfs repo
+  shell: wget -P /etc/yum.repos.d http://download.gluster.org/pub/gluster/glusterfs/LATEST/EPEL.repo/glusterfs-epel.repo creates=/etc/yum.repos.d/glusterfs-epel.repo
+
+- name: copy private key
+  copy: src=insecure_private_key owner=vagrant group=vagrant dest=/home/vagrant/.ssh/id_rsa force=no mode=0600
+
+- name: clean iptables
+  command: iptables -F
+
+- name: disable selinux
+  selinux: state=disabled
+

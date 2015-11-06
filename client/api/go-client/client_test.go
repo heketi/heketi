@@ -17,6 +17,7 @@
 package client
 
 import (
+	"fmt"
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/apps/glusterfs"
@@ -276,35 +277,37 @@ func TestClientVolume(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Create node request packet
-	nodeReq := &glusterfs.NodeAddRequest{}
-	nodeReq.ClusterId = cluster.Id
-	nodeReq.Hostnames.Manage = []string{"manage"}
-	nodeReq.Hostnames.Storage = []string{"storage"}
-	nodeReq.Zone = 10
+	for n := 0; n < 4; n++ {
+		nodeReq := &glusterfs.NodeAddRequest{}
+		nodeReq.ClusterId = cluster.Id
+		nodeReq.Hostnames.Manage = []string{"manage" + fmt.Sprintf("%v", n)}
+		nodeReq.Hostnames.Storage = []string{"storage" + fmt.Sprintf("%v", n)}
+		nodeReq.Zone = n + 1
 
-	// Create node
-	node, err := c.NodeAdd(nodeReq)
-	tests.Assert(t, err == nil)
+		// Create node
+		node, err := c.NodeAdd(nodeReq)
+		tests.Assert(t, err == nil)
 
-	// Create a device request
-	sg := utils.NewStatusGroup()
-	for i := 0; i < 50; i++ {
-		sg.Add(1)
-		go func() {
-			defer sg.Done()
+		// Create a device request
+		sg := utils.NewStatusGroup()
+		for i := 0; i < 50; i++ {
+			sg.Add(1)
+			go func() {
+				defer sg.Done()
 
-			deviceReq := &glusterfs.DeviceAddRequest{}
-			deviceReq.Name = "sd" + utils.GenUUID()[:8]
-			deviceReq.Weight = 100
-			deviceReq.NodeId = node.Id
+				deviceReq := &glusterfs.DeviceAddRequest{}
+				deviceReq.Name = "sd" + utils.GenUUID()[:8]
+				deviceReq.Weight = 100
+				deviceReq.NodeId = node.Id
 
-			// Create device
-			err := c.DeviceAdd(deviceReq)
-			sg.Err(err)
+				// Create device
+				err := c.DeviceAdd(deviceReq)
+				sg.Err(err)
 
-		}()
+			}()
+		}
+		tests.Assert(t, sg.Result() == nil)
 	}
-	tests.Assert(t, sg.Result() == nil)
 
 	// Get list of volumes
 	list, err := c.VolumeList()
@@ -353,25 +356,29 @@ func TestClientVolume(t *testing.T) {
 	err = c.VolumeDelete(volume.Id)
 	tests.Assert(t, err == nil)
 
-	// Get node information
-	nodeInfo, err := c.NodeInfo(node.Id)
-	tests.Assert(t, err == nil)
+	clusterInfo, err := c.ClusterInfo(cluster.Id)
+	for _, nodeid := range clusterInfo.Nodes {
+		// Get node information
+		nodeInfo, err := c.NodeInfo(nodeid)
+		tests.Assert(t, err == nil)
 
-	// Delete all devices
-	sg = utils.NewStatusGroup()
-	for index := range nodeInfo.DevicesInfo {
-		sg.Add(1)
-		go func(i int) {
-			defer sg.Done()
-			sg.Err(c.DeviceDelete(nodeInfo.DevicesInfo[i].Id))
-		}(index)
+		// Delete all devices
+		sg := utils.NewStatusGroup()
+		for index := range nodeInfo.DevicesInfo {
+			sg.Add(1)
+			go func(i int) {
+				defer sg.Done()
+				sg.Err(c.DeviceDelete(nodeInfo.DevicesInfo[i].Id))
+			}(index)
+		}
+		err = sg.Result()
+		tests.Assert(t, err == nil, err)
+
+		// Delete node
+		err = c.NodeDelete(nodeid)
+		tests.Assert(t, err == nil)
+
 	}
-	err = sg.Result()
-	tests.Assert(t, err == nil, err)
-
-	// Delete node
-	err = c.NodeDelete(node.Id)
-	tests.Assert(t, err == nil)
 
 	// Delete cluster
 	err = c.ClusterDelete(cluster.Id)

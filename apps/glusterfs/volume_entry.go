@@ -40,11 +40,6 @@ const (
 	DEFAULT_EC_DATA               = 4
 	DEFAULT_EC_REDUNDANCY         = 2
 	DEFAULT_THINP_SNAPSHOT_FACTOR = 1.5
-
-	// Default limits
-	BRICK_MIN_SIZE = uint64(4 * GB)
-	BRICK_MAX_SIZE = uint64(4 * TB)
-	BRICK_MAX_NUM  = 500
 )
 
 type VolumeEntry struct {
@@ -100,7 +95,7 @@ func NewVolumeEntryFromRequest(req *VolumeCreateRequest) *VolumeEntry {
 		vol.Durability = &vol.Info.Durability.Disperse
 
 	case durability == DURABILITY_STRING_DISTRIBUTE_ONLY || durability == "":
-		logger.Debug("[%v] Distributed", vol.Info.Id, vol.Info.Durability.Replicate.Replica)
+		logger.Debug("[%v] Distributed", vol.Info.Id)
 		vol.Durability = NewNoneDurability()
 
 	default:
