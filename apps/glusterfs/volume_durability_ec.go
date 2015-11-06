@@ -44,9 +44,9 @@ func (d *DisperseDurability) BrickSizeGenerator(size uint64) func() (int, uint64
 			// number of data drives in the disperse request
 			brick_size /= uint64(d.Data)
 
-			if brick_size < BRICK_MIN_SIZE {
+			if brick_size < BrickMinSize {
 				return 0, 0, ErrMininumBrickSize
-			} else if brick_size <= BRICK_MAX_SIZE {
+			} else if brick_size <= BrickMaxSize {
 				break
 			}
 		}

@@ -142,6 +142,9 @@ func NewApp(configIo io.Reader) *App {
 		return nil
 	}
 
+	// Set advanced settings
+	app.setAdvSettings()
+
 	// Setup allocator
 	switch {
 	case app.conf.Allocator == "mock":
@@ -158,6 +161,29 @@ func NewApp(configIo io.Reader) *App {
 	logger.Info("GlusterFS Application Loaded")
 
 	return app
+}
+
+func (a *App) setAdvSettings() {
+	if a.conf.BrickMaxNum != 0 {
+		logger.Info("Adv: Max bricks per volume set to %v", a.conf.BrickMaxNum)
+
+		// From volume_entry.go
+		BrickMaxNum = a.conf.BrickMaxNum
+	}
+	if a.conf.BrickMaxSize != 0 {
+		logger.Info("Adv: Max brick size %v GB", a.conf.BrickMaxSize)
+
+		// From volume_entry.go
+		// Convert to KB
+		BrickMaxSize = uint64(a.conf.BrickMaxSize) * 1024 * 1024
+	}
+	if a.conf.BrickMinSize != 0 {
+		logger.Info("Adv: Min brick size %v GB", a.conf.BrickMinSize)
+
+		// From volume_entry.go
+		// Convert to KB
+		BrickMinSize = uint64(a.conf.BrickMinSize) * 1024 * 1024
+	}
 }
 
 // Register Routes

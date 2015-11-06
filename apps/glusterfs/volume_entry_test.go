@@ -487,13 +487,13 @@ func TestVolumeEntryCreateRunOutOfSpaceMaxBrickLimit(t *testing.T) {
 		40, // devices_per_node,
 
 		// Must be larger than the brick min size
-		BRICK_MIN_SIZE*2, // disksize
+		BrickMinSize*2, // disksize
 	)
 	tests.Assert(t, err == nil)
 
 	// Create a volume who will be broken down to
 	// Shouldn't be able to break it down enough to allocate volume
-	v := createSampleVolumeEntry(BRICK_MAX_NUM * 2 * int(BRICK_MIN_SIZE/GB))
+	v := createSampleVolumeEntry(BrickMaxNum * 2 * int(BrickMinSize/GB))
 	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == ErrNoSpace)
 
@@ -689,8 +689,8 @@ func TestVolumeEntryCreateMaxBrickSize(t *testing.T) {
 	)
 	tests.Assert(t, err == nil)
 
-	// Create a volume whose bricks must be at most BRICK_MAX_SIZE
-	v := createSampleVolumeEntry(int(BRICK_MAX_SIZE / GB * 4))
+	// Create a volume whose bricks must be at most BrickMaxSize
+	v := createSampleVolumeEntry(int(BrickMaxSize / GB * 4))
 	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil)
 
@@ -712,10 +712,10 @@ func TestVolumeEntryCreateMaxBrickSize(t *testing.T) {
 	})
 	tests.Assert(t, err == nil)
 
-	// Check the size of the bricks are not bigger than BRICK_MAX_SIZE
+	// Check the size of the bricks are not bigger than BrickMaxSize
 	tests.Assert(t, len(info.Bricks) == 8)
 	for b := 1; b < len(info.Bricks); b++ {
-		tests.Assert(t, info.Bricks[b].Size <= BRICK_MAX_SIZE)
+		tests.Assert(t, info.Bricks[b].Size <= BrickMaxSize)
 	}
 	tests.Assert(t, info.Cluster == v.Info.Cluster)
 
@@ -1216,7 +1216,7 @@ func TestVolumeEntryExpandMaxBrickLimit(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Add a bunch of bricks until the limit
-	fakebricks := make(sort.StringSlice, BRICK_MAX_NUM-len(v.Bricks))
+	fakebricks := make(sort.StringSlice, BrickMaxNum-len(v.Bricks))
 	v.Bricks = append(v.Bricks, fakebricks...)
 
 	// Try to expand the volume, but it will return that the max number

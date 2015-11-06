@@ -38,6 +38,7 @@ func (v *VolumeEntry) allocBricksInCluster(db *bolt.DB,
 		// Determine brick size needed
 		sets, brick_size, err := gen()
 		if err != nil {
+			logger.Err(err)
 			return nil, err
 		}
 		logger.Debug("brick_size = %v", brick_size)
@@ -47,7 +48,7 @@ func (v *VolumeEntry) allocBricksInCluster(db *bolt.DB,
 		logger.Debug("sets = %v", sets)
 
 		// Check that the volume does not have too many bricks
-		if (sets*v.Durability.BricksInSet() + len(v.Bricks)) > BRICK_MAX_NUM {
+		if (sets*v.Durability.BricksInSet() + len(v.Bricks)) > BrickMaxNum {
 			logger.Debug("Maximum number of bricks reached")
 			// Try other clusters if possible
 			return nil, ErrMaxBricks
