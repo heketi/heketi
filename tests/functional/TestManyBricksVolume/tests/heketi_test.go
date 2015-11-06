@@ -228,13 +228,13 @@ func TestHeketiManyBricksVolume(t *testing.T) {
 
 	// Create a volume with replica 3
 	volReq := &glusterfs.VolumeCreateRequest{}
-	volReq.Size = 575
+	volReq.Size = 250
 	volReq.Durability.Type = client.VOLUME_CREATE_DURABILITY_TYPE_REPLICATE
 	volReq.Durability.Replicate.Replica = 3
 
 	volInfo, err := heketi.VolumeCreate(volReq)
 	tests.Assert(t, err == nil)
-	tests.Assert(t, volInfo.Size == 575)
+	tests.Assert(t, volInfo.Size == 250)
 	tests.Assert(t, volInfo.Mount.GlusterFS.MountPoint != "")
 	tests.Assert(t, volInfo.Durability.Type == client.VOLUME_CREATE_DURABILITY_TYPE_REPLICATE)
 	tests.Assert(t, volInfo.Durability.Replicate.Replica == 3)
