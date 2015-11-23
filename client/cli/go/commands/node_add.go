@@ -64,7 +64,7 @@ EXAMPLES
   $ heketi-cli node add \
       -zone=3 \
       -cluster=3e098cb4407d7109806bb196d9e8f095 \
-      -managment-host-name=node1-manage.gluster.lab.com \
+      -management-host-name=node1-manage.gluster.lab.com \
       -storage-host-name=node1-storage.gluster.lab.com
 `)
 	}
