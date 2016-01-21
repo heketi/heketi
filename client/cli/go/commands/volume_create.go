@@ -102,7 +102,7 @@ EXAMPLES
       $ heketi-cli volume create -size=100 -snapshot-factor=1.5 -replica=2 
 
   * Create a 100GB distributed volume
-      $ heketi-cli volume create -size=100 -durabilty=none
+      $ heketi-cli volume create -size=100 -durability=none
 
   * Create a 100GB erasure coded 4+2 volume with 25GB snapshot storage:
       $ heketi-cli volume create -size=100 -durability=disperse -snapshot-factor=1.25
