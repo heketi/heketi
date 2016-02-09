@@ -328,6 +328,29 @@ func TestNodeAddDelete(t *testing.T) {
 	tests.Assert(t, node.ClusterId == clusterinfo.Id)
 	tests.Assert(t, len(node.DevicesInfo) == 0)
 
+	// Check that the node has registered
+	err = app.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(BOLTDB_BUCKET_NODE))
+		tests.Assert(t, b != nil)
+
+		val := b.Get([]byte("STORAGE" + node.Hostnames.Storage[0]))
+		tests.Assert(t, string(val) == node.Id)
+
+		val = b.Get([]byte("MANAGE" + node.Hostnames.Manage[0]))
+		tests.Assert(t, string(val) == node.Id)
+
+		return nil
+	})
+	tests.Assert(t, err == nil)
+
+	//---- OK, now it should have been registered
+	// now let's add it again
+	// It should return a conflict
+	r, err = http.Post(ts.URL+"/nodes", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusConflict)
+	tests.Assert(t, err == nil)
+
 	// Check Cluster has node
 	r, err = http.Get(ts.URL + "/clusters/" + clusterinfo.Id)
 	tests.Assert(t, r.StatusCode == http.StatusOK)
@@ -442,6 +465,31 @@ func TestNodeAddDelete(t *testing.T) {
 
 	err = utils.GetJsonFromResponse(r, &clusterinfo)
 	tests.Assert(t, len(clusterinfo.Nodes) == 0)
+
+	// It should have deregistered the node
+	// We should be able to add it again
+	r, err = http.Post(ts.URL+"/nodes", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	location, err = r.Location()
+	tests.Assert(t, err == nil)
+
+	// Query queue until finished
+	for {
+		r, err = http.Get(location.String())
+		tests.Assert(t, err == nil)
+		tests.Assert(t, r.StatusCode == http.StatusOK)
+		if r.ContentLength <= 0 {
+			time.Sleep(time.Millisecond * 10)
+			continue
+		} else {
+			// Should have node information here
+			tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
+			err = utils.GetJsonFromResponse(r, &node)
+			tests.Assert(t, err == nil)
+			break
+		}
+	}
 }
 
 func TestNodeInfoIdNotFound(t *testing.T) {
@@ -592,11 +640,13 @@ func TestNodePeerProbeFailure(t *testing.T) {
 	clusterid := clusterlist[0]
 
 	// Create a node
+	storage_name := "host.hostname.com"
+	manage_name := "host.hostname.com"
 	request := []byte(`{
 		"cluster" : "` + clusterid + `",
 		"hostnames" : {
-			"storage" : [ "storage.hostname.com" ],
-			"manage" : [ "manage.hostname.com"  ]
+			"storage" : [ "` + storage_name + `" ],
+			"manage" : [ "` + manage_name + `"  ]
 		},
 		"zone" : 1
     }`)
@@ -636,7 +686,19 @@ func TestNodePeerProbeFailure(t *testing.T) {
 			return err
 		}
 
+		// Check that the node has not registered
+		b := tx.Bucket([]byte(BOLTDB_BUCKET_NODE))
+		tests.Assert(t, b != nil)
+
+		val := b.Get([]byte("STORAGE" + storage_name))
+		tests.Assert(t, val == nil)
+
+		val = b.Get([]byte("MANAGE" + manage_name))
+		tests.Assert(t, val == nil)
+
+		// Set nodelist
 		nodelist = EntryKeys(tx, BOLTDB_BUCKET_NODE)
+
 		return nil
 	})
 	tests.Assert(t, err == nil)

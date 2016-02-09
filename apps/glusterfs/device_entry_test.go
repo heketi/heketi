@@ -184,6 +184,77 @@ func TestNewDeviceEntryFromIdNotFound(t *testing.T) {
 
 }
 
+func TestDeviceEntryRegister(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	// Create a device
+	req := &DeviceAddRequest{}
+	req.NodeId = "abc"
+	req.Name = "/dev/" + utils.GenUUID()
+	req.Weight = 123
+
+	d := NewDeviceEntryFromRequest(req)
+
+	// Register node
+	err := app.db.Update(func(tx *bolt.Tx) error {
+		err := d.Register(tx)
+		tests.Assert(t, err == nil)
+
+		return err
+	})
+	tests.Assert(t, err == nil)
+
+	// Should not be able to register again
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		err := d.Register(tx)
+		tests.Assert(t, err != nil)
+
+		return err
+	})
+	tests.Assert(t, err != nil)
+
+	// Create another device on a different node device
+	req = &DeviceAddRequest{}
+	req.NodeId = "def"
+	req.Name = "/dev/" + utils.GenUUID()
+	req.Weight = 123
+
+	d2 := NewDeviceEntryFromRequest(req)
+
+	// Same device on different node should work
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		err := d2.Register(tx)
+		tests.Assert(t, err == nil)
+
+		return err
+	})
+	tests.Assert(t, err == nil)
+
+	// Remove d
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		err := d.Deregister(tx)
+		tests.Assert(t, err == nil)
+
+		return err
+	})
+	tests.Assert(t, err == nil)
+
+	// Register d node again
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		err := d.Register(tx)
+		tests.Assert(t, err == nil)
+
+		return err
+	})
+	tests.Assert(t, err == nil)
+
+}
+
 func TestNewDeviceEntryFromId(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)

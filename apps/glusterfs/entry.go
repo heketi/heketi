@@ -27,6 +27,36 @@ type DbEntry interface {
 	Unmarshal(buffer []byte) error
 }
 
+// Checks if the key already exists in the database.  If it does not exist,
+// then it will save the key value pair in the datababucket se
+func EntryRegister(tx *bolt.Tx, entry DbEntry, key string, value []byte) ([]byte, error) {
+	godbc.Require(tx != nil)
+	godbc.Require(len(key) > 0)
+
+	// Access bucket
+	b := tx.Bucket([]byte(entry.BucketName()))
+	if b == nil {
+		err := ErrDbAccess
+		logger.Err(err)
+		return nil, err
+	}
+
+	// Check if key exists already
+	val := b.Get([]byte(key))
+	if val != nil {
+		return val, ErrKeyExists
+	}
+
+	// Key does not exist.  We can save it
+	err := b.Put([]byte(key), value)
+	if err != nil {
+		logger.Err(err)
+		return nil, err
+	}
+
+	return nil, nil
+}
+
 func EntryKeys(tx *bolt.Tx, bucket string) []string {
 	list := make([]string, 0)
 

@@ -118,6 +118,103 @@ func TestNodeEntryAddDeleteDevices(t *testing.T) {
 	tests.Assert(t, len(n.Devices) == 1)
 }
 
+func TestNodeEntryRegister(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	// Create a node
+	req := &NodeAddRequest{
+		ClusterId: "123",
+		Hostnames: HostAddresses{
+			Manage:  []string{"manage"},
+			Storage: []string{"storage"},
+		},
+		Zone: 99,
+	}
+	n := NewNodeEntryFromRequest(req)
+
+	// Register node
+	err := app.db.Update(func(tx *bolt.Tx) error {
+		err := n.Register(tx)
+		tests.Assert(t, err == nil)
+
+		return err
+	})
+	tests.Assert(t, err == nil)
+
+	// Should not be able to register again
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		err := n.Register(tx)
+		tests.Assert(t, err != nil)
+
+		return err
+	})
+	tests.Assert(t, err != nil)
+
+	// Create a new node on *different* cluster
+	req = &NodeAddRequest{
+		ClusterId: "abc",
+		Hostnames: HostAddresses{
+			// Same name as previous
+			Manage:  []string{"manage"},
+			Storage: []string{"storage"},
+		},
+		Zone: 99,
+	}
+	diff_cluster_n := NewNodeEntryFromRequest(req)
+
+	// Should not be able to register diff_cluster_n
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		err := diff_cluster_n.Register(tx)
+		tests.Assert(t, err != nil)
+
+		return err
+	})
+	tests.Assert(t, err != nil)
+
+	// Add a new node
+	req = &NodeAddRequest{
+		ClusterId: "3",
+		Hostnames: HostAddresses{
+			Manage:  []string{"manage2"},
+			Storage: []string{"storage2"},
+		},
+		Zone: 99,
+	}
+	n2 := NewNodeEntryFromRequest(req)
+
+	// Register n2 node
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		err := n2.Register(tx)
+		tests.Assert(t, err == nil)
+
+		return err
+	})
+	tests.Assert(t, err == nil)
+
+	// Remove n
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		err := n.Deregister(tx)
+		tests.Assert(t, err == nil)
+
+		return err
+	})
+	tests.Assert(t, err == nil)
+
+	// Register n node again
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		err := n.Register(tx)
+		tests.Assert(t, err == nil)
+
+		return err
+	})
+	tests.Assert(t, err == nil)
+
+}
 func TestNewNodeEntryFromIdNotFound(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
