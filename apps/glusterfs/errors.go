@@ -29,4 +29,5 @@ var (
 	ErrMininumBrickSize = errors.New("Minimum brick size limit reached.  Out of space.")
 	ErrDbAccess         = errors.New("Unable to access db")
 	ErrAccessList       = errors.New("Unable to access list")
+	ErrKeyExists        = errors.New("Key already exists in the database")
 )

@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
+	"github.com/heketi/heketi/executors"
 	"github.com/heketi/tests"
 	"github.com/heketi/utils"
 	"net/http"
@@ -151,6 +152,11 @@ func TestDeviceAddDelete(t *testing.T) {
 			break
 		}
 	}
+
+	// Add the same device.  It should conflict
+	r, err = http.Post(ts.URL+"/devices", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusConflict)
 
 	// Add a second device
 	request = []byte(`{
@@ -299,6 +305,134 @@ func TestDeviceAddDelete(t *testing.T) {
 	})
 	tests.Assert(t, err == nil)
 	tests.Assert(t, !utils.SortedStringHas(node.Devices, fakeid))
+
+	// Check the registration of the device has been removed,
+	// and the device can be added again
+	request = []byte(`{
+        "node" : "` + node.Info.Id + `",
+        "name" : "/dev/fake1",
+        "weight" : 10
+    }`)
+	r, err = http.Post(ts.URL+"/devices", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	location, err = r.Location()
+	tests.Assert(t, err == nil)
+
+	// Query queue until finished
+	for {
+		r, err = http.Get(location.String())
+		tests.Assert(t, err == nil)
+		if r.Header.Get("X-Pending") == "true" {
+			tests.Assert(t, r.StatusCode == http.StatusOK)
+			time.Sleep(time.Millisecond * 10)
+		} else {
+			tests.Assert(t, r.StatusCode == http.StatusNoContent)
+			break
+		}
+	}
+}
+
+func TestDeviceAddCleansUp(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Add Cluster then a Node on the cluster
+	// node
+	cluster := NewClusterEntryFromRequest()
+	nodereq := &NodeAddRequest{
+		ClusterId: cluster.Info.Id,
+		Hostnames: HostAddresses{
+			Manage:  []string{"manage"},
+			Storage: []string{"storage"},
+		},
+		Zone: 99,
+	}
+	node := NewNodeEntryFromRequest(nodereq)
+	cluster.NodeAdd(node.Info.Id)
+
+	// Save information in the db
+	err := app.db.Update(func(tx *bolt.Tx) error {
+		err := cluster.Save(tx)
+		if err != nil {
+			return err
+		}
+
+		err = node.Save(tx)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	tests.Assert(t, err == nil)
+
+	// Mock the device setup to return an error, which will
+	// cause the cleanup.
+	deviceSetupFn := app.xo.MockDeviceSetup
+	app.xo.MockDeviceSetup = func(host, device, vgid string) (*executors.DeviceInfo, error) {
+		return nil, ErrDbAccess
+	}
+
+	// Create a request to a device
+	request := []byte(`{
+        "node" : "` + node.Info.Id + `",
+        "name" : "/dev/fake1",
+        "weight" : 10
+    }`)
+
+	// Add device using POST
+	r, err := http.Post(ts.URL+"/devices", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	location, err := r.Location()
+	tests.Assert(t, err == nil)
+
+	// Query queue until finished
+	for {
+		r, err = http.Get(location.String())
+		tests.Assert(t, err == nil)
+		if r.Header.Get("X-Pending") == "true" {
+			tests.Assert(t, r.StatusCode == http.StatusOK)
+			time.Sleep(time.Millisecond * 10)
+		} else {
+			tests.Assert(t, r.StatusCode != http.StatusNoContent)
+			break
+		}
+	}
+
+	// Let's reset the mocked function
+	app.xo.MockDeviceSetup = deviceSetupFn
+
+	// Now it should work
+	// Add device using POST
+	r, err = http.Post(ts.URL+"/devices", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	location, err = r.Location()
+	tests.Assert(t, err == nil)
+
+	// Query queue until finished
+	for {
+		r, err = http.Get(location.String())
+		tests.Assert(t, err == nil)
+		if r.Header.Get("X-Pending") == "true" {
+			tests.Assert(t, r.StatusCode == http.StatusOK)
+			time.Sleep(time.Millisecond * 10)
+		} else {
+			tests.Assert(t, r.StatusCode == http.StatusNoContent)
+			break
+		}
+	}
 }
 
 func TestDeviceInfoIdNotFound(t *testing.T) {

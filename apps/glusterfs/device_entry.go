@@ -19,6 +19,8 @@ package glusterfs
 import (
 	"bytes"
 	"encoding/gob"
+	"errors"
+	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/heketi/utils"
 	"github.com/lpabon/godbc"
@@ -77,6 +79,41 @@ func NewDeviceEntryFromId(tx *bolt.Tx, id string) (*DeviceEntry, error) {
 	}
 
 	return entry, nil
+}
+
+func (d *DeviceEntry) registerKey() string {
+	return "DEVICE" + d.NodeId + d.Info.Name
+}
+
+func (d *DeviceEntry) Register(tx *bolt.Tx) error {
+	godbc.Require(tx != nil)
+
+	val, err := EntryRegister(tx,
+		d,
+		d.registerKey(),
+		[]byte(d.Id()))
+	if err == ErrKeyExists {
+		return errors.New(
+			fmt.Sprintf("Device %v is already used on node %v by device %v",
+				d.Info.Name,
+				d.NodeId,
+				string(val)))
+	} else if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (d *DeviceEntry) Deregister(tx *bolt.Tx) error {
+	godbc.Require(tx != nil)
+
+	err := EntryDelete(tx, d, d.registerKey())
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (d *DeviceEntry) SetId(id string) {

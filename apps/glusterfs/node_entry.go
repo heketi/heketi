@@ -19,6 +19,8 @@ package glusterfs
 import (
 	"bytes"
 	"encoding/gob"
+	"errors"
+	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/heketi/utils"
 	"github.com/lpabon/godbc"
@@ -59,6 +61,63 @@ func NewNodeEntryFromId(tx *bolt.Tx, id string) (*NodeEntry, error) {
 	}
 
 	return entry, nil
+}
+
+func (n *NodeEntry) registerManageKey(host string) string {
+	return "MANAGE" + host
+}
+
+func (n *NodeEntry) registerStorageKey(host string) string {
+	return "STORAGE" + host
+}
+
+func (n *NodeEntry) Register(tx *bolt.Tx) error {
+
+	// Save manage hostnames
+	for _, h := range n.Info.Hostnames.Manage {
+		val, err := EntryRegister(tx, n, n.registerManageKey(h), []byte(n.Info.Id))
+		if err == ErrKeyExists {
+			return errors.New(fmt.Sprintf("Hostname %v already used by node with id %v\n",
+				h, string(val)))
+		} else if err != nil {
+			return err
+		}
+	}
+
+	// Save storage hostnames
+	for _, h := range n.Info.Hostnames.Storage {
+		val, err := EntryRegister(tx, n, n.registerStorageKey(h), []byte(n.Info.Id))
+		if err == ErrKeyExists {
+			return errors.New(fmt.Sprintf("Hostname %v already used by node with id %v\n",
+				h, string(val)))
+		} else if err != nil {
+			return err
+		}
+	}
+
+	return nil
+
+}
+
+func (n *NodeEntry) Deregister(tx *bolt.Tx) error {
+
+	// Remove manage hostnames from Db
+	for _, h := range n.Info.Hostnames.Manage {
+		err := EntryDelete(tx, n, n.registerManageKey(h))
+		if err != nil {
+			return err
+		}
+	}
+
+	// Remove storage hostnames
+	for _, h := range n.Info.Hostnames.Storage {
+		err := EntryDelete(tx, n, n.registerStorageKey(h))
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (n *NodeEntry) BucketName() string {

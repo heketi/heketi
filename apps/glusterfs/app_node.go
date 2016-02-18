@@ -59,10 +59,13 @@ func (a *App) NodeAdd(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Create a node entry
+	node := NewNodeEntryFromRequest(&msg)
+
 	// Get cluster and peer node
 	var cluster *ClusterEntry
 	var peer_node *NodeEntry
-	err = a.db.View(func(tx *bolt.Tx) error {
+	err = a.db.Update(func(tx *bolt.Tx) error {
 		var err error
 		cluster, err = NewClusterEntryFromId(tx, msg.ClusterId)
 		if err == ErrNotFound {
@@ -70,6 +73,13 @@ func (a *App) NodeAdd(w http.ResponseWriter, r *http.Request) {
 			return err
 		} else if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+
+		// Register node
+		err = node.Register(tx)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusConflict)
 			return err
 		}
 
@@ -89,12 +99,19 @@ func (a *App) NodeAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create a node entry
-	node := NewNodeEntryFromRequest(&msg)
-
 	// Add node
 	logger.Info("Adding node %v", node.ManageHostName())
-	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
+	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (seeother string, e error) {
+
+		// Cleanup in case of failure
+		defer func() {
+			if e != nil {
+				a.db.Update(func(tx *bolt.Tx) error {
+					node.Deregister(tx)
+					return nil
+				})
+			}
+		}()
 
 		// Peer probe if there is at least one other node
 		// TODO: What happens if the peer_node is not responding.. we need to choose another.
@@ -280,6 +297,9 @@ func (a *App) NodeDelete(w http.ResponseWriter, r *http.Request) {
 				logger.Err(err)
 				return err
 			}
+
+			// Remove hostnames
+			node.Deregister(tx)
 
 			// Delete node from db
 			err = node.Delete(tx)
