@@ -10,16 +10,19 @@ Heketi provides a RESTful management interface which can be used to manage the l
 When a request is received to create a volume, Heketi will first allocate the appropriate storage in a cluster, making sure to place brick replicas across failure domains.  It will then format, then mount the storage to create bricks for the volume requested.  Once all bricks have been automatically created, Heketi will finally satisfy the request by creating, then starting the newly created GlusterFS volume.
 
 # Downloads
-Please go to the [Releases](https://github.com/heketi/heketi/releases) page for the latest release.
-
-## Containers
-You can also install Heketi as a container.  Please see https://hub.docker.com/r/heketi/heketi for more information
+Please go to the [wiki/Installation](https://github.com/heketi/heketi/wiki/Installation) for more infomration
 
 # Documentation
 Please visit the [WIKI](http://github.com/heketi/heketi/wiki) for project documentation and demo information
 
 # Demo
 Please visit [Vagrant-Heketi](https://github.com/heketi/vagrant-heketi) to try out the demo.
+
+# Talks
+
+* Devconf.cz 2016:
+
+[![image](https://img.youtube.com/vi/jpkG4wciy4U/3.jpg)](https://www.youtube.com/watch?v=jpkG4wciy4U) [Slides](https://github.com/lpabon/go-slides)
 
 # Licensing
 Heketi is licensed under the Apache License, Version 2.0.  See [LICENSE](https://github.com/heketi/heketi/blob/master/LICENSE) for the full license text.
