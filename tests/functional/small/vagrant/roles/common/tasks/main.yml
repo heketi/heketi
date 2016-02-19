@@ -1,14 +1,9 @@
-- name: Setup network
-  command: ifup enp0s8
-  when: provider == "virtualbox"
-
-- name: setup epel
-  command: yum -y install http://mirror.clarkson.edu/epel/7/x86_64/e/epel-release-7-5.noarch.rpm creates=/etc/yum.repos.d/epel.repo
-
-- name: install wget
+- name: install packages
   yum: name={{ item }} state=present
   with_items:
+    - epel-release
     - wget
+    - screen
 
 - name: enable glusterfs repo
   shell: wget -P /etc/yum.repos.d http://download.gluster.org/pub/gluster/glusterfs/LATEST/EPEL.repo/glusterfs-epel.repo creates=/etc/yum.repos.d/glusterfs-epel.repo

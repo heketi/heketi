@@ -53,15 +53,15 @@ var (
 
 	// Disks on each system
 	disks = []string{
-		"/dev/sdb",
-		"/dev/sdc",
-		"/dev/sdd",
-		"/dev/sde",
+		"/dev/vdb",
+		"/dev/vdc",
+		"/dev/vdd",
+		"/dev/vde",
 
-		"/dev/sdf",
-		"/dev/sdg",
-		"/dev/sdh",
-		"/dev/sdi",
+		"/dev/vdf",
+		"/dev/vdg",
+		"/dev/vdh",
+		"/dev/vdi",
 	}
 )
 
@@ -162,8 +162,8 @@ func TestConnection(t *testing.T) {
 func TestHeketiVolumes(t *testing.T) {
 
 	// Setup the VM storage topology
+	teardownCluster(t)
 	setupCluster(t)
-	defer teardownCluster(t)
 
 	// Create a volume and delete a few time to test garbage collection
 	for i := 0; i < 2; i++ {
@@ -244,27 +244,4 @@ func TestHeketiVolumes(t *testing.T) {
 	// Delete volume
 	err = heketi.VolumeDelete(volInfo.Id)
 	tests.Assert(t, err == nil)
-
-	// Create an EC volume
-	volReq = &glusterfs.VolumeCreateRequest{}
-	volReq.Size = 100
-	volReq.Durability.Type = client.VOLUME_CREATE_DURABILITY_TYPE_DISPERSION
-	volReq.Durability.Disperse.Data = 4
-	volReq.Durability.Disperse.Redundancy = 2
-
-	volInfo, err = heketi.VolumeCreate(volReq)
-	tests.Assert(t, err == nil)
-	tests.Assert(t, volInfo.Size == 100)
-	tests.Assert(t, volInfo.Mount.GlusterFS.MountPoint != "")
-	tests.Assert(t, volInfo.Name != "")
-	tests.Assert(t, len(volInfo.Bricks) == 12)
-
-	// Expand volume
-	volExpReq = &glusterfs.VolumeExpandRequest{}
-	volExpReq.Size = 200
-
-	volInfo, err = heketi.VolumeExpand(volInfo.Id, volExpReq)
-	tests.Assert(t, err == nil)
-	tests.Assert(t, volInfo.Size == 100+200)
-	tests.Assert(t, len(volInfo.Bricks) == 24)
 }
