@@ -5,6 +5,3 @@
 
 - name: start glusterd
   service: name=glusterd state=started enabled=yes
-
-- name: make /gluster directory
-  file: path=/gluster state=directory

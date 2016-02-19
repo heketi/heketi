@@ -8,8 +8,9 @@ DISKS = 8
 Vagrant.configure("2") do |config|
     config.ssh.insert_key = false
 
-    config.vm.provider :libvirt do |v|
-        config.vm.box = "centos/7"
+    config.vm.provider :libvirt do |v,override|
+        override.vm.box = "centos/7"
+        override.vm.synced_folder '.', '/home/vagrant/sync', disabled: true
     end
     config.vm.provider :virtualbox do |v|
         config.vm.box = "bento/centos-7.1"
@@ -20,12 +21,12 @@ Vagrant.configure("2") do |config|
         client.vm.network :private_network, ip: "192.168.10.90"
         client.vm.host_name = "client"
         client.vm.provider :virtualbox do |vb|
-            vb.memory = 1024
+            vb.memory = 512
             vb.cpus = 2
         end
 
         client.vm.provider :libvirt do |lv|
-            lv.memory = 1024
+            lv.memory = 512
             lv.cpus = 2
         end
 
@@ -59,14 +60,10 @@ Vagrant.configure("2") do |config|
                     ansible.playbook = "site.yml"
                     ansible.groups = {
                         "client" => ["client"],
+                        "heketi" => ["storage0"],
                         "gluster" => (0..NODES-1).map {|j| "storage#{j}"},
                     }
-                    storage.vm.provider :virtualbox do
-                            ansible.extra_vars = {provider: "virtualbox"}
-                    end
-                    storage.vm.provider :libvirt do
-                            ansible.extra_vars = {provider: "libvirt"}
-                    end
+
                 end
             end
         end
