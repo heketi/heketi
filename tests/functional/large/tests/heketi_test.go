@@ -105,7 +105,6 @@ func setupCluster(t *testing.T) {
 
 						driveReq := &glusterfs.DeviceAddRequest{}
 						driveReq.Name = d
-						driveReq.Weight = 100
 						driveReq.NodeId = node.Id
 
 						err := heketi.DeviceAdd(driveReq)

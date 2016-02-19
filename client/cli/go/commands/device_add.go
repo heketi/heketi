@@ -82,7 +82,6 @@ func (d *DeviceAddCommand) Exec(args []string) error {
 	req := &glusterfs.DeviceAddRequest{}
 	req.Name = d.device
 	req.NodeId = d.nodeId
-	req.Weight = 100
 
 	// Create a client
 	heketi := client.NewClient(d.options.Url, d.options.User, d.options.Key)

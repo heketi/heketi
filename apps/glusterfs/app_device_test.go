@@ -72,8 +72,7 @@ func TestDeviceAddBadRequests(t *testing.T) {
 	// Make a request with unknown node
 	request = []byte(`{
         "node" : "123",
-        "name" : "/dev/fake",
-        "weight" : 20
+        "name" : "/dev/fake"
     }`)
 
 	// Post unknown node
@@ -129,8 +128,7 @@ func TestDeviceAddDelete(t *testing.T) {
 	// Create a request to a device
 	request := []byte(`{
         "node" : "` + node.Info.Id + `",
-        "name" : "/dev/fake1",
-        "weight" : 10
+        "name" : "/dev/fake1"
     }`)
 
 	// Add device using POST
@@ -161,8 +159,7 @@ func TestDeviceAddDelete(t *testing.T) {
 	// Add a second device
 	request = []byte(`{
         "node" : "` + node.Info.Id + `",
-        "name" : "/dev/fake2",
-        "weight" : 20
+        "name" : "/dev/fake2"
     }`)
 
 	// Add device using POST
@@ -208,13 +205,11 @@ func TestDeviceAddDelete(t *testing.T) {
 	val, ok := devicemap["/dev/fake1"]
 	tests.Assert(t, ok)
 	tests.Assert(t, val.Info.Name == "/dev/fake1")
-	tests.Assert(t, val.Info.Weight == 10)
 	tests.Assert(t, len(val.Bricks) == 0)
 
 	val, ok = devicemap["/dev/fake2"]
 	tests.Assert(t, ok)
 	tests.Assert(t, val.Info.Name == "/dev/fake2")
-	tests.Assert(t, val.Info.Weight == 20)
 	tests.Assert(t, len(val.Bricks) == 0)
 
 	// Add some bricks to check if delete conflicts works
@@ -310,8 +305,7 @@ func TestDeviceAddDelete(t *testing.T) {
 	// and the device can be added again
 	request = []byte(`{
         "node" : "` + node.Info.Id + `",
-        "name" : "/dev/fake1",
-        "weight" : 10
+        "name" : "/dev/fake1"
     }`)
 	r, err = http.Post(ts.URL+"/devices", "application/json", bytes.NewBuffer(request))
 	tests.Assert(t, err == nil)
@@ -386,8 +380,7 @@ func TestDeviceAddCleansUp(t *testing.T) {
 	// Create a request to a device
 	request := []byte(`{
         "node" : "` + node.Info.Id + `",
-        "name" : "/dev/fake1",
-        "weight" : 10
+        "name" : "/dev/fake1"
     }`)
 
 	// Add device using POST
@@ -474,7 +467,6 @@ func TestDeviceInfo(t *testing.T) {
 	device := NewDeviceEntry()
 	device.Info.Id = "abc"
 	device.Info.Name = "/dev/fake1"
-	device.Info.Weight = 101
 	device.NodeId = "def"
 	device.StorageSet(10000)
 	device.StorageAllocate(1000)
@@ -495,7 +487,6 @@ func TestDeviceInfo(t *testing.T) {
 	err = utils.GetJsonFromResponse(r, &info)
 	tests.Assert(t, info.Id == device.Info.Id)
 	tests.Assert(t, info.Name == device.Info.Name)
-	tests.Assert(t, info.Weight == device.Info.Weight)
 	tests.Assert(t, info.Storage.Free == device.Info.Storage.Free)
 	tests.Assert(t, info.Storage.Used == device.Info.Storage.Used)
 	tests.Assert(t, info.Storage.Total == device.Info.Storage.Total)
@@ -520,7 +511,6 @@ func TestDeviceDeleteErrors(t *testing.T) {
 	device := NewDeviceEntry()
 	device.Info.Id = "abc"
 	device.Info.Name = "/dev/fake1"
-	device.Info.Weight = 101
 	device.NodeId = "def"
 	device.StorageSet(10000)
 	device.StorageAllocate(1000)

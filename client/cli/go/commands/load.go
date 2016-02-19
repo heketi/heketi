@@ -131,7 +131,6 @@ func (l *LoadCommand) Exec(args []string) error {
 				req := &glusterfs.DeviceAddRequest{}
 				req.Name = device
 				req.NodeId = nodeInfo.Id
-				req.Weight = 100
 				err := heketi.DeviceAdd(req)
 				if err != nil {
 					return nil
