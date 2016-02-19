@@ -63,7 +63,6 @@ func NewDeviceEntryFromRequest(req *DeviceAddRequest) *DeviceEntry {
 	device := NewDeviceEntry()
 	device.Info.Id = utils.GenUUID()
 	device.Info.Name = req.Name
-	device.Info.Weight = req.Weight
 	device.NodeId = req.NodeId
 
 	return device
@@ -163,7 +162,6 @@ func (d *DeviceEntry) NewInfoResponse(tx *bolt.Tx) (*DeviceInfoResponse, error) 
 	info := &DeviceInfoResponse{}
 	info.Id = d.Info.Id
 	info.Name = d.Info.Name
-	info.Weight = d.Info.Weight
 	info.Storage = d.Info.Storage
 	info.Bricks = make([]BrickInfo, 0)
 

@@ -30,7 +30,6 @@ func createSampleDeviceEntry(nodeid string, disksize uint64) *DeviceEntry {
 	req := &DeviceAddRequest{}
 	req.NodeId = nodeid
 	req.Name = "/dev/" + utils.GenUUID()[:8]
-	req.Weight = 123
 
 	d := NewDeviceEntryFromRequest(req)
 	d.StorageSet(disksize)
@@ -44,7 +43,6 @@ func TestNewDeviceEntry(t *testing.T) {
 	tests.Assert(t, d != nil)
 	tests.Assert(t, d.Info.Id == "")
 	tests.Assert(t, d.Info.Name == "")
-	tests.Assert(t, d.Info.Weight == 0)
 	tests.Assert(t, d.Info.Storage.Free == 0)
 	tests.Assert(t, d.Info.Storage.Total == 0)
 	tests.Assert(t, d.Info.Storage.Used == 0)
@@ -57,13 +55,11 @@ func TestNewDeviceEntryFromRequest(t *testing.T) {
 	req := &DeviceAddRequest{}
 	req.NodeId = "123"
 	req.Name = "/dev/" + utils.GenUUID()
-	req.Weight = 123
 
 	d := NewDeviceEntryFromRequest(req)
 	tests.Assert(t, d != nil)
 	tests.Assert(t, d.Info.Id != "")
 	tests.Assert(t, d.Info.Name == req.Name)
-	tests.Assert(t, d.Info.Weight == req.Weight)
 	tests.Assert(t, d.Info.Storage.Free == 0)
 	tests.Assert(t, d.Info.Storage.Total == 0)
 	tests.Assert(t, d.Info.Storage.Used == 0)
@@ -77,7 +73,6 @@ func TestNewDeviceEntryMarshal(t *testing.T) {
 	req := &DeviceAddRequest{}
 	req.NodeId = "abc"
 	req.Name = "/dev/" + utils.GenUUID()
-	req.Weight = 123
 
 	d := NewDeviceEntryFromRequest(req)
 	d.Info.Storage.Free = 10
@@ -102,7 +97,6 @@ func TestDeviceEntryNewBrickEntry(t *testing.T) {
 	req := &DeviceAddRequest{}
 	req.NodeId = "abc"
 	req.Name = "/dev/" + utils.GenUUID()
-	req.Weight = 123
 
 	d := NewDeviceEntryFromRequest(req)
 	d.Info.Storage.Free = 900
@@ -196,7 +190,6 @@ func TestDeviceEntryRegister(t *testing.T) {
 	req := &DeviceAddRequest{}
 	req.NodeId = "abc"
 	req.Name = "/dev/" + utils.GenUUID()
-	req.Weight = 123
 
 	d := NewDeviceEntryFromRequest(req)
 
@@ -222,7 +215,6 @@ func TestDeviceEntryRegister(t *testing.T) {
 	req = &DeviceAddRequest{}
 	req.NodeId = "def"
 	req.Name = "/dev/" + utils.GenUUID()
-	req.Weight = 123
 
 	d2 := NewDeviceEntryFromRequest(req)
 
@@ -267,7 +259,6 @@ func TestNewDeviceEntryFromId(t *testing.T) {
 	req := &DeviceAddRequest{}
 	req.NodeId = "abc"
 	req.Name = "/dev/" + utils.GenUUID()
-	req.Weight = 123
 
 	d := NewDeviceEntryFromRequest(req)
 	d.Info.Storage.Free = 10
@@ -308,7 +299,6 @@ func TestNewDeviceEntrySaveDelete(t *testing.T) {
 	req := &DeviceAddRequest{}
 	req.NodeId = "abc"
 	req.Name = "/dev/" + utils.GenUUID()
-	req.Weight = 123
 
 	d := NewDeviceEntryFromRequest(req)
 	d.Info.Storage.Free = 10
@@ -406,7 +396,6 @@ func TestNewDeviceEntryNewInfoResponseBadBrickIds(t *testing.T) {
 	req := &DeviceAddRequest{}
 	req.NodeId = "abc"
 	req.Name = "/dev/" + utils.GenUUID()
-	req.Weight = 123
 
 	// Add bad brick ids
 	d := NewDeviceEntryFromRequest(req)
@@ -452,7 +441,6 @@ func TestNewDeviceEntryNewInfoResponse(t *testing.T) {
 	req := &DeviceAddRequest{}
 	req.NodeId = "abc"
 	req.Name = "/dev/" + utils.GenUUID()
-	req.Weight = 123
 
 	d := NewDeviceEntryFromRequest(req)
 	d.Info.Storage.Free = 10
@@ -499,7 +487,6 @@ func TestNewDeviceEntryNewInfoResponse(t *testing.T) {
 	tests.Assert(t, err == nil)
 	tests.Assert(t, info.Id == d.Info.Id)
 	tests.Assert(t, info.Name == d.Info.Name)
-	tests.Assert(t, info.Weight == d.Info.Weight)
 	tests.Assert(t, reflect.DeepEqual(info.Storage, d.Info.Storage))
 	tests.Assert(t, len(info.Bricks) == 1)
 	tests.Assert(t, info.Bricks[0].Id == "bbb")

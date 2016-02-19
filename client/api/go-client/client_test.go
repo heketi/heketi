@@ -211,7 +211,6 @@ func TestClientDevice(t *testing.T) {
 	// Create a device request
 	deviceReq := &glusterfs.DeviceAddRequest{}
 	deviceReq.Name = "sda"
-	deviceReq.Weight = 100
 	deviceReq.NodeId = node.Id
 
 	// Create device
@@ -224,7 +223,6 @@ func TestClientDevice(t *testing.T) {
 	tests.Assert(t, len(info.DevicesInfo) == 1)
 	tests.Assert(t, len(info.DevicesInfo[0].Bricks) == 0)
 	tests.Assert(t, info.DevicesInfo[0].Name == deviceReq.Name)
-	tests.Assert(t, info.DevicesInfo[0].Weight == deviceReq.Weight)
 	tests.Assert(t, info.DevicesInfo[0].Id != "")
 
 	// Get info from an unknown id
@@ -297,7 +295,6 @@ func TestClientVolume(t *testing.T) {
 
 				deviceReq := &glusterfs.DeviceAddRequest{}
 				deviceReq.Name = "sd" + utils.GenUUID()[:8]
-				deviceReq.Weight = 100
 				deviceReq.NodeId = node.Id
 
 				// Create device

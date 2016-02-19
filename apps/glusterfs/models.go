@@ -50,8 +50,7 @@ type BrickInfo struct {
 
 // Device
 type Device struct {
-	Name   string `json:"name"`
-	Weight int    `json:"weight"`
+	Name string `json:"name"`
 }
 
 type DeviceAddRequest struct {
