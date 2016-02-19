@@ -9,19 +9,17 @@ env:
   - secure: tCj+iGIN2GM5yPneme35KIQwqGcXMOLod00qvG/Af0lkjEVJRRNz3gnB3P2dNyj9Nc4FWxSUIjCiIkblOMaEKxPXp1S3Zo7gRBVphyNY5ZvIKeqKoXvBPd6hi9Ft2TaN+4vDczfAKOI/S3/3kN3NmgGCYNTLOues0T4yhVd3v14hoQJxw4Jbjlsj8RGfLrqp+dInFv2tS+xTyK+q/EOiaCpBq4PfK6giKwt943o7jc9v0iWjnP2rWq/AotMo4QutoC0OVeJT8aG41sC5LvlYTBQB22E8Zv439JgHsdhQU1NRd/1VLGKATToxkUxh2Reei42koAWFJ+EfFvAIx03k5+ZYJY7W+Rtuy8jn0uRaZyvvQdUvyT22e9lSJzqkP6JAe7oru9hf9X4K0XSOfMMFUiJDC+rNm0Ajd+r/5h6C+jRqIMDvvFgdlCkM8gKIX1B5N+RM1hxurAGTRpdCPuDVLVeTCbNZCds8jiK1DNky6Ni66plBIV+LKQY3EpjBn0jaWfPdTJbU5OiOb1uadnmzj2yt65Mp3T8QJD3dotURISR8bIS+Xb6vAytKFWmtcqje5Hx4lFTfyrH3gRGjMyeS9j3pVjbbCCV466FHOp9oglpoFv49nXhivPzLqU7mSuLIue+5RZ318HykuBWI+6xAo8aH9nnoBmAWiGCxXwIr13Y=
 matrix:
   include:
-  - go: 1.2.2
-    env: OPTIONS=""
-  - go: 1.3.3
-    env: OPTIONS="-race"
   - go: 1.4.2
-    env: COVERAGE="true" GOTOOLS="yes"
-  - go: 1.5
-    env: OPTIONS="-race" GOTOOLS="yes"
+    env: OPTIONS=""
+  - go: 1.5.3
+    env: OPTIONS="-race"
+  - go: 1.6
+    env: COVERAGE="true" OPTIONS=""
 before_script:
-- if [[ "$GOTOOLS" = "yes" ]] ; then go get golang.org/x/tools/cmd/vet; fi
-- if [[ "$GOTOOLS" = "yes" ]] ; then go get golang.org/x/tools/cmd/cover; fi
+- go get golang.org/x/tools/cmd/vet
+- go get golang.org/x/tools/cmd/cover
 script:
-- if [[ "$GOTOOLS" = "yes" ]] ; then go fmt ./... | wc -l | grep 0 ; fi
-- if [[ "$GOTOOLS" = "yes" ]] ; then go vet ./... ; fi
+- go fmt ./... | wc -l | grep 0
+- go vet ./...
 - go test -v $OPTIONS ./...
 - if [[ -n "$COVERAGE" ]]; then bash .travis-coverage; fi
