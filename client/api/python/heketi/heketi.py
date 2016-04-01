@@ -59,108 +59,92 @@ class HeketiClient(object):
         method = 'GET'
         uri = '/hello'
 
-        headers={}
-        self._set_token_in_header(method, uri)
+        headers = self._set_token_in_header(method, uri)
         r = requests.get(self.host + uri, headers=headers)
         return r.status_code == requests.codes.ok
 
 
-    def _make_request(self, method, uri, data={}):
-        self.method = method
-        self.uri = uri
-        self.data = data
-
-        headers = self._set_token_in_header(self.method, self.uri)
+    def _make_request(self, method, uri, data={}, headers={}):
+        headers = self._set_token_in_header(method, uri)
 
         ''' Ref: http://docs.python-requests.org/en/master/_modules/requests/api/#request '''
-        r = requests.request(self.method,
-                             self.host + self.uri,
+        r = requests.request(method,
+                             self.host + uri,
                              headers=headers,
                              data=json.dumps(data))
 
         r.raise_for_status()
 
-
-        if r.status_code == requests.codes.accepted and \
-           r.headers['location']:
+        if r.status_code == requests.codes.accepted:
             return self._get_queued_response(r.headers['location'])
-
-        elif r.status_code == requests.codes.SEE_OTHER and \
-             r.headers['location']:
-            return self._get_queued_response(r.headers['location'])
-
-        elif r.status_code == requests.codes.created or \
-             r.status_code == requests.codes.ok:
-            if self.method == 'DELETE':
-                return True
-            else:
-                return r.json()
-
-        elif r.status_code == requests.codes.NO_CONTENT:
-            return True
-
+        else:
+            return r
 
 
     def _get_queued_response(self, queue_uri):
-        self.queue_uri = queue_uri
-        headers = self._set_token_in_header('GET', self.queue_uri)
+        queue_uri = queue_uri
+        headers = self._set_token_in_header('GET', queue_uri)
         response_ready = False
 
         while response_ready is False:
             q = requests.get(self.host + queue_uri,
                              headers=headers,
-                             allow_redirects=False)
+                             allow_redirects=True)
 
             # Raise an exception when the request fails
             q.raise_for_status()
 
-
-            if q.status_code == requests.codes.see_other and q.headers['location']:
-                # Temporary request of 303 with header info
-                response_ready = True
-                vol_req = q.headers['location']
-                return self._make_request('GET', vol_req)
-
-            elif q.status_code == requests.codes.NO_CONTENT:
-                # Request successful
-                return True
-                response_ready = True
-
+            if 'X-Pending' in q.headers:
+                time.sleep(2)
+            else:
+                return q
 
 
     def cluster_create(self):
-        return self._make_request('POST', '/clusters')
+        req = self._make_request('POST', '/clusters')
+        if req.status_code == requests.codes.created:
+            return req.json()
 
 
     def cluster_info(self, cluster_id):
         uri = "/clusters/" + cluster_id
-        return self._make_request('GET', uri)
+        req = self._make_request('GET', uri)
+        if req.status_code == requests.codes.ok:
+            return req.json()
+
 
     def cluster_list(self):
         uri = "/clusters"
-        return self._make_request('GET', uri)
+        req = self._make_request('GET', uri)
+        if req.status_code == requests.codes.ok:
+            return req.json()
 
 
     def cluster_delete(self, cluster_id):
         uri = "/clusters/" + cluster_id
-        return self._make_request('DELETE', uri)
+        req = self._make_request('DELETE', uri)
+        return req.status_code == requests.codes.NO_CONTENT
 
 
     def node_add(self, node_options = {}):
         ''' node_options is a dict consisting of paramters for \
             adding a node: https://github.com/heketi/heketi/wiki/API#add-node '''
         uri = "/nodes"
-        return self._make_request('POST', uri, node_options)
+        req = self._make_request('POST', uri, node_options)
+        if req.status_code == requests.codes.ok:
+            return req.json()
 
 
     def node_info(self, node_id):
         uri = '/nodes/' + node_id
-        return self._make_request('GET', uri)
-
+        req = self._make_request('GET', uri)
+        if req.status_code == requests.codes.ok:
+            return req.json()
 
     def node_delete(self, node_id):
         uri = '/nodes/'+ node_id
-        return self._make_request('DELETE', uri)
+        req = self._make_request('DELETE', uri)
+        return req.status_code == requests.codes.NO_CONTENT
 
 
     def device_add(self, device_options = {}):
@@ -169,17 +153,22 @@ class HeketiClient(object):
             https://github.com/heketi/heketi/wiki/API#add-device
         '''
         uri = '/devices'
-        return self._make_request('POST', uri, device_options)
+        req = self._make_request('POST', uri, device_options)
+        if req.status_code == requests.codes.accepted:
+            return req.json()
 
 
     def device_info(self, device_id):
         uri = '/devices/' + device_id
-        return self._make_request('GET', uri)
+        req = self._make_request('GET', uri)
+        if req.status_code == requests.codes.ok:
+            return req.json()
 
 
     def device_delete(self, device_id):
         uri = '/devices/' + device_id
-        return self._make_request('DELETE', uri)
+        req = self._make_request('DELETE', uri)
+        return req.status_code == requests.codes.NO_CONTENT
 
 
     def volume_create(self, volume_options = {}):
@@ -187,21 +176,32 @@ class HeketiClient(object):
             https://github.com/heketi/heketi/wiki/API#create-a-volume
         '''
         uri = '/volumes'
-        return self._make_request('POST', uri, volume_options)
+        req = self._make_request('POST', uri, volume_options)
+        if req.status_code == requests.codes.ok:
+            return req.json()
 
 
     def volume_list(self):
         uri = '/volumes'
-        return self._make_request('GET', uri)
+        req = self._make_request('GET', uri)
+        if req.status_code == requests.codes.ok:
+            return req.json()
+
 
     def volume_info(self, volume_id):
         uri = '/volumes/' + volume_id
-        return self._make_request('GET', uri)
+        req = self._make_request('GET', uri)
+        if req.status_code == requests.codes.ok:
+            return req.json()
 
     def volume_expand(self, volume_id, expand_size = {}):
         uri = '/volumes/' + volume_id + '/expand'
-        return self._make_request('POST', uri, expand_size )
+        req = self._make_request('POST', uri, expand_size )
+        if req.status_code == requests.codes.ok:
+            return req.json()
+
 
     def volume_delete(self, volume_id):
         uri = '/volumes/' + volume_id
-        return self._make_request('DELETE', uri)
+        req = self._make_request('DELETE', uri)
+        return req.status_code == requests.codes.NO_CONTENT
