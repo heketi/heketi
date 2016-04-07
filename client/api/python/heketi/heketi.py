@@ -13,13 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+#
+# Usage:
+# # from heketi import HeketiClient
+# # client = HeketiClient(server, user, key)
+# # Eg.: Cluster creation: client.cluster_create()
+
 import jwt
 import datetime
 import hashlib
 import requests
 import time
+import json
+import sys
 
-class Client(object):
+class HeketiClient(object):
 
     def __init__(self, host, user, key):
         self.host = host
@@ -27,7 +35,7 @@ class Client(object):
         self.key = key
 
 
-    def _set_token_in_header(self, headers, method, uri):
+    def _set_token_in_header(self, method, uri, headers = {}):
         claims = {}
         claims['iss'] = self.user
 
@@ -44,13 +52,156 @@ class Client(object):
         token = jwt.encode(claims, self.key, algorithm='HS256')
         headers['Authorization'] = 'bearer ' + token
 
+        return headers
+
 
     def hello(self):
         method = 'GET'
         uri = '/hello'
 
-        headers={}
-        self._set_token_in_header(headers, method, uri)
+        headers = self._set_token_in_header(method, uri)
         r = requests.get(self.host + uri, headers=headers)
         return r.status_code == requests.codes.ok
 
+
+    def _make_request(self, method, uri, data={}, headers={}):
+        headers = self._set_token_in_header(method, uri)
+
+        ''' Ref: http://docs.python-requests.org/en/master/_modules/requests/api/#request '''
+        r = requests.request(method,
+                             self.host + uri,
+                             headers=headers,
+                             data=json.dumps(data))
+
+        r.raise_for_status()
+
+        if r.status_code == requests.codes.accepted:
+            return self._get_queued_response(r.headers['location'])
+        else:
+            return r
+
+
+    def _get_queued_response(self, queue_uri):
+        queue_uri = queue_uri
+        headers = self._set_token_in_header('GET', queue_uri)
+        response_ready = False
+
+        while response_ready is False:
+            q = requests.get(self.host + queue_uri,
+                             headers=headers,
+                             allow_redirects=True)
+
+            # Raise an exception when the request fails
+            q.raise_for_status()
+
+            if 'X-Pending' in q.headers:
+                time.sleep(2)
+            else:
+                return q
+
+
+    def cluster_create(self):
+        req = self._make_request('POST', '/clusters')
+        if req.status_code == requests.codes.created:
+            return req.json()
+
+
+    def cluster_info(self, cluster_id):
+        uri = "/clusters/" + cluster_id
+        req = self._make_request('GET', uri)
+        if req.status_code == requests.codes.ok:
+            return req.json()
+
+
+    def cluster_list(self):
+        uri = "/clusters"
+        req = self._make_request('GET', uri)
+        if req.status_code == requests.codes.ok:
+            return req.json()
+
+
+    def cluster_delete(self, cluster_id):
+        uri = "/clusters/" + cluster_id
+        req = self._make_request('DELETE', uri)
+        return req.status_code == requests.codes.NO_CONTENT
+
+
+    def node_add(self, node_options = {}):
+        ''' node_options is a dict consisting of paramters for \
+            adding a node: https://github.com/heketi/heketi/wiki/API#add-node '''
+        uri = "/nodes"
+        req = self._make_request('POST', uri, node_options)
+        if req.status_code == requests.codes.ok:
+            return req.json()
+
+
+    def node_info(self, node_id):
+        uri = '/nodes/' + node_id
+        req = self._make_request('GET', uri)
+        if req.status_code == requests.codes.ok:
+            return req.json()
+
+    def node_delete(self, node_id):
+        uri = '/nodes/'+ node_id
+        req = self._make_request('DELETE', uri)
+        return req.status_code == requests.codes.NO_CONTENT
+
+
+    def device_add(self, device_options = {}):
+        ''' device_options is a dict with parameters to be passed \
+            in the json request: \
+            https://github.com/heketi/heketi/wiki/API#add-device
+        '''
+        uri = '/devices'
+        req = self._make_request('POST', uri, device_options)
+        if req.status_code == requests.codes.accepted:
+            return req.json()
+
+
+    def device_info(self, device_id):
+        uri = '/devices/' + device_id
+        req = self._make_request('GET', uri)
+        if req.status_code == requests.codes.ok:
+            return req.json()
+
+
+    def device_delete(self, device_id):
+        uri = '/devices/' + device_id
+        req = self._make_request('DELETE', uri)
+        return req.status_code == requests.codes.NO_CONTENT
+
+
+    def volume_create(self, volume_options = {}):
+        ''' volume_options is a dict with volume creation options:
+            https://github.com/heketi/heketi/wiki/API#create-a-volume
+        '''
+        uri = '/volumes'
+        req = self._make_request('POST', uri, volume_options)
+        if req.status_code == requests.codes.ok:
+            return req.json()
+
+
+    def volume_list(self):
+        uri = '/volumes'
+        req = self._make_request('GET', uri)
+        if req.status_code == requests.codes.ok:
+            return req.json()
+
+
+    def volume_info(self, volume_id):
+        uri = '/volumes/' + volume_id
+        req = self._make_request('GET', uri)
+        if req.status_code == requests.codes.ok:
+            return req.json()
+
+    def volume_expand(self, volume_id, expand_size = {}):
+        uri = '/volumes/' + volume_id + '/expand'
+        req = self._make_request('POST', uri, expand_size )
+        if req.status_code == requests.codes.ok:
+            return req.json()
+
+
+    def volume_delete(self, volume_id):
+        uri = '/volumes/' + volume_id
+        req = self._make_request('DELETE', uri)
+        return req.status_code == requests.codes.NO_CONTENT
