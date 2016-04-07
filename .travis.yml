@@ -12,11 +12,11 @@ matrix:
   - go: 1.4.2
     env: OPTIONS=""
   - go: 1.5.3
-    env: OPTIONS="-race"
+    env: OPTIONS="-race" VET="true"
   - go: 1.6
-    env: COVERAGE="true" OPTIONS=""
+    env: COVERAGE="true" OPTIONS="" VET="true"
 script:
 - go fmt ./... | wc -l | grep 0
-- go vet ./...
+- if [[ -n "$VET" ]]; then go vet ./...; fi
 - go test -v $OPTIONS ./...
 - if [[ -n "$COVERAGE" ]]; then bash .travis-coverage; fi
