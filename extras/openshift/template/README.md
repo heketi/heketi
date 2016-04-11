@@ -1,4 +1,5 @@
 # Create a Heketi service in OpenShift
+> NOTE: This template file places the database in an _EmptyDir_ volume.  You will need to adjust accordingly if you would like the database to be on reliable persistent storage.
 
 * Register template with OpenShift
 
