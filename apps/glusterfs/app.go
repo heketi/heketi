@@ -109,28 +109,28 @@ func NewApp(configIo io.Reader) *App {
 		// Create Node Bucket
 		_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_NODE))
 		if err != nil {
-			logger.LogError("Unable to create cluster bucket in DB")
+			logger.LogError("Unable to create node bucket in DB")
 			return err
 		}
 
 		// Create Volume Bucket
 		_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_VOLUME))
 		if err != nil {
-			logger.LogError("Unable to create cluster bucket in DB")
+			logger.LogError("Unable to create volume bucket in DB")
 			return err
 		}
 
 		// Create Device Bucket
 		_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_DEVICE))
 		if err != nil {
-			logger.LogError("Unable to create cluster bucket in DB")
+			logger.LogError("Unable to create device bucket in DB")
 			return err
 		}
 
 		// Create Brick Bucket
 		_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_BRICK))
 		if err != nil {
-			logger.LogError("Unable to create cluster bucket in DB")
+			logger.LogError("Unable to create brick bucket in DB")
 			return err
 		}
 
