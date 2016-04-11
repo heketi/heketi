@@ -21,6 +21,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/lpabon/godbc"
 )
@@ -80,7 +81,7 @@ func (d *DeviceInfoCommand) Exec(args []string) error {
 	}
 
 	if d.options.Json {
-		data, err := json.Marshal(info)
+		data, err := json.MarshalIndent(info, "", "    ")
 		if err != nil {
 			return err
 		}
