@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/lpabon/godbc"
 )
@@ -78,7 +79,7 @@ func (c *ClusterCreateCommand) Exec(args []string) error {
 
 	// Check if JSON should be printed
 	if c.options.Json {
-		data, err := json.Marshal(cluster)
+		data, err := json.MarshalIndent(cluster, "", "    ")
 		if err != nil {
 			return err
 		}

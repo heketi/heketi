@@ -21,6 +21,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+
 	"github.com/heketi/heketi/apps/glusterfs"
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/lpabon/godbc"
@@ -96,7 +97,7 @@ func (v *VolumeExpandCommand) Exec(args []string) error {
 	}
 
 	if v.options.Json {
-		data, err := json.Marshal(volume)
+		data, err := json.MarshalIndent(volume, "", "    ")
 		if err != nil {
 			return err
 		}

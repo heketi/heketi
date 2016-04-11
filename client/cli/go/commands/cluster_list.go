@@ -20,9 +20,10 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"strings"
+
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/lpabon/godbc"
-	"strings"
 )
 
 type ClusterListCommand struct {
@@ -72,7 +73,7 @@ func (c *ClusterListCommand) Exec(args []string) error {
 	}
 
 	if c.options.Json {
-		data, err := json.Marshal(list)
+		data, err := json.MarshalIndent(list, "", "    ")
 		if err != nil {
 			return err
 		}

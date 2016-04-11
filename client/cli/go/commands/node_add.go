@@ -21,6 +21,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+
 	"github.com/heketi/heketi/apps/glusterfs"
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/lpabon/godbc"
@@ -109,7 +110,7 @@ func (n *NodeAddCommand) Exec(args []string) error {
 	}
 
 	if n.options.Json {
-		data, err := json.Marshal(node)
+		data, err := json.MarshalIndent(node, "", "    ")
 		if err != nil {
 			return err
 		}
