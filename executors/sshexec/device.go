@@ -40,7 +40,7 @@ func (s *SshExecutor) DeviceSetup(host, device, vgid string) (d *executors.Devic
 
 	// Setup commands
 	commands := []string{
-		fmt.Sprintf("sudo pvcreate --dataalignment 256K %v", device),
+		fmt.Sprintf("sudo pvcreate --metadatasize=128M --dataalignment=256K %v", device),
 		fmt.Sprintf("sudo vgcreate %v %v", s.vgName(vgid), device),
 	}
 
