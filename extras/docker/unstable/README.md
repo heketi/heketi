@@ -41,7 +41,18 @@ CONTAINER ID        IMAGE               COMMAND                  CREATED        
 Now we can check the logs
 
 ```
-
+$ sudo docker logs 6e3ed5c59f87 | head 
+Heketi 1.0.0-81-g0c78700
+[heketi] INFO 2016/04/12 18:57:13 Loaded ssh executor
+[heketi] INFO 2016/04/12 18:57:13 Loaded simple allocator
+[heketi] INFO 2016/04/12 18:57:13 GlusterFS Application Loaded
+[negroni] Started GET /hello
+[negroni] Completed 200 OK in 79.951µs
+[negroni] Started GET /clusters
+[negroni] Completed 200 OK in 91.658µs
+[negroni] Started POST /clusters
+[negroni] Completed 201 Created in 6.046309ms
+```
 
 # Build
 If you need to build it:
