@@ -1,11 +1,11 @@
 # set author and base
-FROM fedora:22
-MAINTAINER Sid Carter <nospam@sidcarter.com>
+FROM fedora
+MAINTAINER Luis Pabón <lpabon@redhat.com>
 
-LABEL version="0.1"
-LABEL description="Fedora 22 docker image for heketi"
+LABEL version="0.2"
+LABEL description="Development build"
 
-RUN groupadd -r heketi && useradd -r -g heketi heketi
+RUN groupadd -g 1000 -r heketi && useradd -r -g heketi -u 1000 heketi
 
 # let's setup all the necessary environment variables
 ENV BUILD_HOME=/build
