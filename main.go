@@ -52,6 +52,28 @@ func printVersion() {
 	fmt.Printf("Heketi %v\n", HEKETI_VERSION)
 }
 
+func setWithEnvVariables(options *Config) {
+	// Check for user key
+	env := os.Getenv("HEKETI_USER_KEY")
+	if "" != env {
+		options.AuthEnabled = true
+		options.JwtConfig.User.PrivateKey = env
+	}
+
+	// Check for user key
+	env = os.Getenv("HEKETI_ADMIN_KEY")
+	if "" != env {
+		options.AuthEnabled = true
+		options.JwtConfig.Admin.PrivateKey = env
+	}
+
+	// Check for user key
+	env = os.Getenv("HEKETI_HTTP_PORT")
+	if "" != env {
+		options.Port = env
+	}
+}
+
 func main() {
 	flag.Parse()
 	printVersion()
@@ -85,6 +107,9 @@ func main() {
 			err.Error())
 		os.Exit(1)
 	}
+
+	// Substitue values using any set environment variables
+	setWithEnvVariables(&options)
 
 	// Go to the beginning of the file when we pass it
 	// to the application
@@ -142,6 +167,7 @@ func main() {
 	done := make(chan bool)
 	go func() {
 		// Start the server.
+		fmt.Printf("Listening on port %v\n", options.Port)
 		err = http.ListenAndServe(":"+options.Port, n)
 		if err != nil {
 			fmt.Printf("ERROR: HTTP Server error: %v\n", err)
