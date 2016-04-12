@@ -29,7 +29,7 @@ TEST="go test"
 # Sources and Targets
 EXECUTABLES :=$(APP_NAME)
 # Build Binaries setting main.version and main.build vars
-LDFLAGS :=-ldflags "-X main.HEKETI_VERSION $(VERSION)"
+LDFLAGS :=-ldflags "-X main.HEKETI_VERSION=$(VERSION)"
 # Package target
 PACKAGE :=$(DIR)/dist/$(APP_NAME)-$(VERSION).$(GOOS).$(ARCH).tar.gz
 
