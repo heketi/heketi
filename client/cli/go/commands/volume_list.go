@@ -18,7 +18,7 @@ package commands
 
 import (
 	"encoding/json"
-	"flag"
+	flag "github.com/spf13/pflag"
 	"fmt"
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/lpabon/godbc"

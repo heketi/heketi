@@ -18,7 +18,7 @@ package commands
 
 import (
 	"errors"
-	"flag"
+	flag "github.com/spf13/pflag"
 	"io"
 	"os"
 )

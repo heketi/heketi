@@ -17,7 +17,7 @@
 package commands
 
 import (
-	"flag"
+	flag "github.com/spf13/pflag"
 	"fmt"
 	"github.com/lpabon/godbc"
 )

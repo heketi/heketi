@@ -19,7 +19,7 @@ package commands
 import (
 	"encoding/json"
 	"errors"
-	"flag"
+	flag "github.com/spf13/pflag"
 	"fmt"
 	"github.com/heketi/heketi/apps/glusterfs"
 	client "github.com/heketi/heketi/client/api/go-client"
