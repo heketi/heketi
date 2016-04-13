@@ -11,7 +11,7 @@ First you will need to download the latest development container:
     
 > NOTE: Must likely you will always need to do a new pull before staring your tests since the container changes so often.
 
-## Setup
+## Server Setup
 You will need to create a directory which has a directory containing configuraiton and any private key if necessary, and an empty directory used for storing the database.  Directory and files must be read/write by user with id 1000 and if an ssh private key is used, it must also have a mod of 0600.
 
 Here is an example:
@@ -52,6 +52,16 @@ Heketi 1.0.0-81-g0c78700
 [negroni] Completed 200 OK in 91.658µs
 [negroni] Started POST /clusters
 [negroni] Completed 201 Created in 6.046309ms
+```
+
+## Using heketi-cli
+Using our example above, to use the heketi-cli, you can type:
+
+```
+$ sudo docker exec 6e3ed5c59f87 \
+    heketi-cli -h
+$ sudo docker exec 6e3ed5c59f87 \
+    heketi-cli -server http://localhost:8080/ cluster list
 ```
 
 # Build
