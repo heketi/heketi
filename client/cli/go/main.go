@@ -21,20 +21,18 @@ import (
 	"os"
 
 	"github.com/heketi/heketi/client/cli/go/cmds"
-	"github.com/spf13/cobra"
 )
 
 var (
 	HEKETI_CLI_VERSION           = "(dev)"
 	stdout             io.Writer = os.Stdout
 	stderr             io.Writer = os.Stderr
-	options            commands.Options
 	version            bool
 )
 
 func main() {
 	if err := cmds.RootCmd.Execute(); err != nil {
-		//		fmt.Println(err)
+		fmt.Println(err) //Should be used for logging
 		os.Exit(-1)
 	}
 }
