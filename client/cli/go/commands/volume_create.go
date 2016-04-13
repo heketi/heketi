@@ -19,12 +19,13 @@ package commands
 import (
 	"encoding/json"
 	"errors"
-	flag "github.com/spf13/pflag"
 	"fmt"
+	"strings"
+
 	"github.com/heketi/heketi/apps/glusterfs"
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/lpabon/godbc"
-	"strings"
+	flag "github.com/spf13/pflag"
 )
 
 type VolumeCreateCommand struct {
@@ -99,7 +100,7 @@ EXAMPLES
           -clusters=0995098e1284ddccb46c7752d142c832,60d46d518074b13a04ce1022c8c7193c
 
   * Create a 100GB replica 2 volume with 50GB of snapshot storage:
-      $ heketi-cli volume create -size=100 -snapshot-factor=1.5 -replica=2 
+      $ heketi-cli volume create -size=100 -snapshot-factor=1.5 -replica=2
 
   * Create a 100GB distributed volume
       $ heketi-cli volume create -size=100 -durability=none

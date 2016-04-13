@@ -18,11 +18,12 @@ package commands
 
 import (
 	"errors"
-	flag "github.com/spf13/pflag"
 	"fmt"
+
 	"github.com/heketi/heketi/apps/glusterfs"
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/lpabon/godbc"
+	flag "github.com/spf13/pflag"
 )
 
 type DeviceAddCommand struct {
@@ -56,7 +57,7 @@ OPTIONS`)
 EXAMPLES
   $ heketi-cli device add \
       -name=/dev/sdb
-      -node=3e098cb4407d7109806bb196d9e8f095 
+      -node=3e098cb4407d7109806bb196d9e8f095
 `)
 	}
 

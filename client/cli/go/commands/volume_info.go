@@ -19,10 +19,11 @@ package commands
 import (
 	"encoding/json"
 	"errors"
-	flag "github.com/spf13/pflag"
 	"fmt"
+
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/lpabon/godbc"
+	flag "github.com/spf13/pflag"
 )
 
 type VolumeInfoCommand struct {
@@ -41,7 +42,7 @@ func NewVolumeInfoCommand(options *Options) *VolumeInfoCommand {
 	//usage on -help
 	cmd.flags.Usage = func() {
 		fmt.Println(`
-Retreives information about the volume 
+Retreives information about the volume
 
 USAGE
   heketi-cli [options] volume info [id]

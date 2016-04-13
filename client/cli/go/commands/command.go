@@ -18,9 +18,10 @@ package commands
 
 import (
 	"errors"
-	flag "github.com/spf13/pflag"
 	"io"
 	"os"
+
+	flag "github.com/spf13/pflag"
 )
 
 //make stdout "global" to command package

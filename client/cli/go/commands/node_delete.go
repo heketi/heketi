@@ -18,10 +18,11 @@ package commands
 
 import (
 	"errors"
-	flag "github.com/spf13/pflag"
 	"fmt"
+
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/lpabon/godbc"
+	flag "github.com/spf13/pflag"
 )
 
 type NodeDestroyCommand struct {

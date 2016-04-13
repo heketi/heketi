@@ -19,11 +19,12 @@ package commands
 import (
 	"encoding/json"
 	"errors"
-	flag "github.com/spf13/pflag"
 	"fmt"
+	"strings"
+
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/lpabon/godbc"
-	"strings"
+	flag "github.com/spf13/pflag"
 )
 
 type ClusterInfoCommand struct {

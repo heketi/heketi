@@ -17,9 +17,10 @@
 package commands
 
 import (
-	flag "github.com/spf13/pflag"
 	"fmt"
+
 	"github.com/lpabon/godbc"
+	flag "github.com/spf13/pflag"
 )
 
 type ClusterCommand struct {
