@@ -24,6 +24,7 @@ RUN mkdir $BUILD_HOME $GOPATH $HEKETI_CONF_DIR && \
     glock sync github.com/heketi/heketi && \
     cd $GOPATH/src/github.com/heketi/heketi && make && \
     cp heketi /usr/bin/heketi && \
+    cp client/cli/go/heketi-cli /usr/bin/heketi-cli && \
     cd && rm -rf $BUILD_HOME && \
     dnf -q -y remove git golang make && \
     dnf -q -y autoremove && \
