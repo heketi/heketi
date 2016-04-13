@@ -17,9 +17,10 @@
 package commands
 
 import (
-	"flag"
 	"fmt"
+
 	"github.com/lpabon/godbc"
+	flag "github.com/spf13/pflag"
 )
 
 type DeviceCommand struct {

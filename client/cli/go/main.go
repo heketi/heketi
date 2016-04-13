@@ -17,11 +17,12 @@
 package main
 
 import (
-	"flag"
 	"fmt"
-	"github.com/heketi/heketi/client/cli/go/commands"
 	"io"
 	"os"
+
+	"github.com/heketi/heketi/client/cli/go/commands"
+	flag "github.com/spf13/pflag"
 )
 
 var (

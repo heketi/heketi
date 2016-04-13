@@ -19,10 +19,11 @@ package commands
 import (
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
+
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/lpabon/godbc"
+	flag "github.com/spf13/pflag"
 )
 
 type DeviceInfoCommand struct {
@@ -45,7 +46,7 @@ Retreives information about the device
 USAGE
   heketi-cli [options] node device [id]
 
-  Where "id" is the id of the device 
+  Where "id" is the id of the device
 
 EXAMPLE
   $ heketi-cli node info 886a86a868711bef83001

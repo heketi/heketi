@@ -17,9 +17,10 @@
 package commands
 
 import (
-	"flag"
 	"fmt"
+
 	"github.com/lpabon/godbc"
+	flag "github.com/spf13/pflag"
 )
 
 type NodeCommand struct {
@@ -52,7 +53,7 @@ USAGE
 COMMANDS
   add     Adds a node for Heketi to manage.
   info    Returns information about a specific node.
-  delete  Delete node with specified id. 
+  delete  Delete node with specified id.
 
 Use "heketi-cli node [command] -help" for more information about a command
 `)

@@ -19,10 +19,11 @@ package commands
 import (
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
+
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/lpabon/godbc"
+	flag "github.com/spf13/pflag"
 )
 
 type NodeInfoCommand struct {
@@ -41,7 +42,7 @@ func NewNodeInfoCommand(options *Options) *NodeInfoCommand {
 	//usage on -help
 	cmd.flags.Usage = func() {
 		fmt.Println(`
-Retreives information about the node 
+Retreives information about the node
 
 USAGE
   heketi-cli [options] node info [id]

@@ -19,11 +19,12 @@ package commands
 import (
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
+
 	"github.com/heketi/heketi/apps/glusterfs"
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/lpabon/godbc"
+	flag "github.com/spf13/pflag"
 )
 
 type NodeAddCommand struct {

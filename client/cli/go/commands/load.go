@@ -19,12 +19,13 @@ package commands
 import (
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
+	"os"
+
 	"github.com/heketi/heketi/apps/glusterfs"
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/lpabon/godbc"
-	"os"
+	flag "github.com/spf13/pflag"
 )
 
 type LoadCommand struct {
@@ -74,7 +75,7 @@ OPTIONS`)
 		cmd.flags.PrintDefaults()
 		fmt.Println(`
 EXAMPLES
-  $ heketi-cli load -json=topology.json 
+  $ heketi-cli load -json=topology.json
 `)
 	}
 
