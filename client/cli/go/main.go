@@ -21,6 +21,7 @@ import (
 	"os"
 
 	"github.com/heketi/heketi/client/cli/go/cmds"
+	"github.com/spf13/cobra"
 )
 
 var (
