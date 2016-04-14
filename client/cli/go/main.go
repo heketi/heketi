@@ -20,6 +20,7 @@ import (
 	"io"
 	"os"
 
+	"fmt"
 	"github.com/heketi/heketi/client/cli/go/cmds"
 )
 
