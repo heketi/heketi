@@ -47,7 +47,6 @@ var clusterCreateCommand = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Create a client to talk to Heketi
 		heketi := client.NewClient(options.Url, options.User, options.Key)
-		fmt.Println(options.Url)
 		// Create cluster
 		cluster, err := heketi.ClusterCreate()
 		if err != nil {

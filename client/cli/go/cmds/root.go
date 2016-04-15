@@ -42,6 +42,11 @@ var RootCmd = &cobra.Command{
 	Use:   "heketi-cli",
 	Short: "Command line program for Heketi",
 	Long:  "Command line program for Heketi",
+	Run: func(cmd *cobra.Command, args []string) {
+		if version {
+			fmt.Printf("heketi-cli %v\n", HEKETI_CLI_VERSION)
+		}
+	},
 }
 
 func Execute() {

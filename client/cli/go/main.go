@@ -17,23 +17,17 @@
 package main
 
 import (
-	"io"
 	"os"
 
-	"fmt"
 	"github.com/heketi/heketi/client/cli/go/cmds"
 )
 
-var (
-	HEKETI_CLI_VERSION           = "(dev)"
-	stdout             io.Writer = os.Stdout
-	stderr             io.Writer = os.Stderr
-	version            bool
-)
+var HEKETI_CLI_VERSION = "(dev)"
 
 func main() {
+	cmds.HEKETI_CLI_VERSION = HEKETI_CLI_VERSION
 	if err := cmds.RootCmd.Execute(); err != nil {
-		fmt.Println(err) //Should be used for logging
+		//		fmt.Println(err) //Should be used for logging
 		os.Exit(-1)
 	}
 }
