@@ -43,17 +43,18 @@ type ConfigFile struct {
 
 func init() {
 	RootCmd.AddCommand(loadCommand)
-
 	loadCommand.Flags().StringVarP(&jsonConfigFile, "json", "j", "",
 		"\n\tConfiguration containing devices, nodes, and clusters, in"+
 			"\n\tJSON format.")
 }
 
 var loadCommand = &cobra.Command{
-	Use:   "load",
-	Short: "Add devices to Heketi from a configuration file",
-	Long:  "Add devices to Heketi from a configuration file",
+	Use:     "load",
+	Short:   "Add devices to Heketi from a configuration file",
+	Long:    "Add devices to Heketi from a configuration file",
+	Example: "  $ heketi-cli load --json=topology.json",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SetUsageFunc(usageError)
 		// Check arguments
 		if jsonConfigFile == "" {
 			return errors.New("Missing configuration file")

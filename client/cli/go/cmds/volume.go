@@ -94,7 +94,28 @@ var volumeCreateCommand = &cobra.Command{
 	Use:   "create",
 	Short: "Create a GlusterFS volume",
 	Long:  "Create a GlusterFS volume",
+	Example: `  * Create a 100GB replica 3 volume:
+      $ heketi-cli volume create --size=100
+
+  * Create a 100GB replica 3 volume specifying two specific clusters:
+      $ heketi-cli volume create --size=100 \
+        --clusters=0995098e1284ddccb46c7752d142c832,60d46d518074b13a04ce1022c8c7193c
+
+  * Create a 100GB replica 2 volume with 50GB of snapshot storage:
+      $ heketi-cli volume create --size=100 --snapshot-factor=1.5 --replica=2
+
+  * Create a 100GB distributed volume
+      $ heketi-cli volume create --size=100 --durability=none
+
+  * Create a 100GB erasure coded 4+2 volume with 25GB snapshot storage:
+      $ heketi-cli volume create --size=100 --durability=disperse --snapshot-factor=1.25
+
+  * Create a 100GB erasure coded 8+3 volume with 25GB snapshot storage:
+      $ heketi-cli volume create --size=100 --durability=disperse --snapshot-factor=1.25 \
+        --disperse-data=8 --redundancy=3
+`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SetUsageFunc(usageError)
 		// Check volume size
 		if size == -1 {
 			return errors.New("Missing volume size")
@@ -147,10 +168,12 @@ var volumeCreateCommand = &cobra.Command{
 }
 
 var volumeDeleteCommand = &cobra.Command{
-	Use:   "delete",
-	Short: "Deletes the volume",
-	Long:  "Deletes the volume",
+	Use:     "delete",
+	Short:   "Deletes the volume",
+	Long:    "Deletes the volume",
+	Example: "  $ heketi-cli volume delete 886a86a868711bef83001",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SetUsageFunc(usageError)
 		s := cmd.Flags().Args()
 
 		//ensure proper number of args
@@ -178,7 +201,11 @@ var volumeExpandCommand = &cobra.Command{
 	Use:   "expand",
 	Short: "Expand a volume",
 	Long:  "Expand a volume",
+	Example: `  * Add 10GB to a volume
+    $ heketi-cli volume expand --volume=60d46d518074b13a04ce1022c8c7193c --expand-size=10
+`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SetUsageFunc(usageError)
 		// Check volume size
 		if expandSize == -1 {
 			return errors.New("Missing volume amount to expand")
@@ -215,10 +242,12 @@ var volumeExpandCommand = &cobra.Command{
 }
 
 var volumeInfoCommand = &cobra.Command{
-	Use:   "info",
-	Short: "Retreives information about the volume",
-	Long:  "Retreives information about the volume",
+	Use:     "info",
+	Short:   "Retreives information about the volume",
+	Long:    "Retreives information about the volume",
+	Example: "  $ heketi-cli volume info 886a86a868711bef83001",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SetUsageFunc(usageError)
 		//ensure proper number of args
 		s := cmd.Flags().Args()
 		if len(s) < 1 {
@@ -252,10 +281,12 @@ var volumeInfoCommand = &cobra.Command{
 }
 
 var volumeListCommand = &cobra.Command{
-	Use:   "list",
-	Short: "Lists the volumes managed by Heketi",
-	Long:  "Lists the volumes managed by Heketi",
+	Use:     "list",
+	Short:   "Lists the volumes managed by Heketi",
+	Long:    "Lists the volumes managed by Heketi",
+	Example: "  $ heketi-cli volume list",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SetUsageFunc(usageError)
 		// Create a client
 		heketi := client.NewClient(options.Url, options.User, options.Key)
 

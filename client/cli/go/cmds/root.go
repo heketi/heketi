@@ -25,9 +25,9 @@ import (
 )
 
 var (
-	HEKETI_CLI_VERSION           = "(dev)"
-	stdout             io.Writer = os.Stdout
-	stderr             io.Writer = os.Stderr
+	HEKETI_CLI_VERSION = "(dev)"
+	stderr             io.Writer
+	stdout             io.Writer
 	options            Options
 	version            bool
 )
@@ -38,22 +38,24 @@ type Options struct {
 	Json           bool
 }
 
+func usageError(cmd *cobra.Command) error {
+	fmt.Println("\n" + cmd.Short + "\n\nUsage:\n  " + cmd.CommandPath() +
+		"\n\nExamples:\n" + cmd.Example + "\n\nFlags:\n" +
+		cmd.LocalFlags().FlagUsages())
+	return nil
+}
+
 var RootCmd = &cobra.Command{
 	Use:   "heketi-cli",
 	Short: "Command line program for Heketi",
 	Long:  "Command line program for Heketi",
+	Example: `  $ export HEKETI_CLI_SERVER=http://localhost:8080
+  $ heketi-cli volume list`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if version {
 			fmt.Printf("heketi-cli %v\n", HEKETI_CLI_VERSION)
 		}
 	},
-}
-
-func Execute() {
-	if err := RootCmd.Execute(); err != nil {
-		fmt.Println(err) //should be used for logging
-		os.Exit(-1)
-	}
 }
 
 func init() {
@@ -92,4 +94,11 @@ func initConfig() {
 	if options.User == "" {
 		options.User = os.Getenv("HEKETI_CLI_USER")
 	}
+}
+
+func NewHeketiCli(heketiVersion string, mstderr io.Writer, mstdout io.Writer) *cobra.Command {
+	stderr = mstderr
+	stdout = mstdout
+	HEKETI_CLI_VERSION = heketiVersion
+	return RootCmd
 }

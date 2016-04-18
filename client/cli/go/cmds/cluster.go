@@ -41,10 +41,12 @@ var clusterCommand = &cobra.Command{
 }
 
 var clusterCreateCommand = &cobra.Command{
-	Use:   "create",
-	Short: "Create a cluster",
-	Long:  "Create a cluster",
+	Use:     "create",
+	Short:   "Create a cluster",
+	Long:    "Create a cluster",
+	Example: "  $ heketi-cli cluster create",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SetUsageFunc(usageError)
 		// Create a client to talk to Heketi
 		heketi := client.NewClient(options.Url, options.User, options.Key)
 		// Create cluster
@@ -69,11 +71,12 @@ var clusterCreateCommand = &cobra.Command{
 }
 
 var clusterDeleteCommand = &cobra.Command{
-	Use:   "delete [cluster_id]",
-	Short: "Delete the cluster",
-	Long:  "Delete the cluster",
+	Use:     "delete [cluster_id]",
+	Short:   "Delete the cluster",
+	Long:    "Delete the cluster",
+	Example: "  $ heketi-cli cluster delete 886a86a868711bef83001",
 	RunE: func(cmd *cobra.Command, args []string) error {
-
+		cmd.SetUsageFunc(usageError)
 		s := cmd.Flags().Args()
 
 		//ensure proper number of args
@@ -98,10 +101,12 @@ var clusterDeleteCommand = &cobra.Command{
 }
 
 var clusterInfoCommand = &cobra.Command{
-	Use:   "info [cluster_id]",
-	Short: "Retrieves information about cluster",
-	Long:  "Retrieves information about cluster",
+	Use:     "info [cluster_id]",
+	Short:   "Retrieves information about cluster",
+	Long:    "Retrieves information about cluster",
+	Example: "  $ heketi-cli cluster info 886a86a868711bef83001",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SetUsageFunc(usageError)
 		s := cmd.Flags().Args()
 		if len(s) < 1 {
 			return errors.New("Cluster id missing")
@@ -137,9 +142,10 @@ var clusterInfoCommand = &cobra.Command{
 }
 
 var clusterListCommand = &cobra.Command{
-	Use:   "list",
-	Short: "Lists the clusters managed by Heketi",
-	Long:  "Lists the clusters managed by Heketi",
+	Use:     "list",
+	Short:   "Lists the clusters managed by Heketi",
+	Long:    "Lists the clusters managed by Heketi",
+	Example: "  $ heketi-cli cluster list",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Create a client
 		heketi := client.NewClient(options.Url, options.User, options.Key)

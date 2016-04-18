@@ -38,7 +38,6 @@ func init() {
 	nodeCommand.AddCommand(nodeAddCommand)
 	nodeCommand.AddCommand(nodeDeleteCommand)
 	nodeCommand.AddCommand(nodeInfoCommand)
-
 	nodeAddCommand.Flags().IntVar(&zone, "zone", -1, "The zone in which the node should reside")
 	nodeAddCommand.Flags().StringVar(&clusterId, "cluster", "", "The cluster in which the node should reside")
 	nodeAddCommand.Flags().StringVar(&managmentHostNames, "management-host-name", "", "Managment host name")
@@ -55,7 +54,14 @@ var nodeAddCommand = &cobra.Command{
 	Use:   "add",
 	Short: "Add new node to be managed by Heketi",
 	Long:  "Add new node to be managed by Heketi",
+	Example: `  $ heketi-cli node add \
+      --zone=3 \
+      --cluster=3e098cb4407d7109806bb196d9e8f095 \
+      --management-host-name=node1-manage.gluster.lab.com \
+      --storage-host-name=node1-storage.gluster.lab.com
+`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SetUsageFunc(usageError)
 		// Check arguments
 		if zone == -1 {
 			return errors.New("Missing zone")
@@ -110,10 +116,12 @@ var nodeAddCommand = &cobra.Command{
 }
 
 var nodeDeleteCommand = &cobra.Command{
-	Use:   "delete [node_id]",
-	Short: "Deletes a node from Heketi management",
-	Long:  "Deletes a node from Heketi management",
+	Use:     "delete [node_id]",
+	Short:   "Deletes a node from Heketi management",
+	Long:    "Deletes a node from Heketi management",
+	Example: "  $ heketi-cli node delete 886a86a868711bef83001",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SetUsageFunc(usageError)
 		s := cmd.Flags().Args()
 
 		//ensure proper number of args
@@ -138,10 +146,12 @@ var nodeDeleteCommand = &cobra.Command{
 }
 
 var nodeInfoCommand = &cobra.Command{
-	Use:   "info [node_id]",
-	Short: "Retreives information about the node",
-	Long:  "Retreives information about the node",
+	Use:     "info [node_id]",
+	Short:   "Retreives information about the node",
+	Long:    "Retreives information about the node",
+	Example: "  $ heketi-cli node info 886a86a868711bef83001",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SetUsageFunc(usageError)
 		//ensure proper number of args
 		s := cmd.Flags().Args()
 		if len(s) < 1 {
