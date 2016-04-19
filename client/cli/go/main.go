@@ -31,7 +31,8 @@ var (
 )
 
 func main() {
-	if err := cmds.RootCmd.Execute(); err != nil {
+	cmd := cmds.NewHeketiCli(HEKETI_CLI_VERSION, stderr, stdout)
+	if err := cmd.Execute(); err != nil {
 		//fmt.Println(err) //Should be used for logging
 		os.Exit(-1)
 	}
