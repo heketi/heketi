@@ -38,13 +38,6 @@ type Options struct {
 	Json           bool
 }
 
-func usageError(cmd *cobra.Command) error {
-	fmt.Println("\n" + cmd.Short + "\n\nUsage:\n  " + cmd.CommandPath() +
-		"\n\nExamples:\n" + cmd.Example + "\n\nFlags:\n" +
-		cmd.LocalFlags().FlagUsages())
-	return nil
-}
-
 var RootCmd = &cobra.Command{
 	Use:   "heketi-cli",
 	Short: "Command line program for Heketi",
@@ -73,6 +66,7 @@ func init() {
 		"\n\tPrint response as JSON")
 	RootCmd.Flags().BoolVarP(&version, "version", "v", false,
 		"\n\tPrint version")
+	RootCmd.SilenceUsage = true
 }
 
 func initConfig() {

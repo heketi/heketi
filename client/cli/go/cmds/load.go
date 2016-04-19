@@ -54,7 +54,6 @@ var loadCommand = &cobra.Command{
 	Long:    "Add devices to Heketi from a configuration file",
 	Example: "  $ heketi-cli load --json=topology.json",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cmd.SetUsageFunc(usageError)
 		// Check arguments
 		if jsonConfigFile == "" {
 			return errors.New("Missing configuration file")

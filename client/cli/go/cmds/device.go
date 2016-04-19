@@ -55,7 +55,6 @@ var deviceAddCommand = &cobra.Command{
       --name=/dev/sdb
       --node=3e098cb4407d7109806bb196d9e8f095 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cmd.SetUsageFunc(usageError)
 		// Check arguments
 		if device == "" {
 			return errors.New("Missing device name")
@@ -90,7 +89,6 @@ var deviceDeleteCommand = &cobra.Command{
 	Long:    "Deletes a device from Heketi node",
 	Example: "  $ heketi-cli device delete 886a86a868711bef83001",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cmd.SetUsageFunc(usageError)
 		s := cmd.Flags().Args()
 
 		//ensure proper number of args
@@ -120,7 +118,6 @@ var deviceInfoCommand = &cobra.Command{
 	Long:    "Retreives information about the device",
 	Example: "  $ heketi-cli node info 886a86a868711bef83001",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cmd.SetUsageFunc(usageError)
 		//ensure proper number of args
 		s := cmd.Flags().Args()
 		if len(s) < 1 {

@@ -115,7 +115,6 @@ var volumeCreateCommand = &cobra.Command{
         --disperse-data=8 --redundancy=3
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cmd.SetUsageFunc(usageError)
 		// Check volume size
 		if size == -1 {
 			return errors.New("Missing volume size")
@@ -173,7 +172,6 @@ var volumeDeleteCommand = &cobra.Command{
 	Long:    "Deletes the volume",
 	Example: "  $ heketi-cli volume delete 886a86a868711bef83001",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cmd.SetUsageFunc(usageError)
 		s := cmd.Flags().Args()
 
 		//ensure proper number of args
@@ -205,7 +203,6 @@ var volumeExpandCommand = &cobra.Command{
     $ heketi-cli volume expand --volume=60d46d518074b13a04ce1022c8c7193c --expand-size=10
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cmd.SetUsageFunc(usageError)
 		// Check volume size
 		if expandSize == -1 {
 			return errors.New("Missing volume amount to expand")
@@ -247,7 +244,6 @@ var volumeInfoCommand = &cobra.Command{
 	Long:    "Retreives information about the volume",
 	Example: "  $ heketi-cli volume info 886a86a868711bef83001",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cmd.SetUsageFunc(usageError)
 		//ensure proper number of args
 		s := cmd.Flags().Args()
 		if len(s) < 1 {
@@ -286,7 +282,6 @@ var volumeListCommand = &cobra.Command{
 	Long:    "Lists the volumes managed by Heketi",
 	Example: "  $ heketi-cli volume list",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cmd.SetUsageFunc(usageError)
 		// Create a client
 		heketi := client.NewClient(options.Url, options.User, options.Key)
 

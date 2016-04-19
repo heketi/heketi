@@ -61,7 +61,6 @@ var nodeAddCommand = &cobra.Command{
       --storage-host-name=node1-storage.gluster.lab.com
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cmd.SetUsageFunc(usageError)
 		// Check arguments
 		if zone == -1 {
 			return errors.New("Missing zone")
@@ -121,7 +120,6 @@ var nodeDeleteCommand = &cobra.Command{
 	Long:    "Deletes a node from Heketi management",
 	Example: "  $ heketi-cli node delete 886a86a868711bef83001",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cmd.SetUsageFunc(usageError)
 		s := cmd.Flags().Args()
 
 		//ensure proper number of args
@@ -151,7 +149,6 @@ var nodeInfoCommand = &cobra.Command{
 	Long:    "Retreives information about the node",
 	Example: "  $ heketi-cli node info 886a86a868711bef83001",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cmd.SetUsageFunc(usageError)
 		//ensure proper number of args
 		s := cmd.Flags().Args()
 		if len(s) < 1 {
