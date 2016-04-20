@@ -8,4 +8,6 @@ github.com/heketi/rest 738570ea73f1cc2a0888c7c49fe80991c6050f34
 github.com/heketi/tests f3775cbcefd6822086c729e3ce4b70ca85a5bd21
 github.com/heketi/utils 3d373e21f062fe8e80e4d75e2b1282a96e5d6e23
 github.com/lpabon/godbc 9577782540c1398b710ddae1b86268ba03a19b0c
+github.com/spf13/cobra 4c05eb1145f16d0e6bb4a3e1b6d769f4713cb41f
+github.com/spf13/pflag 7f60f83a2c81bc3c3c0d5297f61ddfa68da9d3b7
 golang.org/x/crypto 1f22c0103821b9390939b6776727195525381532
