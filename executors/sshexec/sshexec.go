@@ -18,11 +18,12 @@ package sshexec
 
 import (
 	"errors"
+	"os"
+	"sync"
+
 	"github.com/heketi/utils"
 	"github.com/heketi/utils/ssh"
 	"github.com/lpabon/godbc"
-	"os"
-	"sync"
 )
 
 type SshExecutor struct {
@@ -32,11 +33,13 @@ type SshExecutor struct {
 	lock            sync.Mutex
 	exec            *ssh.SshExec
 	config          *SshConfig
+	port            string
 }
 
 type SshConfig struct {
 	PrivateKeyFile string `json:"keyfile"`
 	User           string `json:"user"`
+	Port           string `json:"port"`
 
 	// Experimental Settings
 	RebalanceOnExpansion bool `json:"rebalance_on_expansion"`
@@ -65,6 +68,13 @@ func NewSshExecutor(config *SshConfig) *SshExecutor {
 	} else {
 		s.user = config.User
 	}
+
+	if config.Port == "" {
+		s.port = "22"
+	} else {
+		s.port = config.Port
+	}
+
 	s.config = config
 
 	// Show experimental settings
@@ -119,7 +129,7 @@ func (s *SshExecutor) sshExec(host string, commands []string, timeoutMinutes int
 	defer s.freeConnection(host)
 
 	// Execute
-	return s.exec.ConnectAndExec(host+":22", commands, timeoutMinutes)
+	return s.exec.ConnectAndExec(host+":"+s.port, commands, timeoutMinutes)
 }
 
 func (s *SshExecutor) vgName(vgId string) string {
