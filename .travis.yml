@@ -9,9 +9,9 @@ env:
   - secure: tCj+iGIN2GM5yPneme35KIQwqGcXMOLod00qvG/Af0lkjEVJRRNz3gnB3P2dNyj9Nc4FWxSUIjCiIkblOMaEKxPXp1S3Zo7gRBVphyNY5ZvIKeqKoXvBPd6hi9Ft2TaN+4vDczfAKOI/S3/3kN3NmgGCYNTLOues0T4yhVd3v14hoQJxw4Jbjlsj8RGfLrqp+dInFv2tS+xTyK+q/EOiaCpBq4PfK6giKwt943o7jc9v0iWjnP2rWq/AotMo4QutoC0OVeJT8aG41sC5LvlYTBQB22E8Zv439JgHsdhQU1NRd/1VLGKATToxkUxh2Reei42koAWFJ+EfFvAIx03k5+ZYJY7W+Rtuy8jn0uRaZyvvQdUvyT22e9lSJzqkP6JAe7oru9hf9X4K0XSOfMMFUiJDC+rNm0Ajd+r/5h6C+jRqIMDvvFgdlCkM8gKIX1B5N+RM1hxurAGTRpdCPuDVLVeTCbNZCds8jiK1DNky6Ni66plBIV+LKQY3EpjBn0jaWfPdTJbU5OiOb1uadnmzj2yt65Mp3T8QJD3dotURISR8bIS+Xb6vAytKFWmtcqje5Hx4lFTfyrH3gRGjMyeS9j3pVjbbCCV466FHOp9oglpoFv49nXhivPzLqU7mSuLIue+5RZ318HykuBWI+6xAo8aH9nnoBmAWiGCxXwIr13Y=
 matrix:
   include:
-  - go: 1.5.3
+  - go: 1.5.4
     env: OPTIONS="-race" VET="true"
-  - go: 1.6
+  - go: 1.6.2
     env: COVERAGE="true" OPTIONS="" VET="true"
 script:
 - go fmt ./... | wc -l | grep 0
