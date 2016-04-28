@@ -18,15 +18,17 @@ package glusterfs
 
 import (
 	"errors"
-	"github.com/boltdb/bolt"
-	"github.com/heketi/heketi/executors"
-	"github.com/heketi/tests"
-	"github.com/heketi/utils"
+	"fmt"
 	"os"
 	"reflect"
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/boltdb/bolt"
+	"github.com/heketi/heketi/executors"
+	"github.com/heketi/tests"
+	"github.com/heketi/utils"
 )
 
 func createSampleVolumeEntry(size int) *VolumeEntry {
@@ -1343,4 +1345,60 @@ func TestVolumeEntryDoNotAllowDeviceOnSameNode(t *testing.T) {
 	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err != nil, err)
 	tests.Assert(t, err == ErrNoSpace)
+}
+
+func TestVolumeEntryDestroyCheck(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	// Lots of nodes with little drives
+	err := setupSampleDbWithTopology(app,
+		1,      // clusters
+		4,      // nodes_per_cluster
+		4,      // devices_per_node,
+		500*GB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	// Create a volume with a snapshot factor of 1.5
+	// For a 200G vol, it would get a brick size of 100G, with a thin pool
+	// size of 100G * 1.5 = 150GB.
+	v := createSampleVolumeEntry(200)
+	v.Info.Snapshot.Enable = true
+	v.Info.Snapshot.Factor = 1.5
+
+	err = v.Create(app.db, app.executor, app.allocator)
+	tests.Assert(t, err == nil)
+
+	// Test that a volume that is sharing space in a thin pool
+	// with either a clone or a snapshot cannot be deleted
+	app.xo.MockBrickDestroyCheck = func(host string, brick *executors.BrickRequest) error {
+		return fmt.Errorf("BRICKMOCK")
+	}
+	err = v.Destroy(app.db, app.executor)
+	tests.Assert(t, err != nil)
+	tests.Assert(t, err.Error() == "BRICKMOCK")
+	app.xo.MockBrickDestroyCheck = func(host string, brick *executors.BrickRequest) error {
+		return nil
+	}
+
+	// Check that a volume with snapshots cannot be deleted
+	app.xo.MockVolumeDestroyCheck = func(host, volume string) error {
+		return fmt.Errorf("VOLMOCK")
+	}
+	err = v.Destroy(app.db, app.executor)
+	tests.Assert(t, err != nil)
+	tests.Assert(t, err.Error() == "VOLMOCK")
+	app.xo.MockVolumeDestroyCheck = func(host, volume string) error {
+		return nil
+	}
+
+	// Now it should be able to be deleted
+	err = v.Destroy(app.db, app.executor)
+	tests.Assert(t, err == nil)
+
 }

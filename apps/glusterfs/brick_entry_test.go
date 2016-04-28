@@ -17,11 +17,14 @@
 package glusterfs
 
 import (
-	"github.com/boltdb/bolt"
-	"github.com/heketi/tests"
+	"fmt"
 	"os"
 	"reflect"
 	"testing"
+
+	"github.com/boltdb/bolt"
+	"github.com/heketi/heketi/executors"
+	"github.com/heketi/tests"
 )
 
 func TestNewBrickEntry(t *testing.T) {
@@ -181,4 +184,42 @@ func TestNewBrickEntryNewInfoResponse(t *testing.T) {
 	})
 	tests.Assert(t, err == nil)
 	tests.Assert(t, reflect.DeepEqual(*info, b.Info))
+}
+
+func TestBrickEntryDestroyCheck(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	// Create a brick
+	b := NewBrickEntry(10, 20, 5, "abc", "node")
+	n := NewNodeEntry()
+	n.Info.Id = "node"
+	n.Info.Hostnames.Manage = []string{"manage"}
+	n.Info.Hostnames.Storage = []string{"storage"}
+
+	// Save element in database
+	err := app.db.Update(func(tx *bolt.Tx) error {
+		err := n.Save(tx)
+		tests.Assert(t, err == nil)
+		return b.Save(tx)
+	})
+	tests.Assert(t, err == nil)
+
+	app.xo.MockBrickDestroyCheck = func(host string, brick *executors.BrickRequest) error {
+		return fmt.Errorf("MOCK error")
+	}
+
+	err = b.DestroyCheck(app.db, app.executor)
+	tests.Assert(t, err != nil)
+
+	app.xo.MockBrickDestroyCheck = func(host string, brick *executors.BrickRequest) error {
+		return nil
+	}
+
+	err = b.DestroyCheck(app.db, app.executor)
+	tests.Assert(t, err == nil, err)
 }

@@ -22,15 +22,17 @@ import (
 
 type MockExecutor struct {
 	// These functions can be overwritten for testing
-	MockPeerProbe      func(exec_host, newnode string) error
-	MockPeerDetach     func(exec_host, newnode string) error
-	MockDeviceSetup    func(host, device, vgid string) (*executors.DeviceInfo, error)
-	MockDeviceTeardown func(host, device, vgid string) error
-	MockBrickCreate    func(host string, brick *executors.BrickRequest) (*executors.BrickInfo, error)
-	MockBrickDestroy   func(host string, brick *executors.BrickRequest) error
-	MockVolumeCreate   func(host string, volume *executors.VolumeRequest) (*executors.VolumeInfo, error)
-	MockVolumeExpand   func(host string, volume *executors.VolumeRequest) (*executors.VolumeInfo, error)
-	MockVolumeDestroy  func(host string, volume string) error
+	MockPeerProbe          func(exec_host, newnode string) error
+	MockPeerDetach         func(exec_host, newnode string) error
+	MockDeviceSetup        func(host, device, vgid string) (*executors.DeviceInfo, error)
+	MockDeviceTeardown     func(host, device, vgid string) error
+	MockBrickCreate        func(host string, brick *executors.BrickRequest) (*executors.BrickInfo, error)
+	MockBrickDestroy       func(host string, brick *executors.BrickRequest) error
+	MockBrickDestroyCheck  func(host string, brick *executors.BrickRequest) error
+	MockVolumeCreate       func(host string, volume *executors.VolumeRequest) (*executors.VolumeInfo, error)
+	MockVolumeExpand       func(host string, volume *executors.VolumeRequest) (*executors.VolumeInfo, error)
+	MockVolumeDestroy      func(host string, volume string) error
+	MockVolumeDestroyCheck func(host, volume string) error
 }
 
 func NewMockExecutor() *MockExecutor {
@@ -66,6 +68,10 @@ func NewMockExecutor() *MockExecutor {
 		return nil
 	}
 
+	m.MockBrickDestroyCheck = func(host string, brick *executors.BrickRequest) error {
+		return nil
+	}
+
 	m.MockVolumeCreate = func(host string, volume *executors.VolumeRequest) (*executors.VolumeInfo, error) {
 		return &executors.VolumeInfo{}, nil
 	}
@@ -75,6 +81,10 @@ func NewMockExecutor() *MockExecutor {
 	}
 
 	m.MockVolumeDestroy = func(host string, volume string) error {
+		return nil
+	}
+
+	m.MockVolumeDestroyCheck = func(host, volume string) error {
 		return nil
 	}
 
@@ -105,6 +115,10 @@ func (m *MockExecutor) BrickDestroy(host string, brick *executors.BrickRequest) 
 	return m.MockBrickDestroy(host, brick)
 }
 
+func (m *MockExecutor) BrickDestroyCheck(host string, brick *executors.BrickRequest) error {
+	return m.MockBrickDestroyCheck(host, brick)
+}
+
 func (m *MockExecutor) VolumeCreate(host string, volume *executors.VolumeRequest) (*executors.VolumeInfo, error) {
 	return m.MockVolumeCreate(host, volume)
 }
@@ -115,4 +129,8 @@ func (m *MockExecutor) VolumeExpand(host string, volume *executors.VolumeRequest
 
 func (m *MockExecutor) VolumeDestroy(host string, volume string) error {
 	return m.MockVolumeDestroy(host, volume)
+}
+
+func (m *MockExecutor) VolumeDestroyCheck(host string, volume string) error {
+	return m.MockVolumeDestroyCheck(host, volume)
 }

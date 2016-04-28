@@ -224,6 +224,38 @@ func (b *BrickEntry) Destroy(db *bolt.DB, executor executors.Executor) error {
 	return nil
 }
 
+func (b *BrickEntry) DestroyCheck(db *bolt.DB, executor executors.Executor) error {
+	godbc.Require(db != nil)
+	godbc.Require(b.TpSize > 0)
+	godbc.Require(b.Info.Size > 0)
+
+	// Get node hostname
+	var host string
+	err := db.View(func(tx *bolt.Tx) error {
+		node, err := NewNodeEntryFromId(tx, b.Info.NodeId)
+		if err != nil {
+			return err
+		}
+
+		host = node.ManageHostName()
+		godbc.Check(host != "")
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	// Create request
+	req := &executors.BrickRequest{}
+	req.Name = b.Info.Id
+	req.Size = b.Info.Size
+	req.TpSize = b.TpSize
+	req.VgId = b.Info.DeviceId
+
+	// Check brick on node
+	return executor.BrickDestroyCheck(host, req)
+}
+
 // Size consumed on device
 func (b *BrickEntry) TotalSize() uint64 {
 	return b.TpSize + b.PoolMetadataSize

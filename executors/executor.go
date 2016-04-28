@@ -23,8 +23,10 @@ type Executor interface {
 	DeviceTeardown(host, device, vgid string) error
 	BrickCreate(host string, brick *BrickRequest) (*BrickInfo, error)
 	BrickDestroy(host string, brick *BrickRequest) error
+	BrickDestroyCheck(host string, brick *BrickRequest) error
 	VolumeCreate(host string, volume *VolumeRequest) (*VolumeInfo, error)
 	VolumeDestroy(host string, volume string) error
+	VolumeDestroyCheck(host, volume string) error
 	VolumeExpand(host string, volume *VolumeRequest) (*VolumeInfo, error)
 }
 
