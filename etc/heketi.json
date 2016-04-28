@@ -35,6 +35,13 @@
     },
 
     "_db_comment": "Database file name",
-    "db": "/var/lib/heketi/heketi.db"
+    "db": "/var/lib/heketi/heketi.db",
+
+    "_loglevel_comment": [
+      "Set log level. Choices are:",
+      "  none, critical, error, warning, info, debug",
+      "Default is warning"
+    ],
+    "loglevel" : "debug"
   }
 }
