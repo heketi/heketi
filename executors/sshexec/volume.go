@@ -17,7 +17,9 @@
 package sshexec
 
 import (
+	"encoding/xml"
 	"fmt"
+
 	"github.com/heketi/heketi/executors"
 	"github.com/lpabon/godbc"
 )
@@ -159,6 +161,19 @@ func (s *SshExecutor) VolumeDestroy(host string, volume string) error {
 	return nil
 }
 
+func (s *SshExecutor) VolumeDestroyCheck(host, volume string) error {
+	godbc.Require(host != "")
+	godbc.Require(volume != "")
+
+	// Determine if the volume is able to be deleted
+	err := s.checkForSnapshots(host, volume)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *SshExecutor) createAddBrickCommands(volume *executors.VolumeRequest,
 	start, inSet, maxPerSet int) []string {
 
@@ -185,4 +200,38 @@ func (s *SshExecutor) createAddBrickCommands(volume *executors.VolumeRequest,
 	commands = append(commands, cmd)
 
 	return commands
+}
+
+func (s *SshExecutor) checkForSnapshots(host, volume string) error {
+
+	// Stucture used to unmarshal XML from snapshot gluster cli
+	type CliOutput struct {
+		SnapList struct {
+			Count int `xml:"count"`
+		} `xml:"snapList"`
+	}
+
+	// Get snapshot information for the specified volume
+	commands := []string{
+		fmt.Sprintf("sudo gluster --mode=script snapshot list %v --xml", volume),
+	}
+
+	// Execute command
+	output, err := s.sshExec(host, commands, 10)
+	if err != nil {
+		return fmt.Errorf("Unable to get snapshot information from volume %v: %v", volume, err)
+	}
+
+	var snapInfo CliOutput
+	err = xml.Unmarshal([]byte(output[0]), &snapInfo)
+	if err != nil {
+		return fmt.Errorf("Unable to determine snapshot information from volume %v: %v", volume, err)
+	}
+
+	if snapInfo.SnapList.Count > 0 {
+		return fmt.Errorf("Unable to delete volume %v because it containes %v snapshots",
+			volume, snapInfo.SnapList.Count)
+	}
+
+	return nil
 }

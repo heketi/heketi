@@ -370,9 +370,23 @@ func (v *VolumeEntry) Destroy(db *bolt.DB, executor executors.Executor) error {
 		return nil
 	})
 
+	// Determine if we can destroy the volume
+	err := executor.VolumeDestroyCheck(sshhost, v.Info.Name)
+	if err != nil {
+		logger.Err(err)
+		return err
+	}
+
+	// Determine if the bricks can be destroyed
+	err = v.checkBricksCanBeDestroyed(db, executor, brick_entries)
+	if err != nil {
+		logger.Err(err)
+		return err
+	}
+
 	// :TODO: What if the host is no longer available, we may need to try others
 	// Stop volume
-	err := executor.VolumeDestroy(sshhost, v.Info.Name)
+	err = executor.VolumeDestroy(sshhost, v.Info.Name)
 	if err != nil {
 		logger.LogError("Unable to delete volume: %v", err)
 		return err
@@ -501,4 +515,28 @@ func (v *VolumeEntry) BricksIds() sort.StringSlice {
 	ids := make(sort.StringSlice, len(v.Bricks))
 	copy(ids, v.Bricks)
 	return ids
+}
+
+func (v *VolumeEntry) checkBricksCanBeDestroyed(db *bolt.DB,
+	executor executors.Executor,
+	brick_entries []*BrickEntry) error {
+
+	sg := utils.NewStatusGroup()
+
+	// Create a goroutine for each brick
+	for _, brick := range brick_entries {
+		sg.Add(1)
+		go func(b *BrickEntry) {
+			defer sg.Done()
+			sg.Err(b.DestroyCheck(db, executor))
+		}(brick)
+	}
+
+	// Wait here until all goroutines have returned.  If
+	// any of errored, it would be cought here
+	err := sg.Result()
+	if err != nil {
+		logger.Err(err)
+	}
+	return err
 }

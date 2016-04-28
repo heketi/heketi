@@ -18,6 +18,8 @@ package sshexec
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/heketi/heketi/executors"
 	"github.com/lpabon/godbc"
 )
@@ -150,6 +152,61 @@ func (s *SshExecutor) BrickDestroy(host string,
 	_, err = s.sshExec(host, commands, 5)
 	if err != nil {
 		logger.Err(err)
+	}
+
+	return nil
+}
+
+func (s *SshExecutor) BrickDestroyCheck(host string,
+	brick *executors.BrickRequest) error {
+	godbc.Require(brick != nil)
+	godbc.Require(host != "")
+	godbc.Require(brick.Name != "")
+	godbc.Require(brick.VgId != "")
+
+	err := s.checkThinPoolUsage(host, brick)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Determine if any other logical volumes are using the thin pool.
+// If they are, then either a clone volume or a snapshot is using that storage,
+// and we cannot delete the brick.
+func (s *SshExecutor) checkThinPoolUsage(host string,
+	brick *executors.BrickRequest) error {
+
+	// Sample output:
+	// 		# lvs --options=lv_name,thin_count --separator=: | grep "tp_"
+	// 		tp_a17c621ade79017b48cc0042bea86510:2
+	// 		tp_8d4e0849a5c90608a543928961bd2387:1
+	//		tp_3b9b3e07f06b93d94006ef272d3c10eb:2
+
+	tp := s.tpName(brick.Name)
+	commands := []string{
+		fmt.Sprintf("sudo lvs --options=lv_name,thin_count --separator=: | "+
+			"grep %v | cut -d: -f 2", tp),
+	}
+
+	// Send command
+	output, err := s.sshExec(host, commands, 5)
+	if err != nil {
+		logger.Err(err)
+		return fmt.Errorf("Unable to determine number of logical volumes in "+
+			"thin pool %v on host %v", tp, host)
+	}
+
+	// Determine if do not have only one LV in the thin pool,
+	// we cannot delete the brick
+	lvs := strings.Trim(output[0], " \r\n")
+	if lvs != "1" {
+		return fmt.Errorf("Cannot delete thin pool %v on %v because it "+
+			"is used by [%v] snapshot(s) or cloned volume(s)",
+			tp,
+			host,
+			lvs)
 	}
 
 	return nil
