@@ -27,6 +27,7 @@ type GlusterFSConfig struct {
 	Executor  string            `json:"executor"`
 	Allocator string            `json:"allocator"`
 	SshConfig sshexec.SshConfig `json:"sshexec"`
+	Loglevel  string            `json:"loglevel"`
 
 	// advanced settings
 	BrickMaxSize int `json:"brick_max_size_gb"`

@@ -19,6 +19,7 @@ package glusterfs
 import (
 	"bytes"
 	"github.com/heketi/tests"
+	"github.com/heketi/utils"
 	"os"
 	"testing"
 )
@@ -95,4 +96,64 @@ func TestAppAdvsettings(t *testing.T) {
 	tests.Assert(t, BrickMaxNum == 33)
 	tests.Assert(t, BrickMaxSize == 1*TB)
 	tests.Assert(t, BrickMinSize == 1*GB)
+}
+
+func TestAppLogLevel(t *testing.T) {
+	dbfile := tests.Tempfile()
+	defer os.Remove(dbfile)
+
+	levels := []string{
+		"none",
+		"critical",
+		"error",
+		"warning",
+		"info",
+		"debug",
+	}
+
+	logger.SetLevel(utils.LEVEL_DEBUG)
+	for _, level := range levels {
+		data := []byte(`{
+			"glusterfs" : {
+				"executor" : "mock",
+				"allocator" : "simple",
+				"db" : "` + dbfile + `",
+				"loglevel" : "` + level + `"
+			}
+		}`)
+
+		app := NewApp(bytes.NewReader(data))
+		tests.Assert(t, app != nil, level, string(data))
+
+		switch level {
+		case "none":
+			tests.Assert(t, logger.Level() == utils.LEVEL_NOLOG)
+		case "critical":
+			tests.Assert(t, logger.Level() == utils.LEVEL_CRITICAL)
+		case "error":
+			tests.Assert(t, logger.Level() == utils.LEVEL_ERROR)
+		case "warning":
+			tests.Assert(t, logger.Level() == utils.LEVEL_WARNING)
+		case "info":
+			tests.Assert(t, logger.Level() == utils.LEVEL_INFO)
+		case "debug":
+			tests.Assert(t, logger.Level() == utils.LEVEL_DEBUG)
+		}
+		app.Close()
+	}
+
+	// Test that an unknown value does not change the loglevel
+	logger.SetLevel(utils.LEVEL_NOLOG)
+	data := []byte(`{
+			"glusterfs" : {
+				"executor" : "mock",
+				"allocator" : "simple",
+				"db" : "` + dbfile + `",
+				"loglevel" : "blah"
+			}
+		}`)
+
+	app := NewApp(bytes.NewReader(data))
+	tests.Assert(t, app != nil)
+	tests.Assert(t, logger.Level() == utils.LEVEL_NOLOG)
 }

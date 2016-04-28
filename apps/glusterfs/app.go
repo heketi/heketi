@@ -42,7 +42,7 @@ const (
 )
 
 var (
-	logger     = utils.NewLogger("[heketi]", utils.LEVEL_DEBUG)
+	logger     = utils.NewLogger("[heketi]", utils.LEVEL_INFO)
 	dbfilename = "heketi.db"
 )
 
@@ -66,6 +66,9 @@ func NewApp(configIo io.Reader) *App {
 	if app.conf == nil {
 		return nil
 	}
+
+	// Setup loglevel
+	app.setLogLevel(app.conf.Loglevel)
 
 	// Setup asynchronous manager
 	app.asyncManager = rest.NewAsyncHttpManager(ASYNC_ROUTE)
@@ -161,6 +164,23 @@ func NewApp(configIo io.Reader) *App {
 	logger.Info("GlusterFS Application Loaded")
 
 	return app
+}
+
+func (a *App) setLogLevel(level string) {
+	switch level {
+	case "none":
+		logger.SetLevel(utils.LEVEL_NOLOG)
+	case "critical":
+		logger.SetLevel(utils.LEVEL_CRITICAL)
+	case "error":
+		logger.SetLevel(utils.LEVEL_ERROR)
+	case "warning":
+		logger.SetLevel(utils.LEVEL_WARNING)
+	case "info":
+		logger.SetLevel(utils.LEVEL_INFO)
+	case "debug":
+		logger.SetLevel(utils.LEVEL_DEBUG)
+	}
 }
 
 func (a *App) setAdvSettings() {
