@@ -20,12 +20,13 @@ from heketi import HeketiClient
 
 
 TEST_ADMIN_KEY = "My Secret"
-TEST_SERVER="http://localhost:8080"
+TEST_SERVER = "http://localhost:8080"
+
 
 class test_heketi(unittest.TestCase):
 
     def test_cluster(self):
-        c = HeketiClient(TEST_SERVER,"admin",TEST_ADMIN_KEY)
+        c = HeketiClient(TEST_SERVER, "admin", TEST_ADMIN_KEY)
 
         cluster = c.cluster_create()
         self.assertEqual(True, cluster['id'] != "")
@@ -37,7 +38,7 @@ class test_heketi(unittest.TestCase):
             c.cluster_info("bad")
 
         # Get info about the cluster
-        info  = c.cluster_info(cluster['id'])
+        info = c.cluster_info(cluster['id'])
         self.assertEqual(True, info == cluster)
 
         # Get a list of clusters
@@ -49,16 +50,13 @@ class test_heketi(unittest.TestCase):
         with self.assertRaises(requests.exceptions.HTTPError):
             c.cluster_delete("badid")
 
-
         # Delete current cluster
         self.assertEqual(True, c.cluster_delete(info['id']))
-
-
 
     def test_node(self):
         node_req = {}
 
-        c = HeketiClient(TEST_SERVER,"admin",TEST_ADMIN_KEY)
+        c = HeketiClient(TEST_SERVER, "admin", TEST_ADMIN_KEY)
         self.assertEqual(True, c != '')
 
         # Create cluster
@@ -71,22 +69,20 @@ class test_heketi(unittest.TestCase):
         node_req['cluster'] = "bad_id"
         node_req['zone'] = 10
         node_req['hostnames'] = {
-            "manage": [ "node1-manage.gluster.lab.com" ],
-            "storage": [ "node1-storage.gluster.lab.com" ]
+            "manage": ["node1-manage.gluster.lab.com"],
+            "storage": ["node1-storage.gluster.lab.com"]
         }
 
         with self.assertRaises(requests.exceptions.HTTPError):
             c.node_add(node_req)
-
 
         # Create node request packet
         node_req['cluster'] = cluster['id']
         node = c.node_add(node_req)
         self.assertEqual(True, node['zone'] == node_req['zone'])
         self.assertEqual(True, node['id'] != "")
-        self.assertEqual(True, node_req['hostnames'] ==  node['hostnames'])
+        self.assertEqual(True, node_req['hostnames'] == node['hostnames'])
         self.assertEqual(True, len(node['devices']) == 0)
-
 
         # Info on invalid id
         with self.assertRaises(requests.exceptions.HTTPError):
@@ -104,7 +100,6 @@ class test_heketi(unittest.TestCase):
         with self.assertRaises(requests.exceptions.HTTPError):
             c.cluster_delete(cluster['id'])
 
-
         # Delete node
         del_node = c.node_delete(node['id'])
         self.assertEqual(True, del_node)
@@ -113,10 +108,9 @@ class test_heketi(unittest.TestCase):
         del_cluster = c.cluster_delete(cluster['id'])
         self.assertEqual(True, del_cluster)
 
-
     def test_device(self):
         # Create app
-        c = HeketiClient(TEST_SERVER,"admin",TEST_ADMIN_KEY)
+        c = HeketiClient(TEST_SERVER, "admin", TEST_ADMIN_KEY)
 
         # Create cluster
         cluster = c.cluster_create()
@@ -127,8 +121,8 @@ class test_heketi(unittest.TestCase):
         node_req['cluster'] = cluster['id']
         node_req['zone'] = 10
         node_req['hostnames'] = {
-            "manage" : [ "node1-manage.gluster.lab.com" ],
-            "storage" : [ "node1-storage.gluster.lab.com" ]
+            "manage": ["node1-manage.gluster.lab.com"],
+            "storage": ["node1-storage.gluster.lab.com"]
         }
 
         node = c.node_add(node_req)
@@ -137,7 +131,6 @@ class test_heketi(unittest.TestCase):
         # Create a device request
         device_req = {}
         device_req['name'] = "sda"
-        device_req['weight'] = 100
         device_req['node'] = node['id']
 
         device = c.device_add(device_req)
@@ -147,8 +140,8 @@ class test_heketi(unittest.TestCase):
         info = c.node_info(node['id'])
         self.assertEqual(True, len(info['devices']) == 1)
         self.assertEqual(True, len(info['devices'][0]['bricks']) == 0)
-        self.assertEqual(True, info['devices'][0]['name'] == device_req['name'])
-        self.assertEqual(True, info['devices'][0]['weight'] == device_req['weight'])
+        self.assertEqual(
+            True, info['devices'][0]['name'] == device_req['name'])
         self.assertEqual(True, info['devices'][0]['id'] != '')
 
         # Get info from an unknown id
@@ -179,22 +172,22 @@ class test_heketi(unittest.TestCase):
         cluster_delete = c.cluster_delete(cluster['id'])
         self.assertEqual(True, cluster_delete)
 
-
     def test_volume(self):
         # Create cluster
-        c = HeketiClient(TEST_SERVER,"admin",TEST_ADMIN_KEY)
+        c = HeketiClient(TEST_SERVER, "admin", TEST_ADMIN_KEY)
         self.assertEqual(True, c != '')
 
         cluster = c.cluster_create()
         self.assertEqual(True, cluster['id'] != '')
 
         # Create node request packet
-        for i in range(4):
+        print "Creating Cluster"
+        for i in range(3):
             node_req = {}
             node_req['cluster'] = cluster['id']
             node_req['hostnames'] = {
-                "manage" : [ "node%s-manage.gluster.lab.com" %(i) ],
-                "storage" : [ "node%s-storage.gluster.lab.com" %(i) ] }
+                "manage": ["node%s-manage.gluster.lab.com" % (i)],
+                "storage": ["node%s-storage.gluster.lab.com" % (i)]}
             node_req['zone'] = i + 1
 
             # Create node
@@ -202,21 +195,20 @@ class test_heketi(unittest.TestCase):
             self.assertEqual(True, node['id'] != '')
 
             # Create and add devices
-            for i in range(1,20):
+            for i in range(1, 4):
                 device_req = {}
-                device_req['name'] = "sda%s" %(i)
-                device_req['weight'] = 100
+                device_req['name'] = "sda%s" % (i)
                 device_req['node'] = node['id']
 
                 device = c.device_add(device_req)
                 self.assertEqual(True, device)
-
 
         # Get list of volumes
         list = c.volume_list()
         self.assertEqual(True, len(list['volumes']) == 0)
 
         # Create a volume
+        print "Creating a volume"
         volume_req = {}
         volume_req['size'] = 10
         volume = c.volume_create(volume_req)
@@ -244,6 +236,7 @@ class test_heketi(unittest.TestCase):
             c.volume_expand("badid", volume_ex_params)
 
         # Expand volume
+        print "Expanding volume"
         volumeInfo = c.volume_expand(volume['id'], volume_ex_params)
         self.assertEqual(True, volumeInfo['size'] == 20)
 
@@ -252,20 +245,22 @@ class test_heketi(unittest.TestCase):
             c.volume_delete("badid")
 
         # Delete volume
+        print "Deleting volume"
         volume_delete = c.volume_delete(volume['id'])
         self.assertEqual(True, volume_delete)
 
+        print "Deleting Cluster"
         clusterInfo = c.cluster_info(cluster['id'])
         for node_id in clusterInfo['nodes']:
-            #Get node information
-            nodeInfo  = c.node_info(node_id)
+            # Get node information
+            nodeInfo = c.node_info(node_id)
 
             # Delete all devices
             for device in nodeInfo['devices']:
                 device_delete = c.device_delete(device['id'])
                 self.assertEqual(True, device_delete)
 
-            #Delete node
+            # Delete node
             node_delete = c.node_delete(node_id)
             self.assertEqual(True, node_delete)
 
