@@ -25,6 +25,16 @@ import (
 	"sort"
 )
 
+type Cluster struct {
+	Volumes []VolumeInfoResponse `json:"volumes"`
+	Nodes   []NodeInfoResponse   `json:"nodes"`
+	Id      string               `json:"id"`
+}
+
+type TopologyInfoResponse struct {
+	ClusterList []Cluster `json:"clusters"`
+}
+
 // Storage values in KB
 type StorageSize struct {
 	Total uint64 `json:"total"`
