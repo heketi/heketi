@@ -1,4 +1,9 @@
 language: go
+sudo: true
+before_install:
+    - sudo apt-get update -qq
+    - sudo apt-get install -qq python python-pip
+    - sudo pip install tox nose
 install:
 - bash .travis-fork-fix
 - go get github.com/mattn/goveralls
@@ -18,3 +23,6 @@ script:
 - go vet ./...
 - go test -v $OPTIONS ./...
 - if [[ -n "$COVERAGE" ]]; then bash .travis-coverage; fi
+- cd client/api/python 
+- ./unittests.sh
+- tox -e pep8
