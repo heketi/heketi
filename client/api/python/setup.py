@@ -17,7 +17,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='heketi',
-    version='1.0.2',
+    version='1.2.0',
     description='Python client library for Heketi',
     license='Apache License (2.0)',
     author='Luis Pabon',
