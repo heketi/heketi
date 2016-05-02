@@ -28,6 +28,7 @@ type Executor interface {
 	VolumeDestroy(host string, volume string) error
 	VolumeDestroyCheck(host, volume string) error
 	VolumeExpand(host string, volume *VolumeRequest) (*VolumeInfo, error)
+	SetLogLevel(level string)
 }
 
 // Enumerate durability types

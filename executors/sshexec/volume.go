@@ -75,7 +75,7 @@ func (s *SshExecutor) VolumeCreate(host string,
 	commands = append(commands, fmt.Sprintf("sudo gluster volume start %v", volume.Name))
 
 	// Execute command
-	_, err := s.sshExec(host, commands, 10)
+	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
 	if err != nil {
 		s.VolumeDestroy(host, volume.Name)
 		return nil, err
@@ -122,7 +122,7 @@ func (s *SshExecutor) VolumeExpand(host string,
 	}
 
 	// Execute command
-	_, err := s.sshExec(host, commands, 10)
+	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func (s *SshExecutor) VolumeDestroy(host string, volume string) error {
 	}
 
 	// Execute command
-	_, err := s.sshExec(host, commands, 10)
+	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
 	if err != nil {
 		logger.LogError("Unable to stop volume %v: %v", volume, err)
 	}
@@ -153,7 +153,7 @@ func (s *SshExecutor) VolumeDestroy(host string, volume string) error {
 	}
 
 	// Execute command
-	_, err = s.sshExec(host, commands, 10)
+	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
 	if err != nil {
 		logger.LogError("Unable to delete volume %v: %v", volume, err)
 	}
@@ -217,7 +217,7 @@ func (s *SshExecutor) checkForSnapshots(host, volume string) error {
 	}
 
 	// Execute command
-	output, err := s.sshExec(host, commands, 10)
+	output, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
 	if err != nil {
 		return fmt.Errorf("Unable to get snapshot information from volume %v: %v", volume, err)
 	}

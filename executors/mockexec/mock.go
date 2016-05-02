@@ -35,7 +35,7 @@ type MockExecutor struct {
 	MockVolumeDestroyCheck func(host, volume string) error
 }
 
-func NewMockExecutor() *MockExecutor {
+func NewMockExecutor() (*MockExecutor, error) {
 	m := &MockExecutor{}
 
 	m.MockPeerProbe = func(exec_host, newnode string) error {
@@ -88,7 +88,11 @@ func NewMockExecutor() *MockExecutor {
 		return nil
 	}
 
-	return m
+	return m, nil
+}
+
+func (m *MockExecutor) SetLogLevel(level string) {
+
 }
 
 func (m *MockExecutor) PeerProbe(exec_host, newnode string) error {

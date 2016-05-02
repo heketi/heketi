@@ -18,7 +18,7 @@ package sshexec
 
 import (
 	"errors"
-	"os"
+	"fmt"
 	"sync"
 
 	"github.com/heketi/utils"
@@ -26,19 +26,27 @@ import (
 	"github.com/lpabon/godbc"
 )
 
+type RemoteCommandTransport interface {
+	RemoteCommandExecute(host string, commands []string, timeoutMinutes int) ([]string, error)
+}
+
 type Ssher interface {
 	ConnectAndExec(host string, commands []string, timeoutMinutes int) ([]string, error)
 }
 
 type SshExecutor struct {
+	// "Public"
+	Throttlemap    map[string]chan bool
+	Lock           sync.Mutex
+	RemoteExecutor RemoteCommandTransport
+	Fstab          string
+
+	// Private
 	private_keyfile string
 	user            string
-	throttlemap     map[string]chan bool
-	lock            sync.Mutex
 	exec            Ssher
 	config          *SshConfig
 	port            string
-	fstab           string
 }
 
 type SshConfig struct {
@@ -63,18 +71,18 @@ var (
 	}
 )
 
-func NewSshExecutor(config *SshConfig) *SshExecutor {
+func NewSshExecutor(config *SshConfig) (*SshExecutor, error) {
 	godbc.Require(config != nil)
 
 	s := &SshExecutor{}
-	s.throttlemap = make(map[string]chan bool)
+	s.RemoteExecutor = s
+	s.Throttlemap = make(map[string]chan bool)
 
 	// Set configuration
 	if config.PrivateKeyFile == "" {
-		s.private_keyfile = os.Getenv("HOME") + "/.ssh/id_rsa"
-	} else {
-		s.private_keyfile = config.PrivateKeyFile
+		return nil, fmt.Errorf("Missing ssh private key file in configuration")
 	}
+	s.private_keyfile = config.PrivateKeyFile
 
 	if config.User == "" {
 		s.user = "heketi"
@@ -89,9 +97,9 @@ func NewSshExecutor(config *SshConfig) *SshExecutor {
 	}
 
 	if config.Fstab == "" {
-		s.fstab = "/etc/fstab"
+		s.Fstab = "/etc/fstab"
 	} else {
-		s.fstab = config.Fstab
+		s.Fstab = config.Fstab
 	}
 
 	// Save the configuration
@@ -107,7 +115,7 @@ func NewSshExecutor(config *SshConfig) *SshExecutor {
 	s.exec, err = sshNew(logger, s.user, s.private_keyfile)
 	if err != nil {
 		logger.Err(err)
-		return nil
+		return nil, err
 	}
 
 	godbc.Ensure(s != nil)
@@ -115,41 +123,60 @@ func NewSshExecutor(config *SshConfig) *SshExecutor {
 	godbc.Ensure(s.user != "")
 	godbc.Ensure(s.private_keyfile != "")
 	godbc.Ensure(s.port != "")
-	godbc.Ensure(s.fstab != "")
+	godbc.Ensure(s.Fstab != "")
 
-	return s
+	return s, nil
 }
 
-func (s *SshExecutor) accessConnection(host string) {
+func (s *SshExecutor) SetLogLevel(level string) {
+	switch level {
+	case "none":
+		logger.SetLevel(utils.LEVEL_NOLOG)
+	case "critical":
+		logger.SetLevel(utils.LEVEL_CRITICAL)
+	case "error":
+		logger.SetLevel(utils.LEVEL_ERROR)
+	case "warning":
+		logger.SetLevel(utils.LEVEL_WARNING)
+	case "info":
+		logger.SetLevel(utils.LEVEL_INFO)
+	case "debug":
+		logger.SetLevel(utils.LEVEL_DEBUG)
+	}
+}
+
+func (s *SshExecutor) AccessConnection(host string) {
 
 	var (
 		c  chan bool
 		ok bool
 	)
 
-	s.lock.Lock()
-	if c, ok = s.throttlemap[host]; !ok {
+	s.Lock.Lock()
+	if c, ok = s.Throttlemap[host]; !ok {
 		c = make(chan bool, 1)
-		s.throttlemap[host] = c
+		s.Throttlemap[host] = c
 	}
-	s.lock.Unlock()
+	s.Lock.Unlock()
 
 	c <- true
 }
 
-func (s *SshExecutor) freeConnection(host string) {
-	s.lock.Lock()
-	c := s.throttlemap[host]
-	s.lock.Unlock()
+func (s *SshExecutor) FreeConnection(host string) {
+	s.Lock.Lock()
+	c := s.Throttlemap[host]
+	s.Lock.Unlock()
 
 	<-c
 }
 
-func (s *SshExecutor) sshExec(host string, commands []string, timeoutMinutes int) ([]string, error) {
+func (s *SshExecutor) RemoteCommandExecute(host string,
+	commands []string,
+	timeoutMinutes int) ([]string, error) {
 
 	// Throttle
-	s.accessConnection(host)
-	defer s.freeConnection(host)
+	s.AccessConnection(host)
+	defer s.FreeConnection(host)
 
 	// Execute
 	return s.exec.ConnectAndExec(host+":"+s.port, commands, timeoutMinutes)

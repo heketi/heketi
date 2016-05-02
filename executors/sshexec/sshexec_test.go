@@ -17,7 +17,6 @@
 package sshexec
 
 import (
-	"os"
 	"testing"
 
 	"github.com/heketi/tests"
@@ -63,12 +62,13 @@ func TestNewSshExec(t *testing.T) {
 		Fstab:          "xfstab",
 	}
 
-	s := NewSshExecutor(config)
+	s, err := NewSshExecutor(config)
+	tests.Assert(t, err == nil)
 	tests.Assert(t, s != nil)
 	tests.Assert(t, s.private_keyfile == config.PrivateKeyFile)
 	tests.Assert(t, s.user == config.User)
 	tests.Assert(t, s.port == config.Port)
-	tests.Assert(t, s.fstab == config.Fstab)
+	tests.Assert(t, s.Fstab == config.Fstab)
 	tests.Assert(t, s.exec != nil)
 }
 
@@ -79,23 +79,25 @@ func TestNewSshExecDefaults(t *testing.T) {
 			return f, nil
 		}).Restore()
 
-	config := &SshConfig{}
+	config := &SshConfig{
+		PrivateKeyFile: "xkeyfile",
+	}
 
-	s := NewSshExecutor(config)
+	s, err := NewSshExecutor(config)
+	tests.Assert(t, err == nil)
 	tests.Assert(t, s != nil)
-	tests.Assert(t, s.private_keyfile == os.Getenv("HOME")+"/.ssh/id_rsa")
+	tests.Assert(t, s.private_keyfile == "xkeyfile")
 	tests.Assert(t, s.user == "heketi")
 	tests.Assert(t, s.port == "22")
-	tests.Assert(t, s.fstab == "/etc/fstab")
+	tests.Assert(t, s.Fstab == "/etc/fstab")
 	tests.Assert(t, s.exec != nil)
 
 }
 
 func TestNewSshExecBadPrivateKeyLocation(t *testing.T) {
-	config := &SshConfig{
-		PrivateKeyFile: "thereisnospoon",
-	}
+	config := &SshConfig{}
 
-	s := NewSshExecutor(config)
+	s, err := NewSshExecutor(config)
 	tests.Assert(t, s == nil)
+	tests.Assert(t, err != nil)
 }
