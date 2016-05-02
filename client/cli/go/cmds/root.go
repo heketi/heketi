@@ -73,7 +73,7 @@ func initConfig() {
 	// Check server
 	if options.Url == "" {
 		options.Url = os.Getenv("HEKETI_CLI_SERVER")
-		if options.Url == "" {
+		if options.Url == "" && !version {
 			fmt.Fprintf(stderr, "Server must be provided\n")
 			os.Exit(3)
 		}
