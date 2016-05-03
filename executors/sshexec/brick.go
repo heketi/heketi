@@ -84,9 +84,10 @@ func (s *SshExecutor) BrickCreate(host string,
 		fmt.Sprintf("sudo mkfs.xfs -i size=512 -n size=8192 %v", s.devnode(brick)),
 
 		// Fstab
-		fmt.Sprintf("echo \"%v %v xfs rw,inode64,noatime,nouuid 1 2\" | sudo tee -a /etc/fstab > /dev/null ",
+		fmt.Sprintf("echo \"%v %v xfs rw,inode64,noatime,nouuid 1 2\" | sudo tee -a %v > /dev/null ",
 			s.devnode(brick),
-			mountpoint),
+			mountpoint,
+			s.fstab),
 
 		// Mount
 		fmt.Sprintf("sudo mount -o rw,inode64,noatime,nouuid %v %v", s.devnode(brick), mountpoint),
@@ -147,7 +148,9 @@ func (s *SshExecutor) BrickDestroy(host string,
 
 	// Remove from fstab
 	commands = []string{
-		fmt.Sprintf("sudo sed -i.save '/%v/d' /etc/fstab", s.brickName(brick.Name)),
+		fmt.Sprintf("sudo sed -i.save '/%v/d' %v",
+			s.brickName(brick.Name),
+			s.fstab),
 	}
 	_, err = s.sshExec(host, commands, 5)
 	if err != nil {
