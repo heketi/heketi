@@ -26,20 +26,26 @@ import (
 	"github.com/lpabon/godbc"
 )
 
+type Ssher interface {
+	ConnectAndExec(host string, commands []string, timeoutMinutes int) ([]string, error)
+}
+
 type SshExecutor struct {
 	private_keyfile string
 	user            string
 	throttlemap     map[string]chan bool
 	lock            sync.Mutex
-	exec            *ssh.SshExec
+	exec            Ssher
 	config          *SshConfig
 	port            string
+	fstab           string
 }
 
 type SshConfig struct {
 	PrivateKeyFile string `json:"keyfile"`
 	User           string `json:"user"`
 	Port           string `json:"port"`
+	Fstab          string `json:"fstab"`
 
 	// Experimental Settings
 	RebalanceOnExpansion bool `json:"rebalance_on_expansion"`
@@ -48,6 +54,13 @@ type SshConfig struct {
 var (
 	logger           = utils.NewLogger("[sshexec]", utils.LEVEL_DEBUG)
 	ErrSshPrivateKey = errors.New("Unable to read private key file")
+	sshNew           = func(logger *utils.Logger, user string, file string) (Ssher, error) {
+		s := ssh.NewSshExecWithKeyFile(logger, user, file)
+		if s == nil {
+			return nil, ErrSshPrivateKey
+		}
+		return s, nil
+	}
 )
 
 func NewSshExecutor(config *SshConfig) *SshExecutor {
@@ -75,6 +88,13 @@ func NewSshExecutor(config *SshConfig) *SshExecutor {
 		s.port = config.Port
 	}
 
+	if config.Fstab == "" {
+		s.fstab = "/etc/fstab"
+	} else {
+		s.fstab = config.Fstab
+	}
+
+	// Save the configuration
 	s.config = config
 
 	// Show experimental settings
@@ -83,9 +103,10 @@ func NewSshExecutor(config *SshConfig) *SshExecutor {
 	}
 
 	// Setup key
-	s.exec = ssh.NewSshExecWithKeyFile(logger, s.user, s.private_keyfile)
-	if s.exec == nil {
-		logger.LogError("Unable to load ssh user and private keyfile")
+	var err error
+	s.exec, err = sshNew(logger, s.user, s.private_keyfile)
+	if err != nil {
+		logger.Err(err)
 		return nil
 	}
 
@@ -93,6 +114,8 @@ func NewSshExecutor(config *SshConfig) *SshExecutor {
 	godbc.Ensure(s.config == config)
 	godbc.Ensure(s.user != "")
 	godbc.Ensure(s.private_keyfile != "")
+	godbc.Ensure(s.port != "")
+	godbc.Ensure(s.fstab != "")
 
 	return s
 }
