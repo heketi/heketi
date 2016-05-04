@@ -8,6 +8,7 @@ install:
 - bash .travis-fork-fix
 - go get github.com/mattn/goveralls
 - go get github.com/robfig/glock
+- go get github.com/wadey/gocovmerge
 - glock sync github.com/heketi/heketi
 env:
   global:
