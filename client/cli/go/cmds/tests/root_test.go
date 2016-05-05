@@ -37,7 +37,7 @@ func TestVersion(t *testing.T) {
 	for _, test_arg := range test_version {
 		c.SetArgs(test_arg.input)
 		c.SetOutput(buf)
-		output := c.RunE(c, test_arg.input)
+		output := c.Execute()
 		if output != nil {
 			diff = strings.Compare(output.Error(), test_arg.output)
 			if diff != 0 {
