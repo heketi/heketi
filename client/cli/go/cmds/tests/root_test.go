@@ -25,10 +25,9 @@ var test_version = []struct {
 }
 
 var testNoFlag = []struct {
-	input  []string
-	output string
+	input []string
 }{
-	{[]string{}, ""},
+	{[]string{}},
 }
 
 func TestVersion(t *testing.T) {
@@ -57,10 +56,7 @@ func TestClusterCreate(t *testing.T) {
 		c.SetOutput(buf)
 		output := c.RunE(c, test_clu.input)
 		if output != nil {
-			diff = strings.Compare(output.Error(), test_clu.output)
-			if diff != 0 {
-				t.Error("Expected ", test_clu.output, ",Got ", output.Error())
-			}
+			t.Error("Expected Nothing, Got ", output.Error())
 		}
 	}
 }
@@ -73,10 +69,20 @@ func TestClusterList(t *testing.T) {
 		c.SetOutput(buf)
 		output := c.RunE(c, test_clu.input)
 		if output != nil {
-			diff = strings.Compare(output.Error(), test_clu.output)
-			if diff != 0 {
-				t.Error("Expected ", test_clu.output, ",Got ", output.Error())
-			}
+			t.Error("Expected Nothing, Got ", output.Error())
+		}
+	}
+}
+
+func TestVolumeList(t *testing.T) {
+	c := cmds.VolumeListCommand
+	c.Root().ResetFlags()
+	buf := new(bytes.Buffer)
+	for _, test_clu := range testNoFlag {
+		c.SetOutput(buf)
+		output := c.RunE(c, test_clu.input)
+		if output != nil {
+			t.Error("Expected Nothing, Got ", output.Error())
 		}
 	}
 }
