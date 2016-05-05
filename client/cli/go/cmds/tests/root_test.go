@@ -25,9 +25,10 @@ var test_version = []struct {
 }
 
 var testNoFlag = []struct {
-	input []string
+	input  []string
+	output string
 }{
-	{[]string{}},
+	{[]string{}, ""},
 }
 
 func TestVersion(t *testing.T) {
@@ -54,13 +55,13 @@ func TestClusterCreate(t *testing.T) {
 	buf := new(bytes.Buffer)
 	for _, test_clu := range testNoFlag {
 		c.SetOutput(buf)
-		c.RunE(c, test_clu.input)
-		/*		if output != nil {
-				diff = strings.Compare(output.Error(), test_clu.output)
-				if diff != 0 {
-					t.Error("Expected ", test_clu.output, ",Got ", output.Error())
-				}
-			}*/
+		output := c.RunE(c, test_clu.input)
+		if output != nil {
+			diff = strings.Compare(output.Error(), test_clu.output)
+			if diff != 0 {
+				t.Error("Expected ", test_clu.output, ",Got ", output.Error())
+			}
+		}
 	}
 }
 
@@ -70,12 +71,12 @@ func TestClusterList(t *testing.T) {
 	buf := new(bytes.Buffer)
 	for _, test_clu := range testNoFlag {
 		c.SetOutput(buf)
-		c.RunE(c, test_clu.input)
-		/*		if output != nil {
-				diff = strings.Compare(output.Error(), test_clu.output)
-				if diff != 0 {
-					t.Error("Expected ", test_clu.output, ",Got ", output.Error())
-				}
-			}*/
+		output := c.RunE(c, test_clu.input)
+		if output != nil {
+			diff = strings.Compare(output.Error(), test_clu.output)
+			if diff != 0 {
+				t.Error("Expected ", test_clu.output, ",Got ", output.Error())
+			}
+		}
 	}
 }
