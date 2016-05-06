@@ -1,7 +1,6 @@
 package cmds
 
 import (
-	"bytes"
 	"io"
 	"net/http/httptest"
 	"os"
@@ -11,6 +10,7 @@ import (
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/apps/glusterfs"
+	"github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/client/cli/go/cmds"
 	"github.com/heketi/heketi/middleware"
 	"github.com/heketi/tests"
@@ -22,20 +22,11 @@ var (
 	sout                    io.Writer = os.Stdout
 	serr                    io.Writer = os.Stderr
 	TEST_ADMIN_KEY                    = "adminkey"
+	db                      string
+	app                     *glusterfs.App
+	Ts                      *httptest.Server
+	Url                     string
 )
-var test_version = []struct {
-	input  []string
-	output string
-}{
-	{[]string{"--version", "--server", "http://localhost:8080", "-v"}, ""},
-	{[]string{"--veri"}, "unknown flag: --veri"},
-}
-
-var testNoFlag = []struct {
-	input []string
-}{
-	{[]string{}},
-}
 
 func setupHeketiServer(app *glusterfs.App) *httptest.Server {
 	router := mux.NewRouter()
@@ -57,16 +48,34 @@ func setupHeketiServer(app *glusterfs.App) *httptest.Server {
 
 func TestVersion(t *testing.T) {
 	c := cmds.NewHeketiCli(HEKETI_CLI_TEST_VERSION, sout, serr)
+	db := tests.Tempfile()
+	//	defer os.Remove(db)
 
-	buf := new(bytes.Buffer)
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	//	defer app.Close()
+
+	// Setup the server
+	Ts := setupHeketiServer(app)
+	Url = Ts.URL
+	//	defer ts.Close()
+	//	server := ts.URL
+	//  defaultflags :=
+	var test_version = []struct {
+		input []string
+		err   string
+	}{
+		{[]string{"--version", "--server", Ts.URL, "--user", "admin", "--secret",
+			TEST_ADMIN_KEY, "-v"}, ""},
+		{[]string{"--veri"}, "unknown flag: --veri"},
+	}
 	for _, test_arg := range test_version {
 		c.SetArgs(test_arg.input)
-		c.SetOutput(buf)
-		output := c.Execute()
-		if output != nil {
-			diff = strings.Compare(output.Error(), test_arg.output)
+		err := c.Execute()
+		if err != nil {
+			diff = strings.Compare(err.Error(), test_arg.err)
 			if diff != 0 {
-				t.Error("Expected ", test_arg.output, ",Got ", output.Error())
+				t.Error("Expected ", test_arg.err, ",Got ", err.Error())
 			}
 		}
 	}
@@ -74,56 +83,83 @@ func TestVersion(t *testing.T) {
 }
 
 func TestClusterCreate(t *testing.T) {
-	db := tests.Tempfile()
-	defer os.Remove(db)
-
-	// Create the app
-	app := glusterfs.NewTestApp(db)
-	defer app.Close()
-
-	// Setup the server
-	ts := setupHeketiServer(app)
-	defer ts.Close()
-	//	server := ts.URL
-	//  defaultflags :=
 	c := cmds.ClusterCreateCommand
-	c.Root().ResetFlags()
-	buf := new(bytes.Buffer)
-	for _, test_clu := range testNoFlag {
-		c.SetOutput(buf)
-		output := c.RunE(c, test_clu.input)
-		if output != nil {
-			t.Error("Expected Nothing, Got ", output.Error())
-		}
+	err := c.RunE(c, nil)
+	if err != nil {
+		t.Error("Expected Nothing, Got ", err.Error())
 	}
 }
 
 func TestClusterList(t *testing.T) {
 	c := cmds.ClusterListCommand
-	c.Root().ResetFlags()
-	buf := new(bytes.Buffer)
-	for _, test_clu := range testNoFlag {
-		c.SetOutput(buf)
-		output := c.RunE(c, test_clu.input)
-		if output != nil {
-			t.Error("Expected Nothing, Got ", output.Error())
-		}
+	err := c.RunE(c, nil)
+	if err != nil {
+		t.Error("Expected Nothing, Got ", err.Error())
+
 	}
 }
 
 func TestClusterDelete(t *testing.T) {
-	//heketi := client.NewClient(options.Url, options.User, options.Key)
+	heketi := client.NewClient(Url, "admin", TEST_ADMIN_KEY)
+	cluster, _ := heketi.ClusterCreate()
+	clusterid := cluster.Id
+	var testCluDel = []struct {
+		input []string
+		err   string
+	}{
+		{[]string{"badid"}, "404 page not found"},
+		{nil, "Cluster id missing"},
+		{[]string{clusterid}, ""},
+		{[]string{clusterid}, "Id not found"},
+	}
+	c := cmds.ClusterDeleteCommand
+	for _, test_clu := range testCluDel {
+		err := c.RunE(c, test_clu.input)
+		if err != nil {
+			if !strings.Contains(err.Error(), test_clu.err) {
+				t.Error("Expected " + test_clu.err + ", Got" + err.Error())
+			}
+		} else if test_clu.err != "" {
+			t.Error("Expected " + test_clu.err + ", Got Nothing")
+		}
+	}
+}
+
+func TestClusterInfo(t *testing.T) {
+	heketi := client.NewClient(Url, "admin", TEST_ADMIN_KEY)
+	cluster, _ := heketi.ClusterCreate()
+	clusterid := cluster.Id
+	cluster_d, _ := heketi.ClusterCreate()
+	clusterid_d := cluster_d.Id
+	heketi.ClusterDelete(clusterid_d)
+	var testCluInfo = []struct {
+		input []string
+		err   string
+	}{
+		{[]string{"badid"}, "404 page not found"},
+		{nil, "Cluster id missing"},
+		{[]string{clusterid}, ""},
+		{[]string{clusterid_d}, "Id not found"},
+	}
+	c := cmds.ClusterInfoCommand
+	for _, test_clu := range testCluInfo {
+		err := c.RunE(c, test_clu.input)
+		if err != nil {
+			diff := strings.Contains(err.Error(), test_clu.err)
+			if diff != true {
+				t.Error("Expected "+test_clu.err+", Got", err.Error())
+			}
+		} else if test_clu.err != "" {
+			t.Error("Expected " + test_clu.err + ", Got Nothing")
+		}
+	}
 }
 
 func TestVolumeList(t *testing.T) {
 	c := cmds.VolumeListCommand
-	c.Root().ResetFlags()
-	buf := new(bytes.Buffer)
-	for _, test_clu := range testNoFlag {
-		c.SetOutput(buf)
-		output := c.RunE(c, test_clu.input)
-		if output != nil {
-			t.Error("Expected Nothing, Got ", output.Error())
-		}
+	err := c.RunE(c, nil)
+	if err != nil {
+		t.Error("Expected Nothing, Got ", err.Error())
+
 	}
 }
