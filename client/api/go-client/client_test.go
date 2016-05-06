@@ -18,16 +18,17 @@ package client
 
 import (
 	"fmt"
+	"net/http/httptest"
+	"os"
+	"reflect"
+	"testing"
+
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/apps/glusterfs"
 	"github.com/heketi/heketi/middleware"
 	"github.com/heketi/tests"
 	"github.com/heketi/utils"
-	"net/http/httptest"
-	"os"
-	"reflect"
-	"testing"
 )
 
 const (
@@ -50,6 +51,169 @@ func setupHeketiServer(app *glusterfs.App) *httptest.Server {
 
 	// Create server
 	return httptest.NewServer(n)
+}
+
+func TestTopology(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+
+	// Setup the server
+	ts := setupHeketiServer(app)
+	defer ts.Close()
+
+	// Create cluster correctly
+	c := NewClient(ts.URL, "admin", TEST_ADMIN_KEY)
+	tests.Assert(t, c != nil)
+
+	//Create multiple clusters
+	clusteridlist := make([]glusterfs.ClusterInfoResponse, 0)
+	for m := 0; m < 4; m++ {
+		cluster, err := c.ClusterCreate()
+		tests.Assert(t, err == nil)
+		tests.Assert(t, cluster.Id != "")
+		clusteridlist = append(clusteridlist, *cluster)
+	}
+	tests.Assert(t, len(clusteridlist) == 4)
+
+	//Verify the topology info and then delete the clusters
+	topology, err := c.TopologyInfo()
+	tests.Assert(t, err == nil)
+	for _, cid := range topology.ClusterList {
+		clusterid := cid.Id
+		err = c.ClusterDelete(clusterid)
+		tests.Assert(t, err == nil)
+	}
+
+	//Create a cluster and add multiple nodes,devices and volumes
+	cluster, err := c.ClusterCreate()
+	tests.Assert(t, err == nil)
+	tests.Assert(t, cluster.Id != "")
+	tests.Assert(t, len(cluster.Nodes) == 0)
+	tests.Assert(t, len(cluster.Volumes) == 0)
+
+	// Get information about the client
+	clusterinfo, err := c.ClusterInfo(cluster.Id)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, reflect.DeepEqual(clusterinfo, cluster))
+
+	// Get information about the Topology and verify the cluster creation
+	topology, err = c.TopologyInfo()
+	tests.Assert(t, err == nil)
+	tests.Assert(t, topology.ClusterList[0].Id == cluster.Id)
+
+	// Create multiple nodes and add devices to the nodes
+	nodeinfos := make([]glusterfs.NodeInfoResponse, 0)
+	for n := 0; n < 4; n++ {
+		nodeReq := &glusterfs.NodeAddRequest{}
+		nodeReq.ClusterId = cluster.Id
+		nodeReq.Hostnames.Manage = []string{"manage" + fmt.Sprintf("%v", n)}
+		nodeReq.Hostnames.Storage = []string{"storage" + fmt.Sprintf("%v", n)}
+		nodeReq.Zone = n + 1
+
+		// Create node
+		node, err := c.NodeAdd(nodeReq)
+		nodeinfos = append(nodeinfos, *node)
+		tests.Assert(t, err == nil)
+
+		// Create a device request
+		sg := utils.NewStatusGroup()
+		for i := 0; i < 50; i++ {
+			sg.Add(1)
+			go func() {
+				defer sg.Done()
+
+				deviceReq := &glusterfs.DeviceAddRequest{}
+				deviceReq.Name = "sd" + utils.GenUUID()[:8]
+				deviceReq.NodeId = node.Id
+
+				// Create device
+				err := c.DeviceAdd(deviceReq)
+				sg.Err(err)
+			}()
+		}
+		tests.Assert(t, sg.Result() == nil)
+	}
+	tests.Assert(t, len(nodeinfos) != 0)
+
+	// Get list of volumes
+	list, err := c.VolumeList()
+	tests.Assert(t, err == nil)
+	tests.Assert(t, len(list.Volumes) == 0)
+
+	//Create multiple volumes to the cluster
+	volumeinfos := make([]glusterfs.VolumeInfoResponse, 0)
+	for n := 0; n < 4; n++ {
+		volumeReq := &glusterfs.VolumeCreateRequest{}
+		volumeReq.Size = 10
+		volume, err := c.VolumeCreate(volumeReq)
+		tests.Assert(t, err == nil)
+		tests.Assert(t, volume.Id != "")
+		tests.Assert(t, volume.Size == volumeReq.Size)
+		volumeinfos = append(volumeinfos, *volume)
+	}
+	topology, err = c.TopologyInfo()
+	tests.Assert(t, err == nil)
+
+	// Test topology have all the existing volumes
+	var volumefound int
+	for _, volumeid := range topology.ClusterList[0].Volumes {
+		volumeInfo := volumeid
+		for _, singlevolumei := range volumeinfos {
+			if singlevolumei.Id == volumeInfo.Id {
+				volumefound++
+				break
+			}
+		}
+	}
+	tests.Assert(t, volumefound == 4)
+
+	// Delete all the volumes
+	for _, volumeid := range topology.ClusterList[0].Volumes {
+		volumeInfo := volumeid
+		err = c.VolumeDelete(volumeInfo.Id)
+		tests.Assert(t, err == nil)
+
+	}
+
+	// Verify the nodes and devices info from topology info and delete the entries
+	for _, nodeid := range topology.ClusterList[0].Nodes {
+		nodeInfo := nodeid
+		var found bool
+		for _, singlenodei := range nodeinfos {
+			found = false
+			if singlenodei.Id == nodeInfo.Id {
+				found = true
+				break
+			}
+		}
+		tests.Assert(t, found == true)
+
+		// Delete all devices
+		sg := utils.NewStatusGroup()
+		for index := range nodeInfo.DevicesInfo {
+			sg.Add(1)
+			go func(i int) {
+				defer sg.Done()
+				sg.Err(c.DeviceDelete(nodeInfo.DevicesInfo[i].Id))
+			}(index)
+		}
+		err = sg.Result()
+		tests.Assert(t, err == nil, err)
+
+		// Delete node
+		err = c.NodeDelete(nodeInfo.Id)
+		tests.Assert(t, err == nil)
+
+	}
+
+	// Delete cluster
+	err = c.ClusterDelete(cluster.Id)
+	tests.Assert(t, err == nil)
+
 }
 
 func TestClientCluster(t *testing.T) {
