@@ -18,9 +18,11 @@ package glusterfs
 
 import (
 	"encoding/json"
+	"io"
+	"os"
+
 	"github.com/heketi/heketi/executors/kubeexec"
 	"github.com/heketi/heketi/executors/sshexec"
-	"io"
 )
 
 type GlusterFSConfig struct {
@@ -49,6 +51,12 @@ func loadConfiguration(configIo io.Reader) *GlusterFSConfig {
 		logger.LogError("Unable to parse config file: %v\n",
 			err.Error())
 		return nil
+	}
+
+	// Set environment variable to override configuration file
+	env := os.Getenv("HEKETI_EXECUTOR")
+	if env != "" {
+		config.GlusterFS.Executor = env
 	}
 
 	return &config.GlusterFS

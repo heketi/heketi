@@ -74,10 +74,12 @@ func TestAppAdvsettings(t *testing.T) {
 
 	dbfile := tests.Tempfile()
 	defer os.Remove(dbfile)
+	os.Setenv("HEKETI_EXECUTOR", "mock")
+	defer os.Unsetenv("HEKETI_EXECUTOR")
 
 	data := []byte(`{
 		"glusterfs" : {
-			"executor" : "mock",
+			"executor" : "crazyexec",
 			"allocator" : "simple",
 			"db" : "` + dbfile + `",
 			"brick_max_size_gb" : 1024,
@@ -93,6 +95,7 @@ func TestAppAdvsettings(t *testing.T) {
 
 	app := NewApp(bytes.NewReader(data))
 	tests.Assert(t, app != nil)
+	tests.Assert(t, app.conf.Executor == "mock")
 	tests.Assert(t, BrickMaxNum == 33)
 	tests.Assert(t, BrickMaxSize == 1*TB)
 	tests.Assert(t, BrickMinSize == 1*GB)
