@@ -24,7 +24,9 @@
       "mock: This setting is used for testing and development.",
       "      It will not send commands to any node.",
       "ssh:  This setting will notify Heketi to ssh to the nodes.",
-      "      It will need the values in sshexec to be configured."
+      "      It will need the values in sshexec to be configured.",
+      "kubernetes: Communicate with GlusterFS containers over",
+      "            Kubernetes exec api."
     ],
     "executor": "mock",
 
@@ -33,6 +35,17 @@
       "keyfile": "path/to/private_key",
       "user": "sshuser",
       "port": "Optional: ssh port.  Default is 22",
+      "fstab": "Optional: Specify fstab file on node.  Default is /etc/fstab"
+    },
+
+    "_kubeexec_comment": "Kubernetes configuration",
+    "kubeexec": {
+      "host" :"https://kubernetes.host:8443",
+      "cert" : "/path/to/crt.file",
+      "insecure": false,
+      "user": "kubernetes username",
+      "password": "password for kubernetes user",
+      "namespace": "OpenShift project or Kubernetes namespace",
       "fstab": "Optional: Specify fstab file on node.  Default is /etc/fstab"
     },
 
