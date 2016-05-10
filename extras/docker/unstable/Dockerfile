@@ -2,7 +2,7 @@
 FROM fedora
 MAINTAINER Luis Pabón <lpabon@redhat.com>
 
-LABEL version="1.3"
+LABEL version="1.3.1"
 LABEL description="Development build"
 
 # let's setup all the necessary environment variables
@@ -33,8 +33,7 @@ RUN mkdir $BUILD_HOME $GOPATH $HEKETI_CONF_DIR && \
 ADD ./heketi.json /etc/heketi/heketi.json
 VOLUME /etc/heketi
 
-RUN mkdir /var/lib/heketi && \
-    chown -R heketi:heketi /var/lib/heketi
+RUN mkdir /var/lib/heketi
 VOLUME /var/lib/heketi
 
 # expose port, set user and set entrypoint with config option
