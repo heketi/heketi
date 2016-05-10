@@ -35,19 +35,6 @@
       }
     },
     {
-      "kind": "ImageStream",
-      "apiVersion": "v1",
-      "metadata": {
-        "name": "${NAME}",
-        "annotations": {
-          "description": "Keeps track of changes in Heketi from Docker Hub"
-        }
-      },
-      "spec" : {
-        "dockerImageRepository" : "docker.io/heketi/heketi"
-      }
-    },
-    {
       "kind": "DeploymentConfig",
       "apiVersion": "v1",
       "metadata": {
@@ -57,27 +44,6 @@
         }
       },
       "spec": {
-        "strategy": {
-          "type": "Recreate"
-        },
-        "triggers": [
-          {
-            "type": "ImageChange",
-            "imageChangeParams": {
-              "automatic": true,
-              "containerNames": [
-                "heketi"
-              ],
-              "from": {
-                "kind": "ImageStreamTag",
-                "name": "${NAME}:latest"
-              }
-            }
-          },
-          {
-            "type": "ConfigChange"
-          }
-        ],
         "replicas": 1,
         "selector": {
           "name": "${NAME}"
@@ -90,19 +56,48 @@
             }
           },
           "spec": {
+            "nodeSelector" : {
+              "name" : "worker-101"
+            },
             "containers": [
               {
                 "name": "heketi",
-                "image": "heketi",
+                "image": "heketi/heketi:dev",
+                "env": [
+                  {
+                    "name": "HEKETI_KUBE_CERTFILE",
+                    "value": "${HEKETI_KUBE_CERTFILE}"
+                  },
+                  {
+                    "name": "HEKETI_KUBE_INSECURE",
+                    "value": "${HEKETI_KUBE_INSECURE}"
+                  },
+                  {
+                    "name": "HEKETI_KUBE_USER",
+                    "value": "${HEKETI_KUBE_USER}"
+                  },
+                  {
+                    "name": "HEKETI_KUBE_PASSWORD",
+                    "value": "${HEKETI_KUBE_PASSWORD}"
+                  },
+                  {
+                    "name": "HEKETI_KUBE_NAMESPACE",
+                    "value": "${HEKETI_KUBE_NAMESPACE}"
+                  },
+                  {
+                    "name": "HEKETI_KUBE_APIHOST",
+                    "value": "${HEKETI_KUBE_APIHOST}"
+                  }
+                ],
                 "ports": [
                   {
                     "containerPort": 8080
                   }
                 ],
-                "volumeMounts" : [
+                "volumeMounts": [
                   {
-                    "name" : "db",
-                    "mountPath" : "/var/lib/heketi"
+                    "name": "db",
+                    "mountPath": "/var/lib/heketi"
                   }
                 ],
                 "readinessProbe": {
@@ -123,9 +118,9 @@
                 }
               }
             ],
-            "volumes" : [
+            "volumes": [
               {
-                "name" : "db"
+                "name": "db"
               }
             ]
           }
@@ -134,13 +129,39 @@
     }
   ],
   "parameters": [
-      {
+    {
       "name": "NAME",
       "displayName": "Name",
       "description": "The name assigned to all of the frontend objects defined in this template.",
       "required": true,
       "value": "heketi"
+    },
+    {
+      "name": "HEKETI_KUBE_CERTFILE",
+      "description": "SSL certificate file accessiable from the container"
+    },
+    {
+      "name": "HEKETI_KUBE_INSECURE",
+      "description": "Allow insecure SSL/HTTPS access",
+      "value": "n"
+    },
+    {
+      "name": "HEKETI_KUBE_USER",
+      "description": "OpenShift username to access Kubernetes API"
+    },
+    {
+      "name": "HEKETI_KUBE_PASSWORD",
+      "description": "Password for OpenShift user"
+    },
+    {
+      "name": "HEKETI_KUBE_NAMESPACE",
+      "description": "OpenShift project or Kubernetes namespace containing GlusterFS",
+      "required": true
+    },
+    {
+      "name": "HEKETI_KUBE_APIHOST",
+      "description": "Kubernetes API host",
+      "required": true
     }
   ]
 }
-
