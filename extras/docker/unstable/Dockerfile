@@ -18,8 +18,9 @@ RUN mkdir $BUILD_HOME $GOPATH $HEKETI_CONF_DIR && \
     dnf -q -y install golang git && \
     dnf -q -y install make && \
     dnf -q -y clean all && \
-    cd $BUILD_HOME && \
-    go get github.com/heketi/heketi && \
+    mkdir -p $GOPATH/src/github.com/heketi && \
+    cd $GOPATH/src/github.com/heketi && \
+    git clone https://github.com/heketi/heketi.git && \
     go get github.com/robfig/glock && \
     glock sync github.com/heketi/heketi && \
     cd $GOPATH/src/github.com/heketi/heketi && make && \
