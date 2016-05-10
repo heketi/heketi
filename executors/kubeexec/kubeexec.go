@@ -168,15 +168,17 @@ func (k *KubeExecutor) ConnectAndExec(host, namespace, resource string,
 	clientConfig.Insecure = k.config.Insecure
 
 	// Login
-	token, err := tokenCreator(clientConfig,
-		nil,
-		k.config.User,
-		k.config.Password)
-	if err != nil {
-		logger.Err(err)
-		return nil, fmt.Errorf("User %v credentials not accepted", k.config.User)
+	if k.config.User != "" && k.config.Password != "" {
+		token, err := tokenCreator(clientConfig,
+			nil,
+			k.config.User,
+			k.config.Password)
+		if err != nil {
+			logger.Err(err)
+			return nil, fmt.Errorf("User %v credentials not accepted", k.config.User)
+		}
+		clientConfig.BearerToken = token
 	}
-	clientConfig.BearerToken = token
 
 	// Get a client
 	conn, err := client.New(clientConfig)
