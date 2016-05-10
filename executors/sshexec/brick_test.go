@@ -40,7 +40,8 @@ func TestSshExecBrickCreate(t *testing.T) {
 		Fstab:          "/my/fstab",
 	}
 
-	s := NewSshExecutor(config)
+	s, err := NewSshExecutor(config)
+	tests.Assert(t, err == nil)
 	tests.Assert(t, s != nil)
 
 	// Create a Brick
@@ -101,7 +102,7 @@ func TestSshExecBrickCreate(t *testing.T) {
 	}
 
 	// Create Brick
-	_, err := s.BrickCreate("myhost", b)
+	_, err = s.BrickCreate("myhost", b)
 	tests.Assert(t, err == nil, err)
 
 }
@@ -121,7 +122,8 @@ func TestSshExecBrickDestroy(t *testing.T) {
 		Fstab:          "/my/fstab",
 	}
 
-	s := NewSshExecutor(config)
+	s, err := NewSshExecutor(config)
+	tests.Assert(t, err == nil)
 	tests.Assert(t, s != nil)
 
 	// Create a Brick
@@ -168,6 +170,6 @@ func TestSshExecBrickDestroy(t *testing.T) {
 	}
 
 	// Create Brick
-	err := s.BrickDestroy("myhost", b)
+	err = s.BrickDestroy("myhost", b)
 	tests.Assert(t, err == nil, err)
 }

@@ -45,7 +45,7 @@ func (s *SshExecutor) DeviceSetup(host, device, vgid string) (d *executors.Devic
 	}
 
 	// Execute command
-	_, err := s.sshExec(host, commands, 5)
+	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func (s *SshExecutor) DeviceTeardown(host, device, vgid string) error {
 	}
 
 	// Execute command
-	_, err := s.sshExec(host, commands, 5)
+	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
 		logger.LogError("Error while deleting device %v on %v with id %v",
 			device, host, vgid)
@@ -95,7 +95,7 @@ func (s *SshExecutor) getVgSizeFromNode(
 	}
 
 	// Execute command
-	b, err := s.sshExec(host, commands, 5)
+	b, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
 		return err
 	}

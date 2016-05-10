@@ -116,7 +116,7 @@ func (a *App) NodeAdd(w http.ResponseWriter, r *http.Request) {
 		// Peer probe if there is at least one other node
 		// TODO: What happens if the peer_node is not responding.. we need to choose another.
 		if peer_node != nil {
-			err := a.executor.PeerProbe(peer_node.ManageHostName(), node.ManageHostName())
+			err := a.executor.PeerProbe(peer_node.ManageHostName(), node.StorageHostName())
 			if err != nil {
 				return "", err
 			}
@@ -269,7 +269,7 @@ func (a *App) NodeDelete(w http.ResponseWriter, r *http.Request) {
 
 		// Remove from trusted pool
 		if peer_node != nil {
-			err := a.executor.PeerDetach(peer_node.ManageHostName(), node.ManageHostName())
+			err := a.executor.PeerDetach(peer_node.ManageHostName(), node.StorageHostName())
 			if err != nil {
 				return "", err
 			}

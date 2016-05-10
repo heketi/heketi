@@ -31,7 +31,7 @@ func TestAppBadConfigData(t *testing.T) {
 
 	data = []byte(`{}`)
 	app = NewApp(bytes.NewReader(data))
-	tests.Assert(t, app != nil)
+	tests.Assert(t, app == nil)
 
 	data = []byte(`{
 		"glusterfs" : {}

@@ -18,16 +18,18 @@ package glusterfs
 
 import (
 	"encoding/json"
+	"github.com/heketi/heketi/executors/kubeexec"
 	"github.com/heketi/heketi/executors/sshexec"
 	"io"
 )
 
 type GlusterFSConfig struct {
-	DBfile    string            `json:"db"`
-	Executor  string            `json:"executor"`
-	Allocator string            `json:"allocator"`
-	SshConfig sshexec.SshConfig `json:"sshexec"`
-	Loglevel  string            `json:"loglevel"`
+	DBfile     string              `json:"db"`
+	Executor   string              `json:"executor"`
+	Allocator  string              `json:"allocator"`
+	SshConfig  sshexec.SshConfig   `json:"sshexec"`
+	KubeConfig kubeexec.KubeConfig `json:"kubeexec"`
+	Loglevel   string              `json:"loglevel"`
 
 	// advanced settings
 	BrickMaxSize int `json:"brick_max_size_gb"`

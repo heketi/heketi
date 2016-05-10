@@ -50,6 +50,7 @@ func (s *SshExecutor) BrickCreate(host string,
 	godbc.Require(brick.Size > 0)
 	godbc.Require(brick.TpSize >= brick.Size)
 	godbc.Require(brick.VgId != "")
+	godbc.Require(s.Fstab != "")
 
 	// Create mountpoint name
 	mountpoint := s.brickMountPoint(brick)
@@ -87,7 +88,7 @@ func (s *SshExecutor) BrickCreate(host string,
 		fmt.Sprintf("echo \"%v %v xfs rw,inode64,noatime,nouuid 1 2\" | sudo tee -a %v > /dev/null ",
 			s.devnode(brick),
 			mountpoint,
-			s.fstab),
+			s.Fstab),
 
 		// Mount
 		fmt.Sprintf("sudo mount -o rw,inode64,noatime,nouuid %v %v", s.devnode(brick), mountpoint),
@@ -97,7 +98,7 @@ func (s *SshExecutor) BrickCreate(host string,
 	}
 
 	// Execute commands
-	_, err := s.sshExec(host, commands, 10)
+	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
 	if err != nil {
 		// Cleanup
 		s.BrickDestroy(host, brick)
@@ -123,7 +124,7 @@ func (s *SshExecutor) BrickDestroy(host string,
 	commands := []string{
 		fmt.Sprintf("sudo umount %v", s.brickMountPoint(brick)),
 	}
-	_, err := s.sshExec(host, commands, 5)
+	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
 		logger.Err(err)
 	}
@@ -132,7 +133,7 @@ func (s *SshExecutor) BrickDestroy(host string,
 	commands = []string{
 		fmt.Sprintf("sudo lvremove -f %v/%v", s.vgName(brick.VgId), s.tpName(brick.Name)),
 	}
-	_, err = s.sshExec(host, commands, 5)
+	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
 		logger.Err(err)
 	}
@@ -141,7 +142,7 @@ func (s *SshExecutor) BrickDestroy(host string,
 	commands = []string{
 		fmt.Sprintf("sudo rmdir %v", s.brickMountPoint(brick)),
 	}
-	_, err = s.sshExec(host, commands, 5)
+	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
 		logger.Err(err)
 	}
@@ -150,9 +151,9 @@ func (s *SshExecutor) BrickDestroy(host string,
 	commands = []string{
 		fmt.Sprintf("sudo sed -i.save '/%v/d' %v",
 			s.brickName(brick.Name),
-			s.fstab),
+			s.Fstab),
 	}
-	_, err = s.sshExec(host, commands, 5)
+	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
 		logger.Err(err)
 	}
@@ -189,12 +190,11 @@ func (s *SshExecutor) checkThinPoolUsage(host string,
 
 	tp := s.tpName(brick.Name)
 	commands := []string{
-		fmt.Sprintf("sudo lvs --options=lv_name,thin_count --separator=: | "+
-			"grep %v | cut -d: -f 2", tp),
+		fmt.Sprintf("sudo lvs --options=lv_name,thin_count --separator=:"),
 	}
 
 	// Send command
-	output, err := s.sshExec(host, commands, 5)
+	output, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
 		logger.Err(err)
 		return fmt.Errorf("Unable to determine number of logical volumes in "+
@@ -203,8 +203,8 @@ func (s *SshExecutor) checkThinPoolUsage(host string,
 
 	// Determine if do not have only one LV in the thin pool,
 	// we cannot delete the brick
-	lvs := strings.Trim(output[0], " \r\n")
-	if lvs != "1" {
+	lvs := strings.Index(output[0], tp+":1")
+	if lvs == -1 {
 		return fmt.Errorf("Cannot delete thin pool %v on %v because it "+
 			"is used by [%v] snapshot(s) or cloned volume(s)",
 			tp,

@@ -23,6 +23,7 @@ import (
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/executors"
+	"github.com/heketi/heketi/executors/kubeexec"
 	"github.com/heketi/heketi/executors/mockexec"
 	"github.com/heketi/heketi/executors/sshexec"
 	"github.com/heketi/rest"
@@ -74,16 +75,20 @@ func NewApp(configIo io.Reader) *App {
 	app.asyncManager = rest.NewAsyncHttpManager(ASYNC_ROUTE)
 
 	// Setup executor
+	var err error
 	switch {
 	case app.conf.Executor == "mock":
-		app.xo = mockexec.NewMockExecutor()
+		app.xo, err = mockexec.NewMockExecutor()
 		app.executor = app.xo
+	case app.conf.Executor == "kube" || app.conf.Executor == "kubernetes":
+		app.executor, err = kubeexec.NewKubeExecutor(&app.conf.KubeConfig)
 	case app.conf.Executor == "ssh" || app.conf.Executor == "":
-		app.executor = sshexec.NewSshExecutor(&app.conf.SshConfig)
+		app.executor, err = sshexec.NewSshExecutor(&app.conf.SshConfig)
 	default:
 		return nil
 	}
-	if app.executor == nil {
+	if err != nil {
+		logger.Err(err)
 		return nil
 	}
 	logger.Info("Loaded %v executor", app.conf.Executor)
@@ -94,7 +99,6 @@ func NewApp(configIo io.Reader) *App {
 	}
 
 	// Setup BoltDB database
-	var err error
 	app.db, err = bolt.Open(dbfilename, 0600, &bolt.Options{Timeout: 3 * time.Second})
 	if err != nil {
 		logger.LogError("Unable to open database")
