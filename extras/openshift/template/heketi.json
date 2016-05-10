@@ -18,7 +18,7 @@
       "metadata": {
         "name": "${NAME}",
         "annotations": {
-          "description": "Exposes and load balances heketi"
+          "description": "Exposes Heketi service"
         }
       },
       "spec": {
@@ -55,10 +55,15 @@
               "name": "${NAME}"
             }
           },
-          "spec": {
-            "nodeSelector" : {
-              "name" : "worker-101"
+          "triggers" : [
+            {
+              "type" : "ConfigChange"
+            }
+          ],
+          "strategy" : {
+            "type" : "Rolling"
             },
+          "spec": {
             "containers": [
               {
                 "name": "heketi",
