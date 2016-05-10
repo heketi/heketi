@@ -16,13 +16,15 @@ env:
 matrix:
   include:
   - go: 1.5.4
-    env: OPTIONS="-race" VET="true"
+    env: OPTIONS="-race"
   - go: 1.6.2
-    env: COVERAGE="true" OPTIONS="" VET="true"
+    env: COVERAGE="true" OPTIONS=""
+  - go: 1.6.2
+    env: OPTIONS="-race"
 script:
 - go fmt ./... | wc -l | grep 0
 - go vet ./...
-- go test -v $OPTIONS ./...
+- if [[ -z "$COVERAGE" ]]; then go test $OPTIONS ./...; fi
 - if [[ -n "$COVERAGE" ]]; then bash .travis-coverage; fi
 - cd client/api/python 
 - ./unittests.sh
