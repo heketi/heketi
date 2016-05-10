@@ -2,10 +2,8 @@
 FROM fedora
 MAINTAINER Luis Pabón <lpabon@redhat.com>
 
-LABEL version="0.2"
+LABEL version="1.3"
 LABEL description="Development build"
-
-RUN groupadd -g 1000 -r heketi && useradd -r -g heketi -u 1000 heketi
 
 # let's setup all the necessary environment variables
 ENV BUILD_HOME=/build
@@ -40,7 +38,6 @@ RUN mkdir /var/lib/heketi && \
 VOLUME /var/lib/heketi
 
 # expose port, set user and set entrypoint with config option
-USER heketi
 ENTRYPOINT ["/usr/bin/heketi"]
 EXPOSE 8080
 
