@@ -16,8 +16,15 @@ oc process --parameters heketi
 
 * Deploy a Heketi service
 
+Here is an example of how to deploy Heketi
+
 ```
-oc process heketi -v NAME=myheketiservice | oc create -f -
+oc process heketi -v NAME=myheketiservice \
+     HEKETI_KUBE_NAMESPACE=test \
+     HEKETI_KUBE_APIHOST='https://192.168.10.90:8443' \
+     HEKETI_KUBE_INSECURE=y \
+     HEKETI_KUBE_USER=test-admin \
+     HEKETI_KUBE_PASSWORD=admin | oc create -f -
 ```
 
 * Note service
