@@ -10,7 +10,6 @@ _test
 # Architecture specific extensions/prefixes
 *.[56vq]
 [568vq].out
-
 *.cgo1.go
 *.cgo2.c
 _cgo_defun.c
@@ -25,3 +24,9 @@ _testmain.go
 *.vdi
 .vagrant
 heketi.db
+
+# Ignore patches and rejects
+*.patch
+*.rej
+
+
