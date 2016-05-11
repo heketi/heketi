@@ -55,20 +55,24 @@
               "name": "${NAME}"
             }
           },
-          "triggers" : [
+          "triggers": [
             {
-              "type" : "ConfigChange"
+              "type": "ConfigChange"
             }
           ],
-          "strategy" : {
-            "type" : "Rolling"
-            },
+          "strategy": {
+            "type": "Rolling"
+          },
           "spec": {
             "containers": [
               {
                 "name": "heketi",
                 "image": "heketi/heketi:dev",
                 "env": [
+                  {
+                    "name": "HEKETI_EXECUTOR",
+                    "value": "kubernetes"
+                  },
                   {
                     "name": "HEKETI_KUBE_CERTFILE",
                     "value": "${HEKETI_KUBE_CERTFILE}"
