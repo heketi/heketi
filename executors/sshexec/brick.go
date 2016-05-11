@@ -59,10 +59,10 @@ func (s *SshExecutor) BrickCreate(host string,
 	commands := []string{
 
 		// Create a directory
-		fmt.Sprintf("sudo mkdir -p %v", mountpoint),
+		fmt.Sprintf(" mkdir -p %v", mountpoint),
 
 		// Setup the LV
-		fmt.Sprintf("sudo lvcreate --poolmetadatasize %vK -c 256K -L %vK -T %v/%v -V %vK -n %v",
+		fmt.Sprintf(" lvcreate --poolmetadatasize %vK -c 256K -L %vK -T %v/%v -V %vK -n %v",
 			// MetadataSize
 			brick.PoolMetadataSize,
 
@@ -82,7 +82,7 @@ func (s *SshExecutor) BrickCreate(host string,
 			s.brickName(brick.Name)),
 
 		// Format
-		fmt.Sprintf("sudo mkfs.xfs -i size=512 -n size=8192 %v", s.devnode(brick)),
+		fmt.Sprintf(" mkfs.xfs -i size=512 -n size=8192 %v", s.devnode(brick)),
 
 		// Fstab
 		fmt.Sprintf("echo \"%v %v xfs rw,inode64,noatime,nouuid 1 2\" | sudo tee -a %v > /dev/null ",
@@ -91,14 +91,14 @@ func (s *SshExecutor) BrickCreate(host string,
 			s.Fstab),
 
 		// Mount
-		fmt.Sprintf("sudo mount -o rw,inode64,noatime,nouuid %v %v", s.devnode(brick), mountpoint),
+		fmt.Sprintf(" mount -o rw,inode64,noatime,nouuid %v %v", s.devnode(brick), mountpoint),
 
 		// Create a directory inside the formated volume for GlusterFS
-		fmt.Sprintf("sudo mkdir %v/brick", mountpoint),
+		fmt.Sprintf(" mkdir %v/brick", mountpoint),
 	}
 
 	// Execute commands
-	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
+	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10, s.usesudo)
 	if err != nil {
 		// Cleanup
 		s.BrickDestroy(host, brick)
@@ -122,38 +122,38 @@ func (s *SshExecutor) BrickDestroy(host string,
 
 	// Try to unmount first
 	commands := []string{
-		fmt.Sprintf("sudo umount %v", s.brickMountPoint(brick)),
+		fmt.Sprintf(" umount %v", s.brickMountPoint(brick)),
 	}
-	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5, s.usesudo)
 	if err != nil {
 		logger.Err(err)
 	}
 
 	// Now try to remove the LV
 	commands = []string{
-		fmt.Sprintf("sudo lvremove -f %v/%v", s.vgName(brick.VgId), s.tpName(brick.Name)),
+		fmt.Sprintf(" lvremove -f %v/%v", s.vgName(brick.VgId), s.tpName(brick.Name)),
 	}
-	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5, s.usesudo)
 	if err != nil {
 		logger.Err(err)
 	}
 
 	// Now cleanup the mount point
 	commands = []string{
-		fmt.Sprintf("sudo rmdir %v", s.brickMountPoint(brick)),
+		fmt.Sprintf(" rmdir %v", s.brickMountPoint(brick)),
 	}
-	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5, s.usesudo)
 	if err != nil {
 		logger.Err(err)
 	}
 
 	// Remove from fstab
 	commands = []string{
-		fmt.Sprintf("sudo sed -i.save '/%v/d' %v",
+		fmt.Sprintf(" sed -i.save '/%v/d' %v",
 			s.brickName(brick.Name),
 			s.Fstab),
 	}
-	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5, s.usesudo)
 	if err != nil {
 		logger.Err(err)
 	}
@@ -190,11 +190,11 @@ func (s *SshExecutor) checkThinPoolUsage(host string,
 
 	tp := s.tpName(brick.Name)
 	commands := []string{
-		fmt.Sprintf("sudo lvs --options=lv_name,thin_count --separator=:"),
+		fmt.Sprintf(" lvs --options=lv_name,thin_count --separator=:"),
 	}
 
 	// Send command
-	output, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	output, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5, s.usesudo)
 	if err != nil {
 		logger.Err(err)
 		return fmt.Errorf("Unable to determine number of logical volumes in "+

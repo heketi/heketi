@@ -19,9 +19,10 @@ package sshexec
 import (
 	"errors"
 	"fmt"
-	"github.com/heketi/heketi/executors"
 	"strconv"
 	"strings"
+
+	"github.com/heketi/heketi/executors"
 )
 
 const (
@@ -40,12 +41,12 @@ func (s *SshExecutor) DeviceSetup(host, device, vgid string) (d *executors.Devic
 
 	// Setup commands
 	commands := []string{
-		fmt.Sprintf("sudo pvcreate --metadatasize=128M --dataalignment=256K %v", device),
-		fmt.Sprintf("sudo vgcreate %v %v", s.vgName(vgid), device),
+		fmt.Sprintf(" pvcreate --metadatasize=128M --dataalignment=256K %v", device),
+		fmt.Sprintf(" vgcreate %v %v", s.vgName(vgid), device),
 	}
 
 	// Execute command
-	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5, s.usesudo)
 	if err != nil {
 		return nil, err
 	}
@@ -71,12 +72,12 @@ func (s *SshExecutor) DeviceTeardown(host, device, vgid string) error {
 
 	// Setup commands
 	commands := []string{
-		fmt.Sprintf("sudo vgremove %v", s.vgName(vgid)),
-		fmt.Sprintf("sudo pvremove %v", device),
+		fmt.Sprintf(" vgremove %v", s.vgName(vgid)),
+		fmt.Sprintf(" pvremove %v", device),
 	}
 
 	// Execute command
-	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5, s.usesudo)
 	if err != nil {
 		logger.LogError("Error while deleting device %v on %v with id %v",
 			device, host, vgid)
@@ -91,11 +92,11 @@ func (s *SshExecutor) getVgSizeFromNode(
 
 	// Setup command
 	commands := []string{
-		fmt.Sprintf("sudo vgdisplay -c %v", s.vgName(vgid)),
+		fmt.Sprintf(" vgdisplay -c %v", s.vgName(vgid)),
 	}
 
 	// Execute command
-	b, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	b, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5, s.usesudo)
 	if err != nil {
 		return err
 	}

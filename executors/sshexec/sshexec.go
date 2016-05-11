@@ -27,11 +27,11 @@ import (
 )
 
 type RemoteCommandTransport interface {
-	RemoteCommandExecute(host string, commands []string, timeoutMinutes int) ([]string, error)
+	RemoteCommandExecute(host string, commands []string, timeoutMinutes int, useSudo bool) ([]string, error)
 }
 
 type Ssher interface {
-	ConnectAndExec(host string, commands []string, timeoutMinutes int) ([]string, error)
+	ConnectAndExec(host string, commands []string, timeoutMinutes int, useSudo bool) ([]string, error)
 }
 
 type SshExecutor struct {
@@ -47,6 +47,7 @@ type SshExecutor struct {
 	exec            Ssher
 	config          *SshConfig
 	port            string
+	usesudo         bool
 }
 
 type SshConfig struct {
@@ -84,10 +85,16 @@ func NewSshExecutor(config *SshConfig) (*SshExecutor, error) {
 	}
 	s.private_keyfile = config.PrivateKeyFile
 
-	if config.User == "" {
+	if config.User == "root" {
+		s.user = "root"
+		s.usesudo = false
+	} else if config.User == "" {
 		s.user = "heketi"
+		s.usesudo = true
 	} else {
 		s.user = config.User
+		s.usesudo = true
+
 	}
 
 	if config.Port == "" {
@@ -172,14 +179,14 @@ func (s *SshExecutor) FreeConnection(host string) {
 
 func (s *SshExecutor) RemoteCommandExecute(host string,
 	commands []string,
-	timeoutMinutes int) ([]string, error) {
+	timeoutMinutes int, useSudo bool) ([]string, error) {
 
 	// Throttle
 	s.AccessConnection(host)
 	defer s.FreeConnection(host)
 
 	// Execute
-	return s.exec.ConnectAndExec(host+":"+s.port, commands, timeoutMinutes)
+	return s.exec.ConnectAndExec(host+":"+s.port, commands, timeoutMinutes, useSudo)
 }
 
 func (s *SshExecutor) vgName(vgId string) string {

@@ -33,7 +33,7 @@ func (s *SshExecutor) VolumeCreate(host string,
 	godbc.Require(volume.Name != "")
 
 	// Create volume command
-	cmd := fmt.Sprintf("sudo gluster --mode=script volume create %v ", volume.Name)
+	cmd := fmt.Sprintf(" gluster --mode=script volume create %v ", volume.Name)
 
 	// Add durability settings to the volume command
 	var (
@@ -72,10 +72,10 @@ func (s *SshExecutor) VolumeCreate(host string,
 	commands = append(commands, s.createAddBrickCommands(volume, inSet, inSet, maxPerSet)...)
 
 	// Add command to start the volume
-	commands = append(commands, fmt.Sprintf("sudo gluster volume start %v", volume.Name))
+	commands = append(commands, fmt.Sprintf(" gluster volume start %v", volume.Name))
 
 	// Execute command
-	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
+	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10, s.usesudo)
 	if err != nil {
 		s.VolumeDestroy(host, volume.Name)
 		return nil, err
@@ -118,11 +118,11 @@ func (s *SshExecutor) VolumeExpand(host string,
 	// Rebalance if configured
 	if s.config.RebalanceOnExpansion {
 		commands = append(commands,
-			fmt.Sprintf("sudo gluster --mode=script volume rebalance %v start", volume.Name))
+			fmt.Sprintf(" gluster --mode=script volume rebalance %v start", volume.Name))
 	}
 
 	// Execute command
-	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
+	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10, s.usesudo)
 	if err != nil {
 		return nil, err
 	}
@@ -137,11 +137,11 @@ func (s *SshExecutor) VolumeDestroy(host string, volume string) error {
 	// Shutdown volume
 	commands := []string{
 		// stop gluster volume
-		fmt.Sprintf("sudo gluster --mode=script volume stop %v force", volume),
+		fmt.Sprintf(" gluster --mode=script volume stop %v force", volume),
 	}
 
 	// Execute command
-	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
+	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10, s.usesudo)
 	if err != nil {
 		logger.LogError("Unable to stop volume %v: %v", volume, err)
 	}
@@ -149,11 +149,11 @@ func (s *SshExecutor) VolumeDestroy(host string, volume string) error {
 	// Shutdown volume
 	commands = []string{
 		// stop gluster volume
-		fmt.Sprintf("sudo gluster --mode=script volume delete %v", volume),
+		fmt.Sprintf(" gluster --mode=script volume delete %v", volume),
 	}
 
 	// Execute command
-	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
+	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 10, s.usesudo)
 	if err != nil {
 		logger.LogError("Unable to delete volume %v: %v", volume, err)
 	}
@@ -189,7 +189,7 @@ func (s *SshExecutor) createAddBrickCommands(volume *executors.VolumeRequest,
 			}
 
 			// Create a new add-brick command
-			cmd = fmt.Sprintf("sudo gluster --mode=script volume add-brick %v ", volume.Name)
+			cmd = fmt.Sprintf(" gluster --mode=script volume add-brick %v ", volume.Name)
 		}
 
 		// Add this brick to the add-brick command
@@ -213,11 +213,11 @@ func (s *SshExecutor) checkForSnapshots(host, volume string) error {
 
 	// Get snapshot information for the specified volume
 	commands := []string{
-		fmt.Sprintf("sudo gluster --mode=script snapshot list %v --xml", volume),
+		fmt.Sprintf(" gluster --mode=script snapshot list %v --xml", volume),
 	}
 
 	// Execute command
-	output, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
+	output, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10, s.usesudo)
 	if err != nil {
 		return fmt.Errorf("Unable to get snapshot information from volume %v: %v", volume, err)
 	}
