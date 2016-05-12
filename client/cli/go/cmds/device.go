@@ -31,26 +31,26 @@ var (
 )
 
 func init() {
-	RootCmd.AddCommand(deviceCommand)
-	deviceCommand.AddCommand(deviceAddCommand)
-	deviceCommand.AddCommand(deviceDeleteCommand)
-	deviceCommand.AddCommand(deviceInfoCommand)
-	deviceAddCommand.Flags().StringVar(&device, "name", "",
+	RootCmd.AddCommand(DeviceCommand)
+	DeviceCommand.AddCommand(DeviceAddCommand)
+	DeviceCommand.AddCommand(DeviceDeleteCommand)
+	DeviceCommand.AddCommand(DeviceInfoCommand)
+	DeviceAddCommand.Flags().StringVar(&device, "name", "",
 		"Name of device to add")
-	deviceAddCommand.Flags().StringVar(&nodeId, "node", "",
+	DeviceAddCommand.Flags().StringVar(&nodeId, "node", "",
 		"Id of the node which has this device")
-	deviceAddCommand.SilenceUsage = true
-	deviceDeleteCommand.SilenceUsage = true
-	deviceInfoCommand.SilenceUsage = true
+	DeviceAddCommand.SilenceUsage = true
+	DeviceDeleteCommand.SilenceUsage = true
+	DeviceInfoCommand.SilenceUsage = true
 }
 
-var deviceCommand = &cobra.Command{
+var DeviceCommand = &cobra.Command{
 	Use:   "device",
 	Short: "Heketi device management",
 	Long:  "Heketi Device Management",
 }
 
-var deviceAddCommand = &cobra.Command{
+var DeviceAddCommand = &cobra.Command{
 	Use:   "add",
 	Short: "Add new device to node to be managed by Heketi",
 	Long:  "Add new device to node to be managed by Heketi",
@@ -86,7 +86,7 @@ var deviceAddCommand = &cobra.Command{
 	},
 }
 
-var deviceDeleteCommand = &cobra.Command{
+var DeviceDeleteCommand = &cobra.Command{
 	Use:     "delete [device_id]",
 	Short:   "Deletes a device from Heketi node",
 	Long:    "Deletes a device from Heketi node",
@@ -115,7 +115,7 @@ var deviceDeleteCommand = &cobra.Command{
 	},
 }
 
-var deviceInfoCommand = &cobra.Command{
+var DeviceInfoCommand = &cobra.Command{
 	Use:     "info [device_id]",
 	Short:   "Retreives information about the device",
 	Long:    "Retreives information about the device",

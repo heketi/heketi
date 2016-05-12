@@ -27,24 +27,24 @@ import (
 )
 
 func init() {
-	RootCmd.AddCommand(clusterCommand)
-	clusterCommand.AddCommand(clusterCreateCommand)
-	clusterCommand.AddCommand(clusterDeleteCommand)
-	clusterCommand.AddCommand(clusterListCommand)
-	clusterCommand.AddCommand(clusterInfoCommand)
-	clusterCreateCommand.SilenceUsage = true
-	clusterDeleteCommand.SilenceUsage = true
-	clusterInfoCommand.SilenceUsage = true
-	clusterListCommand.SilenceUsage = true
+	RootCmd.AddCommand(ClusterCommand)
+	ClusterCommand.AddCommand(ClusterCreateCommand)
+	ClusterCommand.AddCommand(ClusterDeleteCommand)
+	ClusterCommand.AddCommand(ClusterListCommand)
+	ClusterCommand.AddCommand(ClusterInfoCommand)
+	ClusterCreateCommand.SilenceUsage = true
+	ClusterDeleteCommand.SilenceUsage = true
+	ClusterInfoCommand.SilenceUsage = true
+	ClusterListCommand.SilenceUsage = true
 }
 
-var clusterCommand = &cobra.Command{
+var ClusterCommand = &cobra.Command{
 	Use:   "cluster",
 	Short: "Heketi cluster management",
 	Long:  "Heketi Cluster Management",
 }
 
-var clusterCreateCommand = &cobra.Command{
+var ClusterCreateCommand = &cobra.Command{
 	Use:     "create",
 	Short:   "Create a cluster",
 	Long:    "Create a cluster",
@@ -73,7 +73,7 @@ var clusterCreateCommand = &cobra.Command{
 	},
 }
 
-var clusterDeleteCommand = &cobra.Command{
+var ClusterDeleteCommand = &cobra.Command{
 	Use:     "delete [cluster_id]",
 	Short:   "Delete the cluster",
 	Long:    "Delete the cluster",
@@ -102,7 +102,7 @@ var clusterDeleteCommand = &cobra.Command{
 	},
 }
 
-var clusterInfoCommand = &cobra.Command{
+var ClusterInfoCommand = &cobra.Command{
 	Use:     "info [cluster_id]",
 	Short:   "Retrieves information about cluster",
 	Long:    "Retrieves information about cluster",
@@ -142,7 +142,7 @@ var clusterInfoCommand = &cobra.Command{
 	},
 }
 
-var clusterListCommand = &cobra.Command{
+var ClusterListCommand = &cobra.Command{
 	Use:     "list",
 	Short:   "Lists the clusters managed by Heketi",
 	Long:    "Lists the clusters managed by Heketi",
