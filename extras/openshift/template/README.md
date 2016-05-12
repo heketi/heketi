@@ -42,34 +42,38 @@ curl http://<ip of service>:<port>/hello
 * For example
 
 ```
+$ oc project
+Using project "gluster" on server "https://192.168.10.90:8443".
+
 $ oc create -f heketi-template.json 
 template "heketi" created
 
-$ oc process heketi -v NAME=myheketi | oc create -f -
-service "myheketi" created
-imagestream "myheketi" created
-deploymentconfig "myheketi" created
+$ oc process heketi -v NAME=ams \
+>      HEKETI_KUBE_NAMESPACE=gluster \
+>      HEKETI_KUBE_APIHOST='https://192.168.10.90:8443' \
+>      HEKETI_KUBE_INSECURE=y \
+>      HEKETI_KUBE_USER=test-admin \
+>      HEKETI_KUBE_PASSWORD=admin | oc create -f -
+service "ams" created
+deploymentconfig "ams" created
 
 $ oc status
-In project default on server https://localhost:8443
+In project gluster on server https://192.168.10.90:8443
 
-svc/docker-registry - 172.30.109.242:5000
-  dc/docker-registry deploys docker.io/openshift/origin-docker-registry:v1.1.4 
-    deployment #1 deployed 5 days ago - 1 pod
-
-svc/kubernetes - 172.30.0.1 ports 443, 53, 53
-
-svc/myheketi - 172.30.72.141:8080
-  dc/myheketi deploys istag/myheketi:latest 
-    deployment #1 pending 3 seconds ago
+svc/ams - 172.30.244.79:8080
+  dc/ams deploys docker.io/heketi/heketi:dev
+    deployment #1 pending 5 seconds ago
 
 View details with 'oc describe <resource>/<name>' or list everything with 'oc get all'.
 
-$ oc get pods
-NAME                      READY     STATUS    RESTARTS   AGE
-myheketi-1-h1tyy          1/1       Running   0          1m
+$ oc get pods -o wide
+NAME           READY     STATUS              RESTARTS   AGE       NODE
+ams-1-bed48    0/1       ContainerCreating   0          8s        openshift-node-1
+ams-1-deploy   1/1       Running             0          1m        openshift-node-2
 
-$ curl http://172.30.72.141:8080/hello
+<< Wait until the container is running, then... >>
+
+$ curl http://172.30.244.79:8080/hello
 HelloWorld from GlusterFS Application
 ```
 
