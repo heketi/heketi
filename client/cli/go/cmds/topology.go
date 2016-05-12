@@ -48,23 +48,23 @@ type ConfigFile struct {
 }
 
 func init() {
-	RootCmd.AddCommand(topologyCommand)
-	topologyCommand.AddCommand(topologyLoadCommand)
-	topologyCommand.AddCommand(topologyInfoCommand)
-	topologyLoadCommand.Flags().StringVarP(&jsonConfigFile, "json", "j", "",
+	RootCmd.AddCommand(TopologyCommand)
+	TopologyCommand.AddCommand(TopologyLoadCommand)
+	TopologyCommand.AddCommand(TopologyInfoCommand)
+	TopologyLoadCommand.Flags().StringVarP(&jsonConfigFile, "json", "j", "",
 		"\n\tConfiguration containing devices, nodes, and clusters, in"+
 			"\n\tJSON format.")
-	topologyLoadCommand.SilenceUsage = true
-	topologyInfoCommand.SilenceUsage = true
+	TopologyLoadCommand.SilenceUsage = true
+	TopologyInfoCommand.SilenceUsage = true
 }
 
-var topologyCommand = &cobra.Command{
+var TopologyCommand = &cobra.Command{
 	Use:   "topology",
 	Short: "Heketi Topology Management",
 	Long:  "Heketi Topology management",
 }
 
-var topologyLoadCommand = &cobra.Command{
+var TopologyLoadCommand = &cobra.Command{
 	Use:     "load",
 	Short:   "Add devices to Heketi from a configuration file",
 	Long:    "Add devices to Heketi from a configuration file",
@@ -124,7 +124,7 @@ var topologyLoadCommand = &cobra.Command{
 	},
 }
 
-var topologyInfoCommand = &cobra.Command{
+var TopologyInfoCommand = &cobra.Command{
 	Use:     "info",
 	Short:   "Retreives information about the current Topology",
 	Long:    "Retreives information about the current Topology",
