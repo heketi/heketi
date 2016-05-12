@@ -11,7 +11,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/apps/glusterfs"
 	"github.com/heketi/heketi/client/api/go-client"
-	"github.com/heketi/heketi/client/cli/go/cmds"
 	"github.com/heketi/heketi/middleware"
 	"github.com/heketi/tests"
 )
@@ -47,18 +46,18 @@ func setupHeketiServer(app *glusterfs.App) *httptest.Server {
 }
 
 func TestVersion(t *testing.T) {
-	c := cmds.NewHeketiCli(HEKETI_CLI_TEST_VERSION, sout, serr)
+	c := NewHeketiCli(HEKETI_CLI_TEST_VERSION, sout, serr)
 	db := tests.Tempfile()
-	//	defer os.Remove(db)
+	defer os.Remove(db)
 
 	// Create the app
 	app := glusterfs.NewTestApp(db)
-	//	defer app.Close()
+	defer app.Close()
 
 	// Setup the server
 	Ts := setupHeketiServer(app)
 	Url = Ts.URL
-	//	defer ts.Close()
+	defer Ts.Close()
 	//	server := ts.URL
 	//  defaultflags :=
 	var test_version = []struct {
@@ -82,37 +81,48 @@ func TestVersion(t *testing.T) {
 	c.ResetFlags()
 }
 
-func TestClusterCreate(t *testing.T) {
-	c := cmds.ClusterCreateCommand
+func TestCluster(t *testing.T) {
+	c := NewHeketiCli(HEKETI_CLI_TEST_VERSION, sout, serr)
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+
+	// Setup the server
+	ts := setupHeketiServer(app)
+	defer ts.Close()
+	options.Url = ts.URL
+	options.User = "admin"
+	options.Key = TEST_ADMIN_KEY
+
+	c = ClusterCreateCommand
 	err := c.RunE(c, nil)
 	if err != nil {
 		t.Error("Expected Nothing, Got ", err.Error())
 	}
-}
 
-func TestClusterList(t *testing.T) {
-	c := cmds.ClusterListCommand
-	err := c.RunE(c, nil)
+	c = ClusterListCommand
+	err = c.RunE(c, nil)
 	if err != nil {
 		t.Error("Expected Nothing, Got ", err.Error())
 
 	}
-}
 
-func TestClusterDelete(t *testing.T) {
-	heketi := client.NewClient(Url, "admin", TEST_ADMIN_KEY)
-	cluster, _ := heketi.ClusterCreate()
-	clusterid := cluster.Id
+	c = ClusterDeleteCommand
+	heketi := client.NewClient(ts.URL, "admin", TEST_ADMIN_KEY)
+	clusterDel, _ := heketi.ClusterCreate()
+	clusterDelId := clusterDel.Id
 	var testCluDel = []struct {
 		input []string
 		err   string
 	}{
 		{[]string{"badid"}, "404 page not found"},
 		{nil, "Cluster id missing"},
-		{[]string{clusterid}, ""},
-		{[]string{clusterid}, "Id not found"},
+		{[]string{clusterDelId}, ""},
+		{[]string{clusterDelId}, "Id not found"},
 	}
-	c := cmds.ClusterDeleteCommand
 	for _, test_clu := range testCluDel {
 		err := c.RunE(c, test_clu.input)
 		if err != nil {
@@ -123,25 +133,22 @@ func TestClusterDelete(t *testing.T) {
 			t.Error("Expected " + test_clu.err + ", Got Nothing")
 		}
 	}
-}
 
-func TestClusterInfo(t *testing.T) {
-	heketi := client.NewClient(Url, "admin", TEST_ADMIN_KEY)
-	cluster, _ := heketi.ClusterCreate()
-	clusterid := cluster.Id
-	cluster_d, _ := heketi.ClusterCreate()
-	clusterid_d := cluster_d.Id
-	heketi.ClusterDelete(clusterid_d)
+	c = ClusterInfoCommand
+	clusterInfo, _ := heketi.ClusterCreate()
+	clusterInfoId := clusterInfo.Id
+	clusterInfo_d, _ := heketi.ClusterCreate()
+	clusterInfoId_d := clusterInfo_d.Id
+	heketi.ClusterDelete(clusterInfoId_d)
 	var testCluInfo = []struct {
 		input []string
 		err   string
 	}{
 		{[]string{"badid"}, "404 page not found"},
 		{nil, "Cluster id missing"},
-		{[]string{clusterid}, ""},
-		{[]string{clusterid_d}, "Id not found"},
+		{[]string{clusterInfoId}, ""},
+		{[]string{clusterInfoId_d}, "Id not found"},
 	}
-	c := cmds.ClusterInfoCommand
 	for _, test_clu := range testCluInfo {
 		err := c.RunE(c, test_clu.input)
 		if err != nil {
@@ -156,7 +163,22 @@ func TestClusterInfo(t *testing.T) {
 }
 
 func TestVolumeList(t *testing.T) {
-	c := cmds.VolumeListCommand
+	c := NewHeketiCli(HEKETI_CLI_TEST_VERSION, sout, serr)
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+
+	// Setup the server
+	ts := setupHeketiServer(app)
+	defer ts.Close()
+	options.Url = ts.URL
+	options.User = "admin"
+	options.Key = TEST_ADMIN_KEY
+
+	c = VolumeListCommand
 	err := c.RunE(c, nil)
 	if err != nil {
 		t.Error("Expected Nothing, Got ", err.Error())
