@@ -24,7 +24,6 @@ endif
 
 # Go setup
 GO=go
-TEST="go test"
 
 # Sources and Targets
 EXECUTABLES :=$(APP_NAME)
@@ -50,16 +49,16 @@ package:
 	@echo $(PACKAGE)
 
 server:
-	$(GO) build $(LDFLAGS) -o $(APP_NAME)
+	GO15VENDOREXPERIMENT=0 $(GO) build $(LDFLAGS) -o $(APP_NAME)
 
 client:
 	@$(MAKE) -C client/cli/go
 
-run: build
+run: server
 	./$(APP_NAME)
 
 test: 
-	@$(TEST) -v ./...
+	GO15VENDOREXPERIMENT=0 $(GO) test ./...
 
 clean:
 	@echo Cleaning Workspace...

@@ -24,7 +24,7 @@ matrix:
 script:
 - go fmt ./... | wc -l | grep 0
 - go vet ./...
-- if [[ -z "$COVERAGE" ]]; then go test $OPTIONS ./...; fi
+- if [[ -z "$COVERAGE" ]]; then GO15VENDOREXPERIMENT=0 go test $OPTIONS ./...; fi
 - if [[ -n "$COVERAGE" ]]; then bash .travis-coverage; fi
 - cd client/api/python 
 - ./unittests.sh
