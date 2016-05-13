@@ -4,6 +4,7 @@
 # the tool requires that it be used only on one package when
 # capturing the coverage
 # This is why we need this little script here.
+export GO15VENDOREXPERIMENT=0
 COVERFILE=packagecover.out
 
 # For each package with test files, run with full coverage (including other packages)

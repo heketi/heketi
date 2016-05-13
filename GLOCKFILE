@@ -44,6 +44,5 @@ golang.org/x/crypto c84e1f8e3a7e322d497cd16c0e8a13c7e127baf3
 golang.org/x/net 2a35e686583654a1b89ca79c4ac78cb3d6529ca3
 golang.org/x/oauth2 e86e2718db89775a4604abc10a5d3a5672e7336e
 google.golang.org/cloud 200292f09e3aaa34878d801ab71fe823b1f7d36a
-k8s.io/heapster 0991ac528ea24aae194e45d6dcf01896cb42cbea
-k8s.io/kubernetes a715392e4e487c993816f5dd888d8c66e7e28e3f
-speter.net/go/exp/math/dec/inf 42ca6cd68aa922bc3f32f1e056e61b65945d9ad7
+gopkg.in/inf.v0 3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4
+k8s.io/kubernetes 1584d2c7c564213cfbface643c0cf5423e5cffa9
