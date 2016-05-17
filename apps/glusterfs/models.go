@@ -181,14 +181,14 @@ func (v *VolumeInfoResponse) String() string {
 		"Id: %v\n"+
 		"Cluster Id: %v\n"+
 		"Mount: %v\n"+
-		"Mount Options: backupvolfile-servers=%v\n"+
+		"Mount Options: backup-volfile-servers=%v\n"+
 		"Durability Type: %v\n",
 		v.Name,
 		v.Size,
 		v.Id,
 		v.Cluster,
 		v.Mount.GlusterFS.MountPoint,
-		v.Mount.GlusterFS.Options["backupvolfile-servers"],
+		v.Mount.GlusterFS.Options["backup-volfile-servers"],
 		v.Durability.Type)
 
 	switch v.Durability.Type {
