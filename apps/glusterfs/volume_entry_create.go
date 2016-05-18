@@ -57,7 +57,7 @@ func (v *VolumeEntry) createVolume(db *bolt.DB,
 			stringset.Add(brick.Host)
 		}
 	}
-	v.Info.Mount.GlusterFS.Options["backupvolfile-servers"] =
+	v.Info.Mount.GlusterFS.Options["backup-volfile-servers"] =
 		strings.Join(stringset.Strings(), ",")
 
 	godbc.Ensure(v.Info.Mount.GlusterFS.MountPoint != "")

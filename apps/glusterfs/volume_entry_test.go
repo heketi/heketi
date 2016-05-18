@@ -593,7 +593,7 @@ func TestVolumeEntryCreateFourBricks(t *testing.T) {
 	// Check mount information
 	host := strings.Split(info.Mount.GlusterFS.MountPoint, ":")[0]
 	tests.Assert(t, utils.SortedStringHas(nodelist, host), host, nodelist)
-	volfileServers := strings.Split(info.Mount.GlusterFS.Options["backupvolfile-servers"], ",")
+	volfileServers := strings.Split(info.Mount.GlusterFS.Options["backup-volfile-servers"], ",")
 	for index, node := range volfileServers {
 		tests.Assert(t, node != host, index, node, host)
 	}
@@ -667,7 +667,7 @@ func TestVolumeEntryCreateBrickDivision(t *testing.T) {
 	// Check mount information
 	host := strings.Split(info.Mount.GlusterFS.MountPoint, ":")[0]
 	tests.Assert(t, utils.SortedStringHas(nodelist, host), host, nodelist)
-	volfileServers := strings.Split(info.Mount.GlusterFS.Options["backupvolfile-servers"], ",")
+	volfileServers := strings.Split(info.Mount.GlusterFS.Options["backup-volfile-servers"], ",")
 	for index, node := range volfileServers {
 		tests.Assert(t, node != host, index, node, host)
 	}

@@ -162,14 +162,14 @@ var topologyInfoCommand = &cobra.Command{
 						"\tId: %v\n"+
 						"\tCluster Id: %v\n"+
 						"\tMount: %v\n"+
-						"\tMount Options: backupvolfile-servers=%v\n"+
+						"\tMount Options: backup-volfile-servers=%v\n"+
 						"\tDurability Type: %v\n",
 						v.Name,
 						v.Size,
 						v.Id,
 						v.Cluster,
 						v.Mount.GlusterFS.MountPoint,
-						v.Mount.GlusterFS.Options["backupvolfile-servers"],
+						v.Mount.GlusterFS.Options["backup-volfile-servers"],
 						v.Durability.Type)
 
 					switch v.Durability.Type {
