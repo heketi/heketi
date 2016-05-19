@@ -17,7 +17,6 @@
 package glusterfs
 
 import (
-	"fmt"
 	"github.com/boltdb/bolt"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/context"
@@ -215,13 +214,6 @@ func (a *App) SetRoutes(router *mux.Router) error {
 
 	routes := rest.Routes{
 
-		// HelloWorld
-		rest.Route{
-			Name:        "Hello",
-			Method:      "GET",
-			Pattern:     "/hello",
-			HandlerFunc: a.Hello},
-
 		// Asynchronous Manager
 		rest.Route{
 			Name:        "Async",
@@ -336,12 +328,6 @@ func (a *App) Close() {
 	logger.Info("Closed")
 }
 
-func (a *App) Hello(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, "HelloWorld from GlusterFS Application")
-}
-
 // Middleware function
 func (a *App) Auth(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 
@@ -353,7 +339,7 @@ func (a *App) Auth(w http.ResponseWriter, r *http.Request, next http.HandlerFunc
 
 	// Check access
 	if "user" == token.Claims["iss"] && r.URL.Path != "/volumes" {
-		http.Error(w, "Adminitrator access required", http.StatusUnauthorized)
+		http.Error(w, "Administrator access required", http.StatusUnauthorized)
 		return
 	}
 

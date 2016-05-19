@@ -124,10 +124,19 @@ func main() {
 	}
 	app = glusterfsApp
 
+	// Add /hello router
+	router := mux.NewRouter()
+	router.Methods("GET").Path("/hello").Name("Hello").HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, "Hello from Heketi")
+		})
+
 	// Create a router and do not allow any routes
 	// unless defined.
-	router := mux.NewRouter().StrictSlash(true)
-	err = app.SetRoutes(router)
+	heketiRouter := mux.NewRouter().StrictSlash(true)
+	err = app.SetRoutes(heketiRouter)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "ERROR: Unable to create http server endpoints")
 		os.Exit(1)
@@ -155,8 +164,11 @@ func main() {
 		fmt.Println("Authorization loaded")
 	}
 
-	// Setup routes
-	n.UseHandler(router)
+	// Add all endpoints after the middleware was added
+	n.UseHandler(heketiRouter)
+
+	// Setup complete routing
+	router.NewRoute().Handler(n)
 
 	// Shutdown on CTRL-C signal
 	// For a better cleanup, we should shutdown the server and
@@ -168,7 +180,7 @@ func main() {
 	go func() {
 		// Start the server.
 		fmt.Printf("Listening on port %v\n", options.Port)
-		err = http.ListenAndServe(":"+options.Port, n)
+		err = http.ListenAndServe(":"+options.Port, router)
 		if err != nil {
 			fmt.Printf("ERROR: HTTP Server error: %v\n", err)
 		}
