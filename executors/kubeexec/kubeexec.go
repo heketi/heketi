@@ -109,6 +109,12 @@ func setWithEnvVariables(config *KubeConfig) {
 	if "" != env {
 		config.Namespace = env
 	}
+
+	// FSTAB
+	env = os.Getenv("HEKETI_FSTAB")
+	if "" != env {
+		config.Fstab = env
+	}
 }
 
 func NewKubeExecutor(config *KubeConfig) (*KubeExecutor, error) {
