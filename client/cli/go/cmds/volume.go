@@ -20,11 +20,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/heketi/heketi/apps/glusterfs"
 	"github.com/heketi/heketi/client/api/go-client"
 	"github.com/spf13/cobra"
+
+	"k8s.io/kubernetes/pkg/api/resource"
+	api "k8s.io/kubernetes/pkg/api/v1"
 )
 
 var (
@@ -38,6 +42,9 @@ var (
 	clusters       string
 	expandSize     int
 	id             string
+	kubePvFile     string
+	kubePvEndpoint string
+	kubePv         bool
 )
 
 func init() {
@@ -77,6 +84,14 @@ func init() {
 			"\n\ton any of the configured clusters which have the available space."+
 			"\n\tProviding a set of clusters will ensure Heketi allocates storage"+
 			"\n\tfor this volume only in the clusters specified.")
+	volumeCreateCommand.Flags().BoolVar(&kubePv, "persistent-volume", false,
+		"\n\tOptional: Output to standard out a peristent volume JSON file for OpenShift or"+
+			"\n\tKubernetes with the name provided.")
+	volumeCreateCommand.Flags().StringVar(&kubePvFile, "persistent-volume-file", "",
+		"\n\tOptional: Create a peristent volume JSON file for OpenShift or"+
+			"\n\tKubernetes with the name provided.")
+	volumeCreateCommand.Flags().StringVar(&kubePvEndpoint, "persistent-volume-endpoint", "",
+		"\n\tOptional: Endpoint name for the persistent volume")
 	volumeExpandCommand.Flags().IntVar(&expandSize, "expand-size", -1,
 		"\n\tAmount in GB to add to the volume")
 	volumeExpandCommand.Flags().StringVar(&id, "volume", "",
@@ -124,6 +139,12 @@ var volumeCreateCommand = &cobra.Command{
 			return errors.New("Missing volume size")
 		}
 
+		if kubePv && kubePvEndpoint == "" {
+			fmt.Fprintf(stderr, "--persistent-volume-endpoint must be provided "+
+				"when using --persistent-volume\n")
+			return fmt.Errorf("Missing endpoing")
+		}
+
 		// Check clusters
 		var clusters_ []string
 		if clusters != "" {
@@ -157,15 +178,63 @@ var volumeCreateCommand = &cobra.Command{
 			return err
 		}
 
-		if options.Json {
-			data, err := json.Marshal(volume)
+		// Check if we need to print out a PV
+		if kubePvFile != "" || kubePv {
+
+			// Initialize object
+			pv := &api.PersistentVolume{}
+			pv.Kind = "PersistentVolume"
+			pv.APIVersion = "v1"
+			pv.Spec.PersistentVolumeReclaimPolicy = api.PersistentVolumeReclaimRetain
+			pv.Spec.AccessModes = []api.PersistentVolumeAccessMode{
+				api.ReadWriteMany,
+			}
+			pv.Spec.Capacity = make(api.ResourceList)
+			pv.Spec.Glusterfs = &api.GlusterfsVolumeSource{}
+
+			// Set values
+			pv.ObjectMeta.Name = "glusterfs-" + volume.Name
+			pv.Spec.Capacity[api.ResourceStorage] =
+				resource.MustParse(fmt.Sprintf("%vGi", volume.Size))
+			pv.Spec.Glusterfs.Path = volume.Name
+
+			// Set endpoint
+			if kubePvEndpoint == "" {
+				pv.Spec.Glusterfs.EndpointsName = "TYPE ENDPOINT HERE"
+			} else {
+				pv.Spec.Glusterfs.EndpointsName = kubePvEndpoint
+			}
+
+			data, err := json.MarshalIndent(pv, "", "  ")
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(stdout, string(data))
+
+			if kubePv {
+				fmt.Fprintln(stdout, string(data))
+			} else {
+
+				f, err := os.Create(kubePvFile)
+				if err != nil {
+					fmt.Fprintf(stderr, "Unable to write to file %v\n", kubePvFile)
+					return err
+				}
+				f.Write(data)
+				f.Close()
+			}
+
 		} else {
-			fmt.Fprintf(stdout, "%v", volume)
+			if options.Json {
+				data, err := json.Marshal(volume)
+				if err != nil {
+					return err
+				}
+				fmt.Fprintf(stdout, string(data))
+			} else {
+				fmt.Fprintf(stdout, "%v", volume)
+			}
 		}
+
 		return nil
 	},
 }
