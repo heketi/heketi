@@ -193,7 +193,7 @@ var volumeCreateCommand = &cobra.Command{
 			pv.Spec.Glusterfs = &api.GlusterfsVolumeSource{}
 
 			// Set values
-			pv.ObjectMeta.Name = "glusterfs-" + volume.Name
+			pv.ObjectMeta.Name = "glusterfs-" + volume.Id[:8]
 			pv.Spec.Capacity[api.ResourceStorage] =
 				resource.MustParse(fmt.Sprintf("%vGi", volume.Size))
 			pv.Spec.Glusterfs.Path = volume.Name
