@@ -45,6 +45,7 @@
                         "nodeSelector": {
                             "name": "${NODE_LABEL}"
                         },
+                        "hostNetwork": true,
                         "containers": [
                             {
                                 "image": "lpabon/gluster",
