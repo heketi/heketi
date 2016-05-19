@@ -4,7 +4,7 @@
   "metadata": {
     "name": "heketi",
     "annotations": {
-      "description": "Heketi application",
+      "description": "Heketi service deployment template",
       "tags": "glusterfs,heketi"
     }
   },
@@ -16,7 +16,7 @@
       "kind": "Service",
       "apiVersion": "v1",
       "metadata": {
-        "name": "${NAME}",
+        "name": "heketi",
         "annotations": {
           "description": "Exposes Heketi service"
         }
@@ -30,7 +30,7 @@
           }
         ],
         "selector": {
-          "name": "${NAME}"
+          "name": "heketi"
         }
       }
     },
@@ -38,7 +38,7 @@
       "kind": "DeploymentConfig",
       "apiVersion": "v1",
       "metadata": {
-        "name": "${NAME}",
+        "name": "heketi",
         "annotations": {
           "description": "Defines how to deploy Heketi"
         }
@@ -46,13 +46,13 @@
       "spec": {
         "replicas": 1,
         "selector": {
-          "name": "${NAME}"
+          "name": "heketi"
         },
         "template": {
           "metadata": {
-            "name": "${NAME}",
+            "name": "heketi",
             "labels": {
-              "name": "${NAME}"
+              "name": "heketi"
             }
           },
           "triggers": [
@@ -61,7 +61,7 @@
             }
           ],
           "strategy": {
-            "type": "Rolling"
+            "type": "Replace"
           },
           "spec": {
             "containers": [
@@ -70,8 +70,20 @@
                 "image": "heketi/heketi:dev",
                 "env": [
                   {
+                    "name": "HEKETI_USER_KEY",
+                    "value": "${HEKETI_USER_KEY}"
+                  },
+                  {
+                    "name": "HEKETI_ADMIN_KEY",
+                    "value": "${HEKETI_ADMIN_KEY}"
+                  },
+                  {
                     "name": "HEKETI_EXECUTOR",
                     "value": "kubernetes"
+                  },
+                  {
+                    "name": "HEKETI_FSTAB",
+                    "value": "/var/lib/heketi/fstab"
                   },
                   {
                     "name": "HEKETI_KUBE_CERTFILE",
@@ -139,11 +151,14 @@
   ],
   "parameters": [
     {
-      "name": "NAME",
-      "displayName": "Name",
-      "description": "The name assigned to all of the frontend objects defined in this template.",
-      "required": true,
-      "value": "heketi"
+      "name": "HEKETI_USER_KEY",
+      "displayName" : "Heketi User Secret",
+      "description": "Set secret for those creating volumes as type _user_"
+    },
+    {
+      "name": "HEKETI_ADMIN_KEY",
+      "displayName" : "Heketi Administrator Secret",
+      "description": "Set secret for administration of the Heketi service as user _admin_"
     },
     {
       "name": "HEKETI_KUBE_CERTFILE",
@@ -156,11 +171,13 @@
     },
     {
       "name": "HEKETI_KUBE_USER",
-      "description": "OpenShift username to access Kubernetes API"
+      "description": "OpenShift username to access Kubernetes API",
+      "required": true
     },
     {
       "name": "HEKETI_KUBE_PASSWORD",
-      "description": "Password for OpenShift user"
+      "description": "Password for OpenShift user",
+      "required": true
     },
     {
       "name": "HEKETI_KUBE_NAMESPACE",
