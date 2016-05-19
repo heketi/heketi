@@ -61,7 +61,7 @@ Using our example above, to use the heketi-cli, you can type:
 $ sudo docker exec 6e3ed5c59f87 \
     heketi-cli -h
 $ sudo docker exec 6e3ed5c59f87 \
-    heketi-cli -server http://localhost:8080/ cluster list
+    heketi-cli --server http://localhost:8080/ cluster list
 ```
 
 # Build
