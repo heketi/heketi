@@ -231,7 +231,7 @@ func (k *KubeExecutor) ConnectAndExec(host, namespace, resource string,
 		if err != nil {
 			logger.LogError("Failed to run command [%v] on %v: Err[%v]: Stdout [%v]: Stderr [%v]",
 				command, host, err, b.String(), berr.String())
-			return nil, fmt.Errorf("Unable to execute command on %v", host)
+			return nil, fmt.Errorf("Unable to execute command on %v: %v", host, berr.String())
 		}
 		logger.Debug("Host: %v Command: %v\nResult: %v", host, command, b.String())
 		buffers[index] = b.String()
