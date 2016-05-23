@@ -52,7 +52,6 @@ func TestVersion(t *testing.T) {
 
 	// Setup the server
 	Ts := setupHeketiServer(app)
-	Url = Ts.URL
 	defer Ts.Close()
 	//	server := ts.URL
 	//  defaultflags :=

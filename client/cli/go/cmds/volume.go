@@ -84,15 +84,15 @@ func init() {
 			"\n\ton any of the configured clusters which have the available space."+
 			"\n\tProviding a set of clusters will ensure Heketi allocates storage"+
 			"\n\tfor this volume only in the clusters specified.")
-	volumeCreateCommand.Flags().BoolVar(&kubePv, "persistent-volume", false,
+	VolumeCreateCommand.Flags().BoolVar(&kubePv, "persistent-volume", false,
 		"\n\tOptional: Output to standard out a peristent volume JSON file for OpenShift or"+
 			"\n\tKubernetes with the name provided.")
-	volumeCreateCommand.Flags().StringVar(&kubePvFile, "persistent-volume-file", "",
+	VolumeCreateCommand.Flags().StringVar(&kubePvFile, "persistent-volume-file", "",
 		"\n\tOptional: Create a peristent volume JSON file for OpenShift or"+
 			"\n\tKubernetes with the name provided.")
-	volumeCreateCommand.Flags().StringVar(&kubePvEndpoint, "persistent-volume-endpoint", "",
+	VolumeCreateCommand.Flags().StringVar(&kubePvEndpoint, "persistent-volume-endpoint", "",
 		"\n\tOptional: Endpoint name for the persistent volume")
-	volumeExpandCommand.Flags().IntVar(&expandSize, "expand-size", -1,
+	VolumeExpandCommand.Flags().IntVar(&expandSize, "expand-size", -1,
 		"\n\tAmount in GB to add to the volume")
 	VolumeExpandCommand.Flags().StringVar(&id, "volume", "",
 		"\n\tId of volume to expand")
