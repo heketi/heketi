@@ -27,14 +27,15 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/tests"
 	"github.com/heketi/utils"
 )
 
 func createSampleVolumeEntry(size int) *VolumeEntry {
-	req := &VolumeCreateRequest{}
+	req := &api.VolumeCreateRequest{}
 	req.Size = size
-	req.Durability.Type = DURABILITY_STRING_REPLICATE
+	req.Durability.Type = api.DurabilityReplicate
 	req.Durability.Replicate.Replica = 2
 
 	v := NewVolumeEntryFromRequest(req)
@@ -110,7 +111,7 @@ func TestNewVolumeEntry(t *testing.T) {
 
 func TestNewVolumeEntryFromRequestOnlySize(t *testing.T) {
 
-	req := &VolumeCreateRequest{}
+	req := &api.VolumeCreateRequest{}
 	req.Size = 1024
 
 	v := NewVolumeEntryFromRequest(req)
@@ -129,7 +130,7 @@ func TestNewVolumeEntryFromRequestReplica(t *testing.T) {
 
 	// :TODO: add tests for each durability
 
-	req := &VolumeCreateRequest{}
+	req := &api.VolumeCreateRequest{}
 	req.Size = 1024
 
 	v := NewVolumeEntryFromRequest(req)
@@ -146,7 +147,7 @@ func TestNewVolumeEntryFromRequestReplica(t *testing.T) {
 
 func TestNewVolumeEntryFromRequestClusters(t *testing.T) {
 
-	req := &VolumeCreateRequest{}
+	req := &api.VolumeCreateRequest{}
 	req.Size = 1024
 	req.Clusters = []string{"abc", "def"}
 
@@ -163,7 +164,7 @@ func TestNewVolumeEntryFromRequestClusters(t *testing.T) {
 
 func TestNewVolumeEntryFromRequestSnapshotEnabledDefaultFactor(t *testing.T) {
 
-	req := &VolumeCreateRequest{}
+	req := &api.VolumeCreateRequest{}
 	req.Size = 1024
 	req.Clusters = []string{"abc", "def"}
 	req.Snapshot.Enable = true
@@ -181,7 +182,7 @@ func TestNewVolumeEntryFromRequestSnapshotEnabledDefaultFactor(t *testing.T) {
 
 func TestNewVolumeEntryFromRequestSnapshotFactor(t *testing.T) {
 
-	req := &VolumeCreateRequest{}
+	req := &api.VolumeCreateRequest{}
 	req.Size = 1024
 	req.Clusters = []string{"abc", "def"}
 	req.Snapshot.Enable = true
@@ -200,7 +201,7 @@ func TestNewVolumeEntryFromRequestSnapshotFactor(t *testing.T) {
 
 func TestNewVolumeEntryFromRequestName(t *testing.T) {
 
-	req := &VolumeCreateRequest{}
+	req := &api.VolumeCreateRequest{}
 	req.Size = 1024
 	req.Clusters = []string{"abc", "def"}
 	req.Snapshot.Enable = true
@@ -220,7 +221,7 @@ func TestNewVolumeEntryFromRequestName(t *testing.T) {
 
 func TestNewVolumeEntryMarshal(t *testing.T) {
 
-	req := &VolumeCreateRequest{}
+	req := &api.VolumeCreateRequest{}
 	req.Size = 1024
 	req.Clusters = []string{"abc", "def"}
 	req.Snapshot.Enable = true
@@ -380,7 +381,7 @@ func TestNewVolumeEntryNewInfoResponse(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Retreive info response
-	var info *VolumeInfoResponse
+	var info *api.VolumeInfoResponse
 	err = app.db.View(func(tx *bolt.Tx) error {
 		volume, err := NewVolumeEntryFromId(tx, v.Info.Id)
 		if err != nil {
@@ -543,7 +544,7 @@ func TestVolumeEntryCreateFourBricks(t *testing.T) {
 	tests.Assert(t, err == nil, err)
 
 	// Check database
-	var info *VolumeInfoResponse
+	var info *api.VolumeInfoResponse
 	var nodelist sort.StringSlice
 	err = app.db.View(func(tx *bolt.Tx) error {
 		entry, err := NewVolumeEntryFromId(tx, v.Info.Id)
@@ -624,7 +625,7 @@ func TestVolumeEntryCreateBrickDivision(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Check database volume does not exist
-	var info *VolumeInfoResponse
+	var info *api.VolumeInfoResponse
 	var nodelist sort.StringSlice
 	err = app.db.View(func(tx *bolt.Tx) error {
 		entry, err := NewVolumeEntryFromId(tx, v.Info.Id)
@@ -697,7 +698,7 @@ func TestVolumeEntryCreateMaxBrickSize(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Get volume information
-	var info *VolumeInfoResponse
+	var info *api.VolumeInfoResponse
 	err = app.db.View(func(tx *bolt.Tx) error {
 		entry, err := NewVolumeEntryFromId(tx, v.Info.Id)
 		if err != nil {
@@ -761,7 +762,7 @@ func TestVolumeEntryCreateOnClustersRequested(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Check database volume does not exist
-	var info *VolumeInfoResponse
+	var info *api.VolumeInfoResponse
 	err = app.db.View(func(tx *bolt.Tx) error {
 		entry, err := NewVolumeEntryFromId(tx, v.Info.Id)
 		if err != nil {
@@ -870,7 +871,7 @@ func TestVolumeEntryCreateCheckingClustersForSpace(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Check database volume exists
-	var info *VolumeInfoResponse
+	var info *api.VolumeInfoResponse
 	err = app.db.View(func(tx *bolt.Tx) error {
 		entry, err := NewVolumeEntryFromId(tx, v.Info.Id)
 		if err != nil {
@@ -917,7 +918,7 @@ func TestVolumeEntryCreateWithSnapshot(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Check database volume exists
-	var info *VolumeInfoResponse
+	var info *api.VolumeInfoResponse
 	err = app.db.View(func(tx *bolt.Tx) error {
 		entry, err := NewVolumeEntryFromId(tx, v.Info.Id)
 		if err != nil {

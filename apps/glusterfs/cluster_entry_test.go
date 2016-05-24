@@ -17,12 +17,14 @@
 package glusterfs
 
 import (
-	"github.com/boltdb/bolt"
-	"github.com/heketi/tests"
-	"github.com/heketi/utils"
 	"os"
 	"reflect"
 	"testing"
+
+	"github.com/boltdb/bolt"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/tests"
+	"github.com/heketi/utils"
 )
 
 func createSampleClusterEntry() *ClusterEntry {
@@ -339,7 +341,7 @@ func TestNewClusterEntryNewInfoResponse(t *testing.T) {
 	})
 	tests.Assert(t, err == nil)
 
-	var info *ClusterInfoResponse
+	var info *api.ClusterInfoResponse
 	err = app.db.View(func(tx *bolt.Tx) error {
 		cluster, err := NewClusterEntryFromId(tx, c.Info.Id)
 		if err != nil {

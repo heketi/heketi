@@ -27,6 +27,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/apps/glusterfs"
 	"github.com/heketi/heketi/middleware"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/tests"
 	"github.com/heketi/utils"
 )
@@ -70,7 +71,7 @@ func TestTopology(t *testing.T) {
 	tests.Assert(t, c != nil)
 
 	//Create multiple clusters
-	clusteridlist := make([]glusterfs.ClusterInfoResponse, 0)
+	clusteridlist := make([]api.ClusterInfoResponse, 0)
 	for m := 0; m < 4; m++ {
 		cluster, err := c.ClusterCreate()
 		tests.Assert(t, err == nil)
@@ -106,9 +107,9 @@ func TestTopology(t *testing.T) {
 	tests.Assert(t, topology.ClusterList[0].Id == cluster.Id)
 
 	// Create multiple nodes and add devices to the nodes
-	nodeinfos := make([]glusterfs.NodeInfoResponse, 0)
+	nodeinfos := make([]api.NodeInfoResponse, 0)
 	for n := 0; n < 4; n++ {
-		nodeReq := &glusterfs.NodeAddRequest{}
+		nodeReq := &api.NodeAddRequest{}
 		nodeReq.ClusterId = cluster.Id
 		nodeReq.Hostnames.Manage = []string{"manage" + fmt.Sprintf("%v", n)}
 		nodeReq.Hostnames.Storage = []string{"storage" + fmt.Sprintf("%v", n)}
@@ -126,7 +127,7 @@ func TestTopology(t *testing.T) {
 			go func() {
 				defer sg.Done()
 
-				deviceReq := &glusterfs.DeviceAddRequest{}
+				deviceReq := &api.DeviceAddRequest{}
 				deviceReq.Name = "sd" + utils.GenUUID()[:8]
 				deviceReq.NodeId = node.Id
 
@@ -145,9 +146,9 @@ func TestTopology(t *testing.T) {
 	tests.Assert(t, len(list.Volumes) == 0)
 
 	//Create multiple volumes to the cluster
-	volumeinfos := make([]glusterfs.VolumeInfoResponse, 0)
+	volumeinfos := make([]api.VolumeInfoResponse, 0)
 	for n := 0; n < 4; n++ {
-		volumeReq := &glusterfs.VolumeCreateRequest{}
+		volumeReq := &api.VolumeCreateRequest{}
 		volumeReq.Size = 10
 		volume, err := c.VolumeCreate(volumeReq)
 		tests.Assert(t, err == nil)
@@ -298,7 +299,7 @@ func TestClientNode(t *testing.T) {
 	tests.Assert(t, len(cluster.Volumes) == 0)
 
 	// Add node to unknown cluster
-	nodeReq := &glusterfs.NodeAddRequest{}
+	nodeReq := &api.NodeAddRequest{}
 	nodeReq.ClusterId = "badid"
 	nodeReq.Hostnames.Manage = []string{"manage"}
 	nodeReq.Hostnames.Storage = []string{"storage"}
@@ -311,6 +312,7 @@ func TestClientNode(t *testing.T) {
 	node, err := c.NodeAdd(nodeReq)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, node.Zone == nodeReq.Zone)
+	tests.Assert(t, node.State == api.EntryStateOnline)
 	tests.Assert(t, node.Id != "")
 	tests.Assert(t, reflect.DeepEqual(nodeReq.Hostnames, node.Hostnames))
 	tests.Assert(t, len(node.DevicesInfo) == 0)
@@ -320,9 +322,27 @@ func TestClientNode(t *testing.T) {
 	tests.Assert(t, err != nil)
 	tests.Assert(t, info == nil)
 
+	// Set offline
+	err = c.NodeState(node.Id, &api.StateRequest{
+		State: api.EntryStateOffline,
+	})
+	tests.Assert(t, err == nil)
+
 	// Get node info
 	info, err = c.NodeInfo(node.Id)
 	tests.Assert(t, err == nil)
+	tests.Assert(t, info.State == api.EntryStateOffline)
+
+	// Set online
+	err = c.NodeState(node.Id, &api.StateRequest{
+		State: api.EntryStateOnline,
+	})
+	tests.Assert(t, err == nil)
+
+	// Get node info
+	info, err = c.NodeInfo(node.Id)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, info.State == api.EntryStateOnline)
 	tests.Assert(t, reflect.DeepEqual(info, node))
 
 	// Delete invalid node
@@ -362,7 +382,7 @@ func TestClientDevice(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Create node request packet
-	nodeReq := &glusterfs.NodeAddRequest{}
+	nodeReq := &api.NodeAddRequest{}
 	nodeReq.ClusterId = cluster.Id
 	nodeReq.Hostnames.Manage = []string{"manage"}
 	nodeReq.Hostnames.Storage = []string{"storage"}
@@ -373,7 +393,7 @@ func TestClientDevice(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Create a device request
-	deviceReq := &glusterfs.DeviceAddRequest{}
+	deviceReq := &api.DeviceAddRequest{}
 	deviceReq.Name = "sda"
 	deviceReq.NodeId = node.Id
 
@@ -394,9 +414,29 @@ func TestClientDevice(t *testing.T) {
 	tests.Assert(t, err != nil)
 
 	// Get device information
-	deviceInfo, err := c.DeviceInfo(info.DevicesInfo[0].Id)
+	deviceId := info.DevicesInfo[0].Id
+	deviceInfo, err := c.DeviceInfo(deviceId)
 	tests.Assert(t, err == nil)
+	tests.Assert(t, deviceInfo.State == api.EntryStateOnline)
 	tests.Assert(t, reflect.DeepEqual(*deviceInfo, info.DevicesInfo[0]))
+
+	// Set offline
+	err = c.DeviceState(deviceId, &api.StateRequest{
+		State: api.EntryStateOffline,
+	})
+	tests.Assert(t, err == nil)
+	deviceInfo, err = c.DeviceInfo(deviceId)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, deviceInfo.State == api.EntryStateOffline)
+
+	// Set online
+	err = c.DeviceState(deviceId, &api.StateRequest{
+		State: api.EntryStateOnline,
+	})
+	tests.Assert(t, err == nil)
+	deviceInfo, err = c.DeviceInfo(deviceId)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, deviceInfo.State == api.EntryStateOnline)
 
 	// Try to delete node, and will not until we delete the device
 	err = c.NodeDelete(node.Id)
@@ -440,7 +480,7 @@ func TestClientVolume(t *testing.T) {
 
 	// Create node request packet
 	for n := 0; n < 4; n++ {
-		nodeReq := &glusterfs.NodeAddRequest{}
+		nodeReq := &api.NodeAddRequest{}
 		nodeReq.ClusterId = cluster.Id
 		nodeReq.Hostnames.Manage = []string{"manage" + fmt.Sprintf("%v", n)}
 		nodeReq.Hostnames.Storage = []string{"storage" + fmt.Sprintf("%v", n)}
@@ -457,7 +497,7 @@ func TestClientVolume(t *testing.T) {
 			go func() {
 				defer sg.Done()
 
-				deviceReq := &glusterfs.DeviceAddRequest{}
+				deviceReq := &api.DeviceAddRequest{}
 				deviceReq.Name = "sd" + utils.GenUUID()[:8]
 				deviceReq.NodeId = node.Id
 
@@ -476,7 +516,7 @@ func TestClientVolume(t *testing.T) {
 	tests.Assert(t, len(list.Volumes) == 0)
 
 	// Create a volume
-	volumeReq := &glusterfs.VolumeCreateRequest{}
+	volumeReq := &api.VolumeCreateRequest{}
 	volumeReq.Size = 10
 	volume, err := c.VolumeCreate(volumeReq)
 	tests.Assert(t, err == nil)
@@ -499,7 +539,7 @@ func TestClientVolume(t *testing.T) {
 	tests.Assert(t, reflect.DeepEqual(info, volume))
 
 	// Expand volume with a bad id
-	expandReq := &glusterfs.VolumeExpandRequest{}
+	expandReq := &api.VolumeExpandRequest{}
 	expandReq.Size = 10
 	volumeInfo, err := c.VolumeExpand("badid", expandReq)
 	tests.Assert(t, err != nil)

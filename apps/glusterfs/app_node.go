@@ -18,14 +18,16 @@ package glusterfs
 
 import (
 	"encoding/json"
+	"net/http"
+
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/utils"
-	"net/http"
 )
 
 func (a *App) NodeAdd(w http.ResponseWriter, r *http.Request) {
-	var msg NodeAddRequest
+	var msg api.NodeAddRequest
 
 	err := utils.GetJsonFromRequest(r, &msg)
 	if err != nil {
@@ -168,7 +170,7 @@ func (a *App) NodeInfo(w http.ResponseWriter, r *http.Request) {
 	id := vars["id"]
 
 	// Get Node information
-	var info *NodeInfoResponse
+	var info *api.NodeInfoResponse
 	err := a.db.View(func(tx *bolt.Tx) error {
 		entry, err := NewNodeEntryFromId(tx, id)
 		if err == ErrNotFound {
@@ -320,4 +322,49 @@ func (a *App) NodeDelete(w http.ResponseWriter, r *http.Request) {
 		return "", nil
 
 	})
+}
+
+func (a *App) NodeSetState(w http.ResponseWriter, r *http.Request) {
+	// Get the id from the URL
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	// Unmarshal JSON
+	var msg api.StateRequest
+	err := utils.GetJsonFromRequest(r, &msg)
+	if err != nil {
+		http.Error(w, "request unable to be parsed", 422)
+		return
+	}
+
+	// Check state is supported
+	err = a.db.Update(func(tx *bolt.Tx) error {
+		node, err := NewNodeEntryFromId(tx, id)
+		if err == ErrNotFound {
+			http.Error(w, "Id not found", http.StatusNotFound)
+			return err
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+
+		// Set state
+		err = node.SetState(tx, a.allocator, msg.State)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return err
+		}
+
+		// Save new state
+		err = node.Save(tx)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return
+	}
 }

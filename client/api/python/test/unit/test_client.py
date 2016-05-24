@@ -91,6 +91,22 @@ class test_heketi(unittest.TestCase):
         # Get node info
         info = c.node_info(node['id'])
         self.assertEqual(True, info == node)
+        self.assertEqual(info['state'], 'online')
+
+        # Set offline
+        state = {}
+        state['state'] = 'offline'
+        self.assertEqual(True, c.node_state(node['id'], state))
+
+        # Get node info
+        info = c.node_info(node['id'])
+        self.assertEqual(info['state'], 'offline')
+
+        state['state'] = 'online'
+        self.assertEqual(True, c.node_state(node['id'], state))
+
+        info = c.node_info(node['id'])
+        self.assertEqual(info['state'], 'online')
 
         # Delete invalid node
         with self.assertRaises(requests.exceptions.HTTPError):
@@ -149,8 +165,24 @@ class test_heketi(unittest.TestCase):
             c.device_info("badid")
 
         # Get device information
-        device_info = c.device_info(info['devices'][0]['id'])
+        device_id = info['devices'][0]['id']
+        device_info = c.device_info(device_id)
         self.assertEqual(True, device_info == info['devices'][0])
+
+        # Set offline
+        state = {}
+        state['state'] = 'offline'
+        self.assertEqual(True, c.device_state(device_id, state))
+
+        # Get device info
+        info = c.device_info(device_id)
+        self.assertEqual(info['state'], 'offline')
+
+        state['state'] = 'online'
+        self.assertEqual(True, c.device_state(device_id, state))
+
+        info = c.device_info(device_id)
+        self.assertEqual(info['state'], 'online')
 
         # Try to delete node, and will not until we delete the device
         with self.assertRaises(requests.exceptions.HTTPError):

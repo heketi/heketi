@@ -21,10 +21,12 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"sort"
+
 	"github.com/boltdb/bolt"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/utils"
 	"github.com/lpabon/godbc"
-	"sort"
 )
 
 const (
@@ -32,7 +34,9 @@ const (
 )
 
 type DeviceEntry struct {
-	Info       DeviceInfo
+	Entry
+
+	Info       api.DeviceInfo
 	Bricks     sort.StringSlice
 	NodeId     string
 	ExtentSize uint64
@@ -50,6 +54,7 @@ func DeviceList(tx *bolt.Tx) ([]string, error) {
 func NewDeviceEntry() *DeviceEntry {
 	entry := &DeviceEntry{}
 	entry.Bricks = make(sort.StringSlice, 0)
+	entry.SetOnline()
 
 	// Default to 4096KB
 	entry.ExtentSize = 4096
@@ -57,7 +62,7 @@ func NewDeviceEntry() *DeviceEntry {
 	return entry
 }
 
-func NewDeviceEntryFromRequest(req *DeviceAddRequest) *DeviceEntry {
+func NewDeviceEntryFromRequest(req *api.DeviceAddRequest) *DeviceEntry {
 	godbc.Require(req != nil)
 
 	device := NewDeviceEntry()
@@ -155,15 +160,100 @@ func (d *DeviceEntry) Delete(tx *bolt.Tx) error {
 	return EntryDelete(tx, d, d.Info.Id)
 }
 
-func (d *DeviceEntry) NewInfoResponse(tx *bolt.Tx) (*DeviceInfoResponse, error) {
+func (d *DeviceEntry) removeDeviceFromRing(tx *bolt.Tx,
+	a Allocator) error {
+
+	node, err := NewNodeEntryFromId(tx, d.NodeId)
+	if err != nil {
+		return err
+	}
+
+	cluster, err := NewClusterEntryFromId(tx, node.Info.ClusterId)
+	if err != nil {
+		return err
+	}
+
+	return a.RemoveDevice(cluster, node, d)
+}
+
+func (d *DeviceEntry) addDeviceToRing(tx *bolt.Tx,
+	a Allocator) error {
+
+	node, err := NewNodeEntryFromId(tx, d.NodeId)
+	if err != nil {
+		return err
+	}
+
+	cluster, err := NewClusterEntryFromId(tx, node.Info.ClusterId)
+	if err != nil {
+		return err
+	}
+
+	return a.AddDevice(cluster, node, d)
+}
+
+func (d *DeviceEntry) SetState(tx *bolt.Tx,
+	a Allocator,
+	s api.EntryState) error {
+
+	// Check current state
+	switch d.State {
+	case api.EntryStateFailed:
+		if s == api.EntryStateFailed {
+			return nil
+		}
+		return fmt.Errorf("Cannot reuse a failed device")
+
+	case api.EntryStateOnline:
+		switch s {
+		case api.EntryStateOnline:
+			return nil
+		case api.EntryStateFailed:
+		case api.EntryStateOffline:
+		default:
+			return fmt.Errorf("Unknown state type: %v", s)
+		}
+
+		// Remove disk from Ring
+		err := d.removeDeviceFromRing(tx, a)
+		if err != nil {
+			return err
+		}
+
+		// Save state
+		d.State = s
+
+	case api.EntryStateOffline:
+		switch s {
+		case api.EntryStateOffline:
+			return nil
+		case api.EntryStateOnline:
+			// Add disk back
+			err := d.addDeviceToRing(tx, a)
+			if err != nil {
+				return err
+			}
+		case api.EntryStateFailed:
+			// Only thing to do here is to set the state
+		default:
+			return fmt.Errorf("Unknown state type: %v", s)
+		}
+		d.State = s
+	}
+
+	return nil
+}
+
+func (d *DeviceEntry) NewInfoResponse(tx *bolt.Tx) (*api.DeviceInfoResponse, error) {
 
 	godbc.Require(tx != nil)
 
-	info := &DeviceInfoResponse{}
+	info := &api.DeviceInfoResponse{}
 	info.Id = d.Info.Id
 	info.Name = d.Info.Name
 	info.Storage = d.Info.Storage
-	info.Bricks = make([]BrickInfo, 0)
+	info.State = d.State
+	info.Bricks = make([]api.BrickInfo, 0)
 
 	// Add each drive information
 	for _, id := range d.Bricks {

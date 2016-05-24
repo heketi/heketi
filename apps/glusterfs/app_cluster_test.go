@@ -20,14 +20,16 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/boltdb/bolt"
-	"github.com/gorilla/mux"
-	"github.com/heketi/tests"
-	"github.com/heketi/utils"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/boltdb/bolt"
+	"github.com/gorilla/mux"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/tests"
+	"github.com/heketi/utils"
 )
 
 func init() {
@@ -59,7 +61,7 @@ func TestClusterCreate(t *testing.T) {
 	tests.Assert(t, r.StatusCode == http.StatusCreated)
 
 	// Read JSON
-	var msg ClusterInfoResponse
+	var msg api.ClusterInfoResponse
 	err = utils.GetJsonFromResponse(r, &msg)
 	tests.Assert(t, err == nil)
 
@@ -132,7 +134,7 @@ func TestClusterList(t *testing.T) {
 	tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
 
 	// Read response
-	var msg ClusterListResponse
+	var msg api.ClusterListResponse
 	err = utils.GetJsonFromResponse(r, &msg)
 	tests.Assert(t, err == nil)
 
@@ -219,7 +221,7 @@ func TestClusterInfo(t *testing.T) {
 	tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
 
 	// Read response
-	var msg ClusterInfoResponse
+	var msg api.ClusterInfoResponse
 	err = utils.GetJsonFromResponse(r, &msg)
 	tests.Assert(t, err == nil)
 

@@ -18,15 +18,27 @@ package glusterfs
 
 import (
 	"github.com/heketi/heketi/executors"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 )
 
-func (r *ReplicaDurability) SetDurability() {
+type VolumeReplicaDurability struct {
+	api.ReplicaDurability
+}
+
+func NewVolumeReplicaDurability(r *api.ReplicaDurability) *VolumeReplicaDurability {
+	v := &VolumeReplicaDurability{}
+	v.Replica = r.Replica
+
+	return v
+}
+
+func (r *VolumeReplicaDurability) SetDurability() {
 	if r.Replica == 0 {
 		r.Replica = DEFAULT_REPLICA
 	}
 }
 
-func (r *ReplicaDurability) BrickSizeGenerator(size uint64) func() (int, uint64, error) {
+func (r *VolumeReplicaDurability) BrickSizeGenerator(size uint64) func() (int, uint64, error) {
 
 	sets := 1
 	return func() (int, uint64, error) {
@@ -48,11 +60,11 @@ func (r *ReplicaDurability) BrickSizeGenerator(size uint64) func() (int, uint64,
 	}
 }
 
-func (r *ReplicaDurability) BricksInSet() int {
+func (r *VolumeReplicaDurability) BricksInSet() int {
 	return r.Replica
 }
 
-func (r *ReplicaDurability) SetExecutorVolumeRequest(v *executors.VolumeRequest) {
+func (r *VolumeReplicaDurability) SetExecutorVolumeRequest(v *executors.VolumeRequest) {
 	v.Type = executors.DurabilityReplica
 	v.Replica = r.Replica
 }

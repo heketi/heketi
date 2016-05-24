@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015 The heketi Authors
+// Copyright (c) 2016 The heketi Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,21 +18,34 @@
 // Please see https://github.com/heketi/heketi/wiki/API
 // for documentation
 //
-package glusterfs
+package api
 
 import (
 	"fmt"
 	"sort"
 )
 
-type Cluster struct {
-	Volumes []VolumeInfoResponse `json:"volumes"`
-	Nodes   []NodeInfoResponse   `json:"nodes"`
-	Id      string               `json:"id"`
-}
+// State
+type EntryState string
 
-type TopologyInfoResponse struct {
-	ClusterList []Cluster `json:"clusters"`
+const (
+	EntryStateUnknown EntryState = ""
+	EntryStateOnline  EntryState = "online"
+	EntryStateOffline EntryState = "offline"
+	EntryStateFailed  EntryState = "failed"
+)
+
+type DurabilityType string
+
+const (
+	DurabilityReplicate      DurabilityType = "replicate"
+	DurabilityDistributeOnly DurabilityType = "none"
+	DurabilityEC             DurabilityType = "disperse"
+)
+
+// Common
+type StateRequest struct {
+	State EntryState `json:"state"`
 }
 
 // Storage values in KB
@@ -76,6 +89,7 @@ type DeviceInfo struct {
 
 type DeviceInfoResponse struct {
 	DeviceInfo
+	State  EntryState  `json:"state"`
 	Bricks []BrickInfo `json:"bricks"`
 }
 
@@ -93,10 +107,21 @@ type NodeInfo struct {
 
 type NodeInfoResponse struct {
 	NodeInfo
+	State       EntryState           `json:"state"`
 	DevicesInfo []DeviceInfoResponse `json:"devices"`
 }
 
 // Cluster
+type Cluster struct {
+	Volumes []VolumeInfoResponse `json:"volumes"`
+	Nodes   []NodeInfoResponse   `json:"nodes"`
+	Id      string               `json:"id"`
+}
+
+type TopologyInfoResponse struct {
+	ClusterList []Cluster `json:"clusters"`
+}
+
 type ClusterInfoResponse struct {
 	Id      string           `json:"id"`
 	Nodes   sort.StringSlice `json:"nodes"`
@@ -108,7 +133,6 @@ type ClusterListResponse struct {
 }
 
 // Durabilities
-
 type ReplicaDurability struct {
 	Replica int `json:"replica,omitempty"`
 }
@@ -119,9 +143,8 @@ type DisperseDurability struct {
 }
 
 // Volume
-
 type VolumeDurabilityInfo struct {
-	Type      string             `json:"type,omitempty"`
+	Type      DurabilityType     `json:"type,omitempty"`
 	Replicate ReplicaDurability  `json:"replicate,omitempty"`
 	Disperse  DisperseDurability `json:"disperse,omitempty"`
 }
@@ -192,12 +215,12 @@ func (v *VolumeInfoResponse) String() string {
 		v.Durability.Type)
 
 	switch v.Durability.Type {
-	case DURABILITY_STRING_EC:
+	case DurabilityEC:
 		s += fmt.Sprintf("Disperse Data: %v\n"+
 			"Disperse Redundancy: %v\n",
 			v.Durability.Disperse.Data,
 			v.Durability.Disperse.Redundancy)
-	case DURABILITY_STRING_REPLICATE:
+	case DurabilityReplicate:
 		s += fmt.Sprintf("Replica: %v\n",
 			v.Durability.Replicate.Replica)
 	}

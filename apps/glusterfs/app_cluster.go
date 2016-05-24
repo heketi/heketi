@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"net/http"
 )
 
@@ -53,7 +54,7 @@ func (a *App) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) ClusterList(w http.ResponseWriter, r *http.Request) {
 
-	var list ClusterListResponse
+	var list api.ClusterListResponse
 
 	// Get all the cluster ids from the DB
 	err := a.db.View(func(tx *bolt.Tx) error {
@@ -88,7 +89,7 @@ func (a *App) ClusterInfo(w http.ResponseWriter, r *http.Request) {
 	id := vars["id"]
 
 	// Get info from db
-	var info *ClusterInfoResponse
+	var info *api.ClusterInfoResponse
 	err := a.db.View(func(tx *bolt.Tx) error {
 
 		// Create a db entry from the id

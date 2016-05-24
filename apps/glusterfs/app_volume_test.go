@@ -18,10 +18,6 @@ package glusterfs
 
 import (
 	"bytes"
-	"github.com/boltdb/bolt"
-	"github.com/gorilla/mux"
-	"github.com/heketi/tests"
-	"github.com/heketi/utils"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -31,6 +27,12 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/boltdb/bolt"
+	"github.com/gorilla/mux"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/tests"
+	"github.com/heketi/utils"
 )
 
 func init() {
@@ -408,7 +410,7 @@ func TestVolumeCreate(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Query queue until finished
-	var info VolumeInfoResponse
+	var info api.VolumeInfoResponse
 	for {
 		r, err = http.Get(location.String())
 		tests.Assert(t, err == nil)
@@ -432,7 +434,7 @@ func TestVolumeCreate(t *testing.T) {
 	tests.Assert(t, info.Name == "vol_"+info.Id)
 	tests.Assert(t, info.Snapshot.Enable == false)
 	tests.Assert(t, info.Snapshot.Factor == 1)
-	tests.Assert(t, info.Durability.Type == DURABILITY_STRING_DISTRIBUTE_ONLY)
+	tests.Assert(t, info.Durability.Type == api.DurabilityDistributeOnly)
 }
 
 func TestVolumeInfoIdNotFound(t *testing.T) {
@@ -480,9 +482,9 @@ func TestVolumeInfo(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Create a volume
-	req := &VolumeCreateRequest{}
+	req := &api.VolumeCreateRequest{}
 	req.Size = 100
-	req.Durability.Type = DURABILITY_STRING_EC
+	req.Durability.Type = api.DurabilityEC
 	v := NewVolumeEntryFromRequest(req)
 	tests.Assert(t, v != nil)
 	err = v.Create(app.db, app.executor, app.allocator)
@@ -496,7 +498,7 @@ func TestVolumeInfo(t *testing.T) {
 	tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
 
 	// Read response
-	var msg VolumeInfoResponse
+	var msg api.VolumeInfoResponse
 	err = utils.GetJsonFromResponse(r, &msg)
 	tests.Assert(t, err == nil)
 
@@ -532,7 +534,7 @@ func TestVolumeListEmpty(t *testing.T) {
 	tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
 
 	// Read response
-	var msg VolumeListResponse
+	var msg api.VolumeListResponse
 	err = utils.GetJsonFromResponse(r, &msg)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, len(msg.Volumes) == 0)
@@ -576,7 +578,7 @@ func TestVolumeList(t *testing.T) {
 	tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
 
 	// Read response
-	var msg VolumeListResponse
+	var msg api.VolumeListResponse
 	err = utils.GetJsonFromResponse(r, &msg)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, len(msg.Volumes) == numvolumes)
@@ -812,7 +814,7 @@ func TestVolumeExpand(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Query queue until finished
-	var info VolumeInfoResponse
+	var info api.VolumeInfoResponse
 	for {
 		r, err := http.Get(location.String())
 		tests.Assert(t, err == nil)

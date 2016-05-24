@@ -17,9 +17,10 @@
 package glusterfs
 
 import (
+	"testing"
+
 	"github.com/heketi/heketi/executors"
 	"github.com/heketi/tests"
-	"testing"
 )
 
 func TestNoneDurabilityDefaults(t *testing.T) {
@@ -31,7 +32,7 @@ func TestNoneDurabilityDefaults(t *testing.T) {
 }
 
 func TestDisperseDurabilityDefaults(t *testing.T) {
-	r := &DisperseDurability{}
+	r := &VolumeDisperseDurability{}
 	tests.Assert(t, r.Data == 0)
 	tests.Assert(t, r.Redundancy == 0)
 
@@ -41,7 +42,7 @@ func TestDisperseDurabilityDefaults(t *testing.T) {
 }
 
 func TestReplicaDurabilityDefaults(t *testing.T) {
-	r := &ReplicaDurability{}
+	r := &VolumeReplicaDurability{}
 	tests.Assert(t, r.Replica == 0)
 
 	r.SetDurability()
@@ -59,7 +60,7 @@ func TestNoneDurabilitySetExecutorRequest(t *testing.T) {
 }
 
 func TestDisperseDurabilitySetExecutorRequest(t *testing.T) {
-	r := &DisperseDurability{}
+	r := &VolumeDisperseDurability{}
 	r.SetDurability()
 
 	v := &executors.VolumeRequest{}
@@ -70,7 +71,7 @@ func TestDisperseDurabilitySetExecutorRequest(t *testing.T) {
 }
 
 func TestReplicaDurabilitySetExecutorRequest(t *testing.T) {
-	r := &ReplicaDurability{}
+	r := &VolumeReplicaDurability{}
 	r.SetDurability()
 
 	v := &executors.VolumeRequest{}
@@ -123,10 +124,9 @@ func TestNoneDurability(t *testing.T) {
 
 func TestDisperseDurability(t *testing.T) {
 
-	r := &DisperseDurability{
-		Data:       8,
-		Redundancy: 3,
-	}
+	r := &VolumeDisperseDurability{}
+	r.Data = 8
+	r.Redundancy = 3
 
 	gen := r.BrickSizeGenerator(200 * GB)
 
@@ -151,10 +151,10 @@ func TestDisperseDurability(t *testing.T) {
 }
 
 func TestDisperseDurabilityLargeBrickGenerator(t *testing.T) {
-	r := &DisperseDurability{
-		Data:       8,
-		Redundancy: 3,
-	}
+	r := &VolumeDisperseDurability{}
+	r.Data = 8
+	r.Redundancy = 3
+
 	gen := r.BrickSizeGenerator(800 * TB)
 
 	// Gen 1
@@ -166,9 +166,9 @@ func TestDisperseDurabilityLargeBrickGenerator(t *testing.T) {
 }
 
 func TestReplicaDurabilityGenerator(t *testing.T) {
-	r := &ReplicaDurability{
-		Replica: 2,
-	}
+	r := &VolumeReplicaDurability{}
+	r.Replica = 2
+
 	gen := r.BrickSizeGenerator(100 * GB)
 
 	// Gen 1
@@ -208,9 +208,9 @@ func TestReplicaDurabilityGenerator(t *testing.T) {
 }
 
 func TestReplicaDurabilityLargeBrickGenerator(t *testing.T) {
-	r := &ReplicaDurability{
-		Replica: 2,
-	}
+	r := &VolumeReplicaDurability{}
+	r.Replica = 2
+
 	gen := r.BrickSizeGenerator(100 * TB)
 
 	// Gen 1

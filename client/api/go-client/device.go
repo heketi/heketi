@@ -19,13 +19,13 @@ package client
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/heketi/heketi/apps/glusterfs"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/utils"
 	"net/http"
 	"time"
 )
 
-func (c *Client) DeviceAdd(request *glusterfs.DeviceAddRequest) error {
+func (c *Client) DeviceAdd(request *api.DeviceAddRequest) error {
 	// Marshal request to JSON
 	buffer, err := json.Marshal(request)
 	if err != nil {
@@ -66,7 +66,7 @@ func (c *Client) DeviceAdd(request *glusterfs.DeviceAddRequest) error {
 	return nil
 }
 
-func (c *Client) DeviceInfo(id string) (*glusterfs.DeviceInfoResponse, error) {
+func (c *Client) DeviceInfo(id string) (*api.DeviceInfoResponse, error) {
 
 	// Create request
 	req, err := http.NewRequest("GET", c.host+"/devices/"+id, nil)
@@ -90,7 +90,7 @@ func (c *Client) DeviceInfo(id string) (*glusterfs.DeviceInfoResponse, error) {
 	}
 
 	// Read JSON response
-	var device glusterfs.DeviceInfoResponse
+	var device api.DeviceInfoResponse
 	err = utils.GetJsonFromResponse(r, &device)
 	r.Body.Close()
 	if err != nil {
@@ -132,5 +132,40 @@ func (c *Client) DeviceDelete(id string) error {
 		return utils.GetErrorFromResponse(r)
 	}
 
+	return nil
+}
+
+func (c *Client) DeviceState(id string,
+	request *api.StateRequest) error {
+
+	// Marshal request to JSON
+	buffer, err := json.Marshal(request)
+	if err != nil {
+		return err
+	}
+
+	// Create a request
+	req, err := http.NewRequest("POST",
+		c.host+"/devices/"+id+"/state",
+		bytes.NewBuffer(buffer))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// Set token
+	err = c.setToken(req)
+	if err != nil {
+		return err
+	}
+
+	// Get info
+	r, err := c.do(req)
+	if err != nil {
+		return err
+	}
+	if r.StatusCode != http.StatusOK {
+		return utils.GetErrorFromResponse(r)
+	}
 	return nil
 }

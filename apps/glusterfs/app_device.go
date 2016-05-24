@@ -18,15 +18,17 @@ package glusterfs
 
 import (
 	"encoding/json"
+	"net/http"
+
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/utils"
-	"net/http"
 )
 
 func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 
-	var msg DeviceAddRequest
+	var msg api.DeviceAddRequest
 	err := utils.GetJsonFromRequest(r, &msg)
 	if err != nil {
 		http.Error(w, "request unable to be parsed", 422)
@@ -166,7 +168,7 @@ func (a *App) DeviceInfo(w http.ResponseWriter, r *http.Request) {
 	id := vars["id"]
 
 	// Get device information
-	var info *DeviceInfoResponse
+	var info *api.DeviceInfoResponse
 	err := a.db.View(func(tx *bolt.Tx) error {
 		entry, err := NewDeviceEntryFromId(tx, id)
 		if err == ErrNotFound {
@@ -314,4 +316,49 @@ func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
 		return "", nil
 	})
 
+}
+
+func (a *App) DeviceSetState(w http.ResponseWriter, r *http.Request) {
+	// Get the id from the URL
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	// Unmarshal JSON
+	var msg api.StateRequest
+	err := utils.GetJsonFromRequest(r, &msg)
+	if err != nil {
+		http.Error(w, "request unable to be parsed", 422)
+		return
+	}
+
+	// Set state
+	err = a.db.Update(func(tx *bolt.Tx) error {
+		device, err := NewDeviceEntryFromId(tx, id)
+		if err == ErrNotFound {
+			http.Error(w, "Id not found", http.StatusNotFound)
+			return err
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+
+		// Set state
+		err = device.SetState(tx, a.allocator, msg.State)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return err
+		}
+
+		// Save new state
+		err = device.Save(tx)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return
+	}
 }
