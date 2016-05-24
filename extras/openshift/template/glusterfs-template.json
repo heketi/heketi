@@ -52,20 +52,24 @@
                                 "name": "glusterfs",
                                 "volumeMounts": [
                                     {
+                                        "name": "glusterfs-heketi",
+                                        "mountPath": "/var/lib/heketi"
+                                    },
+                                    {
                                         "name": "glusterfs-lvm",
                                         "mountPath": "/run/lvm"
                                     },
                                     {
                                         "name": "glusterfs-etc",
-                                        "mountPath": "/FIXTHIS/etc/glusterfs"
+                                        "mountPath": "/etc/glusterfs"
                                     },
                                     {
                                         "name": "glusterfs-logs",
-                                        "mountPath": "/FIXTHIS/var/log/glusterfs"
+                                        "mountPath": "/var/log/glusterfs"
                                     },
                                     {
                                         "name": "glusterfs-config",
-                                        "mountPath": "/FIXTHIS/var/lib/glusterd"
+                                        "mountPath": "/var/lib/glusterd"
                                     },
                                     {
                                         "name": "glusterfs-dev",
@@ -97,6 +101,12 @@
                             }
                         ],
                         "volumes": [
+                            {
+                                "name": "glusterfs-heketi",
+                                "hostPath": {
+                                    "path": "/var/lib/heketi"
+                                }
+                            },
                             {
                                 "name": "glusterfs-lvm",
                                 "hostPath": {
