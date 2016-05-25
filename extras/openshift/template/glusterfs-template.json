@@ -48,7 +48,7 @@
                         "hostNetwork": true,
                         "containers": [
                             {
-                                "image": "lpabon/gluster",
+                                "image": "heketi/gluster:latest",
                                 "name": "glusterfs",
                                 "volumeMounts": [
                                     {
