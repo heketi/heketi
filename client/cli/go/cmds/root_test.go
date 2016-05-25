@@ -21,10 +21,6 @@ var (
 	sout                    io.Writer = os.Stdout
 	serr                    io.Writer = os.Stderr
 	TEST_ADMIN_KEY                    = "adminkey"
-	db                      string
-	app                     *glusterfs.App
-	Ts                      *httptest.Server
-	Url                     string
 )
 
 func setupHeketiServer(app *glusterfs.App) *httptest.Server {
@@ -56,10 +52,8 @@ func TestVersion(t *testing.T) {
 
 	// Setup the server
 	Ts := setupHeketiServer(app)
-	Url = Ts.URL
 	defer Ts.Close()
-	//	server := ts.URL
-	//  defaultflags :=
+
 	var test_version = []struct {
 		input []string
 		err   string
