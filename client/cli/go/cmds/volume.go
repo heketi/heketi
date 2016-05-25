@@ -185,7 +185,7 @@ var volumeCreateCommand = &cobra.Command{
 			pv := &api.PersistentVolume{}
 			pv.Kind = "PersistentVolume"
 			pv.APIVersion = "v1"
-			pv.Spec.PersistentVolumeReclaimPolicy = api.PersistentVolumeReclaimRetain
+			pv.Spec.PersistentVolumeReclaimPolicy = api.PersistentVolumeReclaimRecycle
 			pv.Spec.AccessModes = []api.PersistentVolumeAccessMode{
 				api.ReadWriteMany,
 			}
