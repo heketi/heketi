@@ -25,7 +25,7 @@ import (
 
 // Mock SSH calls
 type FakeSsh struct {
-	FakeConnectAndExec func(host string, commands []string, timeoutMinutes int) ([]string, error)
+	FakeConnectAndExec func(host string, commands []string, timeoutMinutes int, useSudo bool) ([]string, error)
 }
 
 func NewFakeSsh() *FakeSsh {
@@ -33,7 +33,7 @@ func NewFakeSsh() *FakeSsh {
 
 	f.FakeConnectAndExec = func(host string,
 		commands []string,
-		timeoutMinutes int) ([]string, error) {
+		timeoutMinutes int, useSudo bool) ([]string, error) {
 		return []string{""}, nil
 	}
 
@@ -42,8 +42,8 @@ func NewFakeSsh() *FakeSsh {
 
 func (f *FakeSsh) ConnectAndExec(host string,
 	commands []string,
-	timeoutMinutes int) ([]string, error) {
-	return f.FakeConnectAndExec(host, commands, timeoutMinutes)
+	timeoutMinutes int, useSudo bool) ([]string, error) {
+	return f.FakeConnectAndExec(host, commands, timeoutMinutes, useSudo)
 
 }
 
