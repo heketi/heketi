@@ -27,7 +27,7 @@ import (
 )
 
 type RemoteCommandTransport interface {
-	RemoteCommandExecute(host string, commands []string, timeoutMinutes int, useSudo bool) ([]string, error)
+	RemoteCommandExecute(host string, commands []string, timeoutMinutes int) ([]string, error)
 }
 
 type Ssher interface {
@@ -179,14 +179,14 @@ func (s *SshExecutor) FreeConnection(host string) {
 
 func (s *SshExecutor) RemoteCommandExecute(host string,
 	commands []string,
-	timeoutMinutes int, useSudo bool) ([]string, error) {
+	timeoutMinutes int) ([]string, error) {
 
 	// Throttle
 	s.AccessConnection(host)
 	defer s.FreeConnection(host)
 
 	// Execute
-	return s.exec.ConnectAndExec(host+":"+s.port, commands, timeoutMinutes, useSudo)
+	return s.exec.ConnectAndExec(host+":"+s.port, commands, timeoutMinutes, s.usesudo)
 }
 
 func (s *SshExecutor) vgName(vgId string) string {

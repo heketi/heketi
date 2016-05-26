@@ -140,7 +140,7 @@ func NewKubeExecutor(config *KubeConfig) (*KubeExecutor, error) {
 
 func (k *KubeExecutor) RemoteCommandExecute(host string,
 	commands []string,
-	timeoutMinutes int, useSudo bool) ([]string, error) {
+	timeoutMinutes int) ([]string, error) {
 
 	// Throttle
 	k.AccessConnection(host)
@@ -151,12 +151,12 @@ func (k *KubeExecutor) RemoteCommandExecute(host string,
 		k.config.Namespace,
 		"pods",
 		commands,
-		timeoutMinutes, useSudo)
+		timeoutMinutes)
 }
 
 func (k *KubeExecutor) ConnectAndExec(host, namespace, resource string,
 	commands []string,
-	timeoutMinutes int, useSudo bool) ([]string, error) {
+	timeoutMinutes int) ([]string, error) {
 
 	// Used to return command output
 	buffers := make([]string, len(commands))

@@ -98,7 +98,7 @@ func (s *SshExecutor) BrickCreate(host string,
 	}
 
 	// Execute commands
-	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10, s.usesudo)
+	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
 	if err != nil {
 		// Cleanup
 		s.BrickDestroy(host, brick)
@@ -124,7 +124,7 @@ func (s *SshExecutor) BrickDestroy(host string,
 	commands := []string{
 		fmt.Sprintf(" umount %v", s.brickMountPoint(brick)),
 	}
-	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5, s.usesudo)
+	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
 		logger.Err(err)
 	}
@@ -133,7 +133,7 @@ func (s *SshExecutor) BrickDestroy(host string,
 	commands = []string{
 		fmt.Sprintf(" lvremove -f %v/%v", s.vgName(brick.VgId), s.tpName(brick.Name)),
 	}
-	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5, s.usesudo)
+	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
 		logger.Err(err)
 	}
@@ -142,7 +142,7 @@ func (s *SshExecutor) BrickDestroy(host string,
 	commands = []string{
 		fmt.Sprintf(" rmdir %v", s.brickMountPoint(brick)),
 	}
-	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5, s.usesudo)
+	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
 		logger.Err(err)
 	}
@@ -153,7 +153,7 @@ func (s *SshExecutor) BrickDestroy(host string,
 			s.brickName(brick.Name),
 			s.Fstab),
 	}
-	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5, s.usesudo)
+	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
 		logger.Err(err)
 	}
@@ -194,7 +194,7 @@ func (s *SshExecutor) checkThinPoolUsage(host string,
 	}
 
 	// Send command
-	output, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5, s.usesudo)
+	output, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
 		logger.Err(err)
 		return fmt.Errorf("Unable to determine number of logical volumes in "+

@@ -32,7 +32,7 @@ func (s *SshExecutor) PeerProbe(host, newnode string) error {
 	commands := []string{
 		fmt.Sprintf(" gluster peer probe %v", newnode),
 	}
-	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10, s.usesudo)
+	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
 	if err != nil {
 		return err
 	}
@@ -49,7 +49,7 @@ func (s *SshExecutor) PeerDetach(host, detachnode string) error {
 	commands := []string{
 		fmt.Sprintf(" gluster peer detach %v", detachnode),
 	}
-	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10, s.usesudo)
+	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
 	if err != nil {
 		logger.Err(err)
 	}
