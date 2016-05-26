@@ -34,26 +34,26 @@ var (
 )
 
 func init() {
-	RootCmd.AddCommand(nodeCommand)
-	nodeCommand.AddCommand(nodeAddCommand)
-	nodeCommand.AddCommand(nodeDeleteCommand)
-	nodeCommand.AddCommand(nodeInfoCommand)
-	nodeAddCommand.Flags().IntVar(&zone, "zone", -1, "The zone in which the node should reside")
-	nodeAddCommand.Flags().StringVar(&clusterId, "cluster", "", "The cluster in which the node should reside")
-	nodeAddCommand.Flags().StringVar(&managmentHostNames, "management-host-name", "", "Managment host name")
-	nodeAddCommand.Flags().StringVar(&storageHostNames, "storage-host-name", "", "Storage host name")
-	nodeAddCommand.SilenceUsage = true
-	nodeDeleteCommand.SilenceUsage = true
-	nodeInfoCommand.SilenceUsage = true
+	RootCmd.AddCommand(NodeCommand)
+	NodeCommand.AddCommand(NodeAddCommand)
+	NodeCommand.AddCommand(NodeDeleteCommand)
+	NodeCommand.AddCommand(NodeInfoCommand)
+	NodeAddCommand.Flags().IntVar(&zone, "zone", -1, "The zone in which the node should reside")
+	NodeAddCommand.Flags().StringVar(&clusterId, "cluster", "", "The cluster in which the node should reside")
+	NodeAddCommand.Flags().StringVar(&managmentHostNames, "management-host-name", "", "Managment host name")
+	NodeAddCommand.Flags().StringVar(&storageHostNames, "storage-host-name", "", "Storage host name")
+	NodeAddCommand.SilenceUsage = true
+	NodeDeleteCommand.SilenceUsage = true
+	NodeInfoCommand.SilenceUsage = true
 }
 
-var nodeCommand = &cobra.Command{
+var NodeCommand = &cobra.Command{
 	Use:   "node",
 	Short: "Heketi Node Management",
 	Long:  "Heketi Node Management",
 }
 
-var nodeAddCommand = &cobra.Command{
+var NodeAddCommand = &cobra.Command{
 	Use:   "add",
 	Short: "Add new node to be managed by Heketi",
 	Long:  "Add new node to be managed by Heketi",
@@ -117,7 +117,7 @@ var nodeAddCommand = &cobra.Command{
 	},
 }
 
-var nodeDeleteCommand = &cobra.Command{
+var NodeDeleteCommand = &cobra.Command{
 	Use:     "delete [node_id]",
 	Short:   "Deletes a node from Heketi management",
 	Long:    "Deletes a node from Heketi management",
@@ -146,7 +146,7 @@ var nodeDeleteCommand = &cobra.Command{
 	},
 }
 
-var nodeInfoCommand = &cobra.Command{
+var NodeInfoCommand = &cobra.Command{
 	Use:     "info [node_id]",
 	Short:   "Retreives information about the node",
 	Long:    "Retreives information about the node",
