@@ -201,7 +201,7 @@ func NewVolumeInfoResponse() *VolumeInfoResponse {
 func (v *VolumeInfoResponse) String() string {
 	s := fmt.Sprintf("Name: %v\n"+
 		"Size: %v\n"+
-		"Id: %v\n"+
+		"Volume Id: %v\n"+
 		"Cluster Id: %v\n"+
 		"Mount: %v\n"+
 		"Mount Options: backup-volfile-servers=%v\n"+
