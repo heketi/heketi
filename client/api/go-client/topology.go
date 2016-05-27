@@ -16,11 +16,13 @@
 
 package client
 
-import "github.com/heketi/heketi/apps/glusterfs"
+import (
+	"github.com/heketi/heketi/pkg/glusterfs/api"
+)
 
-func (c *Client) TopologyInfo() (*glusterfs.TopologyInfoResponse, error) {
-	topo := &glusterfs.TopologyInfoResponse{
-		ClusterList: make([]glusterfs.Cluster, 0),
+func (c *Client) TopologyInfo() (*api.TopologyInfoResponse, error) {
+	topo := &api.TopologyInfoResponse{
+		ClusterList: make([]api.Cluster, 0),
 	}
 	clusterlist, err := c.ClusterList()
 	if err != nil {
@@ -31,10 +33,10 @@ func (c *Client) TopologyInfo() (*glusterfs.TopologyInfoResponse, error) {
 		if err != nil {
 			return nil, err
 		}
-		cluster := glusterfs.Cluster{
+		cluster := api.Cluster{
 			Id:      clusteri.Id,
-			Volumes: make([]glusterfs.VolumeInfoResponse, 0),
-			Nodes:   make([]glusterfs.NodeInfoResponse, 0),
+			Volumes: make([]api.VolumeInfoResponse, 0),
+			Nodes:   make([]api.NodeInfoResponse, 0),
 		}
 		cluster.Id = clusteri.Id
 

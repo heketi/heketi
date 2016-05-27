@@ -17,17 +17,20 @@
 package glusterfs
 
 import (
-	"github.com/boltdb/bolt"
-	"github.com/heketi/tests"
-	"github.com/heketi/utils"
 	"os"
 	"reflect"
+	"sort"
 	"testing"
+
+	"github.com/boltdb/bolt"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/tests"
+	"github.com/heketi/utils"
 )
 
 func createSampleDeviceEntry(nodeid string, disksize uint64) *DeviceEntry {
 
-	req := &DeviceAddRequest{}
+	req := &api.DeviceAddRequest{}
 	req.NodeId = nodeid
 	req.Name = "/dev/" + utils.GenUUID()[:8]
 
@@ -52,7 +55,7 @@ func TestNewDeviceEntry(t *testing.T) {
 }
 
 func TestNewDeviceEntryFromRequest(t *testing.T) {
-	req := &DeviceAddRequest{}
+	req := &api.DeviceAddRequest{}
 	req.NodeId = "123"
 	req.Name = "/dev/" + utils.GenUUID()
 
@@ -70,7 +73,7 @@ func TestNewDeviceEntryFromRequest(t *testing.T) {
 }
 
 func TestNewDeviceEntryMarshal(t *testing.T) {
-	req := &DeviceAddRequest{}
+	req := &api.DeviceAddRequest{}
 	req.NodeId = "abc"
 	req.Name = "/dev/" + utils.GenUUID()
 
@@ -94,7 +97,7 @@ func TestNewDeviceEntryMarshal(t *testing.T) {
 }
 
 func TestDeviceEntryNewBrickEntry(t *testing.T) {
-	req := &DeviceAddRequest{}
+	req := &api.DeviceAddRequest{}
 	req.NodeId = "abc"
 	req.Name = "/dev/" + utils.GenUUID()
 
@@ -187,7 +190,7 @@ func TestDeviceEntryRegister(t *testing.T) {
 	defer app.Close()
 
 	// Create a device
-	req := &DeviceAddRequest{}
+	req := &api.DeviceAddRequest{}
 	req.NodeId = "abc"
 	req.Name = "/dev/" + utils.GenUUID()
 
@@ -212,7 +215,7 @@ func TestDeviceEntryRegister(t *testing.T) {
 	tests.Assert(t, err != nil)
 
 	// Create another device on a different node device
-	req = &DeviceAddRequest{}
+	req = &api.DeviceAddRequest{}
 	req.NodeId = "def"
 	req.Name = "/dev/" + utils.GenUUID()
 
@@ -256,7 +259,7 @@ func TestNewDeviceEntryFromId(t *testing.T) {
 	defer app.Close()
 
 	// Create a device
-	req := &DeviceAddRequest{}
+	req := &api.DeviceAddRequest{}
 	req.NodeId = "abc"
 	req.Name = "/dev/" + utils.GenUUID()
 
@@ -296,7 +299,7 @@ func TestNewDeviceEntrySaveDelete(t *testing.T) {
 	defer app.Close()
 
 	// Create a device
-	req := &DeviceAddRequest{}
+	req := &api.DeviceAddRequest{}
 	req.NodeId = "abc"
 	req.Name = "/dev/" + utils.GenUUID()
 
@@ -393,7 +396,7 @@ func TestNewDeviceEntryNewInfoResponseBadBrickIds(t *testing.T) {
 	defer app.Close()
 
 	// Create a device
-	req := &DeviceAddRequest{}
+	req := &api.DeviceAddRequest{}
 	req.NodeId = "abc"
 	req.Name = "/dev/" + utils.GenUUID()
 
@@ -411,7 +414,7 @@ func TestNewDeviceEntryNewInfoResponseBadBrickIds(t *testing.T) {
 	})
 	tests.Assert(t, err == nil)
 
-	var info *DeviceInfoResponse
+	var info *api.DeviceInfoResponse
 	err = app.db.View(func(tx *bolt.Tx) error {
 		device, err := NewDeviceEntryFromId(tx, d.Info.Id)
 		if err != nil {
@@ -438,7 +441,7 @@ func TestNewDeviceEntryNewInfoResponse(t *testing.T) {
 	defer app.Close()
 
 	// Create a device
-	req := &DeviceAddRequest{}
+	req := &api.DeviceAddRequest{}
 	req.NodeId = "abc"
 	req.Name = "/dev/" + utils.GenUUID()
 
@@ -469,7 +472,7 @@ func TestNewDeviceEntryNewInfoResponse(t *testing.T) {
 	})
 	tests.Assert(t, err == nil)
 
-	var info *DeviceInfoResponse
+	var info *api.DeviceInfoResponse
 	err = app.db.View(func(tx *bolt.Tx) error {
 		device, err := NewDeviceEntryFromId(tx, d.Info.Id)
 		if err != nil {
@@ -533,4 +536,159 @@ func TestDeviceEntryStorage(t *testing.T) {
 	tests.Assert(t, d.Info.Storage.Free == 2000)
 	tests.Assert(t, d.Info.Storage.Total == 2000)
 	tests.Assert(t, d.Info.Storage.Used == 0)
+}
+
+func TestDeviceSetStateFailed(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	// Create allocator
+	mockAllocator := NewMockAllocator(app.db)
+	app.allocator = mockAllocator
+
+	// Create cluster entry
+	c := NewClusterEntry()
+	c.Info.Id = "cluster"
+
+	// Create a node
+	n := NewNodeEntry()
+	tests.Assert(t, n != nil)
+	tests.Assert(t, n.State == api.EntryStateOnline)
+
+	// Initialize node
+	n.Info.Id = "node"
+	n.Info.ClusterId = "cluster"
+	n.Devices = sort.StringSlice{"d1"}
+
+	// Create device entry
+	d := NewDeviceEntry()
+	d.Info.Id = "d1"
+	d.Info.Name = "/d1"
+	d.NodeId = "node"
+
+	// Add to allocator
+	mockAllocator.AddDevice(c, n, d)
+
+	// Save in db
+	app.db.Update(func(tx *bolt.Tx) error {
+		err := c.Save(tx)
+		tests.Assert(t, err == nil)
+
+		err = n.Save(tx)
+		tests.Assert(t, err == nil)
+
+		err = d.Save(tx)
+		tests.Assert(t, err == nil)
+
+		// Check ring
+		tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 1)
+		tests.Assert(t, mockAllocator.clustermap[c.Info.Id][0] == d.Info.Id)
+
+		// Set failed
+		err = d.SetState(tx, mockAllocator, api.EntryStateFailed)
+		tests.Assert(t, d.State == api.EntryStateFailed)
+		tests.Assert(t, err == nil)
+
+		// Check it was removed from ring
+		tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 0)
+
+		// Set failed again
+		err = d.SetState(tx, mockAllocator, api.EntryStateFailed)
+		tests.Assert(t, d.State == api.EntryStateFailed)
+		tests.Assert(t, err == nil)
+
+		// Set offline
+		err = d.SetState(tx, mockAllocator, api.EntryStateOffline)
+		tests.Assert(t, d.State == api.EntryStateFailed)
+		tests.Assert(t, err != nil)
+		tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 0)
+
+		// Set online
+		err = d.SetState(tx, mockAllocator, api.EntryStateOnline)
+		tests.Assert(t, d.State == api.EntryStateFailed)
+		tests.Assert(t, err != nil)
+		tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 0)
+
+		return nil
+
+	})
+}
+
+func TestDeviceSetStateOfflineOnline(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	// Create allocator
+	mockAllocator := NewMockAllocator(app.db)
+	app.allocator = mockAllocator
+
+	// Create cluster entry
+	c := NewClusterEntry()
+	c.Info.Id = "cluster"
+
+	// Create a node
+	n := NewNodeEntry()
+	tests.Assert(t, n != nil)
+	tests.Assert(t, n.State == api.EntryStateOnline)
+
+	// Initialize node
+	n.Info.Id = "node"
+	n.Info.ClusterId = "cluster"
+	n.Devices = sort.StringSlice{"d1"}
+
+	// Create device entry
+	d := NewDeviceEntry()
+	d.Info.Id = "d1"
+	d.Info.Name = "/d1"
+	d.NodeId = "node"
+
+	// Add to allocator
+	mockAllocator.AddDevice(c, n, d)
+
+	// Save in db
+	app.db.Update(func(tx *bolt.Tx) error {
+		err := c.Save(tx)
+		tests.Assert(t, err == nil)
+
+		err = n.Save(tx)
+		tests.Assert(t, err == nil)
+
+		err = d.Save(tx)
+		tests.Assert(t, err == nil)
+
+		// Check ring
+		tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 1)
+		tests.Assert(t, mockAllocator.clustermap[c.Info.Id][0] == d.Info.Id)
+
+		// Set offline
+		err = d.SetState(tx, mockAllocator, api.EntryStateOffline)
+		tests.Assert(t, d.State == api.EntryStateOffline)
+		tests.Assert(t, err == nil)
+
+		// Check it was removed from ring
+		tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 0)
+
+		// Set offline again
+		err = d.SetState(tx, mockAllocator, api.EntryStateOffline)
+		tests.Assert(t, d.State == api.EntryStateOffline)
+		tests.Assert(t, err == nil)
+
+		// Set online
+		err = d.SetState(tx, mockAllocator, api.EntryStateOnline)
+		tests.Assert(t, d.State == api.EntryStateOnline)
+		tests.Assert(t, err == nil)
+		tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 1)
+		tests.Assert(t, mockAllocator.clustermap[c.Info.Id][0] == d.Info.Id)
+
+		return nil
+
+	})
 }

@@ -21,24 +21,15 @@ import (
 	"encoding/gob"
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/utils"
 	"github.com/lpabon/godbc"
 )
 
-type BrickState int
-
-const (
-	BRICK_STATE_NEW BrickState = iota
-	BRICK_STATE_FAILED
-	BRICK_STATE_ONLINE
-	BRICK_STATE_DELETED
-)
-
 type BrickEntry struct {
-	Info             BrickInfo
+	Info             api.BrickInfo
 	TpSize           uint64
 	PoolMetadataSize uint64
-	State            BrickState
 }
 
 func BrickList(tx *bolt.Tx) ([]string, error) {
@@ -108,8 +99,8 @@ func (b *BrickEntry) Delete(tx *bolt.Tx) error {
 	return EntryDelete(tx, b, b.Info.Id)
 }
 
-func (b *BrickEntry) NewInfoResponse(tx *bolt.Tx) (*BrickInfo, error) {
-	info := &BrickInfo{}
+func (b *BrickEntry) NewInfoResponse(tx *bolt.Tx) (*api.BrickInfo, error) {
+	info := &api.BrickInfo{}
 	*info = b.Info
 
 	return info, nil
@@ -169,10 +160,8 @@ func (b *BrickEntry) Create(db *bolt.DB, executor executors.Executor) error {
 		return err
 	}
 	b.Info.Path = info.Path
-	b.State = BRICK_STATE_ONLINE
 
 	godbc.Ensure(b.Info.Path != "")
-	godbc.Ensure(b.State == BRICK_STATE_ONLINE)
 
 	return nil
 }
@@ -182,10 +171,6 @@ func (b *BrickEntry) Destroy(db *bolt.DB, executor executors.Executor) error {
 	godbc.Require(db != nil)
 	godbc.Require(b.TpSize > 0)
 	godbc.Require(b.Info.Size > 0)
-
-	if b.State != BRICK_STATE_ONLINE {
-		return nil
-	}
 
 	// Get node hostname
 	var host string
@@ -214,13 +199,9 @@ func (b *BrickEntry) Destroy(db *bolt.DB, executor executors.Executor) error {
 	logger.Info("Deleting brick %v", b.Info.Id)
 	err = executor.BrickDestroy(host, req)
 	if err != nil {
-		b.State = BRICK_STATE_FAILED
 		return err
 	}
 
-	b.State = BRICK_STATE_DELETED
-
-	godbc.Ensure(b.State == BRICK_STATE_DELETED)
 	return nil
 }
 

@@ -20,12 +20,6 @@ import (
 	"github.com/heketi/heketi/executors"
 )
 
-const (
-	DURABILITY_STRING_REPLICATE       = "replicate"
-	DURABILITY_STRING_DISTRIBUTE_ONLY = "none"
-	DURABILITY_STRING_EC              = "disperse"
-)
-
 type VolumeDurability interface {
 	BrickSizeGenerator(size uint64) func() (int, uint64, error)
 	BricksInSet() int

@@ -23,12 +23,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/heketi/heketi/apps/glusterfs"
 	"github.com/heketi/heketi/client/api/go-client"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/spf13/cobra"
 
 	"k8s.io/kubernetes/pkg/api/resource"
-	api "k8s.io/kubernetes/pkg/api/v1"
+	kubeapi "k8s.io/kubernetes/pkg/api/v1"
 )
 
 var (
@@ -152,10 +152,10 @@ var volumeCreateCommand = &cobra.Command{
 		}
 
 		// Create request blob
-		req := &glusterfs.VolumeCreateRequest{}
+		req := &api.VolumeCreateRequest{}
 		req.Size = size
 		req.Clusters = clusters_
-		req.Durability.Type = durability
+		req.Durability.Type = api.DurabilityType(durability)
 		req.Durability.Replicate.Replica = replica
 		req.Durability.Disperse.Data = disperseData
 		req.Durability.Disperse.Redundancy = redundancy
@@ -182,19 +182,19 @@ var volumeCreateCommand = &cobra.Command{
 		if kubePvFile != "" || kubePv {
 
 			// Initialize object
-			pv := &api.PersistentVolume{}
+			pv := &kubeapi.PersistentVolume{}
 			pv.Kind = "PersistentVolume"
 			pv.APIVersion = "v1"
-			pv.Spec.PersistentVolumeReclaimPolicy = api.PersistentVolumeReclaimRecycle
-			pv.Spec.AccessModes = []api.PersistentVolumeAccessMode{
-				api.ReadWriteMany,
+			pv.Spec.PersistentVolumeReclaimPolicy = kubeapi.PersistentVolumeReclaimRecycle
+			pv.Spec.AccessModes = []kubeapi.PersistentVolumeAccessMode{
+				kubeapi.ReadWriteMany,
 			}
-			pv.Spec.Capacity = make(api.ResourceList)
-			pv.Spec.Glusterfs = &api.GlusterfsVolumeSource{}
+			pv.Spec.Capacity = make(kubeapi.ResourceList)
+			pv.Spec.Glusterfs = &kubeapi.GlusterfsVolumeSource{}
 
 			// Set values
 			pv.ObjectMeta.Name = "glusterfs-" + volume.Id[:8]
-			pv.Spec.Capacity[api.ResourceStorage] =
+			pv.Spec.Capacity[kubeapi.ResourceStorage] =
 				resource.MustParse(fmt.Sprintf("%vGi", volume.Size))
 			pv.Spec.Glusterfs.Path = volume.Name
 
@@ -286,7 +286,7 @@ var volumeExpandCommand = &cobra.Command{
 		}
 
 		// Create request
-		req := &glusterfs.VolumeExpandRequest{}
+		req := &api.VolumeExpandRequest{}
 		req.Size = expandSize
 
 		// Create client

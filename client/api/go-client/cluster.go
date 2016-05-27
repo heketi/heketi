@@ -18,12 +18,12 @@ package client
 
 import (
 	"bytes"
-	"github.com/heketi/heketi/apps/glusterfs"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/utils"
 	"net/http"
 )
 
-func (c *Client) ClusterCreate() (*glusterfs.ClusterInfoResponse, error) {
+func (c *Client) ClusterCreate() (*api.ClusterInfoResponse, error) {
 
 	// Create a request
 	req, err := http.NewRequest("POST", c.host+"/clusters", bytes.NewBuffer([]byte(`{}`)))
@@ -48,7 +48,7 @@ func (c *Client) ClusterCreate() (*glusterfs.ClusterInfoResponse, error) {
 	}
 
 	// Read JSON response
-	var cluster glusterfs.ClusterInfoResponse
+	var cluster api.ClusterInfoResponse
 	err = utils.GetJsonFromResponse(r, &cluster)
 	r.Body.Close()
 	if err != nil {
@@ -58,7 +58,7 @@ func (c *Client) ClusterCreate() (*glusterfs.ClusterInfoResponse, error) {
 	return &cluster, nil
 }
 
-func (c *Client) ClusterInfo(id string) (*glusterfs.ClusterInfoResponse, error) {
+func (c *Client) ClusterInfo(id string) (*api.ClusterInfoResponse, error) {
 
 	// Create request
 	req, err := http.NewRequest("GET", c.host+"/clusters/"+id, nil)
@@ -82,7 +82,7 @@ func (c *Client) ClusterInfo(id string) (*glusterfs.ClusterInfoResponse, error) 
 	}
 
 	// Read JSON response
-	var cluster glusterfs.ClusterInfoResponse
+	var cluster api.ClusterInfoResponse
 	err = utils.GetJsonFromResponse(r, &cluster)
 	r.Body.Close()
 	if err != nil {
@@ -92,7 +92,7 @@ func (c *Client) ClusterInfo(id string) (*glusterfs.ClusterInfoResponse, error) 
 	return &cluster, nil
 }
 
-func (c *Client) ClusterList() (*glusterfs.ClusterListResponse, error) {
+func (c *Client) ClusterList() (*api.ClusterListResponse, error) {
 
 	// Create request
 	req, err := http.NewRequest("GET", c.host+"/clusters", nil)
@@ -116,7 +116,7 @@ func (c *Client) ClusterList() (*glusterfs.ClusterListResponse, error) {
 	}
 
 	// Read JSON response
-	var clusters glusterfs.ClusterListResponse
+	var clusters api.ClusterListResponse
 	err = utils.GetJsonFromResponse(r, &clusters)
 	if err != nil {
 		return nil, err

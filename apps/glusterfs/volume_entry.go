@@ -20,11 +20,13 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"sort"
+
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/utils"
 	"github.com/lpabon/godbc"
-	"sort"
 )
 
 const (
@@ -43,7 +45,7 @@ const (
 )
 
 type VolumeEntry struct {
-	Info       VolumeInfo
+	Info       api.VolumeInfo
 	Bricks     sort.StringSlice
 	Durability VolumeDurability
 }
@@ -61,14 +63,14 @@ func NewVolumeEntry() *VolumeEntry {
 	entry := &VolumeEntry{}
 	entry.Bricks = make(sort.StringSlice, 0)
 
-	gob.Register(&ReplicaDurability{})
-	gob.Register(&DisperseDurability{})
 	gob.Register(&NoneDurability{})
+	gob.Register(&VolumeReplicaDurability{})
+	gob.Register(&VolumeDisperseDurability{})
 
 	return entry
 }
 
-func NewVolumeEntryFromRequest(req *VolumeCreateRequest) *VolumeEntry {
+func NewVolumeEntryFromRequest(req *api.VolumeCreateRequest) *VolumeEntry {
 	godbc.Require(req != nil)
 
 	vol := NewVolumeEntry()
@@ -81,20 +83,20 @@ func NewVolumeEntryFromRequest(req *VolumeCreateRequest) *VolumeEntry {
 	durability := vol.Info.Durability.Type
 	switch {
 
-	case durability == DURABILITY_STRING_REPLICATE:
+	case durability == api.DurabilityReplicate:
 		logger.Debug("[%v] Replica %v",
 			vol.Info.Id,
 			vol.Info.Durability.Replicate.Replica)
-		vol.Durability = &vol.Info.Durability.Replicate
+		vol.Durability = NewVolumeReplicaDurability(&vol.Info.Durability.Replicate)
 
-	case durability == DURABILITY_STRING_EC:
+	case durability == api.DurabilityEC:
 		logger.Debug("[%v] EC %v + %v ",
 			vol.Info.Id,
 			vol.Info.Durability.Disperse.Data,
 			vol.Info.Durability.Disperse.Redundancy)
-		vol.Durability = &vol.Info.Durability.Disperse
+		vol.Durability = NewVolumeDisperseDurability(&vol.Info.Durability.Disperse)
 
-	case durability == DURABILITY_STRING_DISTRIBUTE_ONLY || durability == "":
+	case durability == api.DurabilityDistributeOnly || durability == "":
 		logger.Debug("[%v] Distributed", vol.Info.Id)
 		vol.Durability = NewNoneDurability()
 
@@ -152,10 +154,10 @@ func (v *VolumeEntry) Delete(tx *bolt.Tx) error {
 	return EntryDelete(tx, v, v.Info.Id)
 }
 
-func (v *VolumeEntry) NewInfoResponse(tx *bolt.Tx) (*VolumeInfoResponse, error) {
+func (v *VolumeEntry) NewInfoResponse(tx *bolt.Tx) (*api.VolumeInfoResponse, error) {
 	godbc.Require(tx != nil)
 
-	info := NewVolumeInfoResponse()
+	info := api.NewVolumeInfoResponse()
 	info.Id = v.Info.Id
 	info.Cluster = v.Info.Cluster
 	info.Mount = v.Info.Mount

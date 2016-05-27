@@ -19,10 +19,12 @@ package glusterfs
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/utils"
-	"net/http"
 )
 
 const (
@@ -31,7 +33,7 @@ const (
 
 func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 
-	var msg VolumeCreateRequest
+	var msg api.VolumeCreateRequest
 	err := utils.GetJsonFromRequest(r, &msg)
 	if err != nil {
 		http.Error(w, "request unable to be parsed", 422)
@@ -40,11 +42,11 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 
 	// Check durability type
 	switch msg.Durability.Type {
-	case DURABILITY_STRING_EC:
-	case DURABILITY_STRING_REPLICATE:
-	case DURABILITY_STRING_DISTRIBUTE_ONLY:
+	case api.DurabilityEC:
+	case api.DurabilityReplicate:
+	case api.DurabilityDistributeOnly:
 	case "":
-		msg.Durability.Type = DURABILITY_STRING_DISTRIBUTE_ONLY
+		msg.Durability.Type = api.DurabilityDistributeOnly
 	default:
 		http.Error(w, "Unknown durability type", http.StatusBadRequest)
 		return
@@ -63,7 +65,7 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check replica values
-	if msg.Durability.Type == DURABILITY_STRING_REPLICATE {
+	if msg.Durability.Type == api.DurabilityReplicate {
 		if msg.Durability.Replicate.Replica > 3 {
 			http.Error(w, "Invalid replica value", http.StatusBadRequest)
 			return
@@ -71,7 +73,7 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check Disperse combinations
-	if msg.Durability.Type == DURABILITY_STRING_EC {
+	if msg.Durability.Type == api.DurabilityEC {
 		d := msg.Durability.Disperse
 		// Place here correct combinations
 		switch {
@@ -139,7 +141,7 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) VolumeList(w http.ResponseWriter, r *http.Request) {
 
-	var list VolumeListResponse
+	var list api.VolumeListResponse
 
 	// Get all the cluster ids from the DB
 	err := a.db.View(func(tx *bolt.Tx) error {
@@ -174,7 +176,7 @@ func (a *App) VolumeInfo(w http.ResponseWriter, r *http.Request) {
 	id := vars["id"]
 
 	// Get device information
-	var info *VolumeInfoResponse
+	var info *api.VolumeInfoResponse
 	err := a.db.View(func(tx *bolt.Tx) error {
 		entry, err := NewVolumeEntryFromId(tx, id)
 		if err == ErrNotFound {
@@ -261,7 +263,7 @@ func (a *App) VolumeExpand(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	var msg VolumeExpandRequest
+	var msg api.VolumeExpandRequest
 	err := utils.GetJsonFromRequest(r, &msg)
 	if err != nil {
 		http.Error(w, "request unable to be parsed", 422)

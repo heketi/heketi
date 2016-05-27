@@ -19,10 +19,6 @@ package glusterfs
 import (
 	"bytes"
 	"errors"
-	"github.com/boltdb/bolt"
-	"github.com/gorilla/mux"
-	"github.com/heketi/tests"
-	"github.com/heketi/utils"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -30,6 +26,13 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/boltdb/bolt"
+	"github.com/gorilla/mux"
+	client "github.com/heketi/heketi/client/api/go-client"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/tests"
+	"github.com/heketi/utils"
 )
 
 func init() {
@@ -176,7 +179,7 @@ func TestPeerProbe(t *testing.T) {
 	tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
 
 	// Read cluster information
-	var clusterinfo ClusterInfoResponse
+	var clusterinfo api.ClusterInfoResponse
 	err = utils.GetJsonFromResponse(r, &clusterinfo)
 	tests.Assert(t, err == nil)
 
@@ -281,7 +284,7 @@ func TestNodeAddDelete(t *testing.T) {
 	tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
 
 	// Read cluster information
-	var clusterinfo ClusterInfoResponse
+	var clusterinfo api.ClusterInfoResponse
 	err = utils.GetJsonFromResponse(r, &clusterinfo)
 	tests.Assert(t, err == nil)
 
@@ -303,7 +306,7 @@ func TestNodeAddDelete(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Query queue until finished
-	var node NodeInfoResponse
+	var node api.NodeInfoResponse
 	for {
 		r, err = http.Get(location.String())
 		tests.Assert(t, err == nil)
@@ -547,7 +550,7 @@ func TestNodeInfo(t *testing.T) {
 	tests.Assert(t, r.StatusCode == http.StatusOK)
 	tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
 
-	var info NodeInfoResponse
+	var info api.NodeInfoResponse
 	err = utils.GetJsonFromResponse(r, &info)
 	tests.Assert(t, info.Id == node.Info.Id)
 	tests.Assert(t, info.Hostnames.Manage[0] == node.Info.Hostnames.Manage[0])
@@ -888,4 +891,200 @@ func TestNodePeerDetach(t *testing.T) {
 			tests.Assert(t, peer_called == true)
 		}
 	}
+}
+
+func TestNodeState(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Create mock allocator
+	mockAllocator := NewMockAllocator(app.db)
+	app.allocator = mockAllocator
+
+	// Create a client
+	c := client.NewClientNoAuth(ts.URL)
+	tests.Assert(t, c != nil)
+
+	// Create Cluster
+	cluster, err := c.ClusterCreate()
+	tests.Assert(t, err == nil)
+
+	// Create Node
+	nodeReq := &api.NodeAddRequest{
+		Zone:      1,
+		ClusterId: cluster.Id,
+	}
+	nodeReq.Hostnames.Manage = sort.StringSlice{"manage.host"}
+	nodeReq.Hostnames.Storage = sort.StringSlice{"storage.host"}
+	node, err := c.NodeAdd(nodeReq)
+	tests.Assert(t, err == nil)
+
+	// Add device
+	deviceReq := &api.DeviceAddRequest{}
+	deviceReq.Name = "/dev/fake1"
+	deviceReq.NodeId = node.Id
+
+	err = c.DeviceAdd(deviceReq)
+	tests.Assert(t, err == nil)
+
+	// Get node information again
+	node, err = c.NodeInfo(node.Id)
+	tests.Assert(t, err == nil)
+
+	// Get device information
+	deviceId := node.DevicesInfo[0].Id
+	device, err := c.DeviceInfo(deviceId)
+	tests.Assert(t, err == nil)
+
+	// Get info
+	deviceInfo, err := c.DeviceInfo(device.Id)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, deviceInfo.State == "online")
+
+	// Check that the device is in the ring
+	tests.Assert(t, len(mockAllocator.clustermap[cluster.Id]) == 1)
+	tests.Assert(t, mockAllocator.clustermap[cluster.Id][0] == device.Id)
+
+	// Set node offline
+	request := []byte(`{
+				"state" : "offline"
+				}`)
+	r, err := http.Post(ts.URL+"/nodes/"+node.Id+"/state",
+		"application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusOK)
+
+	// Check it was removed from the ring
+	tests.Assert(t, len(mockAllocator.clustermap[cluster.Id]) == 0)
+
+	// Get node info
+	node, err = c.NodeInfo(node.Id)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, node.State == "offline")
+
+	// Set offline again, should succeed
+	request = []byte(`{
+				"state" : "offline"
+				}`)
+	r, err = http.Post(ts.URL+"/nodes/"+node.Id+"/state",
+		"application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusOK)
+
+	// Check it was removed from the ring
+	tests.Assert(t, len(mockAllocator.clustermap[cluster.Id]) == 0)
+
+	// Get node info
+	node, err = c.NodeInfo(node.Id)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, node.State == "offline")
+
+	// Set online again
+	request = []byte(`{
+				"state" : "online"
+				}`)
+	r, err = http.Post(ts.URL+"/nodes/"+node.Id+"/state",
+		"application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusOK)
+
+	// Check that the device is in the ring
+	tests.Assert(t, len(mockAllocator.clustermap[cluster.Id]) == 1)
+	tests.Assert(t, mockAllocator.clustermap[cluster.Id][0] == device.Id)
+
+	// Set online again, should succeed
+	request = []byte(`{
+				"state" : "online"
+				}`)
+	r, err = http.Post(ts.URL+"/nodes/"+node.Id+"/state",
+		"application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusOK)
+
+	// Check that the device is in the ring
+	tests.Assert(t, len(mockAllocator.clustermap[cluster.Id]) == 1)
+	tests.Assert(t, mockAllocator.clustermap[cluster.Id][0] == device.Id)
+
+	// Get node info
+	node, err = c.NodeInfo(node.Id)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, node.State == "online")
+
+	// Set unknown state
+	request = []byte(`{
+				"state" : "blah"
+				}`)
+	r, err = http.Post(ts.URL+"/nodes/"+node.Id+"/state",
+		"application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusBadRequest)
+
+	// Check that the device is still in the ring
+	tests.Assert(t, len(mockAllocator.clustermap[cluster.Id]) == 1)
+	tests.Assert(t, mockAllocator.clustermap[cluster.Id][0] == device.Id)
+
+	// Check node is still online
+	node, err = c.NodeInfo(node.Id)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, node.State == "online")
+
+	// Set device offline
+	request = []byte(`{
+				"state" : "offline"
+				}`)
+	r, err = http.Post(ts.URL+"/devices/"+device.Id+"/state",
+		"application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusOK)
+
+	// Check it was removed from the ring
+	tests.Assert(t, len(mockAllocator.clustermap[cluster.Id]) == 0)
+
+	// Set Node offline
+	request = []byte(`{
+				"state" : "offline"
+				}`)
+	r, err = http.Post(ts.URL+"/nodes/"+node.Id+"/state",
+		"application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusOK)
+
+	// Check it was removed from the ring
+	tests.Assert(t, len(mockAllocator.clustermap[cluster.Id]) == 0)
+
+	// Set Node online -- Device is still offline and should not be added
+	request = []byte(`{
+				"state" : "online"
+				}`)
+	r, err = http.Post(ts.URL+"/nodes/"+node.Id+"/state",
+		"application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusOK)
+
+	// Check device is not in ring
+	tests.Assert(t, len(mockAllocator.clustermap[cluster.Id]) == 0)
+
+	// Now make device online
+	request = []byte(`{
+				"state" : "online"
+				}`)
+	r, err = http.Post(ts.URL+"/devices/"+device.Id+"/state",
+		"application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusOK)
+
+	// Now it should be back in the ring
+	tests.Assert(t, len(mockAllocator.clustermap[cluster.Id]) == 1)
+	tests.Assert(t, mockAllocator.clustermap[cluster.Id][0] == device.Id)
+
 }

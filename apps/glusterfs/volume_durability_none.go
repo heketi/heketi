@@ -21,7 +21,7 @@ import (
 )
 
 type NoneDurability struct {
-	ReplicaDurability
+	VolumeReplicaDurability
 }
 
 func NewNoneDurability() *NoneDurability {

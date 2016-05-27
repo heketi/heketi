@@ -17,7 +17,15 @@ sleep 2
 tox -e py27
 results=$?
 
+
 # kill server
 kill $pid
+
+if [ $results -ne 0 ] ; then
+    exit $results
+fi
+
+tox -e pep8
+results=$?
 
 exit $results

@@ -259,6 +259,11 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Method:      "DELETE",
 			Pattern:     "/nodes/{id:[A-Fa-f0-9]+}",
 			HandlerFunc: a.NodeDelete},
+		rest.Route{
+			Name:        "NodeSetState",
+			Method:      "POST",
+			Pattern:     "/nodes/{id:[A-Fa-f0-9]+}/state",
+			HandlerFunc: a.NodeSetState},
 
 		// Devices
 		rest.Route{
@@ -276,6 +281,11 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Method:      "DELETE",
 			Pattern:     "/devices/{id:[A-Fa-f0-9]+}",
 			HandlerFunc: a.DeviceDelete},
+		rest.Route{
+			Name:        "DeviceSetState",
+			Method:      "POST",
+			Pattern:     "/devices/{id:[A-Fa-f0-9]+}/state",
+			HandlerFunc: a.DeviceSetState},
 
 		// Volume
 		rest.Route{

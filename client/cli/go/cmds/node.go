@@ -21,8 +21,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/heketi/heketi/apps/glusterfs"
 	"github.com/heketi/heketi/client/api/go-client"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/spf13/cobra"
 )
 
@@ -38,6 +38,8 @@ func init() {
 	nodeCommand.AddCommand(nodeAddCommand)
 	nodeCommand.AddCommand(nodeDeleteCommand)
 	nodeCommand.AddCommand(nodeInfoCommand)
+	nodeCommand.AddCommand(nodeEnableCommand)
+	nodeCommand.AddCommand(nodeDisableCommand)
 	nodeAddCommand.Flags().IntVar(&zone, "zone", -1, "The zone in which the node should reside")
 	nodeAddCommand.Flags().StringVar(&clusterId, "cluster", "", "The cluster in which the node should reside")
 	nodeAddCommand.Flags().StringVar(&managmentHostNames, "management-host-name", "", "Managment host name")
@@ -79,7 +81,7 @@ var nodeAddCommand = &cobra.Command{
 		}
 
 		// Create request blob
-		req := &glusterfs.NodeAddRequest{}
+		req := &api.NodeAddRequest{}
 		req.ClusterId = clusterId
 		req.Hostnames.Manage = []string{managmentHostNames}
 		req.Hostnames.Storage = []string{storageHostNames}
@@ -103,11 +105,13 @@ var nodeAddCommand = &cobra.Command{
 		} else {
 			fmt.Fprintf(stdout, "Node information:\n"+
 				"Id: %v\n"+
+				"State: %v\n"+
 				"Cluster Id: %v\n"+
 				"Zone: %v\n"+
 				"Management Hostname %v\n"+
 				"Storage Hostname %v\n",
 				node.Id,
+				node.State,
 				node.ClusterId,
 				node.Zone,
 				node.Hostnames.Manage[0],
@@ -146,6 +150,70 @@ var nodeDeleteCommand = &cobra.Command{
 	},
 }
 
+var nodeEnableCommand = &cobra.Command{
+	Use:     "enable [node_id]",
+	Short:   "Allows node to go online",
+	Long:    "Allows node to go online",
+	Example: "  $ heketi-cli node online 886a86a868711bef83001",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		s := cmd.Flags().Args()
+
+		//ensure proper number of args
+		if len(s) < 1 {
+			return errors.New("Node id missing")
+		}
+
+		//set clusterId
+		nodeId := cmd.Flags().Arg(0)
+
+		// Create a client
+		heketi := client.NewClient(options.Url, options.User, options.Key)
+
+		//set url
+		req := &api.StateRequest{
+			State: "online",
+		}
+		err := heketi.NodeState(nodeId, req)
+		if err == nil {
+			fmt.Fprintf(stdout, "Node %v is now online\n", nodeId)
+		}
+
+		return err
+	},
+}
+
+var nodeDisableCommand = &cobra.Command{
+	Use:     "disable [node_id]",
+	Short:   "Disallow usage of a node by placing it offline",
+	Long:    "Disallow usage of a node by placing it offline",
+	Example: "  $ heketi-cli node offline 886a86a868711bef83001",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		s := cmd.Flags().Args()
+
+		//ensure proper number of args
+		if len(s) < 1 {
+			return errors.New("Node id missing")
+		}
+
+		//set clusterId
+		nodeId := cmd.Flags().Arg(0)
+
+		// Create a client
+		heketi := client.NewClient(options.Url, options.User, options.Key)
+
+		//set url
+		req := &api.StateRequest{
+			State: "offline",
+		}
+		err := heketi.NodeState(nodeId, req)
+		if err == nil {
+			fmt.Fprintf(stdout, "Node %v is now offline\n", nodeId)
+		}
+
+		return err
+	},
+}
+
 var nodeInfoCommand = &cobra.Command{
 	Use:     "info [node_id]",
 	Short:   "Retreives information about the node",
@@ -178,11 +246,13 @@ var nodeInfoCommand = &cobra.Command{
 			fmt.Fprintf(stdout, string(data))
 		} else {
 			fmt.Fprintf(stdout, "Node Id: %v\n"+
+				"State: %v\n"+
 				"Cluster Id: %v\n"+
 				"Zone: %v\n"+
 				"Management Hostname: %v\n"+
 				"Storage Hostname: %v\n",
 				info.Id,
+				info.State,
 				info.ClusterId,
 				info.Zone,
 				info.Hostnames.Manage[0],
@@ -191,11 +261,13 @@ var nodeInfoCommand = &cobra.Command{
 			for _, d := range info.DevicesInfo {
 				fmt.Fprintf(stdout, "Id:%-35v"+
 					"Name:%-20v"+
+					"State:%-10v"+
 					"Size (GiB):%-8v"+
 					"Used (GiB):%-8v"+
 					"Free (GiB):%-8v\n",
 					d.Id,
 					d.Name,
+					d.State,
 					d.Storage.Total/(1024*1024),
 					d.Storage.Used/(1024*1024),
 					d.Storage.Free/(1024*1024))

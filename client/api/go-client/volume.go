@@ -19,14 +19,15 @@ package client
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/heketi/heketi/apps/glusterfs"
-	"github.com/heketi/utils"
 	"net/http"
 	"time"
+
+	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/utils"
 )
 
-func (c *Client) VolumeCreate(request *glusterfs.VolumeCreateRequest) (
-	*glusterfs.VolumeInfoResponse, error) {
+func (c *Client) VolumeCreate(request *api.VolumeCreateRequest) (
+	*api.VolumeInfoResponse, error) {
 
 	// Marshal request to JSON
 	buffer, err := json.Marshal(request)
@@ -68,7 +69,7 @@ func (c *Client) VolumeCreate(request *glusterfs.VolumeCreateRequest) (
 	}
 
 	// Read JSON response
-	var volume glusterfs.VolumeInfoResponse
+	var volume api.VolumeInfoResponse
 	err = utils.GetJsonFromResponse(r, &volume)
 	r.Body.Close()
 	if err != nil {
@@ -79,8 +80,8 @@ func (c *Client) VolumeCreate(request *glusterfs.VolumeCreateRequest) (
 
 }
 
-func (c *Client) VolumeExpand(id string, request *glusterfs.VolumeExpandRequest) (
-	*glusterfs.VolumeInfoResponse, error) {
+func (c *Client) VolumeExpand(id string, request *api.VolumeExpandRequest) (
+	*api.VolumeInfoResponse, error) {
 
 	// Marshal request to JSON
 	buffer, err := json.Marshal(request)
@@ -122,7 +123,7 @@ func (c *Client) VolumeExpand(id string, request *glusterfs.VolumeExpandRequest)
 	}
 
 	// Read JSON response
-	var volume glusterfs.VolumeInfoResponse
+	var volume api.VolumeInfoResponse
 	err = utils.GetJsonFromResponse(r, &volume)
 	r.Body.Close()
 	if err != nil {
@@ -133,7 +134,7 @@ func (c *Client) VolumeExpand(id string, request *glusterfs.VolumeExpandRequest)
 
 }
 
-func (c *Client) VolumeList() (*glusterfs.VolumeListResponse, error) {
+func (c *Client) VolumeList() (*api.VolumeListResponse, error) {
 
 	// Create request
 	req, err := http.NewRequest("GET", c.host+"/volumes", nil)
@@ -157,7 +158,7 @@ func (c *Client) VolumeList() (*glusterfs.VolumeListResponse, error) {
 	}
 
 	// Read JSON response
-	var volumes glusterfs.VolumeListResponse
+	var volumes api.VolumeListResponse
 	err = utils.GetJsonFromResponse(r, &volumes)
 	if err != nil {
 		return nil, err
@@ -166,7 +167,7 @@ func (c *Client) VolumeList() (*glusterfs.VolumeListResponse, error) {
 	return &volumes, nil
 }
 
-func (c *Client) VolumeInfo(id string) (*glusterfs.VolumeInfoResponse, error) {
+func (c *Client) VolumeInfo(id string) (*api.VolumeInfoResponse, error) {
 
 	// Create request
 	req, err := http.NewRequest("GET", c.host+"/volumes/"+id, nil)
@@ -190,7 +191,7 @@ func (c *Client) VolumeInfo(id string) (*glusterfs.VolumeInfoResponse, error) {
 	}
 
 	// Read JSON response
-	var volume glusterfs.VolumeInfoResponse
+	var volume api.VolumeInfoResponse
 	err = utils.GetJsonFromResponse(r, &volume)
 	r.Body.Close()
 	if err != nil {

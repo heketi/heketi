@@ -18,9 +18,22 @@ package glusterfs
 
 import (
 	"github.com/heketi/heketi/executors"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 )
 
-func (d *DisperseDurability) SetDurability() {
+type VolumeDisperseDurability struct {
+	api.DisperseDurability
+}
+
+func NewVolumeDisperseDurability(d *api.DisperseDurability) *VolumeDisperseDurability {
+	v := &VolumeDisperseDurability{}
+	v.Data = d.Data
+	v.Redundancy = d.Redundancy
+
+	return v
+}
+
+func (d *VolumeDisperseDurability) SetDurability() {
 	if d.Data == 0 {
 		d.Data = DEFAULT_EC_DATA
 	}
@@ -29,7 +42,7 @@ func (d *DisperseDurability) SetDurability() {
 	}
 }
 
-func (d *DisperseDurability) BrickSizeGenerator(size uint64) func() (int, uint64, error) {
+func (d *VolumeDisperseDurability) BrickSizeGenerator(size uint64) func() (int, uint64, error) {
 
 	sets := 1
 	return func() (int, uint64, error) {
@@ -55,11 +68,11 @@ func (d *DisperseDurability) BrickSizeGenerator(size uint64) func() (int, uint64
 	}
 }
 
-func (d *DisperseDurability) BricksInSet() int {
+func (d *VolumeDisperseDurability) BricksInSet() int {
 	return d.Data + d.Redundancy
 }
 
-func (d *DisperseDurability) SetExecutorVolumeRequest(v *executors.VolumeRequest) {
+func (d *VolumeDisperseDurability) SetExecutorVolumeRequest(v *executors.VolumeRequest) {
 	v.Type = executors.DurabilityDispersion
 	v.Data = d.Data
 	v.Redundancy = d.Redundancy
