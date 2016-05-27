@@ -225,9 +225,10 @@ func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Check if we can delete the device
-		if !device.IsDeleteOk() {
-			http.Error(w, ErrConflict.Error(), http.StatusConflict)
-			return ErrConflict
+		err = device.Delete(tx)
+		if err == ErrConflict {
+			http.Error(w, err.Error(), http.StatusConflict)
+			return err
 		}
 
 		// Access node entry

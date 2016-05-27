@@ -226,9 +226,10 @@ func (a *App) NodeDelete(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Check the node can be deleted
-		if !node.IsDeleteOk() {
-			http.Error(w, ErrConflict.Error(), http.StatusConflict)
-			return ErrConflict
+		err = node.Delete(tx)
+		if err == ErrConflict {
+			http.Error(w, err.Error(), http.StatusConflict)
+			return err
 		}
 
 		// Access cluster information and peer node
