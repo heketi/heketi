@@ -144,9 +144,11 @@ var nodeDeleteCommand = &cobra.Command{
 		err := heketi.NodeDelete(nodeId)
 		if err == nil {
 			fmt.Fprintf(stdout, "Node %v deleted\n", nodeId)
+		} else if err != nil {
+			fmt.Fprintf(stdout, "Unable to delete node %v because it contains devices\n", nodeId)
 		}
 
-		return err
+		return nil
 	},
 }
 
