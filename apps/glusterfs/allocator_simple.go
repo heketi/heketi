@@ -57,10 +57,20 @@ func NewSimpleAllocatorFromDb(db *bolt.DB) *SimpleAllocator {
 					return err
 				}
 
+				// Check node is online
+				if !node.isOnline() {
+					continue
+				}
+
 				for _, deviceId := range node.Devices {
 					device, err := NewDeviceEntryFromId(tx, deviceId)
 					if err != nil {
 						return err
+					}
+
+					// Check device is online
+					if !device.isOnline() {
+						continue
 					}
 
 					// Add device to ring

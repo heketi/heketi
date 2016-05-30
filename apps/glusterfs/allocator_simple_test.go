@@ -17,11 +17,13 @@
 package glusterfs
 
 import (
-	"github.com/boltdb/bolt"
-	"github.com/heketi/tests"
-	"github.com/heketi/utils"
 	"os"
 	"testing"
+
+	"github.com/boltdb/bolt"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/tests"
+	"github.com/heketi/utils"
 )
 
 func TestNewSimpleAllocator(t *testing.T) {
@@ -53,15 +55,6 @@ func TestSimpleAllocatorEmpty(t *testing.T) {
 }
 
 func TestSimpleAllocatorAddRemoveDevice(t *testing.T) {
-	/*
-		tmpfile := tests.Tempfile()
-		defer os.Remove(tmpfile)
-
-		// Setup database
-		app := NewTestApp(tmpfile)
-		defer app.Close()
-	*/
-
 	a := NewSimpleAllocator()
 	tests.Assert(t, a != nil)
 
@@ -153,5 +146,73 @@ func TestSimpleAllocatorInitFromDb(t *testing.T) {
 	err = <-errc
 	tests.Assert(t, devices == 10*20)
 	tests.Assert(t, err == nil)
+
+}
+
+func TestSimpleAllocatorInitFromDbWithOfflineDevices(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Setup database
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	// Create large cluster
+	err := setupSampleDbWithTopology(app,
+		1,      // clusters
+		2,      // nodes_per_cluster
+		4,      // devices_per_node,
+		600*GB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	// Get the cluster list
+	var clusterId, nodeId string
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		clusters, err := ClusterList(tx)
+		if err != nil {
+			return err
+		}
+		tests.Assert(t, len(clusters) == 1)
+		clusterId = clusters[0]
+
+		cluster, err := NewClusterEntryFromId(tx, clusterId)
+		tests.Assert(t, err == nil)
+
+		// make one node offline, which will mean none of its
+		// devices are added to the ring
+		node, err := cluster.NodeEntryFromClusterIndex(tx, 0)
+		tests.Assert(t, err == nil)
+		nodeId = node.Info.Id
+		node.State = api.EntryStateOffline
+		node.Save(tx)
+
+		// Make only one device offline in the other node
+		node, err = cluster.NodeEntryFromClusterIndex(tx, 1)
+		device, err := NewDeviceEntryFromId(tx, node.Devices[0])
+		device.State = api.EntryStateOffline
+		device.Save(tx)
+
+		return nil
+	})
+	tests.Assert(t, err == nil)
+
+	// Create an allocator and initialize it from the DB
+	a := NewSimpleAllocatorFromDb(app.db)
+	tests.Assert(t, a != nil)
+
+	// Get the nodes from the ring
+	ch, _, errc := a.GetNodes(clusterId, utils.GenUUID())
+
+	var devices int
+	for d := range ch {
+		devices++
+		tests.Assert(t, d != "")
+	}
+	err = <-errc
+	tests.Assert(t, err == nil)
+
+	// Only three online devices should be in the list
+	tests.Assert(t, devices == 3, devices)
 
 }
