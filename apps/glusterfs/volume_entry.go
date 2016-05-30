@@ -21,6 +21,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
@@ -301,7 +302,12 @@ func (v *VolumeEntry) Create(db *bolt.DB,
 	// Create GlusterFS volume
 	err = v.createVolume(db, executor, brick_entries)
 	if err != nil {
-		return err
+		volexist := "Volume " + v.Info.Name + " already exists"
+		if strings.Contains(err.Error(), volexist) {
+			return ErrVolumeNameAlreadyExists
+		} else {
+			return err
+		}
 	}
 
 	// Destroy volume on failure
