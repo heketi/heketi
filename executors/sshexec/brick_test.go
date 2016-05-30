@@ -56,13 +56,20 @@ func TestSshExecBrickCreate(t *testing.T) {
 	// Mock ssh function
 	f.FakeConnectAndExec = func(host string,
 		commands []string,
-		timeoutMinutes int) ([]string, error) {
+		timeoutMinutes int, useSudo bool) ([]string, error) {
 
 		tests.Assert(t, host == "myhost:100", host)
 		tests.Assert(t, len(commands) == 6)
 
 		for i, cmd := range commands {
 			cmd = strings.Trim(cmd, " ")
+			if useSudo {
+
+				if !strings.HasPrefix(cmd, "echo") {
+					cmd = "sudo " + cmd
+				}
+			}
+
 			switch i {
 			case 0:
 				tests.Assert(t,
@@ -138,12 +145,15 @@ func TestSshExecBrickDestroy(t *testing.T) {
 	// Mock ssh function
 	f.FakeConnectAndExec = func(host string,
 		commands []string,
-		timeoutMinutes int) ([]string, error) {
+		timeoutMinutes int, useSudo bool) ([]string, error) {
 
 		tests.Assert(t, host == "myhost:100", host)
 
 		for _, cmd := range commands {
 			cmd = strings.Trim(cmd, " ")
+			if useSudo {
+				cmd = "sudo " + cmd
+			}
 			switch {
 			case strings.Contains(cmd, "umount"):
 				tests.Assert(t,

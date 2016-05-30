@@ -18,6 +18,7 @@ package sshexec
 
 import (
 	"fmt"
+
 	"github.com/lpabon/godbc"
 )
 
@@ -29,7 +30,7 @@ func (s *SshExecutor) PeerProbe(host, newnode string) error {
 	logger.Info("Probing: %v -> %v", host, newnode)
 	// create the commands
 	commands := []string{
-		fmt.Sprintf("sudo gluster peer probe %v", newnode),
+		fmt.Sprintf(" gluster peer probe %v", newnode),
 	}
 	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
 	if err != nil {
@@ -46,7 +47,7 @@ func (s *SshExecutor) PeerDetach(host, detachnode string) error {
 	// create the commands
 	logger.Info("Detaching node %v", detachnode)
 	commands := []string{
-		fmt.Sprintf("sudo gluster peer detach %v", detachnode),
+		fmt.Sprintf(" gluster peer detach %v", detachnode),
 	}
 	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
 	if err != nil {
