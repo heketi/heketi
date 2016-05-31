@@ -30,7 +30,8 @@
                     "metadata": {
                         "name": "glusterfs",
                         "labels": {
-                            "name": "glusterfs"
+                            "name": "glusterfs",
+                            "glusterfsid": "${NODE_LABEL}"
                         }
                     },
                     "triggers": [
