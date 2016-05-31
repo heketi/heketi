@@ -27,6 +27,8 @@ import (
 	"k8s.io/kubernetes/pkg/client/restclient"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
+	"k8s.io/kubernetes/pkg/fields"
+	"k8s.io/kubernetes/pkg/labels"
 
 	"github.com/lpabon/godbc"
 
@@ -43,6 +45,10 @@ type KubernetesRemoteCommand interface {
 type KubernetesRemoteCommandStream interface {
 }
 
+const (
+	KubeGlusterFSPodLabelKey = "glusterfsid"
+)
+
 type KubeConfig struct {
 	Host      string `json:"host"`
 	Sudo      bool   `json:"sudo"`
@@ -52,6 +58,10 @@ type KubeConfig struct {
 	Password  string `json:"password"`
 	Namespace string `json:"namespace"`
 	Fstab     string `json:"fstab"`
+
+	// Use POD name instead of using label
+	// to access POD
+	UsePodNames bool `json:"use_pod_names"`
 }
 
 type KubeExecutor struct {
@@ -114,6 +124,17 @@ func setWithEnvVariables(config *KubeConfig) {
 	env = os.Getenv("HEKETI_FSTAB")
 	if "" != env {
 		config.Fstab = env
+	}
+
+	// Use POD names
+	env = os.Getenv("HEKETI_KUBE_USE_POD_NAMES")
+	if "" != env {
+		env = strings.ToLower(env)
+		if env[0] == 'y' || env[0] == '1' {
+			config.UsePodNames = true
+		} else if env[0] == 'n' || env[0] == '0' {
+			config.UsePodNames = false
+		}
 	}
 }
 
@@ -193,6 +214,50 @@ func (k *KubeExecutor) ConnectAndExec(host, namespace, resource string,
 		return nil, fmt.Errorf("Unable to create a client connection")
 	}
 
+	// Get pod name
+	var podName string
+	if k.config.UsePodNames {
+		podName = host
+	} else {
+		// 'host' is actually the value for the label with a key
+		// of 'glusterid'
+		selector, err := labels.Parse(KubeGlusterFSPodLabelKey + "==" + host)
+		if err != nil {
+			logger.Err(err)
+			return nil, fmt.Errorf("Unable to get pod with a matching label of %v==%v",
+				KubeGlusterFSPodLabelKey, host)
+		}
+
+		// Get a list of pods
+		pods, err := conn.Pods(namespace).List(api.ListOptions{
+			LabelSelector: selector,
+			FieldSelector: fields.Everything(),
+		})
+		if err != nil {
+			logger.Err(err)
+			return nil, fmt.Errorf("Failed to get list of pods")
+		}
+
+		numPods := len(pods.Items)
+		if numPods == 0 {
+			// No pods found with that label
+			err := fmt.Errorf("No pods with the label '%v=%v' were found",
+				KubeGlusterFSPodLabelKey, host)
+			logger.Critical(err.Error())
+			return nil, err
+
+		} else if numPods > 1 {
+			// There are more than one pod with the same label
+			err := fmt.Errorf("Found %v pods with the sharing the same label '%v=%v'",
+				numPods, KubeGlusterFSPodLabelKey, host)
+			logger.Critical(err.Error())
+			return nil, err
+		}
+
+		// Get pod name
+		podName = pods.Items[0].ObjectMeta.Name
+	}
+
 	for index, command := range commands {
 
 		// Remove any whitespace
@@ -206,7 +271,7 @@ func (k *KubeExecutor) ConnectAndExec(host, namespace, resource string,
 		// Create REST command
 		req := conn.RESTClient.Post().
 			Resource(resource).
-			Name(host).
+			Name(podName).
 			Namespace(namespace).
 			SubResource("exec")
 		req.VersionedParams(&api.PodExecOptions{
@@ -219,7 +284,7 @@ func (k *KubeExecutor) ConnectAndExec(host, namespace, resource string,
 		exec, err := remotecommand.NewExecutor(clientConfig, "POST", req.URL())
 		if err != nil {
 			logger.Err(err)
-			return nil, fmt.Errorf("Unable to setup a session with %v", host)
+			return nil, fmt.Errorf("Unable to setup a session with %v", podName)
 		}
 
 		// Create a buffer to trap session output
@@ -230,10 +295,10 @@ func (k *KubeExecutor) ConnectAndExec(host, namespace, resource string,
 		err = exec.Stream(nil, nil, &b, &berr, false)
 		if err != nil {
 			logger.LogError("Failed to run command [%v] on %v: Err[%v]: Stdout [%v]: Stderr [%v]",
-				command, host, err, b.String(), berr.String())
-			return nil, fmt.Errorf("Unable to execute command on %v: %v", host, berr.String())
+				command, podName, err, b.String(), berr.String())
+			return nil, fmt.Errorf("Unable to execute command on %v: %v", podName, berr.String())
 		}
-		logger.Debug("Host: %v Command: %v\nResult: %v", host, command, b.String())
+		logger.Debug("Host: %v Command: %v\nResult: %v", podName, command, b.String())
 		buffers[index] = b.String()
 
 	}
