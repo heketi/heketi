@@ -17,6 +17,11 @@
 package glusterfs
 
 import (
+	"io"
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/boltdb/bolt"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/context"
@@ -27,9 +32,6 @@ import (
 	"github.com/heketi/heketi/executors/sshexec"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/rest"
-	"io"
-	"net/http"
-	"time"
 )
 
 const (
@@ -313,6 +315,13 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Method:      "GET",
 			Pattern:     "/volumes",
 			HandlerFunc: a.VolumeList},
+
+		// Backup
+		rest.Route{
+			Name:        "Backup",
+			Method:      "GET",
+			Pattern:     "/backup/db",
+			HandlerFunc: a.Backup},
 	}
 
 	// Register all routes from the App
@@ -355,4 +364,17 @@ func (a *App) Auth(w http.ResponseWriter, r *http.Request, next http.HandlerFunc
 
 	// Everything is clean
 	next(w, r)
+}
+
+func (a *App) Backup(w http.ResponseWriter, r *http.Request) {
+	err := a.db.View(func(tx *bolt.Tx) error {
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Header().Set("Content-Disposition", `attachment; filename="heketi.db"`)
+		w.Header().Set("Content-Length", strconv.Itoa(int(tx.Size())))
+		_, err := tx.WriteTo(w)
+		return err
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }

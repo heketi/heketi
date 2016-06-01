@@ -3,6 +3,9 @@
     "apiVersion": "v1",
     "metadata": {
         "name": "glusterfs",
+        "labels": {
+            "glusterfs": "template"
+        },
         "annotations": {
             "description": "GlusterFS container deployment template",
             "tags": "glusterfs"
@@ -17,6 +20,9 @@
             "apiVersion": "v1",
             "metadata": {
                 "name": "glusterfs-${NODE_GLUSTERFSID}",
+                "labels": {
+                    "glusterfs": "dc"
+                },
                 "annotations": {
                     "description": "Deploys the GlusterFS container"
                 }
@@ -31,6 +37,7 @@
                         "name": "glusterfs",
                         "labels": {
                             "name": "glusterfs",
+                            "glusterfs": "pod",
                             "glusterfsid": "${NODE_GLUSTERFSID}"
                         }
                     },
@@ -88,24 +95,24 @@
                                 "readinessProbe": {
                                     "timeoutSeconds": 3,
                                     "initialDelaySeconds": 3,
-                                "exec": {
+                                    "exec": {
                                         "command": [
                                             "/bin/bash",
                                             "-c",
                                             "systemctl status glusterd.service"
                                         ]
-                                }
+                                    }
                                 },
                                 "livenessProbe": {
                                     "timeoutSeconds": 3,
                                     "initialDelaySeconds": 30,
-                                "exec": {
+                                    "exec": {
                                         "command": [
                                             "/bin/bash",
                                             "-c",
                                             "systemctl status glusterd.service"
                                         ]
-                                }
+                                    }
                                 }
                             }
                         ],

@@ -599,6 +599,32 @@ func TestVolumeEntryCreateFourBricks(t *testing.T) {
 		tests.Assert(t, node != host, index, node, host)
 	}
 
+	// Should have at least the number nodes as replicas
+	tests.Assert(t, len(info.Mount.GlusterFS.Hosts) >= info.Durability.Replicate.Replica,
+		info.Mount.GlusterFS.Hosts,
+		info)
+
+	// Check all hosts are in the list
+	err = app.db.View(func(tx *bolt.Tx) error {
+		for _, brick := range info.Bricks {
+			found := false
+
+			node, err := NewNodeEntryFromId(tx, brick.NodeId)
+			tests.Assert(t, err == nil)
+
+			for _, host := range info.Mount.GlusterFS.Hosts {
+				if host == node.StorageHostName() {
+					found = true
+					break
+				}
+			}
+			tests.Assert(t, found, node.StorageHostName(),
+				info.Mount.GlusterFS.Hosts)
+		}
+
+		return nil
+	})
+
 }
 
 func TestVolumeEntryCreateBrickDivision(t *testing.T) {
