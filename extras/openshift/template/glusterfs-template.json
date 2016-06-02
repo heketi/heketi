@@ -98,7 +98,7 @@
                                 },
                                 "livenessProbe": {
                                     "timeoutSeconds": 3,
-                                    "initialDelaySeconds": 3,
+                                    "initialDelaySeconds": 30,
                                 "exec": {
                                         "command": [
                                             "/bin/bash",
