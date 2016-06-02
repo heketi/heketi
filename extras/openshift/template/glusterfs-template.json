@@ -86,20 +86,24 @@
                                     "privileged": true
                                 },
                                 "readinessProbe": {
+                                    "timeoutSeconds": 3,
+                                    "initialDelaySeconds": 3,
                                 "exec": {
                                         "command": [
                                             "/bin/bash",
                                             "-c",
-                                            "/usr/sbin/glusterd --version"
+                                            "systemctl status glusterd.service"
                                         ]
                                 }
                                 },
                                 "livenessProbe": {
+                                    "timeoutSeconds": 3,
+                                    "initialDelaySeconds": 3,
                                 "exec": {
                                         "command": [
                                             "/bin/bash",
                                             "-c",
-                                            "/usr/sbin/glusterd --version"
+                                            "systemctl status glusterd.service"
                                         ]
                                 }
                                 }
