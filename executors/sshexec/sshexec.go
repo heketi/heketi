@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/heketi/utils"
-	"github.com/heketi/utils/ssh"
+	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/utils/ssh"
 	"github.com/lpabon/godbc"
 )
 
@@ -31,7 +31,7 @@ type RemoteCommandTransport interface {
 }
 
 type Ssher interface {
-	ConnectAndExec(host string, commands []string, timeoutMinutes int) ([]string, error)
+	ConnectAndExec(host string, commands []string, timeoutMinutes int, useSudo bool) ([]string, error)
 }
 
 type SshExecutor struct {
@@ -179,7 +179,7 @@ func (s *SshExecutor) RemoteCommandExecute(host string,
 	defer s.FreeConnection(host)
 
 	// Execute
-	return s.exec.ConnectAndExec(host+":"+s.port, commands, timeoutMinutes)
+	return s.exec.ConnectAndExec(host+":"+s.port, commands, timeoutMinutes, false)
 }
 
 func (s *SshExecutor) vgName(vgId string) string {

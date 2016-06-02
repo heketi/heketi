@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/utils"
+	"github.com/heketi/heketi/pkg/utils"
 	"net/http"
 	"time"
 )

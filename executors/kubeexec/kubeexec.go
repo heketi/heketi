@@ -33,7 +33,7 @@ import (
 	"github.com/lpabon/godbc"
 
 	"github.com/heketi/heketi/executors/sshexec"
-	"github.com/heketi/utils"
+	"github.com/heketi/heketi/pkg/utils"
 )
 
 type KubernetesClient interface {

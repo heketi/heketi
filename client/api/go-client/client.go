@@ -23,7 +23,7 @@ import (
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
-	"github.com/heketi/utils"
+	"github.com/heketi/heketi/pkg/utils"
 )
 
 const (

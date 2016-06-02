@@ -23,7 +23,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/utils"
+	"github.com/heketi/heketi/pkg/utils"
 )
 
 func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {

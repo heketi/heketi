@@ -25,7 +25,6 @@ github.com/gorilla/context a8d44e7d8e4d532b6a27a02dd82abb31cc1b01bd
 github.com/gorilla/mux 0eeaf8392f5b04950925b8a69fe70f110fa7cbfc
 github.com/heketi/rest 738570ea73f1cc2a0888c7c49fe80991c6050f34
 github.com/heketi/tests f3775cbcefd6822086c729e3ce4b70ca85a5bd21
-github.com/heketi/utils 9d2d6c5421b0561cd6d221043ee68454f9809fb4
 github.com/imdario/mergo ea0151498788f6fab6365eae24f29f41c0ac0acc
 github.com/juju/ratelimit 77ed1c8a01217656d2080ad51981f6e99adaa177
 github.com/lpabon/godbc 9577782540c1398b710ddae1b86268ba03a19b0c

@@ -21,8 +21,8 @@ import (
 	"testing"
 
 	"github.com/heketi/heketi/executors"
+	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
-	"github.com/heketi/utils"
 )
 
 func TestSshExecBrickCreate(t *testing.T) {
@@ -56,7 +56,8 @@ func TestSshExecBrickCreate(t *testing.T) {
 	// Mock ssh function
 	f.FakeConnectAndExec = func(host string,
 		commands []string,
-		timeoutMinutes int) ([]string, error) {
+		timeoutMinutes int,
+		useSudo bool) ([]string, error) {
 
 		tests.Assert(t, host == "myhost:100", host)
 		tests.Assert(t, len(commands) == 6)
@@ -138,7 +139,8 @@ func TestSshExecBrickDestroy(t *testing.T) {
 	// Mock ssh function
 	f.FakeConnectAndExec = func(host string,
 		commands []string,
-		timeoutMinutes int) ([]string, error) {
+		timeoutMinutes int,
+		useSudo bool) ([]string, error) {
 
 		tests.Assert(t, host == "myhost:100", host)
 

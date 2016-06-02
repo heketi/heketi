@@ -22,8 +22,8 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
-	"github.com/heketi/utils"
 )
 
 func TestNewSimpleAllocator(t *testing.T) {

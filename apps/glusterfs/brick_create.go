@@ -19,7 +19,7 @@ package glusterfs
 import (
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
-	"github.com/heketi/utils"
+	"github.com/heketi/heketi/pkg/utils"
 )
 
 type CreateType int

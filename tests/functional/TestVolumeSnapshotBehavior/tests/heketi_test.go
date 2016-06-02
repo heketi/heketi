@@ -23,9 +23,9 @@ import (
 
 	"github.com/heketi/heketi/apps/glusterfs"
 	client "github.com/heketi/heketi/client/api/go-client"
+	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/utils/ssh"
 	"github.com/heketi/tests"
-	"github.com/heketi/utils"
-	"github.com/heketi/utils/ssh"
 )
 
 // These are the settings for the vagrant file

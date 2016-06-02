@@ -18,8 +18,8 @@ package glusterfs
 
 import (
 	"bytes"
+	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
-	"github.com/heketi/utils"
 	"os"
 	"testing"
 )
