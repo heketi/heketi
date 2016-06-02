@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/utils"
+	"github.com/heketi/heketi/pkg/utils"
 )
 
 func (c *Client) VolumeCreate(request *api.VolumeCreateRequest) (

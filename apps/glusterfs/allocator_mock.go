@@ -18,7 +18,7 @@ package glusterfs
 
 import (
 	"github.com/boltdb/bolt"
-	"github.com/heketi/utils"
+	"github.com/heketi/heketi/pkg/utils"
 	"sort"
 	"sync"
 )

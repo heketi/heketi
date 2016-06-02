@@ -25,7 +25,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/utils"
+	"github.com/heketi/heketi/pkg/utils"
 	"github.com/lpabon/godbc"
 )
 
