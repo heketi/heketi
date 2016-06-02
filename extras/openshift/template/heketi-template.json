@@ -162,31 +162,37 @@
     },
     {
       "name": "HEKETI_KUBE_CERTFILE",
-      "description": "SSL certificate file accessiable from the container"
+      "displayName": "Certificate file",
+      "description": "Container path to Kubernetes certificate file"
     },
     {
       "name": "HEKETI_KUBE_INSECURE",
+      "displayName": "Insecure access",
       "description": "Allow insecure SSL/HTTPS access",
       "value": "n"
     },
     {
       "name": "HEKETI_KUBE_USER",
-      "description": "OpenShift username to access Kubernetes API",
+      "displayName": "User",
+      "description": "OpenShift/Kubernetes username to access Kubernetes API",
       "required": true
     },
     {
       "name": "HEKETI_KUBE_PASSWORD",
+      "displayName": "Password",
       "description": "Password for OpenShift user",
       "required": true
     },
     {
       "name": "HEKETI_KUBE_NAMESPACE",
+      "displayName": "Project/Namespace",
       "description": "OpenShift project or Kubernetes namespace containing GlusterFS",
       "required": true
     },
     {
       "name": "HEKETI_KUBE_APIHOST",
-      "description": "Kubernetes API host",
+      "displayName": "API Host Address",
+      "description": "Kubernetes API host, for example: https://ip:port",
       "required": true
     }
   ]

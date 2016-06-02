@@ -16,7 +16,7 @@
             "kind": "DeploymentConfig",
             "apiVersion": "v1",
             "metadata": {
-                "name": "glusterfs-${NODE_LABEL}",
+                "name": "glusterfs-${NODE_GLUSTERFSID}",
                 "annotations": {
                     "description": "Deploys the GlusterFS container"
                 }
@@ -31,7 +31,7 @@
                         "name": "glusterfs",
                         "labels": {
                             "name": "glusterfs",
-                            "glusterfsid": "${NODE_LABEL}"
+                            "glusterfsid": "${NODE_GLUSTERFSID}"
                         }
                     },
                     "triggers": [
@@ -44,7 +44,7 @@
                     },
                     "spec": {
                         "nodeSelector": {
-                            "name": "${NODE_LABEL}"
+                            "glusterfsid": "${NODE_GLUSTERFSID}"
                         },
                         "hostNetwork": true,
                         "containers": [
@@ -152,9 +152,9 @@
     ],
     "parameters": [
         {
-            "name": "NODE_LABEL",
-            "displayName": "Node label",
-            "description": "Label of storage node which will run the container",
+            "name": "NODE_GLUSTERFSID",
+            "displayName": "Node tag for label glusterfsid",
+            "description": "Tag of storage node for label glusterfsid which will run the container",
             "required": true
         }
     ]
