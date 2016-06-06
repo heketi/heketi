@@ -71,7 +71,10 @@ func TestLogDebug(t *testing.T) {
 	// [testing] DEBUG 2016/04/28 15:25:08 /src/github.com/heketi/heketi/pkg/utils/log_test.go:66: Hello World
 	fileinfo := strings.Split(testbuffer.String(), " ")[4]
 	filename := strings.Split(fileinfo, ":")[0]
-	tests.Assert(t, filename == "/src/github.com/heketi/heketi/pkg/utils/log_test.go", filename)
+
+	// Need to check that it starts with /src/github.com
+	tests.Assert(t, strings.HasPrefix(filename, "/src/github.com/"))
+	tests.Assert(t, strings.HasSuffix(filename, "/pkg/utils/log_test.go"))
 	testbuffer.Reset()
 
 	l.SetLevel(LEVEL_INFO)

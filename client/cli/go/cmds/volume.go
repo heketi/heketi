@@ -371,8 +371,17 @@ var volumeListCommand = &cobra.Command{
 			}
 			fmt.Fprintf(stdout, string(data))
 		} else {
-			output := strings.Join(list.Volumes, "\n")
-			fmt.Fprintf(stdout, "Volumes:\n%v\n", output)
+			for _, id := range list.Volumes {
+				volume, err := heketi.VolumeInfo(id)
+				if err != nil {
+					return err
+				}
+
+				fmt.Fprintf(stdout, "Id:%-35v Cluster:%-35v Name:%v\n",
+					id,
+					volume.Cluster,
+					volume.Name)
+			}
 		}
 
 		return nil
