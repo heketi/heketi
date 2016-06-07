@@ -88,16 +88,24 @@
                                 "readinessProbe": {
                                     "timeoutSeconds": 3,
                                     "initialDelaySeconds": 3,
-                                    "tcpSocket": {
-                                        "port": 24007
-                                    }
+                                "exec": {
+                                        "command": [
+                                            "/bin/bash",
+                                            "-c",
+                                            "systemctl status glusterd.service"
+                                        ]
+                                }
                                 },
                                 "livenessProbe": {
                                     "timeoutSeconds": 3,
                                     "initialDelaySeconds": 30,
-                                    "tcpSocket": {
-                                        "port": 24007
-                                    }
+                                "exec": {
+                                        "command": [
+                                            "/bin/bash",
+                                            "-c",
+                                            "systemctl status glusterd.service"
+                                        ]
+                                }
                                 }
                             }
                         ],
