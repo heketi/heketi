@@ -24,12 +24,25 @@
       "spec": {
         "ports": [
           {
-            "name": "rest-api",
+            "name": "heketi",
             "port": 8080,
             "targetPort": 8080
           }
         ],
         "selector": {
+          "name": "heketi"
+        }
+      }
+    },
+    {
+      "kind": "Route",
+      "apiVersion": "v1",
+      "metadata": {
+        "name": "heketi"
+      },
+      "spec": {
+        "to": {
+          "kind": "Service",
           "name": "heketi"
         }
       }
@@ -152,12 +165,12 @@
   "parameters": [
     {
       "name": "HEKETI_USER_KEY",
-      "displayName" : "Heketi User Secret",
+      "displayName": "Heketi User Secret",
       "description": "Set secret for those creating volumes as type _user_"
     },
     {
       "name": "HEKETI_ADMIN_KEY",
-      "displayName" : "Heketi Administrator Secret",
+      "displayName": "Heketi Administrator Secret",
       "description": "Set secret for administration of the Heketi service as user _admin_"
     },
     {
