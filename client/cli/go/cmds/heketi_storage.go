@@ -176,12 +176,11 @@ func createHeketiStorageEndpoints(c *client.Client,
 	endpoint.ObjectMeta.Name = HeketiStorageEndpointName
 
 	// Initialize slices
-	endpoint.Subsets = make([]kubeapi.EndpointSubset, 3)
-	//len(volume.Mount.GlusterFS.Hosts))
+	endpoint.Subsets = make([]kubeapi.EndpointSubset,
+		len(volume.Mount.GlusterFS.Hosts))
 
 	// Save all nodes in the endpoints
-	for n, host := range []string{"192.168.10.100", "192.168.10.101", "192.168.10.102"} {
-		//for n, host := range volume.Mount.GlusterFS.Hosts {
+	for n, host := range volume.Mount.GlusterFS.Hosts {
 
 		// Determine if it is an IP address
 		netIp := net.ParseIP(host)
