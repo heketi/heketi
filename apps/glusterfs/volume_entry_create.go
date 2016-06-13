@@ -45,20 +45,22 @@ func (v *VolumeEntry) createVolume(db *bolt.DB,
 		return err
 	}
 
+	// Get all brick hosts
+	stringset := utils.NewStringSet()
+	for _, brick := range vr.Bricks {
+		stringset.Add(brick.Host)
+	}
+	hosts := stringset.Strings()
+	v.Info.Mount.GlusterFS.Hosts = hosts
+
 	// Save volume information
 	v.Info.Mount.GlusterFS.MountPoint = fmt.Sprintf("%v:%v",
-		vr.Bricks[0].Host, vr.Name)
+		hosts[0], vr.Name)
 
 	// Set glusterfs mount volfile-servers options
 	v.Info.Mount.GlusterFS.Options = make(map[string]string)
-	stringset := utils.NewStringSet()
-	for _, brick := range vr.Bricks[1:] {
-		if vr.Bricks[0].Host != brick.Host {
-			stringset.Add(brick.Host)
-		}
-	}
 	v.Info.Mount.GlusterFS.Options["backup-volfile-servers"] =
-		strings.Join(stringset.Strings(), ",")
+		strings.Join(hosts[1:], ",")
 
 	godbc.Ensure(v.Info.Mount.GlusterFS.MountPoint != "")
 	return nil

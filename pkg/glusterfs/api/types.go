@@ -167,6 +167,7 @@ type VolumeInfo struct {
 	Cluster string `json:"cluster"`
 	Mount   struct {
 		GlusterFS struct {
+			Hosts      []string          `json:"hosts"`
 			MountPoint string            `json:"device"`
 			Options    map[string]string `json:"options"`
 		} `json:"glusterfs"`

@@ -18,7 +18,7 @@ RUN mkdir $BUILD_HOME $GOPATH $HEKETI_CONF_DIR && \
     dnf -q -y clean all && \
     mkdir -p $GOPATH/src/github.com/heketi && \
     cd $GOPATH/src/github.com/heketi && \
-    git clone https://github.com/heketi/heketi.git && \
+    git clone -b backup https://github.com/lpabon/heketi.git && \
     go get github.com/robfig/glock && \
     glock sync github.com/heketi/heketi && \
     cd $GOPATH/src/github.com/heketi/heketi && make && \

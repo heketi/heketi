@@ -2,17 +2,18 @@
   "kind": "Template",
   "apiVersion": "v1",
   "metadata": {
-    "name": "heketi",
+    "name": "deploy-heketi",
     "labels": {
-      "glusterfs": "heketi-template"
+      "glusterfs": "heketi-template",
+      "deploy-heketi": "support"
     },
     "annotations": {
-      "description": "Heketi service deployment template",
-      "tags": "glusterfs,heketi"
+      "description": "Bootstrap Heketi installation",
+      "tags": "glusterfs,heketi,installation"
     }
   },
   "labels": {
-    "template": "heketi"
+    "template": "deploy-heketi"
   },
   "objects": [
     {
@@ -21,7 +22,8 @@
       "metadata": {
         "name": "heketi",
         "labels": {
-          "glusterfs": "heketi-service"
+          "glusterfs": "heketi-service",
+          "deploy-heketi": "support"
         },
         "annotations": {
           "description": "Exposes Heketi service"
@@ -46,7 +48,8 @@
       "metadata": {
         "name": "heketi",
         "labels": {
-          "glusterfs": "heketi-route"
+          "glusterfs": "heketi-route",
+          "deploy-heketi": "support"
         }
       },
       "spec": {
@@ -62,7 +65,8 @@
       "metadata": {
         "name": "heketi",
         "labels": {
-          "glusterfs": "heketi-dc"
+          "glusterfs": "heketi-dc",
+          "deploy-heketi": "support"
         },
         "annotations": {
           "description": "Defines how to deploy Heketi"
@@ -78,7 +82,8 @@
             "name": "heketi",
             "labels": {
               "name": "heketi",
-              "glusterfs": "heketi-pod"
+              "glusterfs": "heketi-pod",
+              "deploy-heketi": "support"
             }
           },
           "triggers": [
@@ -167,11 +172,7 @@
             ],
             "volumes": [
               {
-                "name": "db",
-                "glusterfs": {
-                  "endpoints" : "heketi-storage-endpoints",
-                  "path" : "heketidbstorage"
-                }
+                "name": "db"
               }
             ]
           }

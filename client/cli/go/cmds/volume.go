@@ -23,12 +23,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/heketi/heketi/client/api/go-client"
+	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/kubernetes"
 	"github.com/spf13/cobra"
-
-	"k8s.io/kubernetes/pkg/api/resource"
-	kubeapi "k8s.io/kubernetes/pkg/api/v1"
 )
 
 var (
@@ -181,30 +179,10 @@ var volumeCreateCommand = &cobra.Command{
 		// Check if we need to print out a PV
 		if kubePvFile != "" || kubePv {
 
-			// Initialize object
-			pv := &kubeapi.PersistentVolume{}
-			pv.Kind = "PersistentVolume"
-			pv.APIVersion = "v1"
-			pv.Spec.PersistentVolumeReclaimPolicy = kubeapi.PersistentVolumeReclaimRecycle
-			pv.Spec.AccessModes = []kubeapi.PersistentVolumeAccessMode{
-				kubeapi.ReadWriteMany,
-			}
-			pv.Spec.Capacity = make(kubeapi.ResourceList)
-			pv.Spec.Glusterfs = &kubeapi.GlusterfsVolumeSource{}
+			// Create PV
+			pv := kubernetes.VolumeToPv(volume, "", kubePvEndpoint)
 
-			// Set values
-			pv.ObjectMeta.Name = "glusterfs-" + volume.Id[:8]
-			pv.Spec.Capacity[kubeapi.ResourceStorage] =
-				resource.MustParse(fmt.Sprintf("%vGi", volume.Size))
-			pv.Spec.Glusterfs.Path = volume.Name
-
-			// Set endpoint
-			if kubePvEndpoint == "" {
-				pv.Spec.Glusterfs.EndpointsName = "TYPE ENDPOINT HERE"
-			} else {
-				pv.Spec.Glusterfs.EndpointsName = kubePvEndpoint
-			}
-
+			// Convert to JSON
 			data, err := json.MarshalIndent(pv, "", "  ")
 			if err != nil {
 				return err
