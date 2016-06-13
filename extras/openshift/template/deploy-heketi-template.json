@@ -20,7 +20,7 @@
       "kind": "Service",
       "apiVersion": "v1",
       "metadata": {
-        "name": "heketi",
+        "name": "deploy-heketi",
         "labels": {
           "glusterfs": "heketi-service",
           "deploy-heketi": "support"
@@ -32,13 +32,13 @@
       "spec": {
         "ports": [
           {
-            "name": "heketi",
+            "name": "deploy-heketi",
             "port": 8080,
             "targetPort": 8080
           }
         ],
         "selector": {
-          "name": "heketi"
+          "name": "deploy-heketi"
         }
       }
     },
@@ -46,7 +46,7 @@
       "kind": "Route",
       "apiVersion": "v1",
       "metadata": {
-        "name": "heketi",
+        "name": "deploy-heketi",
         "labels": {
           "glusterfs": "heketi-route",
           "deploy-heketi": "support"
@@ -55,7 +55,7 @@
       "spec": {
         "to": {
           "kind": "Service",
-          "name": "heketi"
+          "name": "deploy-heketi"
         }
       }
     },
@@ -63,7 +63,7 @@
       "kind": "DeploymentConfig",
       "apiVersion": "v1",
       "metadata": {
-        "name": "heketi",
+        "name": "deploy-heketi",
         "labels": {
           "glusterfs": "heketi-dc",
           "deploy-heketi": "support"
@@ -75,13 +75,13 @@
       "spec": {
         "replicas": 1,
         "selector": {
-          "name": "heketi"
+          "name": "deploy-heketi"
         },
         "template": {
           "metadata": {
-            "name": "heketi",
+            "name": "deploy-heketi",
             "labels": {
-              "name": "heketi",
+              "name": "deploy-heketi",
               "glusterfs": "heketi-pod",
               "deploy-heketi": "support"
             }
@@ -97,7 +97,7 @@
           "spec": {
             "containers": [
               {
-                "name": "heketi",
+                "name": "deploy-heketi",
                 "image": "heketi/heketi:dev",
                 "env": [
                   {
