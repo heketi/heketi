@@ -19,9 +19,10 @@
             "kind": "DeploymentConfig",
             "apiVersion": "v1",
             "metadata": {
-                "name": "glusterfs-${NODE_GLUSTERFSID}",
+                "name": "glusterfs-dc-${GLUSTERFS_NODE}",
                 "labels": {
-                    "glusterfs": "dc"
+                    "glusterfs": "dc",
+                    "glusterfs-node": "${GLUSTERFS_NODE}"
                 },
                 "annotations": {
                     "description": "Deploys the GlusterFS container"
@@ -38,7 +39,7 @@
                         "labels": {
                             "name": "glusterfs",
                             "glusterfs": "pod",
-                            "glusterfsid": "${NODE_GLUSTERFSID}"
+                            "glusterfs-node": "${GLUSTERFS_NODE}"
                         }
                     },
                     "triggers": [
@@ -51,7 +52,7 @@
                     },
                     "spec": {
                         "nodeSelector": {
-                            "glusterfsid": "${NODE_GLUSTERFSID}"
+                            "kubernetes.io/hostname": "${GLUSTERFS_NODE}"
                         },
                         "hostNetwork": true,
                         "containers": [
@@ -167,9 +168,9 @@
     ],
     "parameters": [
         {
-            "name": "NODE_GLUSTERFSID",
-            "displayName": "Node tag for label glusterfsid",
-            "description": "Tag of storage node for label glusterfsid which will run the container",
+            "name": "GLUSTERFS_NODE",
+            "displayName": "Storage node name",
+            "description": "Node name to run GlusterFS container",
             "required": true
         }
     ]

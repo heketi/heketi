@@ -46,7 +46,7 @@ type KubernetesRemoteCommandStream interface {
 }
 
 const (
-	KubeGlusterFSPodLabelKey = "glusterfsid"
+	KubeGlusterFSPodLabelKey = "glusterfs-node"
 )
 
 type KubeConfig struct {
