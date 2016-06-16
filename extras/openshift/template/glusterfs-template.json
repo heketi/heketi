@@ -85,10 +85,6 @@
                                         "mountPath": "/dev"
                                     },
                                     {
-                                        "name": "glusterfs-run",
-                                        "mountPath": "/run"
-                                    },
-                                    {
                                         "name": "glusterfs-cgroup",
                                         "mountPath": "/sys/fs/cgroup"
                                     }
@@ -153,12 +149,6 @@
                                 "name": "glusterfs-dev",
                                 "hostPath": {
                                     "path": "/dev"
-                                }
-                            },
-                            {
-                                "name": "glusterfs-run",
-                                "hostPath": {
-                                    "path": "/run"
                                 }
                             },
                             {
