@@ -180,7 +180,7 @@ var deviceEnableCommand = &cobra.Command{
 	Use:     "enable [device_id]",
 	Short:   "Allows device to go online",
 	Long:    "Allows device to go online",
-	Example: "  $ heketi-cli device online 886a86a868711bef83001",
+	Example: "  $ heketi-cli device enable 886a86a868711bef83001",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		s := cmd.Flags().Args()
 
@@ -212,7 +212,7 @@ var deviceDisableCommand = &cobra.Command{
 	Use:     "disable [device_id]",
 	Short:   "Disallow usage of a device by placing it offline",
 	Long:    "Disallow usage of a device by placing it offline",
-	Example: "  $ heketi-cli device offline 886a86a868711bef83001",
+	Example: "  $ heketi-cli device disable 886a86a868711bef83001",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		s := cmd.Flags().Args()
 

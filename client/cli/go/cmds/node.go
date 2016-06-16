@@ -154,7 +154,7 @@ var nodeEnableCommand = &cobra.Command{
 	Use:     "enable [node_id]",
 	Short:   "Allows node to go online",
 	Long:    "Allows node to go online",
-	Example: "  $ heketi-cli node online 886a86a868711bef83001",
+	Example: "  $ heketi-cli node enable 886a86a868711bef83001",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		s := cmd.Flags().Args()
 
@@ -186,7 +186,7 @@ var nodeDisableCommand = &cobra.Command{
 	Use:     "disable [node_id]",
 	Short:   "Disallow usage of a node by placing it offline",
 	Long:    "Disallow usage of a node by placing it offline",
-	Example: "  $ heketi-cli node offline 886a86a868711bef83001",
+	Example: "  $ heketi-cli node disable 886a86a868711bef83001",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		s := cmd.Flags().Args()
 
