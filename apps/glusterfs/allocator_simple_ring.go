@@ -172,18 +172,22 @@ func (s *SimpleAllocatorRing) GetDeviceList(uuid string) SimpleDevices {
 		return SimpleDevices{}
 	}
 
+	// Create a new list to avoid race conditions
+	devices := make(SimpleDevices, len(s.balancedList))
+	copy(devices, s.balancedList)
+
 	// Instead of using 8 characters to convert to a int32, use 7 which avoids
 	// negative numbers
 	index64, err := strconv.ParseInt(uuid[:7], 16, 32)
 	if err != nil {
 		logger.Err(err)
-		return s.balancedList
+		return devices
 	}
 
 	// Point to a position on the ring
 	index := int(index64) % len(s.balancedList)
 
 	// Return a list according to the position in the list
-	return append(s.balancedList[index:], s.balancedList[:index]...)
+	return append(devices[index:], devices[:index]...)
 
 }
