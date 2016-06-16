@@ -35,6 +35,9 @@ func (s *SimpleDevice) String() string {
 		s.deviceId)
 }
 
+// Simple Devices so that we have no pointers and no race conditions
+type SimpleDevices []SimpleDevice
+
 // A node is a collection of devices
 type SimpleNode []*SimpleDevice
 
@@ -48,7 +51,7 @@ type SimpleAllocatorRing struct {
 
 	// Map [zone] to [node] to slice of SimpleDevices
 	ring         map[int]map[string][]*SimpleDevice
-	balancedList []*SimpleDevice
+	balancedList SimpleDevices
 }
 
 // Create a new simple ring
@@ -132,7 +135,7 @@ func (s *SimpleAllocatorRing) Rebalance() {
 	zones := s.createZoneLists()
 
 	// Create a list
-	list := make([]*SimpleDevice, 0)
+	list := make(SimpleDevices, 0)
 
 	// Populate the list
 	var device *SimpleDevice
@@ -142,7 +145,7 @@ func (s *SimpleAllocatorRing) Rebalance() {
 
 		// pop device
 		device, zones[zone][node] = zones[zone][node][len(zones[zone][node])-1], zones[zone][node][:len(zones[zone][node])-1]
-		list = append(list, device)
+		list = append(list, *device)
 
 		// delete node
 		if len(zones[zone][node]) == 0 {
@@ -160,13 +163,13 @@ func (s *SimpleAllocatorRing) Rebalance() {
 
 // Use a uuid to point at a position in the ring.  Return a list of devices
 // from that point in the ring.
-func (s *SimpleAllocatorRing) GetDeviceList(uuid string) []*SimpleDevice {
+func (s *SimpleAllocatorRing) GetDeviceList(uuid string) SimpleDevices {
 
 	if s.balancedList == nil {
 		s.Rebalance()
 	}
 	if len(s.balancedList) == 0 {
-		return []*SimpleDevice{}
+		return SimpleDevices{}
 	}
 
 	// Instead of using 8 characters to convert to a int32, use 7 which avoids

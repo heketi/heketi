@@ -156,7 +156,7 @@ func (s *SimpleAllocator) RemoveCluster(clusterId string) error {
 	return nil
 }
 
-func (s *SimpleAllocator) getDeviceList(clusterId, brickId string) ([]*SimpleDevice, error) {
+func (s *SimpleAllocator) getDeviceList(clusterId, brickId string) (SimpleDevices, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -185,6 +185,7 @@ func (s *SimpleAllocator) GetNodes(clusterId, brickId string) (<-chan string,
 
 	// Get the list of devices for this brick id
 	devicelist, err := s.getDeviceList(clusterId, brickId)
+
 	if err != nil {
 		errc <- err
 		close(device)
