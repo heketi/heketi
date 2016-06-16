@@ -232,11 +232,11 @@ func (v *VolumeEntry) Create(db *bolt.DB,
 	}()
 
 	// Get list of clusters
-	var clusters []string
+	var possibleClusters, clusters []string
 	if len(v.Info.Clusters) == 0 {
 		err := db.View(func(tx *bolt.Tx) error {
 			var err error
-			clusters, err = ClusterList(tx)
+			possibleClusters, err = ClusterList(tx)
 			return err
 
 		})
@@ -244,15 +244,50 @@ func (v *VolumeEntry) Create(db *bolt.DB,
 			return err
 		}
 	} else {
-		clusters = v.Info.Clusters
+		possibleClusters = v.Info.Clusters
 	}
 
 	// Check we have clusters
-	if len(clusters) == 0 {
+	if len(possibleClusters) == 0 {
 		logger.LogError("Volume being ask to be created, but there are no clusters configured")
 		return ErrNoSpace
 	}
 	logger.Debug("Using the following clusters: %+v", clusters)
+
+	// Check for volume name conflict on any cluster
+	for _, cluster := range possibleClusters {
+		var err error
+
+		// Check this cluster does not have a volume with the name
+		err = db.View(func(tx *bolt.Tx) error {
+			ce, err := NewClusterEntryFromId(tx, cluster)
+			if err != nil {
+				return err
+			}
+
+			for _, volumeId := range ce.Info.Volumes {
+				volume, err := NewVolumeEntryFromId(tx, volumeId)
+				if err != nil {
+					return err
+				}
+				if v.Info.Name == volume.Info.Name {
+					return fmt.Errorf("Name %v already in use in cluster %v",
+						v.Info.Name, cluster)
+				}
+			}
+
+			return nil
+
+		})
+		if err != nil {
+			logger.Warning("%v", err.Error())
+		} else {
+			clusters = append(clusters, cluster)
+		}
+	}
+	if len(clusters) == 0 {
+		return fmt.Errorf("Name %v is already in use in all available clusters", v.Info.Name)
+	}
 
 	// For each cluster look for storage space for this volume
 	var brick_entries []*BrickEntry
