@@ -69,6 +69,10 @@
                                         "mountPath": "/run"
                                     },
                                     {
+                                        "name": "glusterfs-lvm",
+                                        "mountPath": "/run/lvm"
+                                    },
+                                    {
                                         "name": "glusterfs-etc",
                                         "mountPath": "/etc/glusterfs"
                                     },
@@ -128,9 +132,9 @@
                                 "name": "glusterfs-run"
                             },
                             {
-                                "name": "glusterfs-etc",
+                                "name": "glusterfs-lvm",
                                 "hostPath": {
-                                    "path": "/etc/glusterfs"
+                                    "path": "/run/lvm"
                                 }
                             },
                             {
