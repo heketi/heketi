@@ -65,6 +65,10 @@
                                         "mountPath": "/var/lib/heketi"
                                     },
                                     {
+                                        "name": "glusterfs-run",
+                                        "mountPath": "/run"
+                                    },
+                                    {
                                         "name": "glusterfs-etc",
                                         "mountPath": "/etc/glusterfs"
                                     },
@@ -123,6 +127,9 @@
                                 "hostPath": {
                                     "path": "/var/lib/heketi"
                                 }
+                            },
+                            {
+                                "name": "glusterfs-run"
                             },
                             {
                                 "name": "glusterfs-etc",
