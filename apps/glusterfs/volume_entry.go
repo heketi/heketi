@@ -139,6 +139,35 @@ func NewVolumeEntryFromId(tx *bolt.Tx, id string) (*VolumeEntry, error) {
 	return entry, nil
 }
 
+func (v *VolumeEntry) registerKey() string {
+	return "VOLUME" + v.Info.Cluster + d.Info.Name
+}
+
+func (v *VolumeEntry) Register(tx *bolt.Tx) error {
+	godbc.Require(tx != nil)
+
+	val, err := EntryRegister(tx,
+		v,
+		v.registerKey(),
+		[]byte(v.Info.Id))
+	if err == nil {
+		return err
+	}
+
+	return nil
+}
+
+func (v *VolumeEntry) Deregister(tx *bolt.Tx) error {
+	godbc.Require(tx != nil)
+
+	err := EntryDelete(tx, v, v.registerKey())
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (v *VolumeEntry) BucketName() string {
 	return BOLTDB_BUCKET_VOLUME
 }
@@ -232,11 +261,11 @@ func (v *VolumeEntry) Create(db *bolt.DB,
 	}()
 
 	// Get list of clusters
-	var clusters []string
+	var possibleClusters, clusters []string
 	if len(v.Info.Clusters) == 0 {
 		err := db.View(func(tx *bolt.Tx) error {
 			var err error
-			clusters, err = ClusterList(tx)
+			possibleClusters, err = ClusterList(tx)
 			return err
 
 		})
@@ -244,20 +273,63 @@ func (v *VolumeEntry) Create(db *bolt.DB,
 			return err
 		}
 	} else {
-		clusters = v.Info.Clusters
+		possibleClusters = v.Info.Clusters
 	}
 
 	// Check we have clusters
-	if len(clusters) == 0 {
+	if len(possibleClusters) == 0 {
 		logger.LogError("Volume being ask to be created, but there are no clusters configured")
 		return ErrNoSpace
 	}
 	logger.Debug("Using the following clusters: %+v", clusters)
 
+	// Check for volume name conflict on any cluster
+	for _, cluster := range possibleClusters {
+		var err error
+
+		// Check this cluster does not have a volume with the name
+		err = db.View(func(tx *bolt.Tx) error {
+			ce, err := NewClusterEntryFromId(tx, cluster)
+			if err != nil {
+				return err
+			}
+
+			for _, volumeId := range ce.Info.Volumes {
+				volume, err := NewVolumeEntryFromId(tx, volumeId)
+				if err != nil {
+					return err
+				}
+				if v.Info.Name == volume.Info.Name {
+					return fmt.Errorf("Name %v already in use in cluster %v",
+						v.Info.Name, cluster)
+				}
+			}
+
+			return nil
+
+		})
+		if err != nil {
+			logger.Warning("%v", err.Error())
+		} else {
+			clusters = append(clusters, cluster)
+		}
+	}
+	if len(clusters) == 0 {
+		return fmt.Errorf("Name %v is already in use in all available clusters", v.Info.Name)
+	}
+
 	// For each cluster look for storage space for this volume
 	var brick_entries []*BrickEntry
 	for _, cluster := range clusters {
 		var err error
+
+		// Check if there is a name conflict
+		err = db.Update(func(tx *bolt.Tx) error {
+			return v.Register(tx, cluster)
+		})
+		if err != nil {
+			continue
+		}
 
 		// Check this cluster for space
 		brick_entries, err = v.allocBricksInCluster(db, allocator, cluster, v.Info.Size)
