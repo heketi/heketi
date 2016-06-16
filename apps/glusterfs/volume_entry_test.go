@@ -1429,3 +1429,64 @@ func TestVolumeEntryDestroyCheck(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 }
+
+func TestVolumeEntryNameConflictSingleCluster(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		6,    // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	// Create volume
+	v := createSampleVolumeEntry(1024)
+	v.Info.Name = "myvol"
+	err = v.Create(app.db, app.executor, app.allocator)
+	tests.Assert(t, err == nil)
+
+	// Create another volume same name
+	v = createSampleVolumeEntry(10000)
+	v.Info.Name = "myvol"
+	err = v.Create(app.db, app.executor, app.allocator)
+	tests.Assert(t, err != nil, err)
+}
+
+func TestVolumeEntryNameConflictMultiCluster(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	// Create 10 clusters
+	err := setupSampleDbWithTopology(app,
+		10,   // clusters
+		3,    // nodes_per_cluster
+		6,    // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	// Create 10 volumes
+	for i := 0; i < 10; i++ {
+		v := createSampleVolumeEntry(1024)
+		v.Info.Name = "myvol"
+		err = v.Create(app.db, app.executor, app.allocator)
+		tests.Assert(t, err == nil)
+	}
+
+	// Create another volume same name
+	v := createSampleVolumeEntry(10000)
+	v.Info.Name = "myvol"
+	err = v.Create(app.db, app.executor, app.allocator)
+	tests.Assert(t, err != nil, err)
+}
