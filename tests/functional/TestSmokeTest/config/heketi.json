@@ -12,7 +12,7 @@
 		"db" : "heketi.db",
 
         "sshexec" : {
-            "keyfile" : "tests/functional/small/config/insecure_private_key",
+            "keyfile" : "config/insecure_private_key",
             "user" : "vagrant"
         }
 	}

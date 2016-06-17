@@ -2,11 +2,7 @@
   yum: name={{ item }} state=present
   with_items:
     - epel-release
-    - wget
-    - screen
-
-- name: enable glusterfs repo
-  shell: wget -P /etc/yum.repos.d http://download.gluster.org/pub/gluster/glusterfs/LATEST/EPEL.repo/glusterfs-epel.repo creates=/etc/yum.repos.d/glusterfs-epel.repo
+    - centos-release-gluster
 
 - name: copy private key
   copy: src=insecure_private_key owner=vagrant group=vagrant dest=/home/vagrant/.ssh/id_rsa force=no mode=0600

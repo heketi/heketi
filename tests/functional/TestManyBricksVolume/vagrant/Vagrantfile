@@ -2,27 +2,14 @@
 # vi: set ft=ruby :
 #
 
-NODES = 6
-DISKS = 3
-MEM = 16*1024
+NODES = 3
+DISKS = 10
 DRIVE_SIZE = "100G"
 
 Vagrant.configure("2") do |config|
     config.ssh.insert_key = false
     config.vm.box = "centos/7"
     config.vm.synced_folder '.', '/home/vagrant/sync', disabled: true
-
-    # Make the client
-    config.vm.define :client do |client|
-        client.vm.network :private_network, ip: "192.168.10.200"
-        client.vm.host_name = "client"
-
-        client.vm.provider :libvirt do |lv|
-            lv.memory = 1024
-            lv.cpus = 2
-        end
-
-    end
 
     # Make the glusterfs cluster, each with DISKS number of drives
     (0..NODES-1).each do |i|
@@ -34,7 +21,7 @@ Vagrant.configure("2") do |config|
                 driverletters = ('b'..'z').to_a
                 storage.vm.provider :libvirt do  |lv|
                     lv.storage :file, :device => "vd#{driverletters[d]}", :path => "disk-#{i}-#{d}.disk", :size => "#{DRIVE_SIZE}"
-                    lv.memory = MEM
+                    lv.memory = 2048
                     lv.cpus =2
                 end
             end
@@ -46,7 +33,6 @@ Vagrant.configure("2") do |config|
                     ansible.limit = "all"
                     ansible.playbook = "site.yml"
                     ansible.groups = {
-                        "client" => ["client"],
                         "gluster" => (0..NODES-1).map {|j| "storage#{j}"},
                     }
                 end
