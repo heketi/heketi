@@ -65,6 +65,14 @@
                                         "mountPath": "/var/lib/heketi"
                                     },
                                     {
+                                        "name": "glusterfs-run",
+                                        "mountPath": "/run"
+                                    },
+                                    {
+                                        "name": "glusterfs-lvm",
+                                        "mountPath": "/run/lvm"
+                                    },
+                                    {
                                         "name": "glusterfs-etc",
                                         "mountPath": "/etc/glusterfs"
                                     },
@@ -79,10 +87,6 @@
                                     {
                                         "name": "glusterfs-dev",
                                         "mountPath": "/dev"
-                                    },
-                                    {
-                                        "name": "glusterfs-run",
-                                        "mountPath": "/run"
                                     },
                                     {
                                         "name": "glusterfs-cgroup",
@@ -125,9 +129,12 @@
                                 }
                             },
                             {
-                                "name": "glusterfs-etc",
+                                "name": "glusterfs-run"
+                            },
+                            {
+                                "name": "glusterfs-lvm",
                                 "hostPath": {
-                                    "path": "/etc/glusterfs"
+                                    "path": "/run/lvm"
                                 }
                             },
                             {
@@ -146,12 +153,6 @@
                                 "name": "glusterfs-dev",
                                 "hostPath": {
                                     "path": "/dev"
-                                }
-                            },
-                            {
-                                "name": "glusterfs-run",
-                                "hostPath": {
-                                    "path": "/run"
                                 }
                             },
                             {
