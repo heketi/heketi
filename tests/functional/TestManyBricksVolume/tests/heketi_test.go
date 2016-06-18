@@ -1,4 +1,4 @@
-// +build ftlarge
+// +build functional
 
 //
 // Copyright (c) 2015 The heketi Authors
@@ -19,8 +19,8 @@ package functional
 
 import (
 	"fmt"
-	"github.com/heketi/heketi/apps/glusterfs"
 	client "github.com/heketi/heketi/client/api/go-client"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
 	"testing"
@@ -33,8 +33,8 @@ const (
 	heketiUrl = "http://127.0.0.1:8080"
 
 	// VMs
-	DISKS    = 3
-	NODES    = 6
+	DISKS    = 10
+	NODES    = 3
 	ZONES    = 3
 	CLUSTERS = 1
 )
@@ -85,7 +85,7 @@ func setupCluster(t *testing.T) {
 
 			// Add nodes sequentially due to probes
 			for index, hostname := range nodes_in_cluster {
-				nodeReq := &glusterfs.NodeAddRequest{}
+				nodeReq := &api.NodeAddRequest{}
 				nodeReq.ClusterId = cluster.Id
 				nodeReq.Hostnames.Manage = []string{hostname}
 				nodeReq.Hostnames.Storage = []string{hostname}
@@ -104,7 +104,7 @@ func setupCluster(t *testing.T) {
 					go func(d string) {
 						defer sg.Done()
 
-						driveReq := &glusterfs.DeviceAddRequest{}
+						driveReq := &api.DeviceAddRequest{}
 						driveReq.Name = d
 						driveReq.NodeId = node.Id
 
@@ -226,16 +226,16 @@ func TestHeketiManyBricksVolume(t *testing.T) {
 	defer teardownCluster(t)
 
 	// Create a volume with replica 3
-	volReq := &glusterfs.VolumeCreateRequest{}
+	volReq := &api.VolumeCreateRequest{}
 	volReq.Size = 500
-	volReq.Durability.Type = client.VOLUME_CREATE_DURABILITY_TYPE_REPLICATE
+	volReq.Durability.Type = api.DurabilityReplicate
 	volReq.Durability.Replicate.Replica = 3
 
 	volInfo, err := heketi.VolumeCreate(volReq)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, volInfo.Size == 500)
 	tests.Assert(t, volInfo.Mount.GlusterFS.MountPoint != "")
-	tests.Assert(t, volInfo.Durability.Type == client.VOLUME_CREATE_DURABILITY_TYPE_REPLICATE)
+	tests.Assert(t, volInfo.Durability.Type == api.DurabilityReplicate)
 	tests.Assert(t, volInfo.Durability.Replicate.Replica == 3)
 	tests.Assert(t, volInfo.Name != "")
 }

@@ -16,22 +16,6 @@ Vagrant.configure("2") do |config|
         config.vm.box = "bento/centos-7.1"
     end
 
-    # Make the client
-    config.vm.define :client do |client|
-        client.vm.network :private_network, ip: "192.168.10.90"
-        client.vm.host_name = "client"
-        client.vm.provider :virtualbox do |vb|
-            vb.memory = 512
-            vb.cpus = 2
-        end
-
-        client.vm.provider :libvirt do |lv|
-            lv.memory = 512
-            lv.cpus = 2
-        end
-
-    end
-
     # Make the glusterfs cluster, each with DISKS number of drives
     (0..NODES-1).each do |i|
         config.vm.define "storage#{i}" do |storage|

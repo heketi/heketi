@@ -1,4 +1,4 @@
-// +build ftsmall
+// +build functional
 
 //
 // Copyright (c) 2015 The heketi Authors
@@ -18,8 +18,8 @@
 package functional
 
 import (
-	"github.com/heketi/heketi/apps/glusterfs"
 	client "github.com/heketi/heketi/client/api/go-client"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
 	"net/http"
@@ -74,7 +74,7 @@ func setupCluster(t *testing.T) {
 
 	// Add nodes
 	for index, hostname := range storagevms {
-		nodeReq := &glusterfs.NodeAddRequest{}
+		nodeReq := &api.NodeAddRequest{}
 		nodeReq.ClusterId = cluster.Id
 		nodeReq.Hostnames.Manage = []string{hostname}
 		nodeReq.Hostnames.Storage = []string{hostname}
@@ -90,7 +90,7 @@ func setupCluster(t *testing.T) {
 			go func(d string) {
 				defer sg.Done()
 
-				driveReq := &glusterfs.DeviceAddRequest{}
+				driveReq := &api.DeviceAddRequest{}
 				driveReq.Name = d
 				driveReq.NodeId = node.Id
 
@@ -167,11 +167,11 @@ func TestHeketiVolumes(t *testing.T) {
 	// Create a volume and delete a few time to test garbage collection
 	for i := 0; i < 2; i++ {
 
-		volReq := &glusterfs.VolumeCreateRequest{}
+		volReq := &api.VolumeCreateRequest{}
 		volReq.Size = 4000
 		volReq.Snapshot.Enable = true
 		volReq.Snapshot.Factor = 1.5
-		volReq.Durability.Type = client.VOLUME_CREATE_DURABILITY_TYPE_REPLICATE
+		volReq.Durability.Type = api.DurabilityReplicate
 
 		volInfo, err := heketi.VolumeCreate(volReq)
 		tests.Assert(t, err == nil)
@@ -189,22 +189,22 @@ func TestHeketiVolumes(t *testing.T) {
 	}
 
 	// Create a 1TB volume
-	volReq := &glusterfs.VolumeCreateRequest{}
+	volReq := &api.VolumeCreateRequest{}
 	volReq.Size = 1024
 	volReq.Snapshot.Enable = true
 	volReq.Snapshot.Factor = 1.5
-	volReq.Durability.Type = client.VOLUME_CREATE_DURABILITY_TYPE_REPLICATE
+	volReq.Durability.Type = api.DurabilityReplicate
 
 	simplevol, err := heketi.VolumeCreate(volReq)
 	tests.Assert(t, err == nil)
 
 	// Create a 12TB volume with 6TB of snapshot space
 	// There should be no space
-	volReq = &glusterfs.VolumeCreateRequest{}
+	volReq = &api.VolumeCreateRequest{}
 	volReq.Size = 12 * 1024
 	volReq.Snapshot.Enable = true
 	volReq.Snapshot.Factor = 1.5
-	volReq.Durability.Type = client.VOLUME_CREATE_DURABILITY_TYPE_REPLICATE
+	volReq.Durability.Type = api.DurabilityReplicate
 
 	_, err = heketi.VolumeCreate(volReq)
 	tests.Assert(t, err != nil)
@@ -215,9 +215,9 @@ func TestHeketiVolumes(t *testing.T) {
 	tests.Assert(t, len(volumes.Volumes) == 1)
 
 	// Create a 100G volume with replica 3
-	volReq = &glusterfs.VolumeCreateRequest{}
+	volReq = &api.VolumeCreateRequest{}
 	volReq.Size = 100
-	volReq.Durability.Type = client.VOLUME_CREATE_DURABILITY_TYPE_REPLICATE
+	volReq.Durability.Type = api.DurabilityReplicate
 	volReq.Durability.Replicate.Replica = 3
 
 	volInfo, err := heketi.VolumeCreate(volReq)
@@ -233,7 +233,7 @@ func TestHeketiVolumes(t *testing.T) {
 	tests.Assert(t, len(volumes.Volumes) == 2)
 
 	// Expand volume
-	volExpReq := &glusterfs.VolumeExpandRequest{}
+	volExpReq := &api.VolumeExpandRequest{}
 	volExpReq.Size = 2000
 
 	volInfo, err = heketi.VolumeExpand(simplevol.Id, volExpReq)

@@ -1,4 +1,4 @@
-// +build func
+// +build functional
 
 //
 // Copyright (c) 2015 The heketi Authors
@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/heketi/heketi/apps/glusterfs"
 	client "github.com/heketi/heketi/client/api/go-client"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/heketi/pkg/utils/ssh"
 	"github.com/heketi/tests"
@@ -87,7 +87,7 @@ func setupCluster(t *testing.T) {
 
 			// Add nodes sequentially due to probes
 			for index, hostname := range nodes_in_cluster {
-				nodeReq := &glusterfs.NodeAddRequest{}
+				nodeReq := &api.NodeAddRequest{}
 				nodeReq.ClusterId = cluster.Id
 				nodeReq.Hostnames.Manage = []string{hostname}
 				nodeReq.Hostnames.Storage = []string{hostname}
@@ -106,7 +106,7 @@ func setupCluster(t *testing.T) {
 					go func(d string) {
 						defer sg.Done()
 
-						driveReq := &glusterfs.DeviceAddRequest{}
+						driveReq := &api.DeviceAddRequest{}
 						driveReq.Name = d
 						driveReq.NodeId = node.Id
 
@@ -229,9 +229,9 @@ func TestHeketiVolumeSnapshotBehavior(t *testing.T) {
 	defer teardownCluster(t)
 
 	// Create a volume
-	volReq := &glusterfs.VolumeCreateRequest{}
+	volReq := &api.VolumeCreateRequest{}
 	volReq.Size = 1024
-	volReq.Durability.Type = client.VOLUME_CREATE_DURABILITY_TYPE_REPLICATE
+	volReq.Durability.Type = api.DurabilityReplicate
 	volReq.Durability.Replicate.Replica = 3
 	volReq.Snapshot.Enable = true
 	volReq.Snapshot.Factor = 1.5
@@ -245,7 +245,7 @@ func TestHeketiVolumeSnapshotBehavior(t *testing.T) {
 		fmt.Sprintf("sudo gluster --mode=script snapshot create mysnap %v no-timestamp", volInfo.Name),
 		"sudo gluster --mode=script snapshot activate mysnap",
 	}
-	_, err = exec.ConnectAndExec("192.168.10.100:22", cmd, 10)
+	_, err = exec.ConnectAndExec("192.168.10.100:22", cmd, 10, true)
 	tests.Assert(t, err == nil, err)
 
 	// Try to delete the volume
@@ -257,7 +257,7 @@ func TestHeketiVolumeSnapshotBehavior(t *testing.T) {
 		"sudo gluster --mode=script snapshot deactivate mysnap",
 		"sudo gluster --mode=script snapshot delete mysnap",
 	}
-	_, err = exec.ConnectAndExec("192.168.10.100:22", cmd, 10)
+	_, err = exec.ConnectAndExec("192.168.10.100:22", cmd, 10, true)
 	tests.Assert(t, err == nil, err)
 
 	// Try to delete the volume
