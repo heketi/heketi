@@ -60,6 +60,9 @@ run: server
 test: 
 	GO15VENDOREXPERIMENT=0 $(GO) test ./...
 
+server-for-dockerci: server
+	cp heketi extras/docker/ci
+
 clean:
 	@echo Cleaning Workspace...
 	rm -rf $(APP_NAME)

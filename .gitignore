@@ -30,3 +30,4 @@ heketi.db
 *.rej
 
 
+heketi-ci-docker.img
