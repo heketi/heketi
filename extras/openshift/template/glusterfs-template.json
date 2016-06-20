@@ -150,6 +150,12 @@
                                 }
                             },
                             {
+                                "name": "glusterfs-config",
+                                "hostPath": {
+                                    "path": "/var/lib/glusterd"
+                                }
+                            },
+                            {
                                 "name": "glusterfs-dev",
                                 "hostPath": {
                                     "path": "/dev"
