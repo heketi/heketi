@@ -138,6 +138,12 @@
                                 }
                             },
                             {
+                                "name": "glusterfs-etc",
+                                "hostPath": {
+                                    "path": "/etc/glusterfs"
+                                }
+                            },
+                            {
                                 "name": "glusterfs-logs",
                                 "hostPath": {
                                     "path": "/var/log/glusterfs"
