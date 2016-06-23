@@ -1,7 +1,7 @@
 # Automated Functional Test
 
 ## Requirements
-
+You will need a system with at least 16G of ram.  If you only have 8G, you can at least run the TestSmokeTest.
 
 ### Packages
 
@@ -30,8 +30,16 @@ $ glock sync github.com/heketi/heketi
 
 ## Running
 
+Run the entire suite:
+
 ```
 $ cd $GOPATH/src/github.com/heketi/heketi/tests/functional
+$ ./run.sh
+```
+
+To run a specific functional test, go into that functionl test's directory and type:
+
+```
 $ ./run.sh
 ```
 
