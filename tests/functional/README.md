@@ -6,9 +6,11 @@ You will need a system with at least 16G of ram.  If you only have 8G, you can a
 ### Packages
 
 ```
-# dnf -y install libvirt qemu-kvm \
+# dnf -y install docker libvirt qemu-kvm \
    ansible vagrant vagrant-libvirt go git make 
 ```
+
+Make sure docker and libvirt deamons are running
 
 ### User
 
