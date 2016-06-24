@@ -46,68 +46,68 @@ var (
 )
 
 func init() {
-	RootCmd.AddCommand(volumeCommand)
-	volumeCommand.AddCommand(volumeCreateCommand)
-	volumeCommand.AddCommand(volumeDeleteCommand)
-	volumeCommand.AddCommand(volumeExpandCommand)
-	volumeCommand.AddCommand(volumeInfoCommand)
-	volumeCommand.AddCommand(volumeListCommand)
+	RootCmd.AddCommand(VolumeCommand)
+	VolumeCommand.AddCommand(VolumeCreateCommand)
+	VolumeCommand.AddCommand(VolumeDeleteCommand)
+	VolumeCommand.AddCommand(VolumeExpandCommand)
+	VolumeCommand.AddCommand(VolumeInfoCommand)
+	VolumeCommand.AddCommand(VolumeListCommand)
 
-	volumeCreateCommand.Flags().IntVar(&size, "size", -1,
+	VolumeCreateCommand.Flags().IntVar(&size, "size", -1,
 		"\n\tSize of volume in GB")
-	volumeCreateCommand.Flags().StringVar(&volname, "name", "",
+	VolumeCreateCommand.Flags().StringVar(&volname, "name", "",
 		"\n\tOptional: Name of volume. Only set if really necessary")
-	volumeCreateCommand.Flags().StringVar(&durability, "durability", "replicate",
+	VolumeCreateCommand.Flags().StringVar(&durability, "durability", "replicate",
 		"\n\tOptional: Durability type.  Values are:"+
 			"\n\t\tnone: No durability.  Distributed volume only."+
 			"\n\t\treplicate: (Default) Distributed-Replica volume."+
 			"\n\t\tdisperse: Distributed-Erasure Coded volume.")
-	volumeCreateCommand.Flags().IntVar(&replica, "replica", 3,
+	VolumeCreateCommand.Flags().IntVar(&replica, "replica", 3,
 		"\n\tReplica value for durability type 'replicate'."+
 			"\n\tDefault is 3")
-	volumeCreateCommand.Flags().IntVar(&disperseData, "disperse-data", 4,
+	VolumeCreateCommand.Flags().IntVar(&disperseData, "disperse-data", 4,
 		"\n\tOptional: Dispersion value for durability type 'disperse'."+
 			"\n\tDefault is 4")
-	volumeCreateCommand.Flags().IntVar(&redundancy, "redundancy", 2,
+	VolumeCreateCommand.Flags().IntVar(&redundancy, "redundancy", 2,
 		"\n\tOptional: Redundancy value for durability type 'disperse'."+
 			"\n\tDefault is 2")
-	volumeCreateCommand.Flags().Float64Var(&snapshotFactor, "snapshot-factor", 1.0,
+	VolumeCreateCommand.Flags().Float64Var(&snapshotFactor, "snapshot-factor", 1.0,
 		"\n\tOptional: Amount of storage to allocate for snapshot support."+
 			"\n\tMust be greater 1.0.  For example if a 10TiB volume requires 5TiB of"+
 			"\n\tsnapshot storage, then snapshot-factor would be set to 1.5.  If the"+
 			"\n\tvalue is set to 1, then snapshots will not be enabled for this volume")
-	volumeCreateCommand.Flags().StringVar(&clusters, "clusters", "",
+	VolumeCreateCommand.Flags().StringVar(&clusters, "clusters", "",
 		"\n\tOptional: Comma separated list of cluster ids where this volume"+
 			"\n\tmust be allocated. If ommitted, Heketi will allocate the volume"+
 			"\n\ton any of the configured clusters which have the available space."+
 			"\n\tProviding a set of clusters will ensure Heketi allocates storage"+
 			"\n\tfor this volume only in the clusters specified.")
-	volumeCreateCommand.Flags().BoolVar(&kubePv, "persistent-volume", false,
+	VolumeCreateCommand.Flags().BoolVar(&kubePv, "persistent-volume", false,
 		"\n\tOptional: Output to standard out a peristent volume JSON file for OpenShift or"+
 			"\n\tKubernetes with the name provided.")
-	volumeCreateCommand.Flags().StringVar(&kubePvFile, "persistent-volume-file", "",
+	VolumeCreateCommand.Flags().StringVar(&kubePvFile, "persistent-volume-file", "",
 		"\n\tOptional: Create a peristent volume JSON file for OpenShift or"+
 			"\n\tKubernetes with the name provided.")
-	volumeCreateCommand.Flags().StringVar(&kubePvEndpoint, "persistent-volume-endpoint", "",
+	VolumeCreateCommand.Flags().StringVar(&kubePvEndpoint, "persistent-volume-endpoint", "",
 		"\n\tOptional: Endpoint name for the persistent volume")
-	volumeExpandCommand.Flags().IntVar(&expandSize, "expand-size", -1,
+	VolumeExpandCommand.Flags().IntVar(&expandSize, "expand-size", -1,
 		"\n\tAmount in GB to add to the volume")
-	volumeExpandCommand.Flags().StringVar(&id, "volume", "",
+	VolumeExpandCommand.Flags().StringVar(&id, "volume", "",
 		"\n\tId of volume to expand")
-	volumeCreateCommand.SilenceUsage = true
-	volumeDeleteCommand.SilenceUsage = true
-	volumeExpandCommand.SilenceUsage = true
-	volumeInfoCommand.SilenceUsage = true
-	volumeListCommand.SilenceUsage = true
+	VolumeCreateCommand.SilenceUsage = true
+	VolumeDeleteCommand.SilenceUsage = true
+	VolumeExpandCommand.SilenceUsage = true
+	VolumeInfoCommand.SilenceUsage = true
+	VolumeListCommand.SilenceUsage = true
 }
 
-var volumeCommand = &cobra.Command{
+var VolumeCommand = &cobra.Command{
 	Use:   "volume",
 	Short: "Heketi Volume Management",
 	Long:  "Heketi Volume Management",
 }
 
-var volumeCreateCommand = &cobra.Command{
+var VolumeCreateCommand = &cobra.Command{
 	Use:   "create",
 	Short: "Create a GlusterFS volume",
 	Long:  "Create a GlusterFS volume",
@@ -217,7 +217,7 @@ var volumeCreateCommand = &cobra.Command{
 	},
 }
 
-var volumeDeleteCommand = &cobra.Command{
+var VolumeDeleteCommand = &cobra.Command{
 	Use:     "delete",
 	Short:   "Deletes the volume",
 	Long:    "Deletes the volume",
@@ -246,7 +246,7 @@ var volumeDeleteCommand = &cobra.Command{
 	},
 }
 
-var volumeExpandCommand = &cobra.Command{
+var VolumeExpandCommand = &cobra.Command{
 	Use:   "expand",
 	Short: "Expand a volume",
 	Long:  "Expand a volume",
@@ -289,7 +289,7 @@ var volumeExpandCommand = &cobra.Command{
 	},
 }
 
-var volumeInfoCommand = &cobra.Command{
+var VolumeInfoCommand = &cobra.Command{
 	Use:     "info",
 	Short:   "Retreives information about the volume",
 	Long:    "Retreives information about the volume",
@@ -327,7 +327,7 @@ var volumeInfoCommand = &cobra.Command{
 	},
 }
 
-var volumeListCommand = &cobra.Command{
+var VolumeListCommand = &cobra.Command{
 	Use:     "list",
 	Short:   "Lists the volumes managed by Heketi",
 	Long:    "Lists the volumes managed by Heketi",

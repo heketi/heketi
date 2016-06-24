@@ -27,24 +27,24 @@ import (
 )
 
 func init() {
-	RootCmd.AddCommand(clusterCommand)
-	clusterCommand.AddCommand(clusterCreateCommand)
-	clusterCommand.AddCommand(clusterDeleteCommand)
-	clusterCommand.AddCommand(clusterListCommand)
-	clusterCommand.AddCommand(clusterInfoCommand)
-	clusterCreateCommand.SilenceUsage = true
-	clusterDeleteCommand.SilenceUsage = true
-	clusterInfoCommand.SilenceUsage = true
-	clusterListCommand.SilenceUsage = true
+	RootCmd.AddCommand(ClusterCommand)
+	ClusterCommand.AddCommand(ClusterCreateCommand)
+	ClusterCommand.AddCommand(ClusterDeleteCommand)
+	ClusterCommand.AddCommand(ClusterListCommand)
+	ClusterCommand.AddCommand(ClusterInfoCommand)
+	ClusterCreateCommand.SilenceUsage = true
+	ClusterDeleteCommand.SilenceUsage = true
+	ClusterInfoCommand.SilenceUsage = true
+	ClusterListCommand.SilenceUsage = true
 }
 
-var clusterCommand = &cobra.Command{
+var ClusterCommand = &cobra.Command{
 	Use:   "cluster",
 	Short: "Heketi cluster management",
 	Long:  "Heketi Cluster Management",
 }
 
-var clusterCreateCommand = &cobra.Command{
+var ClusterCreateCommand = &cobra.Command{
 	Use:     "create",
 	Short:   "Create a cluster",
 	Long:    "Create a cluster",
@@ -73,13 +73,13 @@ var clusterCreateCommand = &cobra.Command{
 	},
 }
 
-var clusterDeleteCommand = &cobra.Command{
+var ClusterDeleteCommand = &cobra.Command{
 	Use:     "delete [cluster_id]",
 	Short:   "Delete the cluster",
 	Long:    "Delete the cluster",
 	Example: "  $ heketi-cli cluster delete 886a86a868711bef83001",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		s := cmd.Flags().Args()
+		s := args
 
 		//ensure proper number of args
 		if len(s) < 1 {
@@ -87,7 +87,7 @@ var clusterDeleteCommand = &cobra.Command{
 		}
 
 		//set clusterId
-		clusterId := cmd.Flags().Arg(0)
+		clusterId := s[0]
 
 		// Create a client
 		heketi := client.NewClient(options.Url, options.User, options.Key)
@@ -102,19 +102,19 @@ var clusterDeleteCommand = &cobra.Command{
 	},
 }
 
-var clusterInfoCommand = &cobra.Command{
+var ClusterInfoCommand = &cobra.Command{
 	Use:     "info [cluster_id]",
 	Short:   "Retrieves information about cluster",
 	Long:    "Retrieves information about cluster",
 	Example: "  $ heketi-cli cluster info 886a86a868711bef83001",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		s := cmd.Flags().Args()
+		s := args
 		if len(s) < 1 {
 			return errors.New("Cluster id missing")
 		}
 
 		//set clusterId
-		clusterId := cmd.Flags().Arg(0)
+		clusterId := args[0]
 
 		// Create a client to talk to Heketi
 		heketi := client.NewClient(options.Url, options.User, options.Key)
@@ -142,7 +142,7 @@ var clusterInfoCommand = &cobra.Command{
 	},
 }
 
-var clusterListCommand = &cobra.Command{
+var ClusterListCommand = &cobra.Command{
 	Use:     "list",
 	Short:   "Lists the clusters managed by Heketi",
 	Long:    "Lists the clusters managed by Heketi",
