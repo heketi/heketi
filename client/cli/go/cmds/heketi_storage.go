@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"net"
 	"os"
 
 	client "github.com/heketi/heketi/client/api/go-client"
@@ -182,22 +181,11 @@ func createHeketiStorageEndpoints(c *client.Client,
 	// Save all nodes in the endpoints
 	for n, host := range volume.Mount.GlusterFS.Hosts {
 
-		// Determine if it is an IP address
-		netIp := net.ParseIP(host)
-		if netIp == nil {
-			// It is not an IP, it is a hostname
-			endpoint.Subsets[n].Addresses = []kubeapi.EndpointAddress{
-				kubeapi.EndpointAddress{
-					Hostname: host,
-				},
-			}
-		} else {
-			// It is an IP
-			endpoint.Subsets[n].Addresses = []kubeapi.EndpointAddress{
-				kubeapi.EndpointAddress{
-					IP: host,
-				},
-			}
+		// Set Hostname/IP
+		endpoint.Subsets[n].Addresses = []kubeapi.EndpointAddress{
+			kubeapi.EndpointAddress{
+				IP: host,
+			},
 		}
 
 		// Set to port 1

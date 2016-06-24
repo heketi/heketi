@@ -3,12 +3,10 @@
 # We cannot use go test -coverprofile=cover.out ./... because
 # the tool requires that it be used only on one package when
 # capturing the coverage
-# This is why we need this little script here.
-export GO15VENDOREXPERIMENT=0
 COVERFILE=packagecover.out
 
 # For each package with test files, run with full coverage (including other packages)
-go list -f '{{if gt (len .TestGoFiles) 0}}"go test -covermode count -coverprofile {{.Name}}_{{len .Imports}}_{{len .Deps}}.coverprofile -coverpkg ./... {{.ImportPath}}"{{end}}' ./... | xargs -I {} bash -c {}
+go list -f '{{if gt (len .TestGoFiles) 0}}"godep go test -covermode count -coverprofile {{.Name}}_{{len .Imports}}_{{len .Deps}}.coverprofile -coverpkg ./... {{.ImportPath}}"{{end}}' ./... | xargs -I {} bash -c {}
 
 # Merge the generated cover profiles into a single file
 gocovmerge `ls *.coverprofile` > $COVERFILE

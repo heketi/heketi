@@ -292,7 +292,7 @@ func (k *KubeExecutor) ConnectAndExec(host, namespace, resource string,
 		var berr bytes.Buffer
 
 		// Excute command
-		err = exec.Stream(nil, nil, &b, &berr, false)
+		err = exec.Stream(nil, &b, &berr, false)
 		if err != nil {
 			logger.LogError("Failed to run command [%v] on %v: Err[%v]: Stdout [%v]: Stderr [%v]",
 				command, podName, err, b.String(), berr.String())

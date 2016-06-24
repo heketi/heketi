@@ -1,0 +1,26 @@
+language: go
+install:
+- go get github.com/mattn/goveralls
+- go get github.com/robfig/glock
+- glock sync github.com/heketi/tests
+env:
+  global:
+    secure: hw4T7Xg6+y9S007JE/zcQxphlyfL8eEsBFMC5uDTxbE+u8MA+jtDG2pf31QVmh2ZEkPD2hHdxGrC5FVAjJsfGeklsJg6kA0axfp43WoT4NgZy2eTKxWMIJOI6j/hyqTd/dK214IBt0soh7GbfZZl/6aqI+5/4ZgAyF61Jf26+3UirZdBMxGaApc6Lj+sbhHIjnx6Pkj8dpBa8kBnyV6Z9plKwRaYY0FAEme+a62AbGWFEbLJTGWrFYEKRZeAHtvijp0wQa3/RqoFi7cMdrfikCCPgD/YceQ3kzLno1eBsldlRcE4i1ZO0EO6PQQWerXCuoXWH3jSYE05GXacyEpE0GDaDrwshlDiCqjku+zjn47QbRSv4v+BUDZmO5FX/HsGWZr7/KdeakNMa5h3peP9xCzJnjMJQf0ZNgm3JDsx/SaVpAWOtp3l1Qt25QoWgKYVj38sr9GqEiOeAvA/4Qj9FFzmCEY2nXG/0QeVotkuuLc7HuLbpYfkeXeEfBCuxZ2ibg9p5FIb9d2fQbVYlXVIp7nDiGr8ic5xuf8kTo1oBrnJ+0IrWnxq4ttobqH+4dXFwJVJiRbt8YYk/vAlPVCl/7/zkztOg50nj1p1jsUFb/ZqkO5lExF3Dv0dg+tE/atle6qT1YhCEY0bdaboxueppeRrHAJKDHckbQc3kvHGpwA=
+matrix:
+  include:
+  - go: 1.2.2
+    env: OPTIONS=""
+  - go: 1.3.3
+    env: OPTIONS="-race"
+  - go: 1.4.2
+    env: COVERAGE="true" GOTOOLS="yes"
+  - go: 1.5
+    env: OPTIONS="-race" GOTOOLS="yes"
+before_script:
+- if [[ "$GOTOOLS" = "yes" ]] ; then go get golang.org/x/tools/cmd/vet; fi
+- if [[ "$GOTOOLS" = "yes" ]] ; then go get golang.org/x/tools/cmd/cover; fi
+script:
+- if [[ "$GOTOOLS" = "yes" ]] ; then go fmt ./... | wc -l | grep 0 ; fi
+- if [[ "$GOTOOLS" = "yes" ]] ; then go vet ./... ; fi
+- go test -v $OPTIONS ./...
+- if [[ -n "$COVERAGE" ]]; then bash .travis-coverage; fi
