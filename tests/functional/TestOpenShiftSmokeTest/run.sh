@@ -17,8 +17,8 @@ build_docker_file(){
     if [ ! -f "$vagrant_heketi_docker" ] ; then
         cd $DOCKERDIR
         cp $TOP/heketi $DOCKERDIR
-        sudo docker build --rm --tag heketi/heketi:ci . || fail "Unable to create docker container"
-        sudo docker save -o $HEKETI_DOCKER_IMG heketi/heketi:ci || fail "Unable to save docker image"
+        _sudo docker build --rm --tag heketi/heketi:ci . || fail "Unable to create docker container"
+        _sudo docker save -o $HEKETI_DOCKER_IMG heketi/heketi:ci || fail "Unable to save docker image"
         cp $HEKETI_DOCKER_IMG $vagrant_heketi_docker
         cd $CURRENT_DIR
     fi

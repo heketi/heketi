@@ -8,6 +8,14 @@ println() {
     echo "==> $1"
 }
 
+_sudo() {
+    if [ ${UID} = 0 ] ; then
+        ${@}
+    else
+        sudo -E ${@}
+    fi
+}
+
 HEKETI_PID=
 start_heketi() {
     # Build server if we need to
@@ -27,13 +35,13 @@ start_heketi() {
 
 start_vagrant() {
     cd vagrant
-    sudo -E ./up.sh || fail "unable to start vagrant virtual machines"
+    _sudo ./up.sh || fail "unable to start vagrant virtual machines"
     cd ..
 }
 
 teardown_vagrant() {
     cd vagrant
-    sudo vagrant destroy -f
+    _sudo vagrant destroy -f
     cd ..
 }
 
