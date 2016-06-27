@@ -38,7 +38,7 @@ copy_client_files() {
 
 deploy_heketi_glusterfs() {
     cd tests/deploy
-    sudo ./run.sh || fail "Unable to deploy"
+    _sudo ./run.sh || fail "Unable to deploy"
     cd $CURRENT_DIR
 }
 

@@ -19,8 +19,7 @@ RUN mkdir $BUILD_HOME $GOPATH $HEKETI_CONF_DIR && \
     mkdir -p $GOPATH/src/github.com/heketi && \
     cd $GOPATH/src/github.com/heketi && \
     git clone https://github.com/heketi/heketi.git && \
-    go get github.com/robfig/glock && \
-    glock sync github.com/heketi/heketi && \
+    go get github.com/tools/godep && \
     cd $GOPATH/src/github.com/heketi/heketi && make && \
     cp heketi /usr/bin/heketi && \
     cp client/cli/go/heketi-cli /usr/bin/heketi-cli && \
