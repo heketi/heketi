@@ -9,13 +9,6 @@ println() {
     echo "==> $1"
 }
 
-force_cleaup_libvirt_disks() {
-    # Sometimes disks are not deleted
-    for i in `sudo virsh vol-list default | grep "*.disk" | awk '{print $1}'` ; do
-        sudo virsh vol-delete --pool default "${i}" || fail "Unable to delete disk $i"
-    done
-}
-
 ### MAIN ###
 
 starttime=`date`
