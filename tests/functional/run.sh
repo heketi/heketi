@@ -21,7 +21,6 @@ fi
 
 # Clean up
 rm -f heketi-server > /dev/null 2>&1
-force_cleaup_libvirt_disks
 
 # Check each dir for tests
 results=0

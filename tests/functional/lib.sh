@@ -59,7 +59,6 @@ force_cleaup_libvirt_disks() {
     done
 }
 
-
 functional_tests() {
     teardown_vagrant
     force_cleaup_libvirt_disks
