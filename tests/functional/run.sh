@@ -9,6 +9,8 @@ println() {
     echo "==> $1"
 }
 
+### MAIN ###
+
 starttime=`date`
 export PATH=$PATH:.
 
