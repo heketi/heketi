@@ -59,16 +59,19 @@ force_cleaup_libvirt_disks() {
     done
 }
 
-functional_tests() {
+teardown() {
     teardown_vagrant
-    #force_cleaup_libvirt_disks
+    rm -f heketi.db > /dev/null 2>&1
+}
+
+functional_tests() {
     start_vagrant
     start_heketi
 
     run_tests
 
     kill $HEKETI_PID
-    teardown_vagrant
+    teardown
 
     exit $gotest_result
 }

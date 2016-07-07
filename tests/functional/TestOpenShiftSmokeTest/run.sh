@@ -20,6 +20,7 @@ build_docker_file(){
         _sudo docker build --rm --tag heketi/heketi:ci . || fail "Unable to create docker container"
         _sudo docker save -o $HEKETI_DOCKER_IMG heketi/heketi:ci || fail "Unable to save docker image"
         cp $HEKETI_DOCKER_IMG $vagrant_heketi_docker
+        _sudo docker rmi heketi/heketi:ci
         cd $CURRENT_DIR
     fi
 }
@@ -42,10 +43,10 @@ deploy_heketi_glusterfs() {
     cd $CURRENT_DIR
 }
 
-teardown_vagrant
 build_heketi
 copy_client_files
 build_docker_file
 start_vagrant
 deploy_heketi_glusterfs
-teardown_vagrant
+
+./teardown.sh
