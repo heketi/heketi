@@ -5,6 +5,7 @@
 .PHONY: version all run dist clean
 	
 APP_NAME := heketi
+CLIENT_PKG_NAME := heketi-client
 SHA := $(shell git rev-parse --short HEAD)
 BRANCH := $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
 VER := $(shell git describe)
@@ -31,6 +32,7 @@ EXECUTABLES :=$(APP_NAME)
 LDFLAGS :=-ldflags "-X main.HEKETI_VERSION=$(VERSION)"
 # Package target
 PACKAGE :=$(DIR)/dist/$(APP_NAME)-$(VERSION).$(GOOS).$(ARCH).tar.gz
+CLIENT_PACKAGE :=$(DIR)/dist/$(APP_NAME)-client-$(VERSION).$(GOOS).$(ARCH).tar.gz
 
 .DEFAULT: all
 
@@ -78,6 +80,18 @@ $(PACKAGE): all
 	@echo
 	@echo Package $@ saved in dist directory
 
-dist: $(PACKAGE)
+$(CLIENT_PACKAGE): all
+	@echo Packaging client Binaries...
+	@mkdir -p tmp/$(CLIENT_PKG_NAME)/bin
+	@mkdir -p tmp/$(CLIENT_PKG_NAME)/share/heketi/templates
+	@cp client/cli/go/heketi-cli tmp/$(CLIENT_PKG_NAME)/bin
+	@cp extras/openshift/template/* tmp/$(CLIENT_PKG_NAME)/share/heketi/templates
+	@mkdir -p $(DIR)/dist/
+	tar -czf $@ -C tmp $(CLIENT_PKG_NAME);
+	@rm -rf tmp
+	@echo
+	@echo Package $@ saved in dist directory
+
+dist: $(PACKAGE) $(CLIENT_PACKAGE)
 
 .PHONY: server client test clean name run version 
