@@ -19,7 +19,7 @@
     - pyOpenSSL
 
 - name: get openshift-ansible
-  git: repo=https://github.com/openshift/openshift-ansible dest=/home/vagrant/openshift-ansible
+  git: repo=https://github.com/openshift/openshift-ansible dest=/home/vagrant/openshift-ansible version=openshift-ansible-3.2.9-1
 
 - name: copy hosts.conf
   copy: src=hosts.conf dest=/home/vagrant force=yes mode=0644

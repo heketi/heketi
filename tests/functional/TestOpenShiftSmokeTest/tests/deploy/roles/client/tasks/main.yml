@@ -1,3 +1,10 @@
+- name: setup resolv.conf
+  shell: /etc/rc.local
+  become: true
+
+- name: wait until master is ready
+  wait_for: host=192.168.10.90 port=8443 state=started timeout=600
+
 - name: install templates
   command: oc create -f /usr/share/heketi/template
 
