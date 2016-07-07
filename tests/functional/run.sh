@@ -1,13 +1,6 @@
 #!/bin/sh
 
-fail() {
-    echo $1
-    exit 1
-}
-
-println() {
-    echo "==> $1"
-}
+source ./lib.sh
 
 teardown_all() {
     results=0
@@ -30,6 +23,10 @@ export PATH=$PATH:.
 if [ -z $GOPATH ] ; then 
     fail "GOPATH must be specified"
 fi
+
+# Show running machines
+_sudo virsh list --all
+exit 0
 
 # Clean up
 rm -f heketi-server > /dev/null 2>&1
