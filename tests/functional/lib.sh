@@ -61,7 +61,7 @@ force_cleaup_libvirt_disks() {
 
 functional_tests() {
     teardown_vagrant
-    force_cleaup_libvirt_disks
+    #force_cleaup_libvirt_disks
     start_vagrant
     start_heketi
 
