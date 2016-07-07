@@ -25,7 +25,13 @@ if [ -z $GOPATH ] ; then
 fi
 
 # Show running machines
+set -x
 _sudo virsh list --all
+free -h
+rpm -qa | grep vagrant
+rpm -qa | grep libvirt
+cat /proc/cpuinfo
+df -h
 exit 0
 
 # Clean up
