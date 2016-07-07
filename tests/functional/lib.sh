@@ -52,7 +52,7 @@ run_tests() {
     cd ..
 }
 
-force_cleaup_libvirt_disks() {
+force_cleanup_libvirt_disks() {
     # Sometimes disks are not deleted
     for i in `_sudo virsh vol-list default | grep "*.disk" | awk '{print $1}'` ; do
         _sudo virsh vol-delete --pool default "${i}" || fail "Unable to delete disk $i"
@@ -61,6 +61,7 @@ force_cleaup_libvirt_disks() {
 
 teardown() {
     teardown_vagrant
+    force_cleanup_libvirt_disks
     rm -f heketi.db > /dev/null 2>&1
 }
 

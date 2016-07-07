@@ -9,6 +9,7 @@ source ${FUNCTIONAL_DIR}/lib.sh
 vagrant_heketi_docker=$CURRENT_DIR/vagrant/roles/cluster/files/$HEKETI_DOCKER_IMG
 
 teardown_vagrant
+force_cleanup_libvirt_disks
 rm -rf $vagrant_heketi_docker \
     vagrant/roles/client/files/heketi-cli \
     vagrant/templates > /dev/null 2>&1
