@@ -33,7 +33,7 @@ build_heketi() {
 
 copy_client_files() {
     cp $CLIENTDIR/heketi-cli vagrant/roles/client/files
-    cp -r $TOP/extras/openshift/template vagrant
+    cp -r $TOP/extras/openshift/templates vagrant
 }
 
 deploy_heketi_glusterfs() {

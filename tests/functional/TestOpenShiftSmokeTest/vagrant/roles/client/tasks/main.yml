@@ -37,7 +37,7 @@
   file: path=/usr/share/heketi state=directory mode=0755
 
 - name: copy templates
-  copy: src=template dest=/usr/share/heketi mode=0644
+  copy: src=templates dest=/usr/share/heketi mode=0644
 
 - name: restart dnsmasq
   service: name=dnsmasq enabled=yes state=restarted

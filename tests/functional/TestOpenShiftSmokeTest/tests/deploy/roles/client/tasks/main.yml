@@ -1,5 +1,5 @@
 - name: install templates
-  command: oc create -f /usr/share/heketi/template
+  command: oc create -f /usr/share/heketi/templates
 
 - name: install deploy-heketi
   shell: oc process deploy-heketi -v HEKETI_KUBE_INSECURE=y HEKETI_KUBE_USER=admin HEKETI_KUBE_PASSWORD=admin HEKETI_KUBE_NAMESPACE=default HEKETI_KUBE_APIHOST=https://192.168.10.90:8443 | oc create -f -
