@@ -30,7 +30,7 @@ Vagrant.configure("2") do |config|
                 end
                 driverletters = ('b'..'z').to_a
                 storage.vm.provider :libvirt do  |lv|
-                    lv.storage :file, :device => "vd#{driverletters[d]}", :path => "disk-#{i}-#{d}.disk", :size => '500G'
+                    lv.storage :file, :device => "vd#{driverletters[d]}", :path => "test_smoke_disk-#{i}-#{d}.disk", :size => '500G'
                     lv.memory = 1024
                     lv.cpus =2
                 end

@@ -19,7 +19,7 @@
     - pyOpenSSL
 
 - name: get openshift-ansible
-  git: repo=https://github.com/openshift/openshift-ansible dest=/home/vagrant/openshift-ansible version=openshift-ansible-3.2.9-1
+  git: repo=https://github.com/openshift/openshift-ansible dest=/home/vagrant/openshift-ansible version=enterprise-3.2
 
 - name: copy hosts.conf
   copy: src=hosts.conf dest=/home/vagrant force=yes mode=0644
@@ -49,10 +49,10 @@
   command: chmod a+x /etc/rc.d/rc.local
 
 - name: get oc client
-  unarchive: src=https://github.com/openshift/origin/releases/download/v1.2.0/openshift-origin-client-tools-v1.2.0-2e62fab-linux-64bit.tar.gz dest=/home/vagrant copy=no
+  unarchive: src=https://github.com/openshift/origin/releases/download/v1.2.1/openshift-origin-client-tools-v1.2.1-5e723f6-linux-64bit.tar.gz dest=/home/vagrant copy=no
 
 - name: copy oc to /usr/bin
-  command: cp /home/vagrant/openshift-origin-client-tools-v1.2.0-2e62fab-linux-64bit/oc /usr/bin
+  command: cp /home/vagrant/openshift-origin-client-tools-v1.2.1-5e723f6-linux-64bit/oc /usr/bin
 
 - name: install openshift this can take about 20 mins
   command: ansible-playbook -i hosts.conf openshift-ansible/playbooks/byo/config.yml

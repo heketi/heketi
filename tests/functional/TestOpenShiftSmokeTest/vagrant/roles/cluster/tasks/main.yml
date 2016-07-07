@@ -32,4 +32,3 @@
 - name: retag :ci to :latest
   command: docker tag heketi/gluster:ci heketi/gluster:latest
   ignore_errors: yes
-

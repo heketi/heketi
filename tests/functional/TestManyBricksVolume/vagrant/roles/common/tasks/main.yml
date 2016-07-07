@@ -1,4 +1,18 @@
-- name: install wget
+- name: clean disks
+  command: dd if=/dev/zero of={{ item }} count=100 bs=1024k
+  with_items:
+    - /dev/vdb
+    - /dev/vdc
+    - /dev/vdd
+    - /dev/vde
+    - /dev/vdf
+    - /dev/vdg
+    - /dev/vdh
+    - /dev/vdi
+    - /dev/vdj
+    - /dev/vdk
+
+- name: install epel and centos-gluster
   yum: name={{ item }} state=present
   with_items:
     - epel-release
