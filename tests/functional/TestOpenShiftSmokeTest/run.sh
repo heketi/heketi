@@ -14,6 +14,7 @@ source ${FUNCTIONAL_DIR}/lib.sh
 
 build_docker_file(){
     vagrant_heketi_docker=$CURRENT_DIR/vagrant/roles/cluster/files/$HEKETI_DOCKER_IMG
+    mkdir -p vagrant/roles/cluster/files
     if [ ! -f "$vagrant_heketi_docker" ] ; then
         cd $DOCKERDIR
         cp $TOP/heketi $DOCKERDIR
