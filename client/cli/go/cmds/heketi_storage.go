@@ -145,6 +145,9 @@ func createHeketiSecretFromDb(c *client.Client) (*kubeapi.Secret, error) {
 	secret.Kind = "Secret"
 	secret.APIVersion = "v1"
 	secret.ObjectMeta.Name = HeketiStorageSecretName
+	secret.ObjectMeta.Labels = map[string]string{
+		"deploy-heketi": "support",
+	}
 	secret.Data = make(map[string][]byte)
 	secret.Data["heketi.db"] = dbfile.Bytes()
 
