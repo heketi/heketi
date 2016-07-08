@@ -85,7 +85,7 @@ $(CLIENT_PACKAGE): all
 	@mkdir -p tmp/$(CLIENT_PKG_NAME)/bin
 	@mkdir -p tmp/$(CLIENT_PKG_NAME)/share/heketi/templates
 	@cp client/cli/go/heketi-cli tmp/$(CLIENT_PKG_NAME)/bin
-	@cp extras/openshift/template/* tmp/$(CLIENT_PKG_NAME)/share/heketi/templates
+	@cp extras/openshift/templates/* tmp/$(CLIENT_PKG_NAME)/share/heketi/templates
 	@mkdir -p $(DIR)/dist/
 	tar -czf $@ -C tmp $(CLIENT_PKG_NAME);
 	@rm -rf tmp
