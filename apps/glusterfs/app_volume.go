@@ -23,6 +23,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
+	"github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 )
@@ -225,6 +226,12 @@ func (a *App) VolumeDelete(w http.ResponseWriter, r *http.Request) {
 			return err
 		} else if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+
+		if volume.Info.Name == db.HeketiStorageVolumeName {
+			err := fmt.Errorf("Cannot delete volume containing the Heketi database")
+			http.Error(w, err.Error(), http.StatusConflict)
 			return err
 		}
 

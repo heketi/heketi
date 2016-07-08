@@ -23,6 +23,7 @@ import (
 	"os"
 
 	client "github.com/heketi/heketi/client/api/go-client"
+	"github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/spf13/cobra"
 
@@ -42,7 +43,6 @@ const (
 	HeketiStorageSecretName   = "heketi-storage-secret"
 	HeketiStorageVolTagName   = "heketi-storage"
 
-	HeketiStorageVolumeName    = "heketidbstorage"
 	HeketiStorageVolumeSize    = 32
 	HeketiStorageVolumeSizeStr = "32Gi"
 )
@@ -109,8 +109,8 @@ func createHeketiStorageVolume(c *client.Client) (*api.VolumeInfoResponse, error
 			}
 
 			// Check volume name
-			if volume.Name == HeketiStorageVolumeName {
-				return nil, fmt.Errorf("Volume %v alreay exists", HeketiStorageVolumeName)
+			if volume.Name == db.HeketiStorageVolumeName {
+				return nil, fmt.Errorf("Volume %v alreay exists", db.HeketiStorageVolumeName)
 			}
 		}
 	}
@@ -120,7 +120,7 @@ func createHeketiStorageVolume(c *client.Client) (*api.VolumeInfoResponse, error
 	req.Size = HeketiStorageVolumeSize
 	req.Durability.Type = api.DurabilityReplicate
 	req.Durability.Replicate.Replica = 3
-	req.Name = HeketiStorageVolumeName
+	req.Name = db.HeketiStorageVolumeName
 
 	// Create volume
 	volume, err := c.VolumeCreate(req)
