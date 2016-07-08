@@ -19,6 +19,7 @@ package utils
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"github.com/heketi/tests"
 	"strings"
 	"testing"
@@ -143,4 +144,35 @@ func TestLogCritical(t *testing.T) {
 	l.LogError("TEXT")
 	tests.Assert(t, testbuffer.Len() == 0)
 
+}
+
+func TestLogErr(t *testing.T) {
+	var testbuffer bytes.Buffer
+
+	defer tests.Patch(&stderr, &testbuffer).Restore()
+
+	l := NewLogger("[testing]", LEVEL_DEBUG)
+
+	ErrSample := errors.New("TEST ERROR")
+	err := l.Err(ErrSample)
+	tests.Assert(t, strings.Contains(testbuffer.String(), "[testing] ERROR "), testbuffer.String())
+	tests.Assert(t, strings.Contains(testbuffer.String(), "TEST ERROR"), testbuffer.String())
+	tests.Assert(t, strings.Contains(testbuffer.String(), "log_test.go"), testbuffer.String())
+	tests.Assert(t, err == ErrSample)
+	testbuffer.Reset()
+
+	err = l.Err(fmt.Errorf("GOT %v", err))
+	tests.Assert(t, strings.Contains(testbuffer.String(), "[testing] ERROR "), testbuffer.String())
+	tests.Assert(t, strings.Contains(testbuffer.String(), "TEST ERROR"), testbuffer.String())
+	tests.Assert(t, strings.Contains(testbuffer.String(), "log_test.go"), testbuffer.String())
+	tests.Assert(t, strings.Contains(testbuffer.String(), "GOT"), testbuffer.String())
+	tests.Assert(t, err != ErrSample)
+	tests.Assert(t, err != ErrSample)
+	tests.Assert(t, err != nil)
+	tests.Assert(t, strings.Contains(err.Error(), "GOT TEST ERROR"), err)
+	testbuffer.Reset()
+
+	l.SetLevel(LEVEL_NOLOG)
+	l.LogError("TEXT")
+	tests.Assert(t, testbuffer.Len() == 0)
 }

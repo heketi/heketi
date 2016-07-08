@@ -155,7 +155,7 @@ func (s *SshExecutor) VolumeDestroy(host string, volume string) error {
 	// Execute command
 	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
 	if err != nil {
-		logger.LogError("Unable to delete volume %v: %v", volume, err)
+		return logger.Err(fmt.Errorf("Unable to delete volume %v: %v", volume, err))
 	}
 
 	return nil
