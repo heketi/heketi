@@ -40,8 +40,8 @@ func (s *SshExecutor) DeviceSetup(host, device, vgid string) (d *executors.Devic
 
 	// Setup commands
 	commands := []string{
-		fmt.Sprintf("sudo pvcreate --metadatasize=128M --dataalignment=256K %v", device),
-		fmt.Sprintf("sudo vgcreate %v %v", s.vgName(vgid), device),
+		fmt.Sprintf("pvcreate --metadatasize=128M --dataalignment=256K %v", device),
+		fmt.Sprintf("vgcreate %v %v", s.vgName(vgid), device),
 	}
 
 	// Execute command
@@ -71,8 +71,8 @@ func (s *SshExecutor) DeviceTeardown(host, device, vgid string) error {
 
 	// Setup commands
 	commands := []string{
-		fmt.Sprintf("sudo vgremove %v", s.vgName(vgid)),
-		fmt.Sprintf("sudo pvremove %v", device),
+		fmt.Sprintf("vgremove %v", s.vgName(vgid)),
+		fmt.Sprintf("pvremove %v", device),
 	}
 
 	// Execute command
@@ -91,7 +91,7 @@ func (s *SshExecutor) getVgSizeFromNode(
 
 	// Setup command
 	commands := []string{
-		fmt.Sprintf("sudo vgdisplay -c %v", s.vgName(vgid)),
+		fmt.Sprintf("vgdisplay -c %v", s.vgName(vgid)),
 	}
 
 	// Execute command

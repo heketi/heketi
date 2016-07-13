@@ -17,37 +17,19 @@
 package kubeexec
 
 import (
-	"testing"
-
 	"github.com/heketi/heketi/executors/sshexec"
-	"github.com/heketi/tests"
 )
 
-func TestNewKubeExecutor(t *testing.T) {
-	config := &KubeConfig{
-		Host: "myhost",
-		CLICommandConfig: sshexec.CLICommandConfig{
-			Fstab: "myfstab",
-		},
-		Namespace: "mynamespace",
-	}
+type KubeConfig struct {
+	sshexec.CLICommandConfig
+	Host      string `json:"host"`
+	CertFile  string `json:"cert"`
+	Insecure  bool   `json:"insecure"`
+	User      string `json:"user"`
+	Password  string `json:"password"`
+	Namespace string `json:"namespace"`
 
-	k, err := NewKubeExecutor(config)
-	tests.Assert(t, err == nil)
-	tests.Assert(t, k.Fstab == "myfstab")
-	tests.Assert(t, k.Throttlemap != nil)
-	tests.Assert(t, k.config != nil)
-}
-
-func TestNewKubeExecutorNoNamespace(t *testing.T) {
-	config := &KubeConfig{
-		Host: "myhost",
-		CLICommandConfig: sshexec.CLICommandConfig{
-			Fstab: "myfstab",
-		},
-	}
-
-	k, err := NewKubeExecutor(config)
-	tests.Assert(t, err != nil)
-	tests.Assert(t, k == nil)
+	// Use POD name instead of using label
+	// to access POD
+	UsePodNames bool `json:"use_pod_names"`
 }

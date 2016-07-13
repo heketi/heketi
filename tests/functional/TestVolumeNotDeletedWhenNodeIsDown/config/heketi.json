@@ -28,6 +28,7 @@
 
         "sshexec" : {
             "keyfile" : "config/insecure_private_key",
+            "sudo" : "sudo",
             "user" : "vagrant"
         }
 	}
