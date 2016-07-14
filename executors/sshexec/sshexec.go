@@ -49,16 +49,6 @@ type SshExecutor struct {
 	port            string
 }
 
-type SshConfig struct {
-	PrivateKeyFile string `json:"keyfile"`
-	User           string `json:"user"`
-	Port           string `json:"port"`
-	Fstab          string `json:"fstab"`
-
-	// Experimental Settings
-	RebalanceOnExpansion bool `json:"rebalance_on_expansion"`
-}
-
 var (
 	logger           = utils.NewLogger("[sshexec]", utils.LEVEL_DEBUG)
 	ErrSshPrivateKey = errors.New("Unable to read private key file")
@@ -179,7 +169,7 @@ func (s *SshExecutor) RemoteCommandExecute(host string,
 	defer s.FreeConnection(host)
 
 	// Execute
-	return s.exec.ConnectAndExec(host+":"+s.port, commands, timeoutMinutes, false)
+	return s.exec.ConnectAndExec(host+":"+s.port, commands, timeoutMinutes, s.config.Sudo)
 }
 
 func (s *SshExecutor) vgName(vgId string) string {
