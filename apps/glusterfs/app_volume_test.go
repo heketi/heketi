@@ -30,6 +30,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
+	"github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
@@ -117,6 +118,68 @@ func TestVolumeCreateSmallSize(t *testing.T) {
 	tests.Assert(t, err == nil)
 	r.Body.Close()
 	tests.Assert(t, strings.Contains(string(body), "Invalid volume size"))
+}
+
+func TestVolumeHeketiDbStorage(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Setup database
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		10,   // nodes_per_cluster
+		10,   // devices_per_node,
+		5*TB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	// VolumeCreate using default durability
+	request := []byte(`{
+        "size" : 100,
+        "name" : "` + db.HeketiStorageVolumeName + `"
+    }`)
+
+	// Send request
+	r, err := http.Post(ts.URL+"/volumes", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	location, err := r.Location()
+	tests.Assert(t, err == nil)
+
+	// Query queue until finished
+	var info api.VolumeInfoResponse
+	for {
+		r, err = http.Get(location.String())
+		tests.Assert(t, err == nil)
+		tests.Assert(t, r.StatusCode == http.StatusOK)
+		if r.ContentLength <= 0 {
+			time.Sleep(time.Millisecond * 10)
+			continue
+		} else {
+			// Should have node information here
+			tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
+			err = utils.GetJsonFromResponse(r, &info)
+			tests.Assert(t, err == nil)
+			break
+		}
+	}
+
+	// Delete the volume
+	req, err := http.NewRequest("DELETE", ts.URL+"/volumes/"+info.Id, nil)
+	tests.Assert(t, err == nil)
+	r, err = http.DefaultClient.Do(req)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusConflict)
 }
 
 func TestVolumeCreateDurabilityTypeInvalid(t *testing.T) {

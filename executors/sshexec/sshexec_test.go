@@ -64,7 +64,9 @@ func TestNewSshExec(t *testing.T) {
 		PrivateKeyFile: "xkeyfile",
 		User:           "xuser",
 		Port:           "100",
-		Fstab:          "xfstab",
+		CLICommandConfig: CLICommandConfig{
+			Fstab: "xfstab",
+		},
 	}
 
 	s, err := NewSshExecutor(config)

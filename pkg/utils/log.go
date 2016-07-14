@@ -121,10 +121,12 @@ func (l *Logger) LogError(format string, v ...interface{}) {
 }
 
 // Log error variable
-func (l *Logger) Err(err error) {
+func (l *Logger) Err(err error) error {
 	if l.level >= LEVEL_ERROR {
 		logWithLongFile(l.errorlog, "%v", err)
 	}
+
+	return err
 }
 
 // Log warning information

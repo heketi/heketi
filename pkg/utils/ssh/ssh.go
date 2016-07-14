@@ -134,10 +134,15 @@ func (s *SshExec) ConnectAndExec(host string, commands []string, timeoutMinutes 
 		session.Stdout = &b
 		session.Stderr = &berr
 
+		// Execute command in a shell
+		command = "/bin/bash -c '" + command + "'"
+
+		// Check if we need to use sudo for the entire command
 		if useSudo {
 			command = "sudo " + command
 		}
 
+		// Execute command
 		err = session.Start(command)
 		if err != nil {
 			return nil, err
