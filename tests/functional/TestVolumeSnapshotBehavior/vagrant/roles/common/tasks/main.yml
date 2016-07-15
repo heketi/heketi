@@ -1,3 +1,11 @@
+- name: clean disks
+  command: dd if=/dev/zero of={{ item }} count=100 bs=1024k
+  with_items:
+    - /dev/vdb
+    - /dev/vdc
+    - /dev/vdd
+    - /dev/vde
+
 - name: install packages
   yum: name={{ item }} state=present
   with_items:

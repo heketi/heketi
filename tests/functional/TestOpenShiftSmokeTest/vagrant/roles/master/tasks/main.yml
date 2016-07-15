@@ -17,7 +17,7 @@
   service: name=origin-master state=restarted
 
 - name: wait until master is ready
-  wait_for: host=192.168.10.90 port=8443 state=started timeout=600
+  wait_for: host=192.168.10.90 port=8443 state=started timeout=1800
 
 - name: wait for router in 192.168.10.100
-  wait_for: host=192.168.10.100 port=80 state=started
+  wait_for: host=192.168.10.100 port=80 state=started timeout=1800
