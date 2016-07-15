@@ -7,7 +7,7 @@ teardown_all() {
     for testDir in * ; do
         if [ -x $testDir/teardown.sh ] ; then
             println "TEARDOWN $testDir"
-            cd $testDir 
+            cd $testDir
             teardown.sh
             cd ..
         fi
@@ -22,18 +22,6 @@ export PATH=$PATH:.
 # Check go can build
 if [ -z $GOPATH ] ; then 
     fail "GOPATH must be specified"
-fi
-
-# Show running machines
-if [ 1 -eq 0 ] ; then
-    set -x
-    _sudo virsh list --all
-    free -h
-    rpm -qa | grep vagrant
-    rpm -qa | grep libvirt
-    cat /proc/cpuinfo
-    df -h
-    exit 0
 fi
 
 # Clean up
