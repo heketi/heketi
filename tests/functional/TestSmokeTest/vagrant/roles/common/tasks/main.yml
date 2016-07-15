@@ -5,6 +5,10 @@
     - /dev/vdc
     - /dev/vdd
     - /dev/vde
+    - /dev/vdf
+    - /dev/vdg
+    - /dev/vdh
+    - /dev/vdi
 
 - name: install packages
   yum: name={{ item }} state=present
