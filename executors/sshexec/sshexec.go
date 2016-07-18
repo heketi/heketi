@@ -183,3 +183,7 @@ func (s *SshExecutor) brickName(brickId string) string {
 func (s *SshExecutor) tpName(brickId string) string {
 	return "tp_" + brickId
 }
+
+func (s *SshExecutor) RebalanceOnExpansion() bool {
+	return s.config.RebalanceOnExpansion
+}

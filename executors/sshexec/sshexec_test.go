@@ -79,6 +79,55 @@ func TestNewSshExec(t *testing.T) {
 	tests.Assert(t, s.exec != nil)
 }
 
+func TestSshExecRebalanceOnExpansion(t *testing.T) {
+
+	f := NewFakeSsh()
+	defer tests.Patch(&sshNew,
+		func(logger *utils.Logger, user string, file string) (Ssher, error) {
+			return f, nil
+		}).Restore()
+
+	config := &SshConfig{
+		PrivateKeyFile: "xkeyfile",
+		User:           "xuser",
+		Port:           "100",
+		CLICommandConfig: CLICommandConfig{
+			Fstab: "xfstab",
+		},
+	}
+
+	s, err := NewSshExecutor(config)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, s != nil)
+	tests.Assert(t, s.private_keyfile == config.PrivateKeyFile)
+	tests.Assert(t, s.user == config.User)
+	tests.Assert(t, s.port == config.Port)
+	tests.Assert(t, s.Fstab == config.Fstab)
+	tests.Assert(t, s.exec != nil)
+	tests.Assert(t, s.RebalanceOnExpansion() == false)
+
+	config = &SshConfig{
+		PrivateKeyFile: "xkeyfile",
+		User:           "xuser",
+		Port:           "100",
+		CLICommandConfig: CLICommandConfig{
+			Fstab:                "xfstab",
+			RebalanceOnExpansion: true,
+		},
+	}
+
+	s, err = NewSshExecutor(config)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, s != nil)
+	tests.Assert(t, s.private_keyfile == config.PrivateKeyFile)
+	tests.Assert(t, s.user == config.User)
+	tests.Assert(t, s.port == config.Port)
+	tests.Assert(t, s.Fstab == config.Fstab)
+	tests.Assert(t, s.exec != nil)
+	tests.Assert(t, s.RebalanceOnExpansion() == true)
+
+}
+
 func TestNewSshExecDefaults(t *testing.T) {
 	f := NewFakeSsh()
 	defer tests.Patch(&sshNew,
