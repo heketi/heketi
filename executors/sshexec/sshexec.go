@@ -28,6 +28,7 @@ import (
 
 type RemoteCommandTransport interface {
 	RemoteCommandExecute(host string, commands []string, timeoutMinutes int) ([]string, error)
+	RebalanceOnExpansion() bool
 }
 
 type Ssher interface {

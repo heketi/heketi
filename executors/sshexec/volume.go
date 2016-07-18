@@ -116,7 +116,7 @@ func (s *SshExecutor) VolumeExpand(host string,
 		maxPerSet)
 
 	// Rebalance if configured
-	if s.RebalanceOnExpansion() {
+	if s.RemoteExecutor.RebalanceOnExpansion() {
 		commands = append(commands,
 			fmt.Sprintf("gluster --mode=script volume rebalance %v start", volume.Name))
 	}

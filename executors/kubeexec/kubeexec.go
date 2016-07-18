@@ -145,7 +145,7 @@ func NewKubeExecutor(config *KubeConfig) (*KubeExecutor, error) {
 	}
 
 	// Show experimental settings
-	if s.config.RebalanceOnExpansion {
+	if k.config.RebalanceOnExpansion {
 		logger.Warning("Rebalance on volume expansion has been enabled.  This is an EXPERIMENTAL feature")
 	}
 
