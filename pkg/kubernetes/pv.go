@@ -31,7 +31,7 @@ func VolumeToPv(volume *api.VolumeInfoResponse,
 	pv := &kubeapi.PersistentVolume{}
 	pv.Kind = "PersistentVolume"
 	pv.APIVersion = "v1"
-	pv.Spec.PersistentVolumeReclaimPolicy = kubeapi.PersistentVolumeReclaimRecycle
+	pv.Spec.PersistentVolumeReclaimPolicy = kubeapi.PersistentVolumeReclaimRetain
 	pv.Spec.AccessModes = []kubeapi.PersistentVolumeAccessMode{
 		kubeapi.ReadWriteMany,
 	}
