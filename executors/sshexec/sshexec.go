@@ -29,6 +29,7 @@ import (
 type RemoteCommandTransport interface {
 	RemoteCommandExecute(host string, commands []string, timeoutMinutes int) ([]string, error)
 	RebalanceOnExpansion() bool
+	SnapShotLimit() int
 }
 
 type Ssher interface {
@@ -187,4 +188,8 @@ func (s *SshExecutor) tpName(brickId string) string {
 
 func (s *SshExecutor) RebalanceOnExpansion() bool {
 	return s.config.RebalanceOnExpansion
+}
+
+func (s *SshExecutor) SnapShotLimit() int {
+	return s.config.SnapShotLimit
 }

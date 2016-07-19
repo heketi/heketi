@@ -21,6 +21,7 @@ import (
 	"github.com/lpabon/godbc"
 )
 
+// :TODO: Rename this function to NodeInit or something
 func (s *SshExecutor) PeerProbe(host, newnode string) error {
 
 	godbc.Require(host != "")
@@ -34,6 +35,19 @@ func (s *SshExecutor) PeerProbe(host, newnode string) error {
 	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
 	if err != nil {
 		return err
+	}
+
+	// Determine if there is a snapshot limit configuration setting
+	if s.RemoteExecutor.SnapShotLimit() > 0 {
+		logger.Info("Setting snapshot limit")
+		commands = []string{
+			fmt.Sprintf("gluster --mode=script snapshot config snap-max-hard-limit %v",
+				s.RemoteExecutor.SnapShotLimit()),
+		}
+		_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

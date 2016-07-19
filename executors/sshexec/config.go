@@ -17,8 +17,9 @@
 package sshexec
 
 type CLICommandConfig struct {
-	Fstab string `json:"fstab"`
-	Sudo  bool   `json:"sudo"`
+	Fstab         string `json:"fstab"`
+	Sudo          bool   `json:"sudo"`
+	SnapShotLimit int    `json:"snapshot_limit"`
 
 	// Experimental Settings
 	RebalanceOnExpansion bool `json:"rebalance_on_expansion"`
