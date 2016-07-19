@@ -144,6 +144,11 @@ func NewKubeExecutor(config *KubeConfig) (*KubeExecutor, error) {
 		return nil, fmt.Errorf("Namespace must be provided in configuration")
 	}
 
+	// Show experimental settings
+	if k.config.RebalanceOnExpansion {
+		logger.Warning("Rebalance on volume expansion has been enabled.  This is an EXPERIMENTAL feature")
+	}
+
 	godbc.Ensure(k != nil)
 	godbc.Ensure(k.Fstab != "")
 
@@ -286,4 +291,8 @@ func (k *KubeExecutor) ConnectAndExec(host, namespace, resource string,
 	}
 
 	return buffers, nil
+}
+
+func (k *KubeExecutor) RebalanceOnExpansion() bool {
+	return k.config.RebalanceOnExpansion
 }

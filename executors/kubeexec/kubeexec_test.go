@@ -51,3 +51,40 @@ func TestNewKubeExecutorNoNamespace(t *testing.T) {
 	tests.Assert(t, err != nil)
 	tests.Assert(t, k == nil)
 }
+
+func TestNewKubeExecutorRebalanceOnExpansion(t *testing.T) {
+
+	// This tests access to configurations
+	// from the sshconfig exector
+
+	config := &KubeConfig{
+		Host: "myhost",
+		CLICommandConfig: sshexec.CLICommandConfig{
+			Fstab: "myfstab",
+		},
+		Namespace: "mynamespace",
+	}
+
+	k, err := NewKubeExecutor(config)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, k.Fstab == "myfstab")
+	tests.Assert(t, k.Throttlemap != nil)
+	tests.Assert(t, k.config != nil)
+	tests.Assert(t, k.RebalanceOnExpansion() == false)
+
+	config = &KubeConfig{
+		Host: "myhost",
+		CLICommandConfig: sshexec.CLICommandConfig{
+			Fstab:                "myfstab",
+			RebalanceOnExpansion: true,
+		},
+		Namespace: "mynamespace",
+	}
+
+	k, err = NewKubeExecutor(config)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, k.Fstab == "myfstab")
+	tests.Assert(t, k.Throttlemap != nil)
+	tests.Assert(t, k.config != nil)
+	tests.Assert(t, k.RebalanceOnExpansion() == true)
+}
