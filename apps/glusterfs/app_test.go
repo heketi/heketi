@@ -18,10 +18,12 @@ package glusterfs
 
 import (
 	"bytes"
-	"github.com/heketi/heketi/pkg/utils"
-	"github.com/heketi/tests"
 	"os"
 	"testing"
+
+	"github.com/boltdb/bolt"
+	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/tests"
 )
 
 func TestAppBadConfigData(t *testing.T) {
@@ -159,4 +161,35 @@ func TestAppLogLevel(t *testing.T) {
 	app := NewApp(bytes.NewReader(data))
 	tests.Assert(t, app != nil)
 	tests.Assert(t, logger.Level() == utils.LEVEL_NOLOG)
+}
+
+func TestAppReadOnlyDb(t *testing.T) {
+
+	dbfile := tests.Tempfile()
+	defer os.Remove(dbfile)
+
+	// First, create a db
+	data := []byte(`{
+		"glusterfs": {
+			"executor" : "mock",
+			"db" : "` + dbfile + `"
+		}
+	}`)
+	app := NewApp(bytes.NewReader(data))
+	tests.Assert(t, app != nil)
+	tests.Assert(t, app.dbReadOnly == false)
+	app.Close()
+
+	// Now open it again here.  This will force NewApp()
+	// to be unable to open RW.
+	db, err := bolt.Open(dbfile, 0666, &bolt.Options{
+		ReadOnly: true,
+	})
+	tests.Assert(t, err == nil, err)
+	tests.Assert(t, db != nil)
+
+	// Now open it again and notice how it opened
+	app = NewApp(bytes.NewReader(data))
+	tests.Assert(t, app != nil)
+	tests.Assert(t, app.dbReadOnly == true)
 }
