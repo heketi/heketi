@@ -87,13 +87,14 @@
             }
           ],
           "strategy": {
-            "type": "Replace"
+            "type": "Recreate"
           },
           "spec": {
             "containers": [
               {
                 "name": "heketi",
                 "image": "heketi/heketi:dev",
+                "imagePullPolicy": "Always",
                 "env": [
                   {
                     "name": "HEKETI_USER_KEY",

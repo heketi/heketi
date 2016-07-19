@@ -48,7 +48,7 @@
                         }
                     ],
                     "strategy": {
-                        "type": "Replace"
+                        "type": "Recreate"
                     },
                     "spec": {
                         "nodeSelector": {
@@ -58,6 +58,7 @@
                         "containers": [
                             {
                                 "image": "heketi/gluster:latest",
+                                "imagePullPolicy": "Always",
                                 "name": "glusterfs",
                                 "volumeMounts": [
                                     {
