@@ -51,6 +51,7 @@ var (
 type App struct {
 	asyncManager *rest.AsyncHttpManager
 	db           *bolt.DB
+	dbReadOnly   bool
 	executor     executors.Executor
 	allocator    Allocator
 	conf         *GlusterFSConfig
@@ -102,52 +103,61 @@ func NewApp(configIo io.Reader) *App {
 	// Setup BoltDB database
 	app.db, err = bolt.Open(dbfilename, 0600, &bolt.Options{Timeout: 3 * time.Second})
 	if err != nil {
-		logger.LogError("Unable to open database")
-		return nil
-	}
+		logger.Warning("Unable to open database.  Retrying using read only mode")
 
-	err = app.db.Update(func(tx *bolt.Tx) error {
-		// Create Cluster Bucket
-		_, err := tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_CLUSTER))
+		// Try opening as read-only
+		app.db, err = bolt.Open(dbfilename, 0666, &bolt.Options{
+			ReadOnly: true,
+		})
 		if err != nil {
-			logger.LogError("Unable to create cluster bucket in DB")
-			return err
+			logger.LogError("Unable to open database: %v", err)
+			return nil
 		}
+		app.dbReadOnly = true
+	} else {
+		err = app.db.Update(func(tx *bolt.Tx) error {
+			// Create Cluster Bucket
+			_, err := tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_CLUSTER))
+			if err != nil {
+				logger.LogError("Unable to create cluster bucket in DB")
+				return err
+			}
 
-		// Create Node Bucket
-		_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_NODE))
+			// Create Node Bucket
+			_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_NODE))
+			if err != nil {
+				logger.LogError("Unable to create node bucket in DB")
+				return err
+			}
+
+			// Create Volume Bucket
+			_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_VOLUME))
+			if err != nil {
+				logger.LogError("Unable to create volume bucket in DB")
+				return err
+			}
+
+			// Create Device Bucket
+			_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_DEVICE))
+			if err != nil {
+				logger.LogError("Unable to create device bucket in DB")
+				return err
+			}
+
+			// Create Brick Bucket
+			_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_BRICK))
+			if err != nil {
+				logger.LogError("Unable to create brick bucket in DB")
+				return err
+			}
+
+			return nil
+
+		})
 		if err != nil {
-			logger.LogError("Unable to create node bucket in DB")
-			return err
+			logger.Err(err)
+			return nil
 		}
-
-		// Create Volume Bucket
-		_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_VOLUME))
-		if err != nil {
-			logger.LogError("Unable to create volume bucket in DB")
-			return err
-		}
-
-		// Create Device Bucket
-		_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_DEVICE))
-		if err != nil {
-			logger.LogError("Unable to create device bucket in DB")
-			return err
-		}
-
-		// Create Brick Bucket
-		_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_BRICK))
-		if err != nil {
-			logger.LogError("Unable to create brick bucket in DB")
-			return err
-		}
-
-		return nil
-
-	})
-	if err != nil {
-		logger.Err(err)
-		return nil
 	}
 
 	// Set advanced settings
