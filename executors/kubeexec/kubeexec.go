@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/openshift/origin/pkg/cmd/util/tokencmd"
@@ -109,6 +110,15 @@ func setWithEnvVariables(config *KubeConfig) {
 	env = os.Getenv("HEKETI_FSTAB")
 	if "" != env {
 		config.Fstab = env
+	}
+
+	// Snapshot Limit
+	env = os.Getenv("HEKETI_SNAPSHOT_LIMIT")
+	if "" != env {
+		i, err := strconv.Atoi(env)
+		if err == nil {
+			config.SnapShotLimit = i
+		}
 	}
 
 	// Use POD names
