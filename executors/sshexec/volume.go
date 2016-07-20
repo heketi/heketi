@@ -72,7 +72,7 @@ func (s *SshExecutor) VolumeCreate(host string,
 	commands = append(commands, s.createAddBrickCommands(volume, inSet, inSet, maxPerSet)...)
 
 	// Add command to start the volume
-	commands = append(commands, fmt.Sprintf("gluster volume start %v", volume.Name))
+	commands = append(commands, fmt.Sprintf("gluster --mode=script volume start %v", volume.Name))
 
 	// Execute command
 	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)

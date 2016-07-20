@@ -296,3 +296,7 @@ func (k *KubeExecutor) ConnectAndExec(host, namespace, resource string,
 func (k *KubeExecutor) RebalanceOnExpansion() bool {
 	return k.config.RebalanceOnExpansion
 }
+
+func (k *KubeExecutor) SnapShotLimit() int {
+	return k.config.SnapShotLimit
+}
