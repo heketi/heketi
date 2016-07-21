@@ -37,8 +37,8 @@ func (s *SshExecutor) brickMountPoint(brick *executors.BrickRequest) string {
 
 // Device node for the lvm volume
 func (s *SshExecutor) devnode(brick *executors.BrickRequest) string {
-	return "/dev/" + s.vgName(brick.VgId) +
-		"/" + s.brickName(brick.Name)
+	return "/dev/mapper/" + s.vgName(brick.VgId) +
+		"-" + s.brickName(brick.Name)
 }
 
 func (s *SshExecutor) BrickCreate(host string,
