@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/openshift/origin/pkg/cmd/util/tokencmd"
@@ -111,6 +112,15 @@ func setWithEnvVariables(config *KubeConfig) {
 		config.Fstab = env
 	}
 
+	// Snapshot Limit
+	env = os.Getenv("HEKETI_SNAPSHOT_LIMIT")
+	if "" != env {
+		i, err := strconv.Atoi(env)
+		if err == nil {
+			config.SnapShotLimit = i
+		}
+	}
+
 	// Use POD names
 	env = os.Getenv("HEKETI_KUBE_USE_POD_NAMES")
 	if "" != env {
@@ -142,6 +152,11 @@ func NewKubeExecutor(config *KubeConfig) (*KubeExecutor, error) {
 	// Check required values
 	if k.config.Namespace == "" {
 		return nil, fmt.Errorf("Namespace must be provided in configuration")
+	}
+
+	// Show experimental settings
+	if k.config.RebalanceOnExpansion {
+		logger.Warning("Rebalance on volume expansion has been enabled.  This is an EXPERIMENTAL feature")
 	}
 
 	godbc.Ensure(k != nil)
@@ -286,4 +301,12 @@ func (k *KubeExecutor) ConnectAndExec(host, namespace, resource string,
 	}
 
 	return buffers, nil
+}
+
+func (k *KubeExecutor) RebalanceOnExpansion() bool {
+	return k.config.RebalanceOnExpansion
+}
+
+func (k *KubeExecutor) SnapShotLimit() int {
+	return k.config.SnapShotLimit
 }

@@ -79,11 +79,11 @@ func TestSshExecBrickCreate(t *testing.T) {
 			case 2:
 				tests.Assert(t,
 					cmd == "mkfs.xfs -i size=512 "+
-						"-n size=8192 /dev/vg_xvgid/brick_id", cmd)
+						"-n size=8192 /dev/mapper/vg_xvgid-brick_id", cmd)
 
 			case 3:
 				tests.Assert(t,
-					cmd == "echo \"/dev/vg_xvgid/brick_id "+
+					cmd == "echo \"/dev/mapper/vg_xvgid-brick_id "+
 						"/var/lib/heketi/mounts/vg_xvgid/brick_id "+
 						"xfs rw,inode64,noatime,nouuid 1 2\" | "+
 						"tee -a /my/fstab > /dev/null", cmd)
@@ -91,7 +91,7 @@ func TestSshExecBrickCreate(t *testing.T) {
 			case 4:
 				tests.Assert(t,
 					cmd == "mount -o rw,inode64,noatime,nouuid "+
-						"/dev/vg_xvgid/brick_id "+
+						"/dev/mapper/vg_xvgid-brick_id "+
 						"/var/lib/heketi/mounts/vg_xvgid/brick_id", cmd)
 
 			case 5:
@@ -166,11 +166,11 @@ func TestSshExecBrickCreateSudo(t *testing.T) {
 			case 2:
 				tests.Assert(t,
 					cmd == "mkfs.xfs -i size=512 "+
-						"-n size=8192 /dev/vg_xvgid/brick_id", cmd)
+						"-n size=8192 /dev/mapper/vg_xvgid-brick_id", cmd)
 
 			case 3:
 				tests.Assert(t,
-					cmd == "echo \"/dev/vg_xvgid/brick_id "+
+					cmd == "echo \"/dev/mapper/vg_xvgid-brick_id "+
 						"/var/lib/heketi/mounts/vg_xvgid/brick_id "+
 						"xfs rw,inode64,noatime,nouuid 1 2\" | "+
 						"tee -a /my/fstab > /dev/null", cmd)
@@ -178,7 +178,7 @@ func TestSshExecBrickCreateSudo(t *testing.T) {
 			case 4:
 				tests.Assert(t,
 					cmd == "mount -o rw,inode64,noatime,nouuid "+
-						"/dev/vg_xvgid/brick_id "+
+						"/dev/mapper/vg_xvgid-brick_id "+
 						"/var/lib/heketi/mounts/vg_xvgid/brick_id", cmd)
 
 			case 5:

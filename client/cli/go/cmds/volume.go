@@ -75,7 +75,7 @@ func init() {
 		"\n\tOptional: Amount of storage to allocate for snapshot support."+
 			"\n\tMust be greater 1.0.  For example if a 10TiB volume requires 5TiB of"+
 			"\n\tsnapshot storage, then snapshot-factor would be set to 1.5.  If the"+
-			"\n\tvalue is set to 1, then snapshots will not be enabled for this volume")
+			"\n\tvalue is set to 1, then snapshots will consume the storage allocated")
 	volumeCreateCommand.Flags().StringVar(&clusters, "clusters", "",
 		"\n\tOptional: Comma separated list of cluster ids where this volume"+
 			"\n\tmust be allocated. If ommitted, Heketi will allocate the volume"+

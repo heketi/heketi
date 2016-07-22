@@ -64,6 +64,39 @@ var topologyCommand = &cobra.Command{
 	Long:  "Heketi Topology management",
 }
 
+func getNodeIdFromHeketiTopology(t *api.TopologyInfoResponse,
+	managmentHostName string) *api.NodeInfoResponse {
+
+	for _, c := range t.ClusterList {
+		for _, n := range c.Nodes {
+			if n.Hostnames.Manage[0] == managmentHostName {
+				return &n
+			}
+		}
+	}
+
+	return nil
+}
+
+func getDeviceIdFromHeketiTopology(t *api.TopologyInfoResponse,
+	managmentHostName string,
+	deviceName string) *api.DeviceInfoResponse {
+
+	for _, c := range t.ClusterList {
+		for _, n := range c.Nodes {
+			if n.Hostnames.Manage[0] == managmentHostName {
+				for _, d := range n.DevicesInfo {
+					if d.Name == deviceName {
+						return &d
+					}
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 var topologyLoadCommand = &cobra.Command{
 	Use:     "load",
 	Short:   "Add devices to Heketi from a configuration file",
@@ -87,36 +120,90 @@ var topologyLoadCommand = &cobra.Command{
 		if err = configParser.Decode(&topology); err != nil {
 			return errors.New("Unable to parse config file")
 		}
+
+		// Create client
 		heketi := client.NewClient(options.Url, options.User, options.Key)
+
+		// Load current topolgy
+		heketiTopology, err := heketi.TopologyInfo()
+
+		// Register topology
 		for _, cluster := range topology.Clusters {
 
-			fmt.Fprintf(stdout, "Creating cluster ... ")
-			clusterInfo, err := heketi.ClusterCreate()
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(stdout, "ID: %v\n", clusterInfo.Id)
+			// Register Nodes
+			var clusterInfo *api.ClusterInfoResponse
 			for _, node := range cluster.Nodes {
-				fmt.Fprintf(stdout, "\tCreating node %v ... ", node.Node.Hostnames.Manage[0])
-				node.Node.ClusterId = clusterInfo.Id
-				nodeInfo, err := heketi.NodeAdd(&node.Node)
-				if err != nil {
-					return err
-				}
-				fmt.Fprintf(stdout, "ID: %v\n", nodeInfo.Id)
+				// Check node already exists
+				nodeInfo := getNodeIdFromHeketiTopology(heketiTopology, node.Node.Hostnames.Manage[0])
 
-				for _, device := range node.Devices {
-					fmt.Fprintf(stdout, "\t\tAdding device %v ... ", device)
-
-					req := &api.DeviceAddRequest{}
-					req.Name = device
-					req.NodeId = nodeInfo.Id
-					err := heketi.DeviceAdd(req)
+				if nodeInfo != nil {
+					var err error
+					fmt.Fprintf(stdout, "\tFound node %v on cluster %v\n",
+						node.Node.Hostnames.Manage[0], nodeInfo.ClusterId)
+					clusterInfo, err = heketi.ClusterInfo(nodeInfo.ClusterId)
 					if err != nil {
-						return nil
+						fmt.Fprintf(stdout, "Unable to get cluster information\n")
+						return fmt.Errorf("Unablet to get cluster information")
+					}
+				} else {
+					var err error
+
+					// See if we need to create a cluster
+					if clusterInfo == nil {
+						fmt.Fprintf(stdout, "Creating cluster ... ")
+						clusterInfo, err = heketi.ClusterCreate()
+						if err != nil {
+							return err
+						}
+						fmt.Fprintf(stdout, "ID: %v\n", clusterInfo.Id)
+
+						// Create a cleanup function in case no
+						// nodes or devices are created
+						defer func() {
+							// Get cluster information
+							info, err := heketi.ClusterInfo(clusterInfo.Id)
+
+							// Delete empty cluster
+							if err == nil && len(info.Nodes) == 0 && len(info.Volumes) == 0 {
+								heketi.ClusterDelete(clusterInfo.Id)
+							}
+						}()
 					}
 
-					fmt.Fprintf(stdout, "OK\n")
+					// Create node
+					fmt.Fprintf(stdout, "\tCreating node %v ... ", node.Node.Hostnames.Manage[0])
+					node.Node.ClusterId = clusterInfo.Id
+					nodeInfo, err = heketi.NodeAdd(&node.Node)
+					if err != nil {
+						fmt.Fprintf(stdout, "Unable to create node: %v\n", err)
+
+						// Go to next node
+						continue
+					} else {
+						fmt.Fprintf(stdout, "ID: %v\n", nodeInfo.Id)
+					}
+				}
+
+				// Add devices
+				for _, device := range node.Devices {
+					deviceInfo := getDeviceIdFromHeketiTopology(heketiTopology,
+						nodeInfo.Hostnames.Manage[0],
+						device)
+					if deviceInfo != nil {
+						fmt.Fprintf(stdout, "\t\tFound device %v\n", device)
+					} else {
+						fmt.Fprintf(stdout, "\t\tAdding device %v ... ", device)
+
+						req := &api.DeviceAddRequest{}
+						req.Name = device
+						req.NodeId = nodeInfo.Id
+						err := heketi.DeviceAdd(req)
+						if err != nil {
+							fmt.Fprintf(stdout, "Unable to add device: %v\n", err)
+						} else {
+							fmt.Fprintf(stdout, "OK\n")
+						}
+					}
 				}
 			}
 		}

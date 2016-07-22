@@ -222,31 +222,30 @@ func (v *VolumeInfoResponse) String() string {
 			v.Durability.Disperse.Data,
 			v.Durability.Disperse.Redundancy)
 	case DurabilityReplicate:
-		s += fmt.Sprintf("Replica: %v\n",
+		s += fmt.Sprintf("Distributed+Replica: %v\n",
 			v.Durability.Replicate.Replica)
 	}
 
 	if v.Snapshot.Enable {
-		s += fmt.Sprintf("Snapshot: Enabled\n"+
-			"Snapshot Factor: %.2f\n",
+		s += fmt.Sprintf("Snapshot Factor: %.2f\n",
 			v.Snapshot.Factor)
-	} else {
-		s += "Snapshot: Disabled\n"
 	}
 
-	s += "\nBricks:\n"
-	for _, b := range v.Bricks {
-		s += fmt.Sprintf("Id: %v\n"+
-			"Path: %v\n"+
-			"Size (GiB): %v\n"+
-			"Node: %v\n"+
-			"Device: %v\n\n",
-			b.Id,
-			b.Path,
-			b.Size/(1024*1024),
-			b.NodeId,
-			b.DeviceId)
-	}
+	/*
+		s += "\nBricks:\n"
+		for _, b := range v.Bricks {
+			s += fmt.Sprintf("Id: %v\n"+
+				"Path: %v\n"+
+				"Size (GiB): %v\n"+
+				"Node: %v\n"+
+				"Device: %v\n\n",
+				b.Id,
+				b.Path,
+				b.Size/(1024*1024),
+				b.NodeId,
+				b.DeviceId)
+		}
+	*/
 
 	return s
 }

@@ -87,13 +87,14 @@
             }
           ],
           "strategy": {
-            "type": "Replace"
+            "type": "Recreate"
           },
           "spec": {
             "containers": [
               {
                 "name": "heketi",
                 "image": "heketi/heketi:dev",
+                "imagePullPolicy": "Always",
                 "env": [
                   {
                     "name": "HEKETI_USER_KEY",
@@ -110,6 +111,10 @@
                   {
                     "name": "HEKETI_FSTAB",
                     "value": "/var/lib/heketi/fstab"
+                  },
+                  {
+                    "name": "HEKETI_SNAPSHOT_LIMIT",
+                    "value": "14"
                   },
                   {
                     "name": "HEKETI_KUBE_CERTFILE",

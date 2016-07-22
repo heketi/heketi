@@ -20,5 +20,5 @@ var (
 	// Default limits
 	BrickMinSize = uint64(4 * GB)
 	BrickMaxSize = uint64(4 * TB)
-	BrickMaxNum  = 100
+	BrickMaxNum  = 32
 )

@@ -17,6 +17,7 @@
 package kubeexec
 
 import (
+	"os"
 	"testing"
 
 	"github.com/heketi/heketi/executors/sshexec"
@@ -50,4 +51,69 @@ func TestNewKubeExecutorNoNamespace(t *testing.T) {
 	k, err := NewKubeExecutor(config)
 	tests.Assert(t, err != nil)
 	tests.Assert(t, k == nil)
+}
+
+func TestNewKubeExecutorRebalanceOnExpansion(t *testing.T) {
+
+	// This tests access to configurations
+	// from the sshconfig exector
+
+	config := &KubeConfig{
+		Host: "myhost",
+		CLICommandConfig: sshexec.CLICommandConfig{
+			Fstab: "myfstab",
+		},
+		Namespace: "mynamespace",
+	}
+
+	k, err := NewKubeExecutor(config)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, k.Fstab == "myfstab")
+	tests.Assert(t, k.Throttlemap != nil)
+	tests.Assert(t, k.config != nil)
+	tests.Assert(t, k.RebalanceOnExpansion() == false)
+
+	config = &KubeConfig{
+		Host: "myhost",
+		CLICommandConfig: sshexec.CLICommandConfig{
+			Fstab:                "myfstab",
+			RebalanceOnExpansion: true,
+		},
+		Namespace: "mynamespace",
+	}
+
+	k, err = NewKubeExecutor(config)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, k.Fstab == "myfstab")
+	tests.Assert(t, k.Throttlemap != nil)
+	tests.Assert(t, k.config != nil)
+	tests.Assert(t, k.RebalanceOnExpansion() == true)
+}
+
+func TestKubeExecutorEnvVariables(t *testing.T) {
+
+	// set environment
+	err := os.Setenv("HEKETI_SNAPSHOT_LIMIT", "999")
+	tests.Assert(t, err == nil)
+	defer os.Unsetenv("HEKETI_SNAPSHOT_LIMIT")
+
+	err = os.Setenv("HEKETI_FSTAB", "anotherfstab")
+	tests.Assert(t, err == nil)
+	defer os.Unsetenv("HEKETI_FSTAB")
+
+	config := &KubeConfig{
+		Host: "myhost",
+		CLICommandConfig: sshexec.CLICommandConfig{
+			Fstab: "myfstab",
+		},
+		Namespace: "mynamespace",
+	}
+
+	k, err := NewKubeExecutor(config)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, k.Throttlemap != nil)
+	tests.Assert(t, k.config != nil)
+	tests.Assert(t, k.Fstab == "anotherfstab")
+	tests.Assert(t, k.SnapShotLimit() == 999)
+
 }

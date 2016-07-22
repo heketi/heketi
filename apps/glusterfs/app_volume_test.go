@@ -661,6 +661,75 @@ func TestVolumeList(t *testing.T) {
 
 }
 
+func TestVolumeListReadOnlyDb(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+
+	// Create some volumes
+	numvolumes := 1000
+	err := app.db.Update(func(tx *bolt.Tx) error {
+
+		for i := 0; i < numvolumes; i++ {
+			v := createSampleVolumeEntry(100)
+			err := v.Save(tx)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+
+	})
+	tests.Assert(t, err == nil)
+	app.Close()
+
+	// Open Db here to force read only mode
+	db, err := bolt.Open(tmpfile, 0666, &bolt.Options{
+		ReadOnly: true,
+	})
+	tests.Assert(t, err == nil, err)
+	tests.Assert(t, db != nil)
+
+	// Create the app
+	app = NewTestApp(tmpfile)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Get volumes, there should be none
+	r, err := http.Get(ts.URL + "/volumes")
+	tests.Assert(t, r.StatusCode == http.StatusOK)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
+
+	// Read response
+	var msg api.VolumeListResponse
+	err = utils.GetJsonFromResponse(r, &msg)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, len(msg.Volumes) == numvolumes)
+
+	// Check that all the volumes are in the database
+	err = app.db.View(func(tx *bolt.Tx) error {
+		for _, id := range msg.Volumes {
+			_, err := NewVolumeEntryFromId(tx, id)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	tests.Assert(t, err == nil)
+
+}
+
 func TestVolumeDeleteIdNotFound(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)

@@ -48,7 +48,7 @@
                         }
                     ],
                     "strategy": {
-                        "type": "Replace"
+                        "type": "Recreate"
                     },
                     "spec": {
                         "nodeSelector": {
@@ -58,6 +58,7 @@
                         "containers": [
                             {
                                 "image": "heketi/gluster:latest",
+                                "imagePullPolicy": "Always",
                                 "name": "glusterfs",
                                 "volumeMounts": [
                                     {
@@ -99,7 +100,7 @@
                                 },
                                 "readinessProbe": {
                                     "timeoutSeconds": 3,
-                                    "initialDelaySeconds": 3,
+                                    "initialDelaySeconds": 60,
                                     "exec": {
                                         "command": [
                                             "/bin/bash",
@@ -110,7 +111,7 @@
                                 },
                                 "livenessProbe": {
                                     "timeoutSeconds": 3,
-                                    "initialDelaySeconds": 30,
+                                    "initialDelaySeconds": 60,
                                     "exec": {
                                         "command": [
                                             "/bin/bash",
