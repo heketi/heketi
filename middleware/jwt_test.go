@@ -166,8 +166,9 @@ func TestJwtMissingClaims(t *testing.T) {
 	ts := httptest.NewServer(n)
 
 	// Create token with missing 'iss' claim
-	token := jwt.New(jwt.SigningMethodHS256)
-	token.Claims["iss"] = "admin"
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"iss": "admin",
+	})
 	tokenString, err := token.SignedString([]byte("Key"))
 	tests.Assert(t, err == nil)
 
@@ -212,9 +213,13 @@ func TestJwtInvalidToken(t *testing.T) {
 	ts := httptest.NewServer(n)
 
 	// Create token with missing 'iss' claim
-	token := jwt.New(jwt.SigningMethodHS256)
-	token.Claims["iat"] = time.Now().Unix()
-	token.Claims["exp"] = time.Now().Add(time.Second * 5).Unix()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		// Set issued at time
+		"iat": time.Now().Unix(),
+
+		// Set expiration
+		"exp": time.Now().Add(time.Second * 5).Unix(),
+	})
 	tokenString, err := token.SignedString([]byte("Key"))
 	tests.Assert(t, err == nil)
 
@@ -234,10 +239,16 @@ func TestJwtInvalidToken(t *testing.T) {
 	tests.Assert(t, strings.Contains(s, "Token missing iss claim"))
 
 	// Create an expired token
-	token = jwt.New(jwt.SigningMethodHS256)
-	token.Claims["iat"] = time.Now().Unix()
-	token.Claims["exp"] = time.Now().Add(time.Millisecond).Unix()
-	token.Claims["iss"] = "admin"
+	token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		// Set issuer
+		"iss": "admin",
+
+		// Set issued at time
+		"iat": time.Now().Unix(),
+
+		// Set expiration
+		"exp": time.Now().Add(time.Millisecond).Unix(),
+	})
 	tokenString, err = token.SignedString([]byte("Key"))
 	tests.Assert(t, err == nil)
 
@@ -257,13 +268,19 @@ func TestJwtInvalidToken(t *testing.T) {
 
 	s, err = utils.GetStringFromResponse(r)
 	tests.Assert(t, err == nil)
-	tests.Assert(t, strings.Contains(s, "token is expired"))
+	tests.Assert(t, strings.Contains(s, "Token is expired"), s)
 
 	// Create missing 'qsh' claim
-	token = jwt.New(jwt.SigningMethodHS256)
-	token.Claims["iat"] = time.Now().Unix()
-	token.Claims["exp"] = time.Now().Add(time.Second * 10).Unix()
-	token.Claims["iss"] = "admin"
+	token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		// Set issuer
+		"iss": "admin",
+
+		// Set issued at time
+		"iat": time.Now().Unix(),
+
+		// Set expiration
+		"exp": time.Now().Add(time.Second * 10).Unix(),
+	})
 	tokenString, err = token.SignedString([]byte("Key"))
 	tests.Assert(t, err == nil)
 
@@ -283,11 +300,19 @@ func TestJwtInvalidToken(t *testing.T) {
 	tests.Assert(t, strings.Contains(s, "Invalid qsh claim in token"))
 
 	// Create an invalid 'qsh' claim
-	token = jwt.New(jwt.SigningMethodHS256)
-	token.Claims["iat"] = time.Now().Unix()
-	token.Claims["exp"] = time.Now().Add(time.Second * 10).Unix()
-	token.Claims["iss"] = "admin"
-	token.Claims["qsh"] = "12343345678945678a"
+	token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		// Set issuer
+		"iss": "admin",
+
+		// Set issued at time
+		"iat": time.Now().Unix(),
+
+		// Set expiration
+		"exp": time.Now().Add(time.Second * 10).Unix(),
+
+		// Set qsh
+		"qsh": "12343345678945678a",
+	})
 	tokenString, err = token.SignedString([]byte("Key"))
 	tests.Assert(t, err == nil)
 
@@ -327,7 +352,8 @@ func TestJwt(t *testing.T) {
 		tests.Assert(t, data != nil)
 
 		token := data.(*jwt.Token)
-		tests.Assert(t, token.Claims["iss"] == "admin")
+		claims := token.Claims.(jwt.MapClaims)
+		tests.Assert(t, claims["iss"] == "admin")
 
 		called = true
 
@@ -338,17 +364,25 @@ func TestJwt(t *testing.T) {
 	// Create test server
 	ts := httptest.NewServer(n)
 
-	// Create token with missing 'iss' claim
-	token := jwt.New(jwt.SigningMethodHS256)
-	token.Claims["iss"] = "admin"
-	token.Claims["iat"] = time.Now().Unix()
-	token.Claims["exp"] = time.Now().Add(time.Second * 10).Unix()
-
 	// Generate qsh
 	qshstring := "GET&/"
 	hash := sha256.New()
 	hash.Write([]byte(qshstring))
-	token.Claims["qsh"] = hex.EncodeToString(hash.Sum(nil))
+
+	// Create token
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		// Set issuer
+		"iss": "admin",
+
+		// Set issued at time
+		"iat": time.Now().Unix(),
+
+		// Set expiration
+		"exp": time.Now().Add(time.Second * 10).Unix(),
+
+		// Set qsh
+		"qsh": hex.EncodeToString(hash.Sum(nil)),
+	})
 
 	tokenString, err := token.SignedString([]byte("Key"))
 	tests.Assert(t, err == nil)
@@ -389,10 +423,16 @@ func TestJwtUnknownUser(t *testing.T) {
 	ts := httptest.NewServer(n)
 
 	// Create token with invalid user
-	token := jwt.New(jwt.SigningMethodHS256)
-	token.Claims["iat"] = time.Now().Unix()
-	token.Claims["exp"] = time.Now().Add(time.Second * 5).Unix()
-	token.Claims["iss"] = "someotheruser"
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		// Set issuer
+		"iss": "someotheruser",
+
+		// Set issued at time
+		"iat": time.Now().Unix(),
+
+		// Set expiration
+		"exp": time.Now().Add(time.Second * 10).Unix(),
+	})
 	tokenString, err := token.SignedString([]byte("Key"))
 	tests.Assert(t, err == nil)
 
@@ -436,10 +476,16 @@ func TestJwtInvalidKeys(t *testing.T) {
 	ts := httptest.NewServer(n)
 
 	// Invalid user key
-	token := jwt.New(jwt.SigningMethodHS256)
-	token.Claims["iat"] = time.Now().Unix()
-	token.Claims["exp"] = time.Now().Add(time.Second * 5).Unix()
-	token.Claims["iss"] = "user"
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		// Set issuer
+		"iss": "user",
+
+		// Set issued at time
+		"iat": time.Now().Unix(),
+
+		// Set expiration
+		"exp": time.Now().Add(time.Second * 10).Unix(),
+	})
 	tokenString, err := token.SignedString([]byte("Badkey"))
 	tests.Assert(t, err == nil)
 
@@ -459,10 +505,16 @@ func TestJwtInvalidKeys(t *testing.T) {
 	tests.Assert(t, strings.Contains(s, "signature is invalid"))
 
 	// Send invalid admin key
-	token = jwt.New(jwt.SigningMethodHS256)
-	token.Claims["iat"] = time.Now().Unix()
-	token.Claims["exp"] = time.Now().Add(time.Second * 5).Unix()
-	token.Claims["iss"] = "admin"
+	token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		// Set issuer
+		"iss": "admin",
+
+		// Set issued at time
+		"iat": time.Now().Unix(),
+
+		// Set expiration
+		"exp": time.Now().Add(time.Second * 10).Unix(),
+	})
 	tokenString, err = token.SignedString([]byte("Badkey"))
 	tests.Assert(t, err == nil)
 

@@ -15,15 +15,15 @@ env:
 matrix:
   include:
   - go: 1.5.4
-    env: OPTIONS="-race"
-  - go: 1.6.2
-    env: COVERAGE="true" OPTIONS=""
-  - go: 1.6.2
-    env: OPTIONS="-race"
+    env: OPTIONS="-race" GO15VENDOREXPERIMENT=1
+  - go: 1.6.3
+    env: COVERAGE="true" OPTIONS="" GO15VENDOREXPERIMENT=1
+  - go: 1.6.3
+    env: OPTIONS="-race" GO15VENDOREXPERIMENT=1
 script:
-- go fmt ./... | wc -l | grep 0
-- go vet ./...
-- if [[ -z "$COVERAGE" ]]; then godep go test $OPTIONS ./...; fi
+- go fmt $(go list ./... | grep -v vendor) | wc -l | grep 0
+- go vet $(go list ./... | grep -v vendor)
+- if [[ -z "$COVERAGE" ]]; then godep go test $OPTIONS $(go list ./... | grep -v vendor) ; fi
 - if [[ -n "$COVERAGE" ]]; then bash .travis-coverage; fi
 - cd client/api/python 
 - ./unittests.sh

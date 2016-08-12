@@ -17,9 +17,10 @@
 package client
 
 import (
-	"github.com/heketi/utils"
 	"io"
 	"net/http"
+
+	"github.com/heketi/heketi/pkg/utils"
 )
 
 func (c *Client) BackupDb(w io.Writer) error {
