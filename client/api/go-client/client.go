@@ -147,22 +147,25 @@ func (c *Client) waitForResponseWithTimer(r *http.Response,
 // Create JSON Web Token
 func (c *Client) setToken(r *http.Request) error {
 
-	token := jwt.New(jwt.SigningMethodHS256)
-
-	// Set issuer
-	token.Claims["iss"] = c.user
-
-	// Set issued at time
-	token.Claims["iat"] = time.Now().Unix()
-
-	// Set expiration
-	token.Claims["exp"] = time.Now().Add(time.Minute * 5).Unix()
-
-	// Set qsh hash
+	// Create qsh hash
 	qshstring := r.Method + "&" + r.URL.Path
 	hash := sha256.New()
 	hash.Write([]byte(qshstring))
-	token.Claims["qsh"] = hex.EncodeToString(hash.Sum(nil))
+
+	// Create Token
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		// Set issuer
+		"iss": c.user,
+
+		// Set issued at time
+		"iat": time.Now().Unix(),
+
+		// Set expiration
+		"exp": time.Now().Add(time.Minute * 5).Unix(),
+
+		// Set qsh
+		"qsh": hex.EncodeToString(hash.Sum(nil)),
+	})
 
 	// Sign the token
 	signedtoken, err := token.SignedString([]byte(c.key))

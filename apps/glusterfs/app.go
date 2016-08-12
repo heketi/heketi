@@ -365,9 +365,10 @@ func (a *App) Auth(w http.ResponseWriter, r *http.Request, next http.HandlerFunc
 
 	// Need to change from interface{} to the jwt.Token type
 	token := data.(*jwt.Token)
+	claims := token.Claims.(jwt.MapClaims)
 
 	// Check access
-	if "user" == token.Claims["iss"] && r.URL.Path != "/volumes" {
+	if "user" == claims["iss"] && r.URL.Path != "/volumes" {
 		http.Error(w, "Administrator access required", http.StatusUnauthorized)
 		return
 	}
