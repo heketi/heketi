@@ -149,21 +149,23 @@ func (c *Client) setToken(r *http.Request) error {
 
 	token := jwt.New(jwt.SigningMethodHS256)
 
+	claims := make(jwt.MapClaims)
 	// Set issuer
-	token.Claims["iss"] = c.user
+	claims["iss"] = c.user
 
 	// Set issued at time
-	token.Claims["iat"] = time.Now().Unix()
+	claims["iat"] = time.Now().Unix()
 
 	// Set expiration
-	token.Claims["exp"] = time.Now().Add(time.Minute * 5).Unix()
+	claims["exp"] = time.Now().Add(time.Minute * 5).Unix()
 
 	// Set qsh hash
 	qshstring := r.Method + "&" + r.URL.Path
 	hash := sha256.New()
 	hash.Write([]byte(qshstring))
-	token.Claims["qsh"] = hex.EncodeToString(hash.Sum(nil))
+	claims["qsh"] = hex.EncodeToString(hash.Sum(nil))
 
+	token.Claims = claims
 	// Sign the token
 	signedtoken, err := token.SignedString([]byte(c.key))
 	if err != nil {
