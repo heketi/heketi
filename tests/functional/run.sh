@@ -36,14 +36,17 @@ for testDir in * ; do
         cd $testDir 
         run.sh
         result=$?
-        cd ..
 
         if [ $result -ne 0 ] ; then
             println "FAILED $testDir"
+            println "TEARDOWN $testDir"
+            teardown.sh
             results=1
         else
             println "PASSED $testDir"
         fi
+
+        cd ..
     fi
 done
 
