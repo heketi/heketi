@@ -1,0 +1,20 @@
+language: go
+install:
+- bash .travis-fork-fix
+- go get github.com/mattn/goveralls
+- go get github.com/robfig/glock
+- glock sync github.com/heketi/utils
+env:
+  global:
+    secure: dpGAHNupIrrHQg0GRAb6y27hVXyB67hNya8GRqrIcX6RYtf8hRbsE+XZL/kk0sHiy3w7x0OqZd8KrCTzHioD6DUK39nb3PgWKqS04cv4omMJ5lu8Azr6gVG0ln9bdoleViZdo4uDVCuOo7VtkjuvM5W4N9Gn1CUmhz4cZWPstlLaZmH5Si/X19amUEBFNvTyW/DT6gqYcMn2BvS7CeqVRHGBGBgdXVY09e8aR4B+W7suXgr6k03SGZq9dGnfy0qee7t6D69KQV/XoA5NshWnr/2UwqBJARtP/TAknEKoQrkGqHTnjvynEYGr4no4kPKawY/Vhhea+jf2MVeJjEYMon98ApK35wKkCJL7Ew2qLhboEFuGGN49nyW7cEtR/lX+Yqolp9GL5bVXtI/Jht/h6H66vAOlPsIVoSWRv8uAyxX4aHNDrr44m1FLqlmmGNGUhBQrC8RLW6W07izfSRtcsWfhvHQP46XeGcQwQZEvdJdC4kjSe7+5FP6Hb9k5EFsWJCs7nNBdVg2vnUwAQblQUnBdfvHxZJj99WrnMUs8veH68Z/B4bjgRTZkEDMCDTdcMqozZl3kh7yaluey6mmL57sgux6KcKqHBjY2UOcwizBAt4nWZCirWJ6utxJ1iulOoiAo6K84jC3TBOwrO53C4gdYqfxH8tzpC+YXfrZvrBg=
+matrix:
+  include:
+  - go: 1.5.4
+    env: OPTIONS="-race" VET="true"
+  - go: 1.6.2
+    env: COVERAGE="true" OPTIONS="" VET="true"
+script:
+- go fmt ./... | wc -l | grep 0
+- go vet ./...
+- go test -v $OPTIONS ./...
+- if [[ -n "$COVERAGE" ]]; then bash .travis-coverage; fi
