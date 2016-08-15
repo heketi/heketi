@@ -2,6 +2,9 @@
 	"ImportPath": "github.com/heketi/heketi",
 	"GoVersion": "go1.6",
 	"GodepVersion": "v63",
+	"Packages": [
+		"./..."
+	],
 	"Deps": [
 		{
 			"ImportPath": "github.com/Sirupsen/logrus",
@@ -234,8 +237,8 @@
 			"Rev": "738570ea73f1cc2a0888c7c49fe80991c6050f34"
 		},
 		{
-			"ImportPath": "github.com/heketi/utils",
-			"Rev": "34e5a97154d1d016635ad6ce436a68fdc8a75876"
+			"ImportPath": "github.com/heketi/tests",
+			"Rev": "f3775cbcefd6822086c729e3ce4b70ca85a5bd21"
 		},
 		{
 			"ImportPath": "github.com/imdario/mergo",

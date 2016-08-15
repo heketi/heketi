@@ -12,39 +12,36 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
 
-package utils
+package tests
 
 import (
-	"encoding/json"
-	"io"
-	"io/ioutil"
-	"net/http"
+	"fmt"
+	"runtime"
 )
 
-func jsonFromBody(r io.Reader, v interface{}) error {
-
-	// Check body
-	body, err := ioutil.ReadAll(r)
-	if err != nil {
-		return err
-	}
-	if err := json.Unmarshal(body, v); err != nil {
-		return err
-	}
-
-	return nil
+type Tester interface {
+	Errorf(format string, args ...interface{})
+	FailNow()
 }
 
-// Unmarshal JSON from request
-func GetJsonFromRequest(r *http.Request, v interface{}) error {
-	defer r.Body.Close()
-	return jsonFromBody(r.Body, v)
-}
+// Simple assert call for unit and functional tests
+func Assert(t Tester, b bool, message ...interface{}) {
+	if !b {
+		pc, file, line, _ := runtime.Caller(1)
+		caller_func_info := runtime.FuncForPC(pc)
 
-// Unmarshal JSON from response
-func GetJsonFromResponse(r *http.Response, v interface{}) error {
-	defer r.Body.Close()
-	return jsonFromBody(r.Body, v)
+		error_string := fmt.Sprintf("\n\rASSERT:\tfunc (%s) 0x%x\n\r\tFile %s:%d",
+			caller_func_info.Name(),
+			pc,
+			file,
+			line)
+
+		if len(message) > 0 {
+			error_string += fmt.Sprintf("\n\r\tInfo: %+v", message)
+		}
+
+		t.Errorf(error_string)
+		t.FailNow()
+	}
 }
