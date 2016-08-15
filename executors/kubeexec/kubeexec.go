@@ -29,6 +29,7 @@ import (
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
 	"k8s.io/kubernetes/pkg/fields"
+	kubeletcmd "k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
 	"k8s.io/kubernetes/pkg/labels"
 
 	"github.com/lpabon/godbc"
@@ -289,7 +290,11 @@ func (k *KubeExecutor) ConnectAndExec(host, namespace, resource string,
 		var berr bytes.Buffer
 
 		// Excute command
-		err = exec.Stream(nil, &b, &berr, false)
+		err = exec.Stream(remotecommand.StreamOptions{
+			SupportedProtocols: kubeletcmd.SupportedStreamingProtocols,
+			Stdout:             &b,
+			Stderr:             &berr,
+		})
 		if err != nil {
 			logger.LogError("Failed to run command [%v] on %v: Err[%v]: Stdout [%v]: Stderr [%v]",
 				command, podName, err, b.String(), berr.String())

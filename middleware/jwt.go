@@ -83,21 +83,33 @@ func (j *JwtAuth) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.Ha
 	}
 
 	// Parse token
-	token, err := jwt.Parse(rawtoken,
-		func(token *jwt.Token) (interface{}, error) {
-			if issuer, ok := token.Claims["iss"]; ok {
-				switch issuer {
-				case "admin":
-					return j.adminKey, nil
-				case "user":
-					return j.userKey, nil
-				default:
-					return nil, errors.New("Unknown user")
-				}
-			}
+	var claims jwt.MapClaims
+	token, err := jwt.Parse(rawtoken, func(token *jwt.Token) (interface{}, error) {
 
-			return nil, errors.New("Token missing iss claim")
-		})
+		// Verify Method
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+		}
+
+		claims = token.Claims.(jwt.MapClaims)
+		if claims == nil {
+			return nil, fmt.Errorf("No claims found in token")
+		}
+
+		// Get claims
+		if issuer, ok := claims["iss"]; ok {
+			switch issuer {
+			case "admin":
+				return j.adminKey, nil
+			case "user":
+				return j.userKey, nil
+			default:
+				return nil, errors.New("Unknown user")
+			}
+		}
+
+		return nil, errors.New("Token missing iss claim")
+	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
@@ -110,7 +122,7 @@ func (j *JwtAuth) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.Ha
 
 	// Check for required claims
 	for _, required_claim := range required_claims {
-		if _, ok := token.Claims[required_claim]; !ok {
+		if _, ok := claims[required_claim]; !ok {
 			// Claim missing
 			http.Error(w, fmt.Sprintf("Required claim %v missing from token", required_claim), http.StatusBadRequest)
 			return
@@ -118,7 +130,7 @@ func (j *JwtAuth) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.Ha
 	}
 
 	// Check qsh claim
-	if token.Claims["qsh"] != generate_qsh(r) {
+	if claims["qsh"] != generate_qsh(r) {
 		http.Error(w, "Invalid qsh claim in token", http.StatusUnauthorized)
 		return
 	}
