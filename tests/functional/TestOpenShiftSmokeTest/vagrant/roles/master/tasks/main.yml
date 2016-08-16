@@ -8,7 +8,7 @@
   command: /usr/local/bin/oadm policy add-scc-to-user privileged -z default
 
 - name: deploy a router
-  command: /usr/local/bin/oadm router storage-router --replicas=3
+  command: /usr/local/bin/oadm router --replicas=3 --service-account=router --credentials=/etc/origin/master/openshift-router.kubeconfig
 
 - name: wait for router in 192.168.10.100
   wait_for: host=192.168.10.100 port=80 state=started timeout=1800
