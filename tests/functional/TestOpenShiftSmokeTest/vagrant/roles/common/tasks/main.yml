@@ -1,3 +1,10 @@
+- name: clean disks
+  command: dd if=/dev/zero of={{ item }} count=100 bs=1024k
+  with_items:
+    - /dev/vdb
+    - /dev/vdc
+    - /dev/vdd
+
 - name: make root ssh dir
   file: path=/root/.ssh state=directory mode=0600
 
@@ -15,4 +22,3 @@
 
 - name: fix issue with eth1
   lineinfile: dest=/etc/sysconfig/network-scripts/ifcfg-eth1 regexp="^NM_CONTROLLED=" line="NM_CONTROLLED=yes"
-

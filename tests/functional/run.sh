@@ -1,12 +1,17 @@
 #!/bin/sh
 
-fail() {
-    echo $1
-    exit 1
-}
+source ./lib.sh
 
-println() {
-    echo "==> $1"
+teardown_all() {
+    results=0
+    for testDir in * ; do
+        if [ -x $testDir/teardown.sh ] ; then
+            println "TEARDOWN $testDir"
+            cd $testDir
+            teardown.sh
+            cd ..
+        fi
+    done
 }
 
 ### MAIN ###
@@ -21,6 +26,7 @@ fi
 
 # Clean up
 rm -f heketi-server > /dev/null 2>&1
+teardown_all
 
 # Check each dir for tests
 results=0
@@ -28,16 +34,19 @@ for testDir in * ; do
     if [ -x $testDir/run.sh ] ; then
         println "TEST $testDir"
         cd $testDir 
-          run.sh
+        run.sh
         result=$?
-        cd ..
 
         if [ $result -ne 0 ] ; then
             println "FAILED $testDir"
+            println "TEARDOWN $testDir"
+            teardown.sh
             results=1
         else
             println "PASSED $testDir"
         fi
+
+        cd ..
     fi
 done
 

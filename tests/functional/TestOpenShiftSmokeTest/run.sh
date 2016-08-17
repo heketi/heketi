@@ -12,16 +12,17 @@ CLIENTDIR=$TOP/client/cli/go
 
 source ${FUNCTIONAL_DIR}/lib.sh
 
-
 build_docker_file(){
     echo "Create Heketi Docker image"
     vagrant_heketi_docker=$CURRENT_DIR/vagrant/roles/cluster/files/$HEKETI_DOCKER_IMG
+    mkdir -p vagrant/roles/cluster/files
     if [ ! -f "$vagrant_heketi_docker" ] ; then
         cd $DOCKERDIR/ci
-        cp $TOP/heketi $DOCKERDIR
+        cp $TOP/heketi $DOCKERDIR/ci || fail "Unable to copy $TOP/heketi to $DOCKERDIR/ci"
         _sudo docker build --rm --tag heketi/heketi:ci . || fail "Unable to create docker container"
         _sudo docker save -o $HEKETI_DOCKER_IMG heketi/heketi:ci || fail "Unable to save docker image"
         cp $HEKETI_DOCKER_IMG $vagrant_heketi_docker
+        _sudo docker rmi heketi/heketi:ci
         cd $CURRENT_DIR
     fi
 
@@ -36,7 +37,6 @@ build_docker_file(){
     fi
 
 }
-
 
 build_heketi() {
     cd $TOP
@@ -67,3 +67,4 @@ build_docker_file
 start_vagrant
 deploy_heketi_glusterfs
 teardown
+
