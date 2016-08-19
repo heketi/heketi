@@ -117,6 +117,10 @@
                     "value": "/var/lib/heketi/fstab"
                   },
                   {
+                    "name": "HEKETI_SNAPSHOT_LIMIT",
+                    "value": "14"
+                  },
+                  {
                     "name": "HEKETI_KUBE_CERTFILE",
                     "value": "${HEKETI_KUBE_CERTFILE}"
                   },
