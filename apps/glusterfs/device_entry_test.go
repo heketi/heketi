@@ -135,7 +135,7 @@ func TestDeviceEntryNewBrickEntry(t *testing.T) {
 	tests.Assert(t, brick.PoolMetadataSize == metadatasize, brick.PoolMetadataSize, metadatasize)
 	tests.Assert(t, brick.Info.Size == 200)
 
-	// Check it was substracted from device storage
+	// Check it was subtracted from device storage
 	tests.Assert(t, d.Info.Storage.Used == 100+total)
 	tests.Assert(t, d.Info.Storage.Free == 900-total)
 	tests.Assert(t, d.Info.Storage.Total == 1000)

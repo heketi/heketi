@@ -42,7 +42,7 @@ func init() {
 	nodeCommand.AddCommand(nodeDisableCommand)
 	nodeAddCommand.Flags().IntVar(&zone, "zone", -1, "The zone in which the node should reside")
 	nodeAddCommand.Flags().StringVar(&clusterId, "cluster", "", "The cluster in which the node should reside")
-	nodeAddCommand.Flags().StringVar(&managmentHostNames, "management-host-name", "", "Managment host name")
+	nodeAddCommand.Flags().StringVar(&managmentHostNames, "management-host-name", "", "Management host name")
 	nodeAddCommand.Flags().StringVar(&storageHostNames, "storage-host-name", "", "Storage host name")
 	nodeAddCommand.SilenceUsage = true
 	nodeDeleteCommand.SilenceUsage = true

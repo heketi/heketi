@@ -380,7 +380,7 @@ func TestNewVolumeEntryNewInfoResponse(t *testing.T) {
 	})
 	tests.Assert(t, err == nil)
 
-	// Retreive info response
+	// Retrieve info response
 	var info *api.VolumeInfoResponse
 	err = app.db.View(func(tx *bolt.Tx) error {
 		volume, err := NewVolumeEntryFromId(tx, v.Info.Id)

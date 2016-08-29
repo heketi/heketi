@@ -89,7 +89,7 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Check that the clusters requested are avilable
+	// Check that the clusters requested are available
 	err = a.db.View(func(tx *bolt.Tx) error {
 
 		// Check we have clusters

@@ -297,7 +297,7 @@ func (v *VolumeEntry) Create(db *bolt.DB,
 		// Check this cluster for space
 		brick_entries, err = v.allocBricksInCluster(db, allocator, cluster, v.Info.Size)
 
-		// Check if allocation was successfull
+		// Check if allocation was successful
 		if err == nil {
 			v.Info.Cluster = cluster
 			logger.Debug("Volume to be created on cluster %v", cluster)

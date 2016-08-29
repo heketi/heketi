@@ -204,7 +204,7 @@ func (s *SshExecutor) createAddBrickCommands(volume *executors.VolumeRequest,
 
 func (s *SshExecutor) checkForSnapshots(host, volume string) error {
 
-	// Stucture used to unmarshal XML from snapshot gluster cli
+	// Structure used to unmarshal XML from snapshot gluster cli
 	type CliOutput struct {
 		SnapList struct {
 			Count int `xml:"count"`
@@ -229,7 +229,7 @@ func (s *SshExecutor) checkForSnapshots(host, volume string) error {
 	}
 
 	if snapInfo.SnapList.Count > 0 {
-		return fmt.Errorf("Unable to delete volume %v because it containes %v snapshots",
+		return fmt.Errorf("Unable to delete volume %v because it contains %v snapshots",
 			volume, snapInfo.SnapList.Count)
 	}
 
