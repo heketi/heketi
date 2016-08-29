@@ -78,15 +78,15 @@ func init() {
 			"\n\tvalue is set to 1, then snapshots will consume the storage allocated")
 	volumeCreateCommand.Flags().StringVar(&clusters, "clusters", "",
 		"\n\tOptional: Comma separated list of cluster ids where this volume"+
-			"\n\tmust be allocated. If ommitted, Heketi will allocate the volume"+
+			"\n\tmust be allocated. If omitted, Heketi will allocate the volume"+
 			"\n\ton any of the configured clusters which have the available space."+
 			"\n\tProviding a set of clusters will ensure Heketi allocates storage"+
 			"\n\tfor this volume only in the clusters specified.")
 	volumeCreateCommand.Flags().BoolVar(&kubePv, "persistent-volume", false,
-		"\n\tOptional: Output to standard out a peristent volume JSON file for OpenShift or"+
+		"\n\tOptional: Output to standard out a persistent volume JSON file for OpenShift or"+
 			"\n\tKubernetes with the name provided.")
 	volumeCreateCommand.Flags().StringVar(&kubePvFile, "persistent-volume-file", "",
-		"\n\tOptional: Create a peristent volume JSON file for OpenShift or"+
+		"\n\tOptional: Create a persistent volume JSON file for OpenShift or"+
 			"\n\tKubernetes with the name provided.")
 	volumeCreateCommand.Flags().StringVar(&kubePvEndpoint, "persistent-volume-endpoint", "",
 		"\n\tOptional: Endpoint name for the persistent volume")
