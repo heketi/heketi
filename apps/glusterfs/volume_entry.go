@@ -304,6 +304,11 @@ func (v *VolumeEntry) Create(db *bolt.DB,
 			break
 		}
 	}
+
+	if err != nil {
+		return err
+	}
+
 	if brick_entries == nil {
 		return ErrNoSpace
 	}
