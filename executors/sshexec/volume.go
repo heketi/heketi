@@ -19,6 +19,7 @@ package sshexec
 import (
 	"encoding/xml"
 	"fmt"
+	"strings"
 
 	"github.com/heketi/heketi/executors"
 	"github.com/lpabon/godbc"
@@ -77,7 +78,11 @@ func (s *SshExecutor) VolumeCreate(host string,
 	// Execute command
 	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
 	if err != nil {
-		s.VolumeDestroy(host, volume.Name)
+		if strings.Contains(err.Error(), "ErrVolumeNameAlreadyExists") {
+			logger.LogError("Volume %s exist, Please recheck the volume create command", volume.Name)
+		} else {
+			s.VolumeDestroy(host, volume.Name)
+		}
 		return nil, err
 	}
 
