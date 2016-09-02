@@ -11,10 +11,10 @@
 		"_db_comment": "Database file name",
 		"db" : "heketi.db",
 
-        "sshexec" : {
-            "keyfile" : "config/insecure_private_key",
-            "user" : "vagrant",
-            "sudo" : true
-        }
+		"sshexec" : {
+			"keyfile" : "config/insecure_private_key",
+			"user" : "vagrant",
+			"sudo" : true
+		}
 	}
 }
