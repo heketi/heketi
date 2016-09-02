@@ -4,23 +4,17 @@ This functional test can be used on a system with at least 8GB of RAM.
 ## Requirements
 
 * Vagrant
-* Andible
+* Ansible
 * Hypervisor: VirtualBox or Libvirt/KVM
 
 ## Setup 
 
-* Go to `tests/functional/small/vagrant`
-* If using VirtualBox type:
-
+* Go to `tests/functional/TestSmokeTest/vagrant`
+Type:
 ```
-$ vagrant up
+$ ./up.sh --provider=PROVIDER
 ```
-
-* If using Libvirt type:
-
-```
-$ vagrant up --provider=libvirt
-```
+where PROVIDER is virtualbox or libvirt.
 
 ## Running the Tests
 
@@ -29,15 +23,15 @@ $ vagrant up --provider=libvirt
 ```
 $ rm heketi.db
 $ make
-$ ./heketi -config=tests/functional/small/config/heketi.json | tee log
+$ ./heketi -config=tests/functional/TestSmokeTest/config/heketi.json | tee log
 
 ```
 
-* Once it is ready, then start running the tests
+* Once it is ready, then start running the tests in another terminal
 
 ```
-$ cd tests/functional/small/tests
+$ cd tests/functional/TestSmokeTest/tests
 $ go test -tags ftsmall
 ```
 
-Output will be shows by the logs on the heketi server.
+Output will be shown by the logs on the heketi server.
