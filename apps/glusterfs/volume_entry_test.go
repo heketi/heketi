@@ -1208,7 +1208,7 @@ func TestVolumeEntryExpandNoSpace(t *testing.T) {
 
 	// Asking for a small amount will set the bricks too small
 	err = v.Expand(app.db, app.executor, app.allocator, 10)
-	tests.Assert(t, err == ErrMininumBrickSize, err)
+	tests.Assert(t, err == ErrMinimumBrickSize, err)
 
 	// Check db is the same as before expansion
 	var entry *VolumeEntry

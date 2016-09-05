@@ -26,7 +26,7 @@ var (
 	ErrNotFound         = errors.New("Id not found")
 	ErrConflict         = errors.New(http.StatusText(http.StatusConflict))
 	ErrMaxBricks        = errors.New("Maximum number of bricks reached.")
-	ErrMininumBrickSize = errors.New("Minimum brick size limit reached.  Out of space.")
+	ErrMinimumBrickSize = errors.New("Minimum brick size limit reached.  Out of space.")
 	ErrDbAccess         = errors.New("Unable to access db")
 	ErrAccessList       = errors.New("Unable to access list")
 	ErrKeyExists        = errors.New("Key already exists in the database")

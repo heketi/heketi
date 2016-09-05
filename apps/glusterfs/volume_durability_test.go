@@ -116,7 +116,7 @@ func TestNoneDurability(t *testing.T) {
 
 	// Gen 5
 	sets, brick_size, err = gen()
-	tests.Assert(t, err == ErrMininumBrickSize)
+	tests.Assert(t, err == ErrMinimumBrickSize)
 	tests.Assert(t, sets == 0)
 	tests.Assert(t, brick_size == 0)
 	tests.Assert(t, 1 == r.BricksInSet())
@@ -146,7 +146,7 @@ func TestDisperseDurability(t *testing.T) {
 
 	// Gen 3
 	sets, brick_size, err = gen()
-	tests.Assert(t, err == ErrMininumBrickSize)
+	tests.Assert(t, err == ErrMinimumBrickSize)
 	tests.Assert(t, 8+3 == r.BricksInSet())
 }
 
@@ -201,7 +201,7 @@ func TestReplicaDurabilityGenerator(t *testing.T) {
 
 	// Gen 5
 	sets, brick_size, err = gen()
-	tests.Assert(t, err == ErrMininumBrickSize)
+	tests.Assert(t, err == ErrMinimumBrickSize)
 	tests.Assert(t, sets == 0)
 	tests.Assert(t, brick_size == 0)
 	tests.Assert(t, 2 == r.BricksInSet())
