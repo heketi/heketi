@@ -26,40 +26,38 @@ func (v *VolumeEntry) allocBricksInCluster(db *bolt.DB,
 	cluster string,
 	gbsize int) ([]*BrickEntry, error) {
 
-	// This value will keep being halved until either
-	// space is found, or it is determined that the cluster is full
 	size := uint64(gbsize) * GB
 
 	// Setup a brick size generator
+	// Note: subsequent calls to gen need to return decreasing
+	//       brick sizes in order for the following code to work!
 	gen := v.Durability.BrickSizeGenerator(size)
 
-	// Continue adjust 'size' until space is found
+	// Try decreasing possible brick sizes until space is found
 	for {
-		// Determine brick size needed
+		// Determine next possible brick size
 		sets, brick_size, err := gen()
 		if err != nil {
 			logger.Err(err)
 			return nil, err
 		}
+
+		num_bricks := sets * v.Durability.BricksInSet()
+
 		logger.Debug("brick_size = %v", brick_size)
-
-		// Calculate number of bricks needed to satisfy the volume request
-		// according to the brick size
 		logger.Debug("sets = %v", sets)
+		logger.Debug("num_bricks = %v", num_bricks)
 
-		// Check that the volume does not have too many bricks
-		if (sets*v.Durability.BricksInSet() + len(v.Bricks)) > BrickMaxNum {
+		// Check that the volume would not have too many bricks
+		if (num_bricks + len(v.Bricks)) > BrickMaxNum {
 			logger.Debug("Maximum number of bricks reached")
-			// Try other clusters if possible
 			return nil, ErrMaxBricks
 		}
 
 		// Allocate bricks in the cluster
 		brick_entries, err := v.allocBricks(db, allocator, cluster, sets, brick_size)
 		if err == ErrNoSpace {
-			logger.Debug("No space, need to reduce size and try again")
-			// Out of space for the specified brick size, try again
-			// with smaller bricks
+			logger.Debug("No space, re-trying with smaller brick size")
 			continue
 		}
 		if err != nil {
