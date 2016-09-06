@@ -58,7 +58,7 @@ func (d *VolumeDisperseDurability) BrickSizeGenerator(size uint64) func() (int, 
 			brick_size /= uint64(d.Data)
 
 			if brick_size < BrickMinSize {
-				return 0, 0, ErrMininumBrickSize
+				return 0, 0, ErrMinimumBrickSize
 			} else if brick_size <= BrickMaxSize {
 				break
 			}

@@ -50,7 +50,7 @@ func (r *VolumeReplicaDurability) BrickSizeGenerator(size uint64) func() (int, u
 			brick_size = size / uint64(sets)
 
 			if brick_size < BrickMinSize {
-				return 0, 0, ErrMininumBrickSize
+				return 0, 0, ErrMinimumBrickSize
 			} else if brick_size <= BrickMaxSize {
 				break
 			}
