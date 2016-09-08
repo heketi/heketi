@@ -47,6 +47,8 @@ var RootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		if version {
 			fmt.Printf("heketi-cli %v\n", HEKETI_CLI_VERSION)
+		} else {
+			cmd.Usage()
 		}
 	},
 }
