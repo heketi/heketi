@@ -89,32 +89,39 @@ func TestNoneDurability(t *testing.T) {
 	// Gen 1
 	sets, brick_size, err := gen()
 	tests.Assert(t, err == nil)
+	tests.Assert(t, sets == 1)
+	tests.Assert(t, brick_size == 100*GB)
+	tests.Assert(t, 1 == r.BricksInSet())
+
+	// Gen 2
+	sets, brick_size, err = gen()
+	tests.Assert(t, err == nil)
 	tests.Assert(t, sets == 2)
 	tests.Assert(t, brick_size == 50*GB)
 	tests.Assert(t, 1 == r.BricksInSet())
 
-	// Gen 2
+	// Gen 3
 	sets, brick_size, err = gen()
 	tests.Assert(t, err == nil)
 	tests.Assert(t, sets == 4)
 	tests.Assert(t, brick_size == 25*GB)
 	tests.Assert(t, 1 == r.BricksInSet())
 
-	// Gen 3
+	// Gen 4
 	sets, brick_size, err = gen()
 	tests.Assert(t, err == nil)
 	tests.Assert(t, sets == 8)
 	tests.Assert(t, brick_size == 12800*1024)
 	tests.Assert(t, 1 == r.BricksInSet())
 
-	// Gen 4
+	// Gen 5
 	sets, brick_size, err = gen()
 	tests.Assert(t, err == nil)
 	tests.Assert(t, sets == 16)
 	tests.Assert(t, brick_size == 6400*1024)
 	tests.Assert(t, 1 == r.BricksInSet())
 
-	// Gen 5
+	// Gen 6
 	sets, brick_size, err = gen()
 	tests.Assert(t, err == ErrMinimumBrickSize)
 	tests.Assert(t, sets == 0)
@@ -174,32 +181,39 @@ func TestReplicaDurabilityGenerator(t *testing.T) {
 	// Gen 1
 	sets, brick_size, err := gen()
 	tests.Assert(t, err == nil)
-	tests.Assert(t, sets == 2)
-	tests.Assert(t, brick_size == 50*GB)
+	tests.Assert(t, sets == 1)
+	tests.Assert(t, brick_size == 100*GB)
 	tests.Assert(t, 2 == r.BricksInSet())
 
 	// Gen 2
+	sets, brick_size, err = gen()
+	tests.Assert(t, err == nil)
+	tests.Assert(t, sets == 2, "sets we got:", sets)
+	tests.Assert(t, brick_size == 50*GB)
+	tests.Assert(t, 2 == r.BricksInSet())
+
+	// Gen 3
 	sets, brick_size, err = gen()
 	tests.Assert(t, err == nil)
 	tests.Assert(t, sets == 4)
 	tests.Assert(t, brick_size == 25*GB)
 	tests.Assert(t, 2 == r.BricksInSet())
 
-	// Gen 3
+	// Gen 4
 	sets, brick_size, err = gen()
 	tests.Assert(t, err == nil)
 	tests.Assert(t, sets == 8)
 	tests.Assert(t, brick_size == 12800*1024)
 	tests.Assert(t, 2 == r.BricksInSet())
 
-	// Gen 4
+	// Gen 5
 	sets, brick_size, err = gen()
 	tests.Assert(t, err == nil)
 	tests.Assert(t, sets == 16)
 	tests.Assert(t, brick_size == 6400*1024)
 	tests.Assert(t, 2 == r.BricksInSet())
 
-	// Gen 5
+	// Gen 6
 	sets, brick_size, err = gen()
 	tests.Assert(t, err == ErrMinimumBrickSize)
 	tests.Assert(t, sets == 0)

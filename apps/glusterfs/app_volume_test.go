@@ -491,9 +491,8 @@ func TestVolumeCreate(t *testing.T) {
 	}
 	tests.Assert(t, info.Id != "")
 	tests.Assert(t, info.Cluster != "")
-	tests.Assert(t, len(info.Bricks) == 2) // Only two 50GB bricks needed
-	tests.Assert(t, info.Bricks[0].Size == 50*GB)
-	tests.Assert(t, info.Bricks[1].Size == 50*GB)
+	tests.Assert(t, len(info.Bricks) == 1) // Only one 100GB brick needed
+	tests.Assert(t, info.Bricks[0].Size == 100*GB)
 	tests.Assert(t, info.Name == "vol_"+info.Id)
 	tests.Assert(t, info.Snapshot.Enable == false)
 	tests.Assert(t, info.Snapshot.Factor == 1)

@@ -578,10 +578,8 @@ func TestVolumeEntryCreateFourBricks(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Check that it used only two bricks each with only two replicas
-	tests.Assert(t, len(info.Bricks) == 4)
+	tests.Assert(t, len(info.Bricks) == 2)
 	tests.Assert(t, info.Bricks[0].Size == info.Bricks[1].Size)
-	tests.Assert(t, info.Bricks[0].Size == info.Bricks[2].Size)
-	tests.Assert(t, info.Bricks[0].Size == info.Bricks[3].Size)
 	tests.Assert(t, info.Cluster == v.Info.Cluster)
 
 	// Check information on the bricks
@@ -962,7 +960,7 @@ func TestVolumeEntryCreateWithSnapshot(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Check that it used only two bricks each with only two replicas
-	tests.Assert(t, len(info.Bricks) == 4)
+	tests.Assert(t, len(info.Bricks) == 2)
 	err = app.db.View(func(tx *bolt.Tx) error {
 		for _, b := range info.Bricks {
 			device, err := NewDeviceEntryFromId(tx, b.DeviceId)
@@ -1324,13 +1322,13 @@ func TestVolumeEntryExpand(t *testing.T) {
 	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, v.Info.Size == 1024)
-	tests.Assert(t, len(v.Bricks) == 4)
+	tests.Assert(t, len(v.Bricks) == 2)
 
 	// Expand volume
 	err = v.Expand(app.db, app.executor, app.allocator, 1234)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, v.Info.Size == 1024+1234)
-	tests.Assert(t, len(v.Bricks) == 8)
+	tests.Assert(t, len(v.Bricks) == 4)
 
 	// Check db
 	var entry *VolumeEntry
