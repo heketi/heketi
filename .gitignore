@@ -31,3 +31,13 @@ heketi.db
 
 
 heketi-ci-docker.img
+
+# Generated files
+heketi
+client/cli/go/heketi-cli
+
+# Other
+cscope.*
+tags
+*.diff
+*.patch
