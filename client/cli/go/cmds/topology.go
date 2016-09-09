@@ -126,6 +126,10 @@ var topologyLoadCommand = &cobra.Command{
 
 		// Load current topolgy
 		heketiTopology, err := heketi.TopologyInfo()
+		if err != nil {
+			fmt.Fprintf(stdout, "Unable to get topology information\n")
+			return fmt.Errorf("Unable to get topology information: %v", err)
+		}
 
 		// Register topology
 		for _, cluster := range topology.Clusters {
