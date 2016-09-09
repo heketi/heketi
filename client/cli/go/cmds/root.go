@@ -47,6 +47,8 @@ var RootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		if version {
 			fmt.Printf("heketi-cli %v\n", HEKETI_CLI_VERSION)
+		} else {
+			cmd.Usage()
 		}
 	},
 }
@@ -73,7 +75,8 @@ func initConfig() {
 	// Check server
 	if options.Url == "" {
 		options.Url = os.Getenv("HEKETI_CLI_SERVER")
-		if options.Url == "" && !version {
+		args := os.Args[1:]
+		if options.Url == "" && !version && len(args) > 0 {
 			fmt.Fprintf(stderr, "Server must be provided\n")
 			os.Exit(3)
 		}
