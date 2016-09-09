@@ -143,7 +143,7 @@ var topologyLoadCommand = &cobra.Command{
 					clusterInfo, err = heketi.ClusterInfo(nodeInfo.ClusterId)
 					if err != nil {
 						fmt.Fprintf(stdout, "Unable to get cluster information\n")
-						return fmt.Errorf("Unablet to get cluster information")
+						return fmt.Errorf("Unable to get cluster information")
 					}
 				} else {
 					var err error
