@@ -28,6 +28,19 @@ heketi.db
 # Ignore patches and rejects
 *.patch
 *.rej
+*.diff
 
 
 heketi-ci-docker.img
+
+# Generated files
+heketi
+client/cli/go/heketi-cli
+dist
+
+# Other
+cscope.*
+tags
+log
+*.sw?
+*~
