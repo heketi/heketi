@@ -107,14 +107,16 @@ func TestLogError(t *testing.T) {
 
 	l := NewLogger("[testing]", LEVEL_DEBUG)
 
-	l.LogError("Hello %v", "World")
+	err := l.LogError("Hello %v", "World")
 	tests.Assert(t, strings.Contains(testbuffer.String(), "[testing] ERROR "), testbuffer.String())
 	tests.Assert(t, strings.Contains(testbuffer.String(), "Hello World"), testbuffer.String())
 	tests.Assert(t, strings.Contains(testbuffer.String(), "log_test.go"), testbuffer.String())
 	testbuffer.Reset()
 	testbuffer.Reset()
+	tests.Assert(t, err != nil)
+	tests.Assert(t, strings.Contains(err.Error(), "Hello World"), err)
 
-	err := errors.New("BAD")
+	err = errors.New("BAD")
 	l.Err(err)
 	tests.Assert(t, strings.Contains(testbuffer.String(), "[testing] ERROR "), testbuffer.String())
 	tests.Assert(t, strings.Contains(testbuffer.String(), "BAD"), testbuffer.String())
