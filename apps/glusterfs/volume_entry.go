@@ -304,7 +304,7 @@ func (v *VolumeEntry) Create(db *bolt.DB,
 		} else if err == ErrNoSpace ||
 			err == ErrMaxBricks ||
 			err == ErrMinimumBrickSize {
-			logger.Debug("Cluster %v can not accomodate volume " +
+			logger.Debug("Cluster %v can not accomodate volume "+
 				"(%v), trying next cluster", cluster, err)
 			continue
 		} else {
