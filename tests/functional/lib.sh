@@ -18,12 +18,9 @@ _sudo() {
 
 HEKETI_PID=
 start_heketi() {
-    # Build server if we need to
-    if [ ! -x "$HEKETI_SERVER" ] ; then
-        ( cd $HEKETI_SERVER_BUILD_DIR && make && cp heketi $HEKETI_SERVER )
-        if [ $? -ne 0 ] ; then
-            fail "Unable to build Heketi"
-        fi
+    ( cd $HEKETI_SERVER_BUILD_DIR && make && cp heketi $HEKETI_SERVER )
+    if [ $? -ne 0 ] ; then
+        fail "Unable to build Heketi"
     fi
 
     # Start server
