@@ -10,13 +10,13 @@ CLIENTDIR=$TOP/client/cli/go
 
 source ${FUNCTIONAL_DIR}/lib.sh
 
-
+### VERSIONS ###
+KUBEVERSION=v1.4.0-beta.1
 
 copy_docker_files() {
     (
         eval $(minikube docker-env) 
         docker load -i $heketi_docker || fail "Unable to load Heketi docker image"
-        docker tag heketi/heketi:ci heketi/heketi:latest || fail "Unable to retag Heketi container"
     )
 }
 
@@ -58,35 +58,39 @@ setup_minikube() {
         mkdir $RESOURCES_DIR
     fi
 
-	if [ ! -x /usr/local/bin/docker-machine ] ; then
+	#if [ ! -x /usr/local/bin/docker-machine ] ; then
+        echo -e "\nGet docker-machine"
 		curl -Lo docker-machine https://github.com/docker/machine/releases/download/v0.8.1/docker-machine-Linux-x86_64 || fail "Unable to get docker-machine"
 		chmod +x docker-machine
 		_sudo mv docker-machine /usr/local/bin
-	fi
+	#fi
 
-	if [ ! -x /usr/local/bin/docker-machine-driver-kvm ] ; then
+	#if [ ! -x /usr/local/bin/docker-machine-driver-kvm ] ; then
+        echo -e "\nGet docker-machine-driver-kvm"
 		curl -Lo docker-machine-driver-kvm \
 			https://github.com/dhiltgen/docker-machine-kvm/releases/download/v0.7.0/docker-machine-driver-kvm || fail "Unable to get docker-machine-driver-kvm"
 		chmod +x docker-machine-driver-kvm
 		_sudo mv docker-machine-driver-kvm /usr/local/bin
-    fi
+    #fi
 
 	_sudo usermod -a -G libvirt $(whoami)
 	#newgrp libvirt
 
-	if [ ! -x /usr/local/bin/minikube ] ; then
+	#if [ ! -x /usr/local/bin/minikube ] ; then
+        echo -e "\nGet minikube"
 		curl -Lo minikube \
 			https://storage.googleapis.com/minikube/releases/v0.9.0/minikube-linux-amd64 || fail "Unable to get minikube"
 		chmod +x minikube
 		_sudo mv minikube /usr/local/bin
-	fi
+	#fi
 
-	if [ ! -x /usr/local/bin/kubectl ] ; then
+	#if [ ! -x /usr/local/bin/kubectl ] ; then
+        echo -e "\nGet kubectl $KUBEVERSION"
 		curl -Lo kubectl \
-			http://storage.googleapis.com/kubernetes-release/release/v1.3.0/bin/linux/amd64/kubectl || fail "Unable to get kubectl"
+			http://storage.googleapis.com/kubernetes-release/release/${KUBEVERSION}/bin/linux/amd64/kubectl || fail "Unable to get kubectl"
 		chmod +x kubectl
 		_sudo mv kubectl /usr/local/bin
-	fi
+	#fi
 
 }
 
@@ -96,7 +100,7 @@ start_minikube() {
 		--cpus=2 \
 		--memory=2048 \
 		--vm-driver=kvm \
-		--kubernetes-version="v1.4.0-beta.1" || fail "Unable to start minikube"
+		--kubernetes-version="${KUBEVERSION}" || fail "Unable to start minikube"
 }
 
 
@@ -114,5 +118,5 @@ kubectl get nodes
 
 ./test.sh
 
-teardown
+#teardown
 
