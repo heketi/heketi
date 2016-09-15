@@ -18,10 +18,11 @@ package glusterfs
 
 import (
 	"encoding/json"
+	"net/http"
+
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"net/http"
 )
 
 func (a *App) ClusterCreate(w http.ResponseWriter, r *http.Request) {
@@ -143,11 +144,12 @@ func (a *App) ClusterDelete(w http.ResponseWriter, r *http.Request) {
 		}
 
 		err = entry.Delete(tx)
-		if err == ErrConflict {
-			http.Error(w, err.Error(), http.StatusConflict)
-			return err
-		} else if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if err != nil {
+			if err == ErrConflict {
+				http.Error(w, entry.ConflictString(), http.StatusConflict)
+			} else {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
 			return err
 		}
 

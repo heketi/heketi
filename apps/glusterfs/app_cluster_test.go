@@ -334,6 +334,7 @@ func TestClusterDelete(t *testing.T) {
 	r, err := http.DefaultClient.Do(req)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, r.StatusCode == http.StatusConflict)
+	tests.Assert(t, utils.GetErrorFromResponse(r).Error() == entries[0].ConflictString())
 
 	// Check that we cannot delete a cluster with volumes
 	req, err = http.NewRequest("DELETE", ts.URL+"/clusters/"+"a2", nil)
@@ -341,6 +342,7 @@ func TestClusterDelete(t *testing.T) {
 	r, err = http.DefaultClient.Do(req)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, r.StatusCode == http.StatusConflict)
+	tests.Assert(t, utils.GetErrorFromResponse(r).Error() == entries[1].ConflictString())
 
 	// Check that we cannot delete a cluster with nodes
 	req, err = http.NewRequest("DELETE", ts.URL+"/clusters/"+"a3", nil)
@@ -348,6 +350,7 @@ func TestClusterDelete(t *testing.T) {
 	r, err = http.DefaultClient.Do(req)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, r.StatusCode == http.StatusConflict)
+	tests.Assert(t, utils.GetErrorFromResponse(r).Error() == entries[2].ConflictString())
 
 	// Delete cluster with no elements
 	req, err = http.NewRequest("DELETE", ts.URL+"/clusters/"+"000", nil)

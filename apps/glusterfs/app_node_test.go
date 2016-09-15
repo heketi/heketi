@@ -397,6 +397,7 @@ func TestNodeAddDelete(t *testing.T) {
 	r, err = http.DefaultClient.Do(req)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, r.StatusCode == http.StatusConflict)
+	tests.Assert(t, utils.GetErrorFromResponse(r).Error() == entry.ConflictString())
 
 	// Check that nothing has changed in the db
 	var cluster *ClusterEntry

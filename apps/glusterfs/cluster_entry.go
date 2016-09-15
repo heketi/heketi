@@ -19,6 +19,7 @@ package glusterfs
 import (
 	"bytes"
 	"encoding/gob"
+	"fmt"
 	"sort"
 
 	"github.com/boltdb/bolt"
@@ -77,12 +78,16 @@ func (c *ClusterEntry) Save(tx *bolt.Tx) error {
 	return EntrySave(tx, c, c.Info.Id)
 }
 
+func (c *ClusterEntry) ConflictString() string {
+	return fmt.Sprintf("Unable to delete cluster [%v] because it contains volumes and/or nodes", c.Info.Id)
+}
+
 func (c *ClusterEntry) Delete(tx *bolt.Tx) error {
 	godbc.Require(tx != nil)
 
-	// Check if the nodes still has drives
+	// Check if the cluster still has nodes or volumes
 	if len(c.Info.Nodes) > 0 || len(c.Info.Volumes) > 0 {
-		logger.Warning("Unable to delete cluster [%v] because it contains volumes and/or nodes", c.Info.Id)
+		logger.Warning(c.ConflictString())
 		return ErrConflict
 	}
 
