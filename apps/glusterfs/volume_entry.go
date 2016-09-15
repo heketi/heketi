@@ -291,20 +291,33 @@ func (v *VolumeEntry) Create(db *bolt.DB,
 
 	// For each cluster look for storage space for this volume
 	var brick_entries []*BrickEntry
+	var err error
 	for _, cluster := range clusters {
-		var err error
 
 		// Check this cluster for space
 		brick_entries, err = v.allocBricksInCluster(db, allocator, cluster, v.Info.Size)
 
-		// Check if allocation was successful
 		if err == nil {
 			v.Info.Cluster = cluster
 			logger.Debug("Volume to be created on cluster %v", cluster)
 			break
+		} else if err == ErrNoSpace ||
+			err == ErrMaxBricks ||
+			err == ErrMinimumBrickSize {
+			logger.Debug("Cluster %v can not accomodate volume "+
+				"(%v), trying next cluster", cluster, err)
+			continue
+		} else {
+			// A genuine error occurred - bail out
+			return logger.LogError("Error calling v.allocBricksInCluster: %v", err)
 		}
 	}
-	if brick_entries == nil {
+
+	if err != nil || brick_entries == nil {
+		// Map all 'valid' errors to NoSpace here:
+		// Only the last such error could get propagated down,
+		// so it does not make sense to hand the granularity on.
+		// But for other callers (Expand), we keep it.
 		return ErrNoSpace
 	}
 
@@ -321,7 +334,7 @@ func (v *VolumeEntry) Create(db *bolt.DB,
 	}()
 
 	// Create the bricks on the nodes
-	err := CreateBricks(db, executor, brick_entries)
+	err = CreateBricks(db, executor, brick_entries)
 	if err != nil {
 		return err
 	}
