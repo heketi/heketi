@@ -225,7 +225,7 @@ func TestHeketiVolumes(t *testing.T) {
 	tests.Assert(t, volInfo.Size == 100)
 	tests.Assert(t, volInfo.Mount.GlusterFS.MountPoint != "")
 	tests.Assert(t, volInfo.Name != "")
-	tests.Assert(t, len(volInfo.Bricks) == 6)
+	tests.Assert(t, len(volInfo.Bricks) == 3, len(volInfo.Bricks))
 
 	// Check there are two volumes
 	volumes, err = heketi.VolumeList()

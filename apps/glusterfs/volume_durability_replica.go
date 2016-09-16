@@ -44,10 +44,12 @@ func (r *VolumeReplicaDurability) BrickSizeGenerator(size uint64) func() (int, u
 	return func() (int, uint64, error) {
 
 		var brick_size uint64
+		var num_sets int
 
 		for {
+			num_sets = sets
 			sets *= 2
-			brick_size = size / uint64(sets)
+			brick_size = size / uint64(num_sets)
 
 			if brick_size < BrickMinSize {
 				return 0, 0, ErrMinimumBrickSize
@@ -56,7 +58,7 @@ func (r *VolumeReplicaDurability) BrickSizeGenerator(size uint64) func() (int, u
 			}
 		}
 
-		return sets, brick_size, nil
+		return num_sets, brick_size, nil
 	}
 }
 
