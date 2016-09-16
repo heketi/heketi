@@ -352,7 +352,6 @@ func TestNodeAddDelete(t *testing.T) {
 	r, err = http.Post(ts.URL+"/nodes", "application/json", bytes.NewBuffer(request))
 	tests.Assert(t, err == nil)
 	tests.Assert(t, r.StatusCode == http.StatusConflict)
-	tests.Assert(t, err == nil)
 
 	// Check Cluster has node
 	r, err = http.Get(ts.URL + "/clusters/" + clusterinfo.Id)
