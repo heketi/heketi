@@ -30,7 +30,7 @@ teardown_all
 
 # Check each dir for tests
 results=0
-for testDir in * ; do
+for testDir in "TestKubeSmokeTest" ; do
     if [ -x $testDir/run.sh ] ; then
         println "TEST $testDir"
         cd $testDir 
