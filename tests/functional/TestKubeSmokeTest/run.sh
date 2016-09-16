@@ -13,10 +13,26 @@ source ${FUNCTIONAL_DIR}/lib.sh
 ### VERSIONS ###
 KUBEVERSION=v1.4.0-beta.1
 
+docker_set_env() {
+
+    ###
+    ### CENTOS WORKAROUND ###
+    ### Suffering from same bug as https://github.com/getcarina/carina/issues/112
+    ###
+    if grep "CentOS" /etc/redhat-release > /dev/null 2>&1 ; then
+        echo "CentOS DOCKER WORKAROUND"
+        curl -sL https://download.getcarina.com/dvm/latest/install.sh | sh
+        source ~/.dvm/dvm.sh
+        eval $(minikube docker-env)
+        dvm use
+    else
+        eval $(minikube docker-env)
+    fi
+}
+
 copy_docker_files() {
     (
-        minikube docker-env
-        eval $(minikube docker-env) 
+        docker_set_env
         docker load -i $heketi_docker || fail "Unable to load Heketi docker image"
     )
 
