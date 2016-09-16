@@ -58,7 +58,8 @@ setup_heketi() {
 
 test_create() {
 	echo "Assert no volumes available"
-	if ! heketi-cli volume list | grep Id | wc -l | grep 1 ; then
+	if heketi-cli volume list | grep Id ; then
+        heketi-cli volume list
 		fail "Incorrect number of volumes in Heketi"
 	fi
 
@@ -87,11 +88,12 @@ test_delete() {
 	echo "Delete PVC"
 	kubectl delete pvc claim1 || fail "Unable to delete claim1"
 
+    sleep 30
 	echo "Assert no volumes available"
-	if ! heketi-cli volume list | grep Id | wc -l | grep 1 ; then
+	if heketi-cli volume list | grep Id ; then
+        heketi-cli volume list
 		fail "Incorrect number of volumes in Heketi"
 	fi
-
 }
 	
 
@@ -99,6 +101,8 @@ test_delete() {
 
 display_information
 setup_heketi
+
+echo -e "\n*** Start tests ***"
 test_create
 test_delete
 
