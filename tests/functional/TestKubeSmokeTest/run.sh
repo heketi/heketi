@@ -22,9 +22,10 @@ docker_set_env() {
     if grep "CentOS" /etc/redhat-release > /dev/null 2>&1 ; then
         echo "CentOS DOCKER WORKAROUND"
         curl -sL https://download.getcarina.com/dvm/latest/install.sh | sh
-        source ~/.dvm/dvm.sh
         eval $(minikube docker-env)
-        dvm use
+        source ~/.dvm/dvm.sh
+        dvm install 1.10.3
+        dvm use 1.10.3
     else
         eval $(minikube docker-env)
     fi
