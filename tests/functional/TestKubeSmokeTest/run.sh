@@ -32,14 +32,8 @@ docker_set_env() {
 }
 
 copy_docker_files() {
-    (
-        docker_set_env
-        docker load -i $heketi_docker || fail "Unable to load Heketi docker image"
-    )
-
-    if [ $? -ne 0 ] ; then
-        fail "Exit"
-    fi
+    docker_set_env
+    docker load -i $heketi_docker || fail "Unable to load Heketi docker image"
 }
 
 build_docker_file(){
