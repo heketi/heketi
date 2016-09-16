@@ -15,9 +15,14 @@ KUBEVERSION=v1.4.0-beta.1
 
 copy_docker_files() {
     (
+        minikube docker-env
         eval $(minikube docker-env) 
         docker load -i $heketi_docker || fail "Unable to load Heketi docker image"
     )
+
+    if [ $? -ne 0 ] ; then
+        fail "Exit"
+    fi
 }
 
 build_docker_file(){
