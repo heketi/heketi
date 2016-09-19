@@ -139,7 +139,7 @@ func (a *App) ClusterDelete(w http.ResponseWriter, r *http.Request) {
 			return err
 		} else if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return err
+			return logger.Err(err)
 		}
 
 		err = entry.Delete(tx)
