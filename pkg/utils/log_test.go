@@ -100,6 +100,36 @@ func TestLogWarning(t *testing.T) {
 	tests.Assert(t, testbuffer.Len() == 0)
 }
 
+func TestLogWarnErr(t *testing.T) {
+	var testbuffer bytes.Buffer
+
+	defer tests.Patch(&stdout, &testbuffer).Restore()
+
+	l := NewLogger("[testing]", LEVEL_DEBUG)
+
+	ErrSample := errors.New("TEST ERROR")
+	err := l.WarnErr(ErrSample)
+	tests.Assert(t, strings.Contains(testbuffer.String(), "[testing] WARNING "), testbuffer.String())
+	tests.Assert(t, strings.Contains(testbuffer.String(), "TEST ERROR"), testbuffer.String())
+	tests.Assert(t, strings.Contains(testbuffer.String(), "log_test.go"), testbuffer.String())
+	tests.Assert(t, err == ErrSample)
+	testbuffer.Reset()
+
+	err = l.WarnErr(fmt.Errorf("GOT %v", err))
+	tests.Assert(t, strings.Contains(testbuffer.String(), "[testing] WARNING "), testbuffer.String())
+	tests.Assert(t, strings.Contains(testbuffer.String(), "TEST ERROR"), testbuffer.String())
+	tests.Assert(t, strings.Contains(testbuffer.String(), "log_test.go"), testbuffer.String())
+	tests.Assert(t, strings.Contains(testbuffer.String(), "GOT"), testbuffer.String())
+	tests.Assert(t, err != ErrSample)
+	tests.Assert(t, err != nil)
+	tests.Assert(t, strings.Contains(err.Error(), "GOT TEST ERROR"), err)
+	testbuffer.Reset()
+
+	l.SetLevel(LEVEL_ERROR)
+	l.WarnErr(ErrSample)
+	tests.Assert(t, testbuffer.Len() == 0)
+}
+
 func TestLogError(t *testing.T) {
 	var testbuffer bytes.Buffer
 

@@ -138,6 +138,15 @@ func (l *Logger) Warning(format string, v ...interface{}) {
 	}
 }
 
+// Log error variable as a warning
+func (l *Logger) WarnErr(err error) error {
+	if l.level >= LEVEL_WARNING {
+		logWithLongFile(l.warninglog, "%v", err)
+	}
+
+	return err
+}
+
 // Log string
 func (l *Logger) Info(format string, v ...interface{}) {
 	if l.level >= LEVEL_INFO {
