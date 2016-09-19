@@ -18,8 +18,10 @@ package glusterfs
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -40,6 +42,54 @@ import (
 func init() {
 	// turn off logging
 	logger.SetLevel(utils.LEVEL_NOLOG)
+}
+
+func TestVolumeCreateBadGid(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// VolumeCreate JSON Request
+	request := []byte(`{
+        "size" : 100,
+        "gid" : -1
+    }`)
+
+	// Send request
+	r, err := http.Post(ts.URL+"/volumes", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusBadRequest)
+
+	body, err := utils.GetStringFromResponse(r)
+	tests.Assert(t, err == nil)
+	tests.Assert(t,
+		strings.Contains(body, "Bad group id less than zero"))
+
+	// VolumeCreate JSON Request
+	request = []byte(`{
+        "size" : 100,
+        "gid" : ` + fmt.Sprintf("%v", math.MaxInt32) + `
+    }`)
+
+	// Send request
+	r, err = http.Post(ts.URL+"/volumes", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusBadRequest)
+
+	body, err = utils.GetStringFromResponse(r)
+	tests.Assert(t, err == nil)
+	tests.Assert(t,
+		strings.Contains(body, "Bad group id equal or greater than 2**32"))
+
 }
 
 func TestVolumeCreateBadJson(t *testing.T) {

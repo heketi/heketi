@@ -2,6 +2,7 @@
   yum: name={{ item }} state=present
   with_items:
     - glusterfs-server
+    - glusterfs-client
 
 - name: start glusterd
   service: name=glusterd state=started enabled=yes

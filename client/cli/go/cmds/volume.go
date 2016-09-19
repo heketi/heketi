@@ -36,6 +36,7 @@ var (
 	replica        int
 	disperseData   int
 	redundancy     int
+	gid            int64
 	snapshotFactor float64
 	clusters       string
 	expandSize     int
@@ -55,6 +56,8 @@ func init() {
 
 	volumeCreateCommand.Flags().IntVar(&size, "size", -1,
 		"\n\tSize of volume in GB")
+	volumeCreateCommand.Flags().Int64Var(&gid, "gid", 0,
+		"\n\tOptional: Initialize volume with the specified group id")
 	volumeCreateCommand.Flags().StringVar(&volname, "name", "",
 		"\n\tOptional: Name of volume. Only set if really necessary")
 	volumeCreateCommand.Flags().StringVar(&durability, "durability", "replicate",
@@ -157,6 +160,11 @@ var volumeCreateCommand = &cobra.Command{
 		req.Durability.Replicate.Replica = replica
 		req.Durability.Disperse.Data = disperseData
 		req.Durability.Disperse.Redundancy = redundancy
+
+		// Set group id if specified
+		if gid != 0 {
+			req.Gid = gid
+		}
 
 		if volname != "" {
 			req.Name = volname

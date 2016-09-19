@@ -521,7 +521,7 @@ func TestVolumeEntryCreateRunOutOfSpaceMaxBrickLimit(t *testing.T) {
 
 }
 
-func TestVolumeEntryCreateFourBricks(t *testing.T) {
+func TestVolumeEntryCreateTwoBricks(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
@@ -538,10 +538,31 @@ func TestVolumeEntryCreateFourBricks(t *testing.T) {
 	)
 	tests.Assert(t, err == nil)
 
+	// Mock Brick creation and check it was called
+	brickCreateCount := 0
+	gid := int64(1000)
+	app.xo.MockBrickCreate = func(host string,
+		brick *executors.BrickRequest) (*executors.BrickInfo, error) {
+
+		brickCreateCount++
+
+		bInfo := &executors.BrickInfo{
+			Path: "/mockpath",
+		}
+
+		tests.Assert(t, brick.Gid == gid)
+		return bInfo, nil
+	}
+
 	// Create a volume who will be broken down to
 	v := createSampleVolumeEntry(250)
+
+	// Set a GID
+	v.gidRequested = gid
+
 	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil, err)
+	tests.Assert(t, brickCreateCount == 2)
 
 	// Check database
 	var info *api.VolumeInfoResponse

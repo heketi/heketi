@@ -18,12 +18,15 @@
 package functional
 
 import (
+	"fmt"
+	"net/http"
+	"testing"
+
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/utils/ssh"
 	"github.com/heketi/tests"
-	"net/http"
-	"testing"
 )
 
 // These are the settings for the vagrant file
@@ -42,6 +45,7 @@ const (
 var (
 	// Heketi client
 	heketi = client.NewClientNoAuth(heketiUrl)
+	logger = utils.NewLogger("[test]", utils.LEVEL_DEBUG)
 
 	// Storage systems
 	storagevms = []string{
@@ -158,11 +162,12 @@ func TestConnection(t *testing.T) {
 	tests.Assert(t, r.StatusCode == http.StatusOK)
 }
 
-func TestHeketiVolumes(t *testing.T) {
+func TestHeketiSmokeTest(t *testing.T) {
 
 	// Setup the VM storage topology
 	teardownCluster(t)
 	setupCluster(t)
+	defer teardownCluster(t)
 
 	// Create a volume and delete a few time to test garbage collection
 	for i := 0; i < 2; i++ {
@@ -243,4 +248,35 @@ func TestHeketiVolumes(t *testing.T) {
 	// Delete volume
 	err = heketi.VolumeDelete(volInfo.Id)
 	tests.Assert(t, err == nil)
+}
+
+func TestHeketiCreateVolumeWithGid(t *testing.T) {
+	// Setup the VM storage topology
+	teardownCluster(t)
+	setupCluster(t)
+	defer teardownCluster(t)
+
+	// Create a volume
+	volReq := &api.VolumeCreateRequest{}
+	volReq.Size = 1024
+	volReq.Durability.Type = api.DurabilityReplicate
+	volReq.Durability.Replicate.Replica = 3
+	volReq.Snapshot.Enable = true
+	volReq.Snapshot.Factor = 1.5
+
+	// Set to the vagrant gid
+	volReq.Gid = 1000
+
+	// Create the volume
+	volInfo, err := heketi.VolumeCreate(volReq)
+	tests.Assert(t, err == nil)
+
+	// SSH into system and execute gluster command to create a snapshot
+	exec := ssh.NewSshExecWithKeyFile(logger, "vagrant", "../config/insecure_private_key")
+	cmd := []string{
+		fmt.Sprintf("sudo mount -t glusterfs %v /mnt", volInfo.Mount.GlusterFS.MountPoint),
+		"touch /mnt/testfile",
+	}
+	_, err = exec.ConnectAndExec("192.168.10.100:22", cmd, 10, true)
+	tests.Assert(t, err == nil, err)
 }

@@ -19,6 +19,7 @@ package glusterfs
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 
 	"github.com/boltdb/bolt"
@@ -38,6 +39,16 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 	err := utils.GetJsonFromRequest(r, &msg)
 	if err != nil {
 		http.Error(w, "request unable to be parsed", 422)
+		return
+	}
+
+	// Check group id
+	switch {
+	case msg.Gid < 0:
+		http.Error(w, "Bad group id less than zero", http.StatusBadRequest)
+		return
+	case msg.Gid >= math.MaxInt32:
+		http.Error(w, "Bad group id equal or greater than 2**32", http.StatusBadRequest)
 		return
 	}
 

@@ -350,7 +350,7 @@ func (d *DeviceEntry) SetExtentSize(amount uint64) {
 // the storage amount required from the device's used storage, but it will not add
 // the brick id to the brick list.  The caller is responsabile for adding the brick
 // id to the list.
-func (d *DeviceEntry) NewBrickEntry(amount uint64, snapFactor float64) *BrickEntry {
+func (d *DeviceEntry) NewBrickEntry(amount uint64, snapFactor float64, gid int64) *BrickEntry {
 
 	// :TODO: This needs unit test
 
@@ -386,7 +386,7 @@ func (d *DeviceEntry) NewBrickEntry(amount uint64, snapFactor float64) *BrickEnt
 	d.StorageAllocate(total)
 
 	// Create brick
-	return NewBrickEntry(amount, tpsize, metadataSize, d.Info.Id, d.NodeId)
+	return NewBrickEntry(amount, tpsize, metadataSize, d.Info.Id, d.NodeId, gid)
 }
 
 // Return poolmetadatasize in KB
