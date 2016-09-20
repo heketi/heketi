@@ -169,12 +169,11 @@ func TestLogErr(t *testing.T) {
 	tests.Assert(t, strings.Contains(testbuffer.String(), "log_test.go"), testbuffer.String())
 	tests.Assert(t, strings.Contains(testbuffer.String(), "GOT"), testbuffer.String())
 	tests.Assert(t, err != ErrSample)
-	tests.Assert(t, err != ErrSample)
 	tests.Assert(t, err != nil)
 	tests.Assert(t, strings.Contains(err.Error(), "GOT TEST ERROR"), err)
 	testbuffer.Reset()
 
 	l.SetLevel(LEVEL_NOLOG)
-	l.LogError("TEXT")
+	l.Err(ErrSample)
 	tests.Assert(t, testbuffer.Len() == 0)
 }
