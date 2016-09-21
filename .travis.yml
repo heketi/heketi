@@ -20,6 +20,8 @@ matrix:
     env: COVERAGE="true" OPTIONS="" GO15VENDOREXPERIMENT=1
   - go: 1.6.3
     env: OPTIONS="-race" GO15VENDOREXPERIMENT=1
+  - go: 1.7.1
+    env: OPTIONS="-race" GO15VENDOREXPERIMENT=1
 script:
 - go fmt $(go list ./... | grep -v vendor) | wc -l | grep 0
 - go vet $(go list ./... | grep -v vendor)
