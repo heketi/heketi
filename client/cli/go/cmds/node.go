@@ -237,12 +237,11 @@ var nodeListCommand = &cobra.Command{
 			}
 			for _, nodeid := range clusterinfo.Nodes {
 				fmt.Fprintf(stdout,
-				 "Id:%v\tCluster:%v\n",
-				 nodeid,
-				 clusterid)
+					"Id:%v\tCluster:%v\n",
+					nodeid,
+					clusterid)
 			}
 		}
-
 
 		return err
 	},
