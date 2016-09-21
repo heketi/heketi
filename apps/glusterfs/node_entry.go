@@ -159,12 +159,16 @@ func (n *NodeEntry) IsDeleteOk() bool {
 	return true
 }
 
+func (n *NodeEntry) ConflictString() string {
+	return fmt.Sprintf("Unable to delete node [%v] because it contains devices", n.Info.Id)
+}
+
 func (n *NodeEntry) Delete(tx *bolt.Tx) error {
 	godbc.Require(tx != nil)
 
 	// Check if the nodes still has drives
 	if !n.IsDeleteOk() {
-		logger.Warning("Unable to delete node [%v] because it contains devices", n.Info.Id)
+		logger.Warning(n.ConflictString())
 		return ErrConflict
 	}
 

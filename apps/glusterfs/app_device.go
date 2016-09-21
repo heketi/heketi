@@ -225,7 +225,7 @@ func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
 
 		// Check if we can delete the device
 		if !device.IsDeleteOk() {
-			http.Error(w, ErrConflict.Error(), http.StatusConflict)
+			http.Error(w, device.ConflictString(), http.StatusConflict)
 			return ErrConflict
 		}
 

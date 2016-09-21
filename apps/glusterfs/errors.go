@@ -18,13 +18,12 @@ package glusterfs
 
 import (
 	"errors"
-	"net/http"
 )
 
 var (
 	ErrNoSpace          = errors.New("No space")
 	ErrNotFound         = errors.New("Id not found")
-	ErrConflict         = errors.New(http.StatusText(http.StatusConflict))
+	ErrConflict         = errors.New("The target exists, contains other items, or is in use.")
 	ErrMaxBricks        = errors.New("Maximum number of bricks reached.")
 	ErrMinimumBrickSize = errors.New("Minimum brick size limit reached.  Out of space.")
 	ErrDbAccess         = errors.New("Unable to access db")

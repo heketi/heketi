@@ -148,12 +148,16 @@ func (d *DeviceEntry) IsDeleteOk() bool {
 	return true
 }
 
+func (d *DeviceEntry) ConflictString() string {
+	return fmt.Sprintf("Unable to delete device [%v] because it contains bricks", d.Info.Id)
+}
+
 func (d *DeviceEntry) Delete(tx *bolt.Tx) error {
 	godbc.Require(tx != nil)
 
 	// Check if the devices still has drives
 	if !d.IsDeleteOk() {
-		logger.Warning("Unable to delete device [%v] because it contains bricks", d.Info.Id)
+		logger.Warning(d.ConflictString())
 		return ErrConflict
 	}
 

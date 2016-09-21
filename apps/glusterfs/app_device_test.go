@@ -236,6 +236,7 @@ func TestDeviceAddDelete(t *testing.T) {
 	r, err = http.DefaultClient.Do(req)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, r.StatusCode == http.StatusConflict)
+	tests.Assert(t, utils.GetErrorFromResponse(r).Error() == devicemap["/dev/fake1"].ConflictString())
 
 	// Check the db is still intact
 	err = app.db.View(func(tx *bolt.Tx) error {
