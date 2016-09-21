@@ -40,6 +40,7 @@ func init() {
 	nodeCommand.AddCommand(nodeInfoCommand)
 	nodeCommand.AddCommand(nodeEnableCommand)
 	nodeCommand.AddCommand(nodeDisableCommand)
+	nodeCommand.AddCommand(nodeListCommand)
 	nodeAddCommand.Flags().IntVar(&zone, "zone", -1, "The zone in which the node should reside")
 	nodeAddCommand.Flags().StringVar(&clusterId, "cluster", "", "The cluster in which the node should reside")
 	nodeAddCommand.Flags().StringVar(&managmentHostNames, "management-host-name", "", "Management host name")
@@ -47,6 +48,7 @@ func init() {
 	nodeAddCommand.SilenceUsage = true
 	nodeDeleteCommand.SilenceUsage = true
 	nodeInfoCommand.SilenceUsage = true
+	nodeListCommand.SilenceUsage = true
 }
 
 var nodeCommand = &cobra.Command{
@@ -208,6 +210,37 @@ var nodeDisableCommand = &cobra.Command{
 		err := heketi.NodeState(nodeId, req)
 		if err == nil {
 			fmt.Fprintf(stdout, "Node %v is now offline\n", nodeId)
+		}
+
+		return err
+	},
+}
+
+var nodeListCommand = &cobra.Command{
+	Use:     "list all nodes",
+	Short:   "List all nodes in cluster",
+	Long:    "List all nodes in cluster",
+	Example: "  $ heketi-cli node list",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// Create a client
+		heketi := client.NewClient(options.Url, options.User, options.Key)
+
+		clusters, err := heketi.ClusterList()
+		if err != nil {
+			return err
+		}
+
+		for _, clusterid := range clusters.Clusters {
+			clusterinfo, err := heketi.ClusterInfo(clusterid)
+			if err != nil {
+				return err
+			}
+			for _, nodeid := range clusterinfo.Nodes {
+				fmt.Fprintf(stdout,
+					"Id:%v\tCluster:%v\n",
+					nodeid,
+					clusterid)
+			}
 		}
 
 		return err
