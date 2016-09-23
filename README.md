@@ -20,7 +20,7 @@ Please visit the [WIKI](http://github.com/heketi/heketi/wiki) for project docume
 Please visit [Vagrant-Heketi](https://github.com/heketi/vagrant-heketi) to try out the demo.
 
 # Community
-Heketi development team uses a Google Group email list called [Heketi-devel](https://groups.google.com/forum/#!forum/heketi-devel). You will need to join before posting or sending emails to heketi-devel@googlegroups.com.
+email list TBD
 
 # Talks
 
