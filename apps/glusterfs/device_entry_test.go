@@ -196,12 +196,12 @@ func TestDeviceEntryRegister(t *testing.T) {
 
 	d := NewDeviceEntryFromRequest(req)
 
-	// Register node
+	// Register device
 	err := app.db.Update(func(tx *bolt.Tx) error {
 		err := d.Register(tx)
 		tests.Assert(t, err == nil)
 
-		return err
+		return d.Save(tx)
 	})
 	tests.Assert(t, err == nil)
 
@@ -226,7 +226,7 @@ func TestDeviceEntryRegister(t *testing.T) {
 		err := d2.Register(tx)
 		tests.Assert(t, err == nil)
 
-		return err
+		return d2.Save(tx)
 	})
 	tests.Assert(t, err == nil)
 
@@ -235,7 +235,7 @@ func TestDeviceEntryRegister(t *testing.T) {
 		err := d.Deregister(tx)
 		tests.Assert(t, err == nil)
 
-		return err
+		return d.Delete(tx)
 	})
 	tests.Assert(t, err == nil)
 
@@ -244,7 +244,63 @@ func TestDeviceEntryRegister(t *testing.T) {
 		err := d.Register(tx)
 		tests.Assert(t, err == nil)
 
-		return err
+		return d.Save(tx)
+	})
+	tests.Assert(t, err == nil)
+
+}
+
+func TestDeviceEntryRegisterStaleRegistration(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	// Create a device
+	req := &api.DeviceAddRequest{}
+	req.NodeId = "abc"
+	req.Name = "/dev/" + utils.GenUUID()
+
+	d := NewDeviceEntryFromRequest(req)
+
+	// Only register device but do not save it
+	err := app.db.Update(func(tx *bolt.Tx) error {
+		return d.Register(tx)
+	})
+	tests.Assert(t, err == nil)
+
+	// Should be able to register again
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		err := d.Register(tx)
+		tests.Assert(t, err == nil)
+
+		return d.Save(tx)
+	})
+	tests.Assert(t, err == nil)
+
+	// Should not be able to register again
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		return d.Register(tx)
+	})
+	tests.Assert(t, err != nil)
+
+	// Remove d
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		err := d.Deregister(tx)
+		tests.Assert(t, err == nil)
+
+		return d.Delete(tx)
+	})
+	tests.Assert(t, err == nil)
+
+	// Register d node again
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		err := d.Register(tx)
+		tests.Assert(t, err == nil)
+
+		return d.Save(tx)
 	})
 	tests.Assert(t, err == nil)
 

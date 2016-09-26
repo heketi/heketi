@@ -145,7 +145,7 @@ func TestNodeEntryRegister(t *testing.T) {
 		err := n.Register(tx)
 		tests.Assert(t, err == nil)
 
-		return err
+		return n.Save(tx)
 	})
 	tests.Assert(t, err == nil)
 
@@ -172,10 +172,7 @@ func TestNodeEntryRegister(t *testing.T) {
 
 	// Should not be able to register diff_cluster_n
 	err = app.db.Update(func(tx *bolt.Tx) error {
-		err := diff_cluster_n.Register(tx)
-		tests.Assert(t, err != nil)
-
-		return err
+		return diff_cluster_n.Register(tx)
 	})
 	tests.Assert(t, err != nil)
 
@@ -195,7 +192,7 @@ func TestNodeEntryRegister(t *testing.T) {
 		err := n2.Register(tx)
 		tests.Assert(t, err == nil)
 
-		return err
+		return n2.Save(tx)
 	})
 	tests.Assert(t, err == nil)
 
@@ -204,7 +201,7 @@ func TestNodeEntryRegister(t *testing.T) {
 		err := n.Deregister(tx)
 		tests.Assert(t, err == nil)
 
-		return err
+		return n.Delete(tx)
 	})
 	tests.Assert(t, err == nil)
 
@@ -213,11 +210,73 @@ func TestNodeEntryRegister(t *testing.T) {
 		err := n.Register(tx)
 		tests.Assert(t, err == nil)
 
-		return err
+		return n.Save(tx)
+	})
+	tests.Assert(t, err == nil)
+}
+
+func TestNodeEntryRegisterStaleRegistration(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	// Create a registration entry in the db
+	// but do not create an actual node entry
+	req := &api.NodeAddRequest{
+		ClusterId: "123",
+		Hostnames: api.HostAddresses{
+			Manage:  []string{"manage"},
+			Storage: []string{"storage"},
+		},
+		Zone: 99,
+	}
+	n := NewNodeEntryFromRequest(req)
+
+	// Only save the registration
+	err := app.db.Update(func(tx *bolt.Tx) error {
+		return n.Register(tx)
+	})
+	tests.Assert(t, err == nil)
+
+	// Register node again.  This should
+	// work because a real node entry is not saved
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		err := n.Register(tx)
+		tests.Assert(t, err == nil)
+
+		return n.Save(tx)
+	})
+	tests.Assert(t, err == nil)
+
+	// Register again.  Should not work
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		return n.Register(tx)
+	})
+	tests.Assert(t, err != nil)
+
+	// Remove n
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		err := n.Deregister(tx)
+		tests.Assert(t, err == nil)
+
+		return n.Delete(tx)
+	})
+	tests.Assert(t, err == nil)
+
+	// Register n node again
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		err := n.Register(tx)
+		tests.Assert(t, err == nil)
+
+		return n.Save(tx)
 	})
 	tests.Assert(t, err == nil)
 
 }
+
 func TestNewNodeEntryFromIdNotFound(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)

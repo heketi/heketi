@@ -19,7 +19,6 @@ package glusterfs
 import (
 	"bytes"
 	"encoding/gob"
-	"errors"
 	"fmt"
 	"sort"
 
@@ -82,8 +81,22 @@ func (n *NodeEntry) Register(tx *bolt.Tx) error {
 	for _, h := range n.Info.Hostnames.Manage {
 		val, err := EntryRegister(tx, n, n.registerManageKey(h), []byte(n.Info.Id))
 		if err == ErrKeyExists {
-			return errors.New(fmt.Sprintf("Hostname %v already used by node with id %v\n",
-				h, string(val)))
+			// Now check if the node actually exists.  This only happens
+			// when the application crashes and it doesn't clean up stale
+			// registrations.
+			conflictId := string(val)
+			_, err := NewNodeEntryFromId(tx, conflictId)
+			if err == ErrNotFound {
+				// (stale) There is actually no conflict, we can allow
+				// the registration
+				return nil
+			} else if err != nil {
+				return logger.Err(err)
+			}
+
+			// Return that we found a conflict
+			return fmt.Errorf("Hostname %v already used by node with id %v\n",
+				h, conflictId)
 		} else if err != nil {
 			return err
 		}
@@ -93,8 +106,21 @@ func (n *NodeEntry) Register(tx *bolt.Tx) error {
 	for _, h := range n.Info.Hostnames.Storage {
 		val, err := EntryRegister(tx, n, n.registerStorageKey(h), []byte(n.Info.Id))
 		if err == ErrKeyExists {
-			return errors.New(fmt.Sprintf("Hostname %v already used by node with id %v\n",
-				h, string(val)))
+
+			// Check if it exists
+			conflictId := string(val)
+			_, err := NewNodeEntryFromId(tx, conflictId)
+			if err == ErrNotFound {
+				// (stale) There is actually no conflict, we can allow
+				// the registration
+				return nil
+			} else if err != nil {
+				return logger.Err(err)
+			}
+
+			// Return that we found a conflict
+			return fmt.Errorf("Hostname %v already used by node with id %v\n",
+				h, conflictId)
 		} else if err != nil {
 			return err
 		}
