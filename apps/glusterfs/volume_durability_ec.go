@@ -48,10 +48,12 @@ func (d *VolumeDisperseDurability) BrickSizeGenerator(size uint64) func() (int, 
 	return func() (int, uint64, error) {
 
 		var brick_size uint64
+		var num_sets int
 
 		for {
+			num_sets = sets
 			sets *= 2
-			brick_size = size / uint64(sets)
+			brick_size = size / uint64(num_sets)
 
 			// Divide what would be the brick size for replica by the
 			// number of data drives in the disperse request
@@ -64,7 +66,7 @@ func (d *VolumeDisperseDurability) BrickSizeGenerator(size uint64) func() (int, 
 			}
 		}
 
-		return sets, brick_size, nil
+		return num_sets, brick_size, nil
 	}
 }
 

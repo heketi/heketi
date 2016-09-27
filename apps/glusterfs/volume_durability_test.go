@@ -140,18 +140,25 @@ func TestDisperseDurability(t *testing.T) {
 	// Gen 1
 	sets, brick_size, err := gen()
 	tests.Assert(t, err == nil)
+	tests.Assert(t, sets == 1)
+	tests.Assert(t, brick_size == uint64(200*GB/8))
+	tests.Assert(t, 8+3 == r.BricksInSet())
+
+	// Gen 2
+	sets, brick_size, err = gen()
+	tests.Assert(t, err == nil)
 	tests.Assert(t, sets == 2)
 	tests.Assert(t, brick_size == uint64(100*GB/8))
 	tests.Assert(t, 8+3 == r.BricksInSet())
 
-	// Gen 2
+	// Gen 3
 	sets, brick_size, err = gen()
 	tests.Assert(t, err == nil)
 	tests.Assert(t, sets == 4)
 	tests.Assert(t, brick_size == uint64(50*GB/8))
 	tests.Assert(t, 8+3 == r.BricksInSet())
 
-	// Gen 3
+	// Gen 4
 	sets, brick_size, err = gen()
 	tests.Assert(t, err == ErrMinimumBrickSize)
 	tests.Assert(t, 8+3 == r.BricksInSet())
