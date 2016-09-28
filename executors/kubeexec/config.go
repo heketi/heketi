@@ -30,7 +30,7 @@ type KubeConfig struct {
 	Namespace string `json:"namespace"`
 	// Use Secrets to get the Bearerkey
 	UseSecrets bool   `json:"use_secrets"`
-	Secret     string `json:"secret"`
+	TokenFile  string `json:"token"`
 
 	// Use POD name instead of using label
 	// to access POD

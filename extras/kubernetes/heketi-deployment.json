@@ -47,7 +47,7 @@
                             "value": "${HEKETI_KUBE_USE_SECRET}"
                           },
                           {
-                            "name": "HEKETI_KUBE_SECRET",
+                            "name": "HEKETI_KUBE_TOKENFILE",
                             "value": "/var/lib/heketi/secret"
                           },
                           {

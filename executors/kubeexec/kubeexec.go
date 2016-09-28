@@ -134,9 +134,9 @@ func setWithEnvVariables(config *KubeConfig) {
 		}
 	}
 
-	env = os.Getenv("HEKETI_KUBE_SECRET")
+	env = os.Getenv("HEKETI_KUBE_TOKENFILE")
 	if "" != env {
-		config.Secret = env
+		config.TokenFile = env
 	}
 
 	// Use POD names
@@ -224,11 +224,10 @@ func (k *KubeExecutor) ConnectAndExec(host, namespace, resource string,
 		}
 		clientConfig.BearerToken = token
 	} else if k.config.UseSecrets {
-		tokenFilePath := k.config.Secret + "/token"
-		tokenBytes, err := ioutil.ReadFile(tokenFilePath)
+		tokenBytes, err := ioutil.ReadFile(k.config.TokenFile)
 		if err != nil {
 			logger.Err(err)
-			return nil, fmt.Errorf("Secret token not found in %v", k.config.Secret)
+			return nil, fmt.Errorf("Secret token not found in %v", k.config.TokenFile)
 		}
 		token := string(tokenBytes)
 		clientConfig.BearerToken = token
