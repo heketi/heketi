@@ -227,10 +227,9 @@ func (k *KubeExecutor) ConnectAndExec(host, namespace, resource string,
 		tokenBytes, err := ioutil.ReadFile(k.config.TokenFile)
 		if err != nil {
 			logger.Err(err)
-			return nil, fmt.Errorf("Secret token not found in %v", k.config.TokenFile)
+			return nil, logger.LogError("Secret token not found in %v", k.config.TokenFile)
 		}
-		token := string(tokenBytes)
-		clientConfig.BearerToken = token
+		clientConfig.BearerToken = string(tokenBytes)
 	}
 
 	// Get a client
