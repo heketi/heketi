@@ -30,6 +30,7 @@ type BrickEntry struct {
 	Info             api.BrickInfo
 	TpSize           uint64
 	PoolMetadataSize uint64
+	gidRequested     int64
 }
 
 func BrickList(tx *bolt.Tx) ([]string, error) {
@@ -41,13 +42,16 @@ func BrickList(tx *bolt.Tx) ([]string, error) {
 	return list, nil
 }
 
-func NewBrickEntry(size, tpsize, poolMetadataSize uint64, deviceid, nodeid string) *BrickEntry {
+func NewBrickEntry(size, tpsize, poolMetadataSize uint64,
+	deviceid, nodeid string, gid int64) *BrickEntry {
+
 	godbc.Require(size > 0)
 	godbc.Require(tpsize > 0)
 	godbc.Require(deviceid != "")
 	godbc.Require(nodeid != "")
 
 	entry := &BrickEntry{}
+	entry.gidRequested = gid
 	entry.TpSize = tpsize
 	entry.PoolMetadataSize = poolMetadataSize
 	entry.Info.Id = utils.GenUUID()
@@ -147,6 +151,7 @@ func (b *BrickEntry) Create(db *bolt.DB, executor executors.Executor) error {
 
 	// Create request
 	req := &executors.BrickRequest{}
+	req.Gid = b.gidRequested
 	req.Name = b.Info.Id
 	req.Size = b.Info.Size
 	req.TpSize = b.TpSize

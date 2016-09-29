@@ -110,7 +110,7 @@ func TestDeviceEntryNewBrickEntry(t *testing.T) {
 	d.ExtentSize = 8
 
 	// Too large
-	brick := d.NewBrickEntry(1000000000, 1.5)
+	brick := d.NewBrickEntry(1000000000, 1.5, 1000)
 	tests.Assert(t, brick == nil)
 
 	// --- Now check with a real value ---
@@ -129,11 +129,12 @@ func TestDeviceEntryNewBrickEntry(t *testing.T) {
 	metadatasize += d.ExtentSize - (metadatasize % d.ExtentSize)
 	total := tpsize + metadatasize
 
-	brick = d.NewBrickEntry(200, 1.5)
+	brick = d.NewBrickEntry(200, 1.5, 1000)
 	tests.Assert(t, brick != nil)
 	tests.Assert(t, brick.TpSize == tpsize)
 	tests.Assert(t, brick.PoolMetadataSize == metadatasize, brick.PoolMetadataSize, metadatasize)
 	tests.Assert(t, brick.Info.Size == 200)
+	tests.Assert(t, brick.gidRequested == 1000)
 
 	// Check it was subtracted from device storage
 	tests.Assert(t, d.Info.Storage.Used == 100+total)

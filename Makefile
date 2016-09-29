@@ -33,6 +33,7 @@ LDFLAGS :=-ldflags "-X main.HEKETI_VERSION=$(VERSION)"
 # Package target
 PACKAGE :=$(DIR)/dist/$(APP_NAME)-$(VERSION).$(GOOS).$(ARCH).tar.gz
 CLIENT_PACKAGE :=$(DIR)/dist/$(APP_NAME)-client-$(VERSION).$(GOOS).$(ARCH).tar.gz
+GOFILES=$(shell go list ./... | grep -v vendor)
 
 .DEFAULT: all
 
@@ -60,7 +61,7 @@ run: server
 	./$(APP_NAME)
 
 test: 
-	godep go test ./...
+	godep go test $(GOFILES)
 
 clean:
 	@echo Cleaning Workspace...
