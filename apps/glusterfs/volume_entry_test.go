@@ -23,6 +23,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/boltdb/bolt"
@@ -541,10 +542,13 @@ func TestVolumeEntryCreateTwoBricks(t *testing.T) {
 	// Mock Brick creation and check it was called
 	brickCreateCount := 0
 	gid := int64(1000)
+	var mutex sync.Mutex
 	app.xo.MockBrickCreate = func(host string,
 		brick *executors.BrickRequest) (*executors.BrickInfo, error) {
 
+		mutex.Lock()
 		brickCreateCount++
+		mutex.Unlock()
 
 		bInfo := &executors.BrickInfo{
 			Path: "/mockpath",
