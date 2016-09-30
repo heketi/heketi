@@ -62,6 +62,10 @@ func (r *VolumeReplicaDurability) BrickSizeGenerator(size uint64) func() (int, u
 	}
 }
 
+func (r *VolumeReplicaDurability) MinVolumeSize() uint64 {
+	return BrickMinSize
+}
+
 func (r *VolumeReplicaDurability) BricksInSet() int {
 	return r.Replica
 }

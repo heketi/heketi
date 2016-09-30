@@ -241,3 +241,31 @@ func TestReplicaDurabilityLargeBrickGenerator(t *testing.T) {
 	tests.Assert(t, brick_size == 3200*GB)
 	tests.Assert(t, 2 == r.BricksInSet())
 }
+
+func TestNoneDurabilityMinVolumeSize(t *testing.T) {
+	r := &NoneDurability{}
+	r.SetDurability()
+
+	minvolsize := r.MinVolumeSize()
+
+	tests.Assert(t, minvolsize == BrickMinSize)
+}
+
+func TestReplicaDurabilityMinVolumeSize(t *testing.T) {
+	r := &VolumeReplicaDurability{}
+	r.Replica = 3
+
+	minvolsize := r.MinVolumeSize()
+
+	tests.Assert(t, minvolsize == BrickMinSize)
+}
+
+func TestDisperseDurabilityMinVolumeSize(t *testing.T) {
+	r := &VolumeDisperseDurability{}
+	r.Data = 8
+	r.Redundancy = 3
+
+	minvolsize := r.MinVolumeSize()
+
+	tests.Assert(t, minvolsize == BrickMinSize*8)
+}

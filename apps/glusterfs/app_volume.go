@@ -133,6 +133,14 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 	// Create a volume entry
 	vol := NewVolumeEntryFromRequest(&msg)
 
+	if uint64(msg.Size)*GB < vol.Durability.MinVolumeSize() {
+		http.Error(w, fmt.Sprintf("Requested volume size (%v GB) is "+
+			"smaller than the minimum supported volume size (%v)",
+			msg.Size, vol.Durability.MinVolumeSize()),
+			http.StatusBadRequest)
+		return
+	}
+
 	// Add device in an asynchronous function
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
 

@@ -22,6 +22,7 @@ import (
 
 type VolumeDurability interface {
 	BrickSizeGenerator(size uint64) func() (int, uint64, error)
+	MinVolumeSize() uint64
 	BricksInSet() int
 	SetDurability()
 	SetExecutorVolumeRequest(v *executors.VolumeRequest)
