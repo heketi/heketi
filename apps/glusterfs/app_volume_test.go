@@ -142,7 +142,7 @@ func TestVolumeCreateNoTopology(t *testing.T) {
 	tests.Assert(t, r.StatusCode == http.StatusBadRequest)
 }
 
-func TestVolumeCreateSmallSize(t *testing.T) {
+func TestVolumeCreateInvalidSize(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
