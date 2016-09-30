@@ -171,6 +171,45 @@ func TestVolumeCreateInvalidSize(t *testing.T) {
 	tests.Assert(t, strings.Contains(string(body), "Invalid volume size"))
 }
 
+func TestVolumeCreateSmallSize(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Setup database
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		10,   // nodes_per_cluster
+		10,   // devices_per_node,
+		5*TB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	// VolumeCreate JSON Request
+	request := []byte(`{
+        "size" : 2
+    }`)
+
+	// Send request
+	r, err := http.Post(ts.URL+"/volumes", "application/json",
+		bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusBadRequest)
+	body, err := utils.GetStringFromResponse(r)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, strings.Contains(body, "Requested volume size (2 GB) "+
+		"is smaller than the minimum supported volume size"), body)
+}
+
 func TestVolumeHeketiDbStorage(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
