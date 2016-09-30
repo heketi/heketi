@@ -234,7 +234,7 @@ func (v *VolumeEntry) Create(db *bolt.DB,
 	}()
 
 	// Get list of clusters
-	var possibleClusters, clusters []string
+	var possibleClusters []string
 	if len(v.Info.Clusters) == 0 {
 		err := db.View(func(tx *bolt.Tx) error {
 			var err error
@@ -254,9 +254,10 @@ func (v *VolumeEntry) Create(db *bolt.DB,
 		logger.LogError("Volume being ask to be created, but there are no clusters configured")
 		return ErrNoSpace
 	}
-	logger.Debug("Using the following clusters: %+v", clusters)
+	logger.Debug("Using the following clusters: %+v", possibleClusters)
 
 	// Check for volume name conflict on any cluster
+	var clusters []string
 	for _, cluster := range possibleClusters {
 		var err error
 
