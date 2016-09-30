@@ -70,6 +70,10 @@ func (d *VolumeDisperseDurability) BrickSizeGenerator(size uint64) func() (int, 
 	}
 }
 
+func (d *VolumeDisperseDurability) MinVolumeSize() uint64 {
+	return BrickMinSize * uint64(d.Data)
+}
+
 func (d *VolumeDisperseDurability) BricksInSet() int {
 	return d.Data + d.Redundancy
 }
