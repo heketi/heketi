@@ -9,7 +9,7 @@ PATH=$PATH:$RESOURCES_DIR
 source ${FUNCTIONAL_DIR}/lib.sh
 
 # Setup Docker environment
-eval $(minikube docker-env) 
+eval $(minikube docker-env)
 
 display_information() {
 	# Display information
@@ -26,10 +26,18 @@ display_information() {
 	kubectl get nodes
 }
 
-setup_heketi() {
+setup_all_pods() {
+
+  echo -e "\nCreate a ServiceAccount"
+	kubectl create -f ServiceAccount.yaml || fail "Unable to create a serviceAccount"
+
+	KUBESEC=$(kubectl get secrets | grep SerAcc | awk 'NR==1{print $1}')
+
+	KUBEAPI=https://$(minikube ip):8443
+
 	# Start Heketi
 	echo -e "\nStart Heketi container"
-	kubectl run heketi --image=heketi/heketi:ci --port=8080 || fail "Unable to start heketi container"
+  sed 's\<ApiHost>\'"$KUBEAPI"'\g; s\<SecretName>\'"$KUBESEC"'\g' test-heketi-deployment.json | kubectl creat -f - --validate=false || fail "Unable to start heketi container"
 	sleep 2
 
 	# This blocks until ready
@@ -39,75 +47,32 @@ setup_heketi() {
 	export HEKETI_CLI_SERVER=$(minikube service heketi --url)
 	heketi-cli topology info
 
-	echo -e "\nLoad mock topology"
-	heketi-cli topology load --json=mock-topology.json || fail "Unable to load topology"
+  echo -e "\nStart gluster container"
+	kubectl run gluster1 --image=ashiq/glusterfs-mock-container --labels=glusterfs-node=gluster1 || fail "Unable to start gluster1"
 
-	echo -e "\nShow Topology"
-	export HEKETI_CLI_SERVER=$(minikube service heketi --url)
-	heketi-cli topology info 
+	kubectl run gluster2 --image=ashiq/glusterfs-mock-container --labels=glusterfs-node=gluster2 || fail "Unable to start gluster2"
 
-	echo -e "\nRegister mock endpoints"
-	kubectl create -f mock-endpoints.json || fail "Unable to submit mock-endpoints"
-
-	echo -e "\nRegister storage class"
-	sed -e \
-	"s#%%URL%%#${HEKETI_CLI_SERVER}#" \
-	storageclass.yaml.sed > ${RESOURCES_DIR}/sc.yaml
-    kubectl create -f ${RESOURCES_DIR}/sc.yaml || fail "Unable to register storage class"
 }
 
-test_create() {
-	echo "Assert no volumes available"
-	if heketi-cli volume list | grep Id ; then
-        heketi-cli volume list
-		fail "Incorrect number of volumes in Heketi"
-	fi
+test_peer_probe() {
+  echo -e "Get the Heketi server connection"
+	heketi-cli cluster create || fail "Unable to create cluster"
 
-	echo "Submit PVC for 100GiB"
-	kubectl create -f pvc.json || fail "Unable to submit PVC"
+	CLUSTERID=$(heketi-cli cluster list | sed -e '$!d')
 
-	sleep 2
-	echo "Assert PVC Bound"
-	if ! kubectl get pvc | grep claim1 | grep Bound ; then
-		fail "PVC is not Bound"
-	fi
+	heketi-cli node add --zone=1 --cluster=$CLUSTERID --management-host-name=gluster1 --storage-host-name=gluster1 || fail "Unable to add gluster1"
 
-	echo "Assert only one volume created in Heketi"
-	if ! heketi-cli volume list | grep Id | wc -l | grep 1 ; then
-		fail "Incorrect number of volumes in Heketi"
-	fi
+	heketi-cli node add --zone=2 --cluster=$CLUSTERID --management-host-name=gluster2 --storage-host-name=gluster2 || fail "Unable to add gluster2"
 
-	echo "Assert volume size is 100GiB"
-	id=`heketi-cli volume list | grep Id | awk '{print $1}' | cut -d: -f2`
-    if ! heketi-cli volume info ${id} | grep Size | cut -d: -f2 | grep 100 ; then
-		fail "Invalid size"
-	fi
 }
 
-test_delete() {
-	echo "Delete PVC"
-	kubectl delete pvc claim1 || fail "Unable to delete claim1"
-
-    sleep 30
-	echo "Assert no volumes available"
-	if heketi-cli volume list | grep Id ; then
-        heketi-cli volume list
-		fail "Incorrect number of volumes in Heketi"
-	fi
-}
-	
 
 
 
 display_information
-setup_heketi
+setup_all_pods
 
 echo -e "\n*** Start tests ***"
-test_create
-test_delete
+test_peer_probe
 
 # Ok now start test
-
-
-
-

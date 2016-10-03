@@ -38,9 +38,6 @@
     },
     "spec": {
         "replicas":1,
-        "selector": {
-          "name": "deploy-heketi"
-        },
         "template": {
             "metadata": {
                 "name": "deploy-heketi",

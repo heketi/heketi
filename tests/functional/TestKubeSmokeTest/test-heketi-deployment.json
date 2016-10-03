@@ -1,30 +1,4 @@
 {
-  "kind": "Service",
-  "apiVersion": "v1",
-  "metadata": {
-    "name": "heketi",
-    "labels": {
-      "glusterfs": "heketi-service",
-      "deploy-heketi": "support"
-    },
-    "annotations": {
-      "description": "Exposes Heketi Service"
-    }
-  },
-  "spec": {
-    "selector": {
-        "name": "heketi"
-    },
-    "ports": [
-      {
-        "name": "heketi",
-        "port": 8080,
-        "targetPort": 8080
-      }
-    ]
-  }
-}
-{
     "kind": "Deployment",
     "apiVersion": "extensions/v1beta1",
     "metadata": {
@@ -49,7 +23,7 @@
             "spec": {
                 "containers": [
                     {
-                        "image": "heketi/heketi:dev",
+                        "image": "heketi/heketi:ci",
                         "imagePullPolicy": "Always",
                         "name": "heketi",
                         "env": [
@@ -67,7 +41,7 @@
                           },
                           {
                             "name": "HEKETI_KUBE_USE_SECRET",
-                            "value": "${HEKETI_KUBE_USE_SECRET}"
+                            "value": "y"
                           },
                           {
                             "name": "HEKETI_KUBE_TOKENFILE",
@@ -87,7 +61,7 @@
                           },
                           {
                             "name": "HEKETI_KUBE_INSECURE",
-                            "value": "${HEKETI_KUBE_INSECURE}"
+                            "value": "y"
                           },
                           {
                             "name": "HEKETI_KUBE_USER",
@@ -99,11 +73,11 @@
                           },
                           {
                             "name": "HEKETI_KUBE_NAMESPACE",
-                            "value": "${HEKETI_KUBE_NAMESPACE}"
+                            "value": "default"
                           },
                           {
                             "name": "HEKETI_KUBE_APIHOST",
-                            "value": "${HEKETI_KUBE_APIHOST}"
+                            "value": "<ApiHost>"
                           }
                         ],
                         "ports": [
@@ -141,16 +115,12 @@
                     ],
                     "volumes": [
                       {
-                        "name": "db",
-                        "glusterfs": {
-                          "endpoints": "heketi-storage-endpoints",
-                          "path": "heketidbstorage"
-                        }
+                        "name": "db"
                       },
                       {
                         "name": "secret",
                         "secret": {
-                          "secretName": "<name of the secret>"
+                          "secretName": "<SecretName>"
                         }
                       }
                     ]

@@ -112,7 +112,7 @@ start_minikube() {
 }
 
 
-
+# test the Authentication using the token
 teardown
 
 setup_minikube
@@ -126,6 +126,22 @@ kubectl get nodes
 
 ./test.sh; res=$?
 
+if $res -ne 0 ; then
+  exit $res
+
+# test the Kube Dynamic Provisioning interface
+teardown
+
+setup_minikube
+start_minikube
+
+build_heketi
+copy_client_files
+build_docker_file
+
+kubectl get nodes
+
+./mock-test.sh; res=$?
+
 #teardown
 exit $res
-
