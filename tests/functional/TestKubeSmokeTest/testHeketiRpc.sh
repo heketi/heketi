@@ -37,7 +37,7 @@ setup_all_pods() {
 
 	# Start Heketi
 	echo -e "\nStart Heketi container"
-  sed 's\<ApiHost>\'"$KUBEAPI"'\g; s\<SecretName>\'"$KUBESEC"'\g' test-heketi-deployment.json | kubectl creat -f - --validate=false || fail "Unable to start heketi container"
+  sed 's\<ApiHost>\'"$KUBEAPI"'\g; s\<SecretName>\'"$KUBESEC"'\g' test-heketi-deployment.json | kubectl create -f - --validate=false || fail "Unable to start heketi container"
 	sleep 2
 
 	# This blocks until ready
