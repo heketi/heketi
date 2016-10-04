@@ -31,7 +31,7 @@ setup_all_pods() {
   echo -e "\nCreate a ServiceAccount"
 	kubectl create -f ServiceAccount.yaml || fail "Unable to create a serviceAccount"
 
-	KUBESEC=$(kubectl get secrets | grep SerAcc | awk 'NR==1{print $1}')
+	KUBESEC=$(kubectl get secrets | grep seracc | awk 'NR==1{print $1}')
 
 	KUBEAPI=https://$(minikube ip):8443
 
