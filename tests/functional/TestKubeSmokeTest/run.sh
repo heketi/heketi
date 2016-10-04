@@ -124,7 +124,7 @@ build_docker_file
 
 kubectl get nodes
 
-./test.sh; res=$?
+./testHeketiRpc.sh; res=$?
 
 if $res -ne 0 ; then
   exit $res
@@ -141,7 +141,7 @@ build_docker_file
 
 kubectl get nodes
 
-./mock-test.sh; res=$?
+./testHeketiMock.sh; res=$?
 
 #teardown
 exit $res
