@@ -38,10 +38,11 @@ setup_all_pods() {
 	# Start Heketi
 	echo -e "\nStart Heketi container"
   sed 's\<ApiHost>\'"$KUBEAPI"'\g; s\<SecretName>\'"$KUBESEC"'\g' test-heketi-deployment.json | kubectl create -f - --validate=false || fail "Unable to start heketi container"
-	sleep 2
+	sleep 30
 
 	# This blocks until ready
 	kubectl expose deployment heketi --type=NodePort || fail "Unable to expose heketi service"
+	sleep 10
 
 	echo -e "\nShow Topology"
 	export HEKETI_CLI_SERVER=$(minikube service heketi --url)
