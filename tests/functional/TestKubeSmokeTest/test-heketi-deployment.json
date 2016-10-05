@@ -24,16 +24,16 @@
                 "containers": [
                     {
                         "image": "heketi/heketi:ci",
-                        "imagePullPolicy": "Always",
+                        "imagePullPolicy": "IfNotPresent",
                         "name": "heketi",
                         "env": [
                           {
                             "name": "HEKETI_USER_KEY",
-                            "value": "${HEKETI_USER_KEY}"
+                            "value": "My Secret"
                           },
                           {
                             "name": "HEKETI_ADMIN_KEY",
-                            "value": "${HEKETI_ADMIN_KEY}"
+                            "value": "My Secret"
                           },
                           {
                             "name": "HEKETI_EXECUTOR",
@@ -45,7 +45,7 @@
                           },
                           {
                             "name": "HEKETI_KUBE_TOKENFILE",
-                            "value": "/var/lib/heketi/secret"
+                            "value": "/var/lib/heketi/secret/token"
                           },
                           {
                             "name": "HEKETI_FSTAB",
@@ -57,7 +57,7 @@
                           },
                           {
                             "name": "HEKETI_KUBE_CERTFILE",
-                            "value": "${HEKETI_KUBE_CERTFILE}"
+                            "value": ""
                           },
                           {
                             "name": "HEKETI_KUBE_INSECURE",
@@ -65,11 +65,11 @@
                           },
                           {
                             "name": "HEKETI_KUBE_USER",
-                            "value": "${HEKETI_KUBE_USER}"
+                            "value": ""
                           },
                           {
                             "name": "HEKETI_KUBE_PASSWORD",
-                            "value": "${HEKETI_KUBE_PASSWORD}"
+                            "value": ""
                           },
                           {
                             "name": "HEKETI_KUBE_NAMESPACE",

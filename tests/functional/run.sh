@@ -20,7 +20,7 @@ starttime=`date`
 export PATH=$PATH:.
 
 # Check go can build
-if [ -z $GOPATH ] ; then 
+if [ -z $GOPATH ] ; then
     fail "GOPATH must be specified"
 fi
 
@@ -30,10 +30,10 @@ teardown_all
 
 # Check each dir for tests
 results=0
-for testDir in * ; do
+for testDir in TestKubeSmokeTest ; do
     if [ -x $testDir/run.sh ] ; then
         println "TEST $testDir"
-        cd $testDir 
+        cd $testDir
         run.sh
         result=$?
 

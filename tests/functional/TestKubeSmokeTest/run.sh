@@ -126,6 +126,10 @@ kubectl get nodes
 
 ./testHeketiRpc.sh; res=$?
 
+heketipod=$(kubectl get pods | grep heketi |  awk 'NR==1{print $1}')
+
+kubectl logs $heketipod
+
 if $res -ne 0 ; then
   exit $res
 
