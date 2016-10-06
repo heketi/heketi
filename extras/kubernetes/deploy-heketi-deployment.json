@@ -55,11 +55,11 @@
                         "env": [
                           {
                             "name": "HEKETI_USER_KEY",
-                            "value": "${HEKETI_USER_KEY}"
+                            "value": "<User Key>"
                           },
                           {
                             "name": "HEKETI_ADMIN_KEY",
-                            "value": "${HEKETI_ADMIN_KEY}"
+                            "value": "<Admin Key>"
                           },
                           {
                             "name": "HEKETI_EXECUTOR",
@@ -67,7 +67,7 @@
                           },
                           {
                             "name": "HEKETI_KUBE_USE_SECRET",
-                            "value": "${HEKETI_KUBE_USE_SECRET}"
+                            "value": "<Bool to use Secret>"
                           },
                           {
                             "name": "HEKETI_KUBE_TOKENFILE",
@@ -83,27 +83,27 @@
                           },
                           {
                             "name": "HEKETI_KUBE_CERTFILE",
-                            "value": "${HEKETI_KUBE_CERTFILE}"
+                            "value": "<Path tp ca.crt>"
                           },
                           {
                             "name": "HEKETI_KUBE_INSECURE",
-                            "value": "${HEKETI_KUBE_INSECURE}"
+                            "value": "<Bool to enable Insecure connection>"
                           },
                           {
                             "name": "HEKETI_KUBE_USER",
-                            "value": "${HEKETI_KUBE_USER}"
+                            "value": "<Kube username>"
                           },
                           {
                             "name": "HEKETI_KUBE_PASSWORD",
-                            "value": "${HEKETI_KUBE_PASSWORD}"
+                            "value": "<Kube password>"
                           },
                           {
                             "name": "HEKETI_KUBE_NAMESPACE",
-                            "value": "${HEKETI_KUBE_NAMESPACE}"
+                            "value": "<Kube namespace>"
                           },
                           {
                             "name": "HEKETI_KUBE_APIHOST",
-                            "value": "${HEKETI_KUBE_APIHOST}"
+                            "value": "<Kube ApiHost>"
                           }
                         ],
                         "ports": [

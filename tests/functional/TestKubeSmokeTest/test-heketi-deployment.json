@@ -28,14 +28,6 @@
                         "name": "heketi",
                         "env": [
                           {
-                            "name": "HEKETI_USER_KEY",
-                            "value": "My Secret"
-                          },
-                          {
-                            "name": "HEKETI_ADMIN_KEY",
-                            "value": "My Secret"
-                          },
-                          {
                             "name": "HEKETI_EXECUTOR",
                             "value": "kubernetes"
                           },
@@ -56,20 +48,8 @@
                             "value": "14"
                           },
                           {
-                            "name": "HEKETI_KUBE_CERTFILE",
-                            "value": ""
-                          },
-                          {
                             "name": "HEKETI_KUBE_INSECURE",
                             "value": "y"
-                          },
-                          {
-                            "name": "HEKETI_KUBE_USER",
-                            "value": ""
-                          },
-                          {
-                            "name": "HEKETI_KUBE_PASSWORD",
-                            "value": ""
                           },
                           {
                             "name": "HEKETI_KUBE_NAMESPACE",

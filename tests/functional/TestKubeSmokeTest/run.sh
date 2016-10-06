@@ -130,12 +130,13 @@ heketipod=$(kubectl get pods | grep heketi |  awk 'NR==1{print $1}')
 
 kubectl logs $heketipod
 
-if $res -ne 0 ; then
-  exit $res
-
-# test the Kube Dynamic Provisioning interface
 teardown
 
+if [ $res -ne 0 ] ; then
+  exit $res
+fi
+
+# test the Kube Dynamic Provisioning interface
 setup_minikube
 start_minikube
 
@@ -147,5 +148,5 @@ kubectl get nodes
 
 ./testHeketiMock.sh; res=$?
 
-#teardown
+teardown
 exit $res
