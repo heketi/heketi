@@ -26,6 +26,28 @@ display_information() {
 	kubectl get nodes
 }
 
+start_mock_gluster_container() {
+# Use a busybox container
+  kubectl run gluster$1 \
+	  --restart=Never \
+		--image=busybox \
+		--labels=glusterfs-node=gluster$1 \
+		--command ==sleep 10000 || fail "Unable to start gluster$1"
+
+	# Wait until it is running
+	while ! kubectl get pods | grep gluster$1 | grep "1/1" > /dev/null ; do
+		sleep 1
+	done
+
+	# Create fake gluster file
+	kubectl exec gluster$1 --sh -c "echo '#!/bin/sh' > /bin/gluster" || fail "Unable to create /bin/gluster"
+	kubectl exec gluster$1 -- chmod +x /bin/gluster || fail "Unable to chmod +x /bin/gluster"
+
+	# Create fake bash file
+	kubectl exec gluster$1 -- sh -c "echo '#!/bin/sh' > /bin/bash" || fail "Unable to create /bin/bash"
+	kubectl exec gluster$1 -- chmod +x /bin/bash || fail "Unable to chmod +x /bin/bash"
+}
+
 setup_all_pods() {
 
   kubectl get nodes --show-labels
@@ -40,8 +62,11 @@ setup_all_pods() {
 	# Start Heketi
 	echo -e "\nStart Heketi container"
   sed 's\<ApiHost>\'"$KUBEAPI"'\g; s\<SecretName>\'"$KUBESEC"'\g' test-heketi-deployment.json | kubectl create -f - --validate=false || fail "Unable to start heketi container"
-	sleep 30
 
+	# Wait until it is running
+	while ! kubectl get pods | grep heketi | grep "1/1" > /dev/null ; do
+		sleep 1
+	done
 	# This blocks until ready
 	kubectl expose deployment heketi --type=NodePort || fail "Unable to expose heketi service"
 
@@ -49,11 +74,9 @@ setup_all_pods() {
 	export HEKETI_CLI_SERVER=$(minikube service heketi --url)
 	heketi-cli topology info
 
-  echo -e "\nStart gluster container"
-	sed 's\<hostname>\minikubevm\g' glusterfs-mock.json | kubectl create -f - --validate=false || fail "Unable to start gluster1"
-
-	kubectl run gluster2 --image=ashiq/glusterfs-mock-container --labels=glusterfs-node=gluster2 || fail "Unable to start gluster2"
-
+  echo -e "\nStart gluster mock container"
+  start_mock_gluster_container 1
+	start_mock_gluster_container 2
 }
 
 test_peer_probe() {
@@ -63,7 +86,7 @@ test_peer_probe() {
 	CLUSTERID=$(heketi-cli  cluster list | sed -e '$!d')
 
   echo -e "\nAdd First Node"
-	heketi-cli node add --zone=1 --cluster=$CLUSTERID --management-host-name=minikubevm --storage-host-name=minikubevm || fail "Unable to add gluster1"
+	heketi-cli node add --zone=1 --cluster=$CLUSTERID --management-host-name=gluster1 --storage-host-name=gluster1 || fail "Unable to add gluster1"
 
   echo -e "\nAdd Second Node"
 	heketi-cli node add --zone=2 --cluster=$CLUSTERID --management-host-name=gluster2 --storage-host-name=gluster2 || fail "Unable to add gluster2"
