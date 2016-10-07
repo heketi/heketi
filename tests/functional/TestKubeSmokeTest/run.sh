@@ -112,7 +112,7 @@ start_minikube() {
 }
 
 
-
+# test the Authentication using the token
 teardown
 
 setup_minikube
@@ -124,8 +124,29 @@ build_docker_file
 
 kubectl get nodes
 
-./test.sh; res=$?
+./testHeketiRpc.sh; res=$?
 
-#teardown
+heketipod=$(kubectl get pods | grep heketi |  awk 'NR==1{print $1}')
+
+kubectl logs $heketipod
+
+teardown
+
+if [ $res -ne 0 ] ; then
+  exit $res
+fi
+
+# test the Kube Dynamic Provisioning interface
+setup_minikube
+start_minikube
+
+build_heketi
+copy_client_files
+build_docker_file
+
+kubectl get nodes
+
+./testHeketiMock.sh; res=$?
+
+teardown
 exit $res
-
