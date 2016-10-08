@@ -32,7 +32,7 @@ start_mock_gluster_container() {
 	  --restart=Never \
 		--image=busybox \
 		--labels=glusterfs-node=gluster$1 \
-		--command ==sleep 10000 || fail "Unable to start gluster$1"
+		--command -- sleep 10000 || fail "Unable to start gluster$1"
 
 	# Wait until it is running
 	while ! kubectl get pods | grep gluster$1 | grep "1/1" > /dev/null ; do
@@ -40,7 +40,7 @@ start_mock_gluster_container() {
 	done
 
 	# Create fake gluster file
-	kubectl exec gluster$1 --sh -c "echo '#!/bin/sh' > /bin/gluster" || fail "Unable to create /bin/gluster"
+	kubectl exec gluster$1 -- sh -c "echo '#!/bin/sh' > /bin/gluster" || fail "Unable to create /bin/gluster"
 	kubectl exec gluster$1 -- chmod +x /bin/gluster || fail "Unable to chmod +x /bin/gluster"
 
 	# Create fake bash file
