@@ -33,6 +33,14 @@
                 "selector": {
                     "name": "glusterfs"
                 },
+                "triggers": [
+                    {
+                        "type": "ConfigChange"
+                    }
+                ],
+                "strategy": {
+                    "type": "Recreate"
+                },
                 "template": {
                     "metadata": {
                         "name": "glusterfs",
@@ -41,14 +49,6 @@
                             "glusterfs": "pod",
                             "glusterfs-node": "${GLUSTERFS_NODE}"
                         }
-                    },
-                    "triggers": [
-                        {
-                            "type": "ConfigChange"
-                        }
-                    ],
-                    "strategy": {
-                        "type": "Recreate"
                     },
                     "spec": {
                         "nodeSelector": {

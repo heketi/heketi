@@ -73,6 +73,14 @@
         "selector": {
           "name": "heketi"
         },
+        "triggers": [
+          {
+            "type": "ConfigChange"
+          }
+        ],
+        "strategy": {
+          "type": "Recreate"
+        },
         "template": {
           "metadata": {
             "name": "heketi",
@@ -80,14 +88,6 @@
               "name": "heketi",
               "glusterfs": "heketi-pod"
             }
-          },
-          "triggers": [
-            {
-              "type": "ConfigChange"
-            }
-          ],
-          "strategy": {
-            "type": "Recreate"
           },
           "spec": {
             "containers": [
