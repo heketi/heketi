@@ -19,6 +19,7 @@ package kubeexec
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -122,6 +123,22 @@ func setWithEnvVariables(config *KubeConfig) {
 		}
 	}
 
+	// Use secret for Auth
+	env = os.Getenv("HEKETI_KUBE_USE_SECRET")
+	if "" != env {
+		env = strings.ToLower(env)
+		if env[0] == 'y' || env[0] == '1' {
+			config.UseSecrets = true
+		} else if env[0] == 'n' || env[0] == '0' {
+			config.UseSecrets = false
+		}
+	}
+
+	env = os.Getenv("HEKETI_KUBE_TOKENFILE")
+	if "" != env {
+		config.TokenFile = env
+	}
+
 	// Use POD names
 	env = os.Getenv("HEKETI_KUBE_USE_POD_NAMES")
 	if "" != env {
@@ -206,6 +223,13 @@ func (k *KubeExecutor) ConnectAndExec(host, namespace, resource string,
 			return nil, fmt.Errorf("User %v credentials not accepted", k.config.User)
 		}
 		clientConfig.BearerToken = token
+	} else if k.config.UseSecrets {
+		tokenBytes, err := ioutil.ReadFile(k.config.TokenFile)
+		if err != nil {
+			logger.Err(err)
+			return nil, logger.LogError("Secret token not found in %v", k.config.TokenFile)
+		}
+		clientConfig.BearerToken = string(tokenBytes)
 	}
 
 	// Get a client

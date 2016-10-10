@@ -63,8 +63,8 @@ copy_client_files() {
 
 teardown() {
     if [ -x /usr/local/bin/minikube ] ; then
-        minikube stop
-        minikube delete
+        minikube stop > /dev/null
+        minikube delete > /dev/null
     fi
     rm -rf $RESOURCES_DIR > /dev/null
 }
@@ -111,21 +111,41 @@ start_minikube() {
 		--kubernetes-version="${KUBEVERSION}" || fail "Unable to start minikube"
 }
 
+setup() {
+    setup_minikube
+    build_heketi
+    copy_client_files
+}
+
+test_teardown() {
+    minikube stop
+    minikube delete
+}
+
+test_setup() {
+    start_minikube
+    build_docker_file
+}
 
 
+### MAIN ###
 teardown
+setup
 
-setup_minikube
-start_minikube
+### TESTS ###
+# test the Authentication using the token
+for kubetest in test*.sh ; do
+   test_setup
+   println "TEST $kubetest"
+   bash $kubetest; result=$?
 
-build_heketi
-copy_client_files
-build_docker_file
-
-kubectl get nodes
-
-./test.sh; res=$?
-
-#teardown
-exit $res
+   if [ $result -ne 0 ] ; then
+       println "FAILED $kubetest"
+   else
+       println "PASSED $kubetest"
+   fi
+   test_teardown
+done
+teardown
+exit $result
 
