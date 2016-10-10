@@ -34,8 +34,10 @@ for testDir in * ; do
     if [ -x $testDir/run.sh ] ; then
         println "TEST $testDir"
         cd $testDir
-        run.sh
-        result=$?
+
+        # Run the command with a large timeout.
+        # Just large enough so that it doesn't run forever.
+        timeout 1h run.sh ; result=$?
 
         if [ $result -ne 0 ] ; then
             println "FAILED $testDir"
