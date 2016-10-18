@@ -18,10 +18,14 @@ package glusterfs
 
 import (
 	"bytes"
+	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/boltdb/bolt"
+	"github.com/gorilla/mux"
+	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
 )
@@ -192,4 +196,32 @@ func TestAppReadOnlyDb(t *testing.T) {
 	app = NewApp(bytes.NewReader(data))
 	tests.Assert(t, app != nil)
 	tests.Assert(t, app.dbReadOnly == true)
+}
+
+func TestAppPathNotFound(t *testing.T) {
+	dbfile := tests.Tempfile()
+	defer os.Remove(dbfile)
+
+	app := NewTestApp(dbfile)
+	tests.Assert(t, app != nil)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Setup a new client
+	c := client.NewClientNoAuth(ts.URL)
+
+	// Test paths which do not match the hexadecimal id
+	_, err := c.ClusterInfo("xxx")
+	tests.Assert(t, strings.Contains(err.Error(), "Invalid path or request"))
+
+	_, err = c.NodeInfo("xxx")
+	tests.Assert(t, strings.Contains(err.Error(), "Invalid path or request"))
+
+	_, err = c.VolumeInfo("xxx")
+	tests.Assert(t, strings.Contains(err.Error(), "Invalid path or request"))
 }
