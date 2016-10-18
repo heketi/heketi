@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-package httptest
+package heketitest
 
 import (
 	"testing"
