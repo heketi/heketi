@@ -84,9 +84,11 @@ $(PACKAGE): all
 $(CLIENT_PACKAGE): all
 	@echo Packaging client Binaries...
 	@mkdir -p tmp/$(CLIENT_PKG_NAME)/bin
-	@mkdir -p tmp/$(CLIENT_PKG_NAME)/share/heketi/templates
+	@mkdir -p tmp/$(CLIENT_PKG_NAME)/share/heketi/openshift/templates
+	@mkdir -p tmp/$(CLIENT_PKG_NAME)/share/heketi/kubernetes
 	@cp client/cli/go/heketi-cli tmp/$(CLIENT_PKG_NAME)/bin
-	@cp extras/openshift/templates/* tmp/$(CLIENT_PKG_NAME)/share/heketi/templates
+	@cp extras/openshift/templates/* tmp/$(CLIENT_PKG_NAME)/share/heketi/openshift/templates
+	@cp extras/kubernetes/* tmp/$(CLIENT_PKG_NAME)/share/heketi/kubernetes
 	@mkdir -p $(DIR)/dist/
 	tar -czf $@ -C tmp $(CLIENT_PKG_NAME);
 	@rm -rf tmp
