@@ -86,6 +86,7 @@ $(CLIENT_PACKAGE): all
 	@mkdir -p tmp/$(CLIENT_PKG_NAME)/bin
 	@mkdir -p tmp/$(CLIENT_PKG_NAME)/share/heketi/openshift/templates
 	@mkdir -p tmp/$(CLIENT_PKG_NAME)/share/heketi/kubernetes
+	@cp client/cli/go/topology-sample.json tmp/$(CLIENT_PKG_NAME)/share/heketi
 	@cp client/cli/go/heketi-cli tmp/$(CLIENT_PKG_NAME)/bin
 	@cp extras/openshift/templates/* tmp/$(CLIENT_PKG_NAME)/share/heketi/openshift/templates
 	@cp extras/kubernetes/* tmp/$(CLIENT_PKG_NAME)/share/heketi/kubernetes

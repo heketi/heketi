@@ -2,10 +2,10 @@
     "kind": "Deployment",
     "apiVersion": "extensions/v1beta1",
     "metadata": {
-        "name": "glusterfs-<hostname>",
+        "name": "glusterfs-<GLUSTERFS_NODE>",
         "labels": {
             "glusterfs": "deployment",
-            "glusterfs-node": "<hostname>"
+            "glusterfs-node": "<GLUSTERFS_NODE>"
         },
         "annotations": {
             "description": "GlusterFS container deployment template",
@@ -20,12 +20,12 @@
                 "labels": {
                     "name": "glusterfs",
                     "glusterfs": "pod",
-                    "glusterfs-node": "<hostname>"
+                    "glusterfs-node": "<GLUSTERFS_NODE>"
                 }
             },
             "spec": {
                 "nodeSelector": {
-                    "kubernetes.io/hostname": "<hostname>"
+                    "kubernetes.io/hostname": "<GLUSTERFS_NODE>"
                 },
                 "hostNetwork": true,
                 "containers": [
