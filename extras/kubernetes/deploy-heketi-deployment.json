@@ -30,7 +30,8 @@
     "metadata": {
         "name": "deploy-heketi",
         "labels": {
-            "glusterfs": "heketi-deployment"
+            "glusterfs": "heketi-deployment",
+            "deploy-heketi": "heketi-deployment"
         },
         "annotations": {
             "description": "Defines how to deploy Heketi"
