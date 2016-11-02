@@ -18,7 +18,7 @@ $ kubectl get nodes
 ```
 $ sed -e \
    's#<GLUSTERFS_NODE>#..type your node name here..#' \
-   glusterfs-deployment.json | kubectl creat -f -
+   glusterfs-deployment.json | kubectl create -f -
 ```
 
 Repeat as needed.
@@ -34,7 +34,7 @@ $ kubectl create -f heketi-service-account.json
 * Note the secret for the service account 
 
 ```
-$ heketi_secret=$(kubectl get sa heketi-service-account -o="go-template" --template="{{range .secrets}}{{.name}}{{end}}")
+$ heketi_secret=$(kubectl get sa heketi-service-account -o="go-template" --template="{{(index .secrets 0).name}}")
 ```
 
 * Deploy deploy-heketi.  Before deploying you will need to determine the Kubernetes API endpoint and namespace.
