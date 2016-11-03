@@ -39,11 +39,10 @@ $ heketi_secret=$(kubectl get sa heketi-service-account -o="go-template" --templ
 
 * Deploy deploy-heketi.  Before deploying you will need to determine the Kubernetes API endpoint and namespace.
 
-In this example, we will use `https://1.1.1.1:443` as our Kubernetes API endpoint, and `default` as the namespace:
+In this example, we will use `https://1.1.1.1:443` as our Kubernetes API endpoint
 
 ```
-$ sed -e "s#<HEKETI_KUBE_NAMESPACE>#\"default\"#" \
-      -e "s#<HEKETI_KUBE_SECRETNAME>#\"$heketi_secret\"#" \
+$ sed -e "s#<HEKETI_KUBE_SECRETNAME>#\"$heketi_secret\"#" \
       -e "s#<HEKETI_KUBE_APIHOST>#\"http://1.1.1.1:443\"#" deploy-heketi-deployment.json | kubectl create -f -
 ```
 
