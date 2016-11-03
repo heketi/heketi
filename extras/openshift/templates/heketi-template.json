@@ -93,7 +93,7 @@
             "containers": [
               {
                 "name": "heketi",
-                "image": "heketi/heketi:dev",
+                "image": "heketi/heketi:3",
                 "imagePullPolicy": "Always",
                 "env": [
                   {

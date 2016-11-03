@@ -98,7 +98,7 @@
             "containers": [
               {
                 "name": "deploy-heketi",
-                "image": "heketi/heketi:dev",
+                "image": "heketi/heketi:3",
                 "env": [
                   {
                     "name": "HEKETI_USER_KEY",
