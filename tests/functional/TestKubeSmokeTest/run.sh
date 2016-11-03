@@ -59,6 +59,7 @@ build_heketi() {
 
 copy_client_files() {
     cp $CLIENTDIR/heketi-cli $RESOURCES_DIR || fail "Unable to copy client files"
+    cp $TOP/extras/kubernetes/* $RESOURCES_DIR || fail "Unable to copy kubernetes deployment files"
 }
 
 teardown() {

@@ -49,7 +49,7 @@
             "spec": {
                 "containers": [
                     {
-                        "image": "heketi/heketi:dev",
+                        "image": "heketi/heketi",
                         "imagePullPolicy": "Always",
                         "name": "heketi",
                         "env": [
@@ -66,6 +66,10 @@
                             "value": "/var/lib/heketi/secret/token"
                           },
                           {
+                            "name": "HEKETI_KUBE_NAMESPACEFILE",
+                            "value": "/var/lib/heketi/secret/namespace"
+                          },
+                          {
                             "name": "HEKETI_FSTAB",
                             "value": "/var/lib/heketi/fstab"
                           },
@@ -76,10 +80,6 @@
                           {
                             "name": "HEKETI_KUBE_INSECURE",
                             "value": "y"
-                          },
-                          {
-                            "name": "HEKETI_KUBE_NAMESPACE",
-                            "value": <HEKETI_KUBE_NAMESPACE>
                           },
                           {
                             "name": "HEKETI_KUBE_APIHOST",
