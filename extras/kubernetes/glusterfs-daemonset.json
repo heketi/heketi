@@ -1,31 +1,27 @@
 {
-    "kind": "Deployment",
+    "kind": "DaemonSet",
     "apiVersion": "extensions/v1beta1",
     "metadata": {
-        "name": "glusterfs-<GLUSTERFS_NODE>",
+        "name": "glusterfs",
         "labels": {
-            "glusterfs": "deployment",
-            "glusterfs-node": "<GLUSTERFS_NODE>"
+            "glusterfs": "deployment"
         },
         "annotations": {
-            "description": "GlusterFS container deployment template",
+            "description": "GlusterFS Daemon Set",
             "tags": "glusterfs"
         }
     },
     "spec": {
-        "replicas":1,
         "template": {
             "metadata": {
                 "name": "glusterfs",
                 "labels": {
-                    "name": "glusterfs",
-                    "glusterfs": "pod",
-                    "glusterfs-node": "<GLUSTERFS_NODE>"
+                    "glusterfs-node": "daemonset"
                 }
             },
             "spec": {
                 "nodeSelector": {
-                    "kubernetes.io/hostname": "<GLUSTERFS_NODE>"
+                    "storagenode" : "glusterfs"
                 },
                 "hostNetwork": true,
                 "containers": [
