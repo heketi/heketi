@@ -101,6 +101,8 @@ setup_minikube() {
     chmod +x kubectl
     _sudo mv kubectl /usr/local/bin
 
+    echo -e "\nOpt-out of errors"
+    minikube config set WantReportErrorPrompt false
 }
 
 start_minikube() {
