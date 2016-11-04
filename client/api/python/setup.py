@@ -12,7 +12,7 @@ setup(
     name='heketi',
     version='3.0.0',
     description='Python client library for Heketi',
-    license='LGPLv3+ or GPLv2'
+    license='LGPLv3+ or GPLv2',
     author='Luis Pabon',
     author_email='lpabon@redhat.com',
     url='https://github.com/heketi/heketi/tree/master/client/api/python',
