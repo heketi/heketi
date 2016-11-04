@@ -11,7 +11,7 @@ CLIENTDIR=$TOP/client/cli/go
 source ${FUNCTIONAL_DIR}/lib.sh
 
 ### VERSIONS ###
-KUBEVERSION=v1.4.0-beta.1
+KUBEVERSION=v1.4.3
 
 docker_set_env() {
 
@@ -59,6 +59,7 @@ build_heketi() {
 
 copy_client_files() {
     cp $CLIENTDIR/heketi-cli $RESOURCES_DIR || fail "Unable to copy client files"
+    cp $TOP/extras/kubernetes/* $RESOURCES_DIR || fail "Unable to copy kubernetes deployment files"
 }
 
 teardown() {
@@ -75,7 +76,7 @@ setup_minikube() {
     fi
 
     echo -e "\nGet docker-machine"
-    curl -Lo docker-machine https://github.com/docker/machine/releases/download/v0.8.1/docker-machine-Linux-x86_64 || fail "Unable to get docker-machine"
+    curl -Lo docker-machine https://github.com/docker/machine/releases/download/v0.8.2/docker-machine-Linux-x86_64 || fail "Unable to get docker-machine"
     chmod +x docker-machine
     _sudo mv docker-machine /usr/local/bin
 
@@ -90,7 +91,7 @@ setup_minikube() {
 
     echo -e "\nGet minikube"
     curl -Lo minikube \
-        https://storage.googleapis.com/minikube/releases/v0.9.0/minikube-linux-amd64 || fail "Unable to get minikube"
+        https://storage.googleapis.com/minikube/releases/v0.12.0/minikube-linux-amd64 || fail "Unable to get minikube"
     chmod +x minikube
     _sudo mv minikube /usr/local/bin
 
@@ -104,7 +105,6 @@ setup_minikube() {
 
 start_minikube() {
 	minikube start \
-		--iso-url=https://github.com/kubernetes/minikube/releases/download/v0.9.0/minikube.iso \
 		--cpus=2 \
 		--memory=2048 \
 		--vm-driver=kvm \
@@ -133,7 +133,6 @@ teardown
 setup
 
 ### TESTS ###
-# test the Authentication using the token
 for kubetest in test*.sh ; do
    test_setup
    println "TEST $kubetest"

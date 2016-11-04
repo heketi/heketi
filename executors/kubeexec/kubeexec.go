@@ -39,15 +39,6 @@ import (
 	"github.com/heketi/heketi/pkg/utils"
 )
 
-type KubernetesClient interface {
-}
-
-type KubernetesRemoteCommand interface {
-}
-
-type KubernetesRemoteCommandStream interface {
-}
-
 const (
 	KubeGlusterFSPodLabelKey = "glusterfs-node"
 )
@@ -139,6 +130,11 @@ func setWithEnvVariables(config *KubeConfig) {
 		config.TokenFile = env
 	}
 
+	env = os.Getenv("HEKETI_KUBE_NAMESPACEFILE")
+	if "" != env {
+		config.NamespaceFile = env
+	}
+
 	// Use POD names
 	env = os.Getenv("HEKETI_KUBE_USE_POD_NAMES")
 	if "" != env {
@@ -168,6 +164,13 @@ func NewKubeExecutor(config *KubeConfig) (*KubeExecutor, error) {
 	}
 
 	// Check required values
+	if k.config.NamespaceFile != "" {
+		var err error
+		k.config.Namespace, err = k.readAllLinesFromFile(k.config.NamespaceFile)
+		if err != nil {
+			return nil, err
+		}
+	}
 	if k.config.Namespace == "" {
 		return nil, fmt.Errorf("Namespace must be provided in configuration")
 	}
@@ -193,13 +196,12 @@ func (k *KubeExecutor) RemoteCommandExecute(host string,
 
 	// Execute
 	return k.ConnectAndExec(host,
-		k.config.Namespace,
 		"pods",
 		commands,
 		timeoutMinutes)
 }
 
-func (k *KubeExecutor) ConnectAndExec(host, namespace, resource string,
+func (k *KubeExecutor) ConnectAndExec(host, resource string,
 	commands []string,
 	timeoutMinutes int) ([]string, error) {
 
@@ -213,7 +215,10 @@ func (k *KubeExecutor) ConnectAndExec(host, namespace, resource string,
 	clientConfig.Insecure = k.config.Insecure
 
 	// Login
-	if k.config.User != "" && k.config.Password != "" {
+	if k.config.UseSecrets == false &&
+		k.config.User != "" &&
+		k.config.Password != "" {
+
 		token, err := tokenCreator(clientConfig,
 			nil,
 			k.config.User,
@@ -224,12 +229,11 @@ func (k *KubeExecutor) ConnectAndExec(host, namespace, resource string,
 		}
 		clientConfig.BearerToken = token
 	} else if k.config.UseSecrets {
-		tokenBytes, err := ioutil.ReadFile(k.config.TokenFile)
+		var err error
+		clientConfig.BearerToken, err = k.readAllLinesFromFile(k.config.TokenFile)
 		if err != nil {
-			logger.Err(err)
-			return nil, logger.LogError("Secret token not found in %v", k.config.TokenFile)
+			return nil, err
 		}
-		clientConfig.BearerToken = string(tokenBytes)
 	}
 
 	// Get a client
@@ -254,7 +258,7 @@ func (k *KubeExecutor) ConnectAndExec(host, namespace, resource string,
 		}
 
 		// Get a list of pods
-		pods, err := conn.Pods(namespace).List(api.ListOptions{
+		pods, err := conn.Pods(k.config.Namespace).List(api.ListOptions{
 			LabelSelector: selector,
 			FieldSelector: fields.Everything(),
 		})
@@ -294,7 +298,7 @@ func (k *KubeExecutor) ConnectAndExec(host, namespace, resource string,
 		req := conn.RESTClient.Post().
 			Resource(resource).
 			Name(podName).
-			Namespace(namespace).
+			Namespace(k.config.Namespace).
 			SubResource("exec")
 		req.VersionedParams(&api.PodExecOptions{
 			Command: []string{"/bin/bash", "-c", command},
@@ -338,4 +342,12 @@ func (k *KubeExecutor) RebalanceOnExpansion() bool {
 
 func (k *KubeExecutor) SnapShotLimit() int {
 	return k.config.SnapShotLimit
+}
+
+func (k *KubeExecutor) readAllLinesFromFile(filename string) (string, error) {
+	fileBytes, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return "", logger.LogError("Error reading %v file: %v", filename, err.Error())
+	}
+	return string(fileBytes), nil
 }
