@@ -1116,3 +1116,90 @@ func TestVolumeClusterResizeByAddingDevices(t *testing.T) {
 	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == ErrNoSpace)
 }
+
+func TestVolumeClusterResizeByAddingNodes(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Create a cluster
+	err := setupSampleDbWithTopology(app,
+		1,      // clusters
+		2,      // nodes_per_cluster
+		1,      // devices_per_node,
+		500*GB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	// Create a volume which uses the entire storage
+	v := createSampleVolumeEntry(495)
+	tests.Assert(t, v != nil)
+	err = v.Create(app.db, app.executor, app.allocator)
+	tests.Assert(t, err == nil)
+
+	// Try to create another volume, but this should fail
+	v = createSampleVolumeEntry(495)
+	tests.Assert(t, v != nil)
+	err = v.Create(app.db, app.executor, app.allocator)
+	tests.Assert(t, err == ErrNoSpace)
+
+	// Create a client
+	c := client.NewClientNoAuth(ts.URL)
+	tests.Assert(t, c != nil)
+
+	// Get the cluster ID
+	clusters, err := c.ClusterList()
+	tests.Assert(t, len(clusters.Clusters) == 1)
+	clusterId := clusters.Clusters[0]
+
+	// Get Nodes
+	clusterInfo, err := c.ClusterInfo(clusterId)
+	tests.Assert(t, len(clusterInfo.Nodes) == 2)
+
+	// Create a node
+	noderequest := &api.NodeAddRequest{
+		ClusterId: clusterId,
+		Hostnames: api.HostAddresses{
+			Manage:  []string{"manage"},
+			Storage: []string{"storage"},
+		},
+		Zone: 1,
+	}
+
+	// Add devices to that perticular node
+
+	n := NewNodeEntryFromRequest(noderequest)
+	n.DeviceAdd("xyz")
+	tests.Assert(t, len(n.Devices) == 1)
+
+	// Add two devices to the cluster
+	for _, nodeId := range clusterInfo.Nodes {
+		d := &api.DeviceAddRequest{}
+		d.Name = "/fake/device2"
+		d.NodeId = nodeId
+		err := c.DeviceAdd(d)
+		tests.Assert(t, err == nil, err)
+	}
+
+	// Now add a volume, and it should work
+	v = createSampleVolumeEntry(495)
+	tests.Assert(t, v != nil)
+	err = v.Create(app.db, app.executor, app.allocator)
+	tests.Assert(t, err == nil)
+
+	// Try to create another volume, but this should fail
+	v = createSampleVolumeEntry(495)
+	tests.Assert(t, v != nil)
+	err = v.Create(app.db, app.executor, app.allocator)
+	tests.Assert(t, err == ErrNoSpace)
+
+}
