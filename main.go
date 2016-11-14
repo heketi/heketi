@@ -128,7 +128,7 @@ func main() {
 
 	// Create a router and do not allow any routes
 	// unless defined.
-	heketiRouter := mux.NewRouter().StrictSlash(true)
+	heketiRouter := mux.NewRouter()
 	err = app.SetRoutes(heketiRouter)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "ERROR: Unable to create http server endpoints")
