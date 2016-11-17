@@ -162,10 +162,16 @@ func (v *VolumeEntry) allocBricks(
 						v.BrickAdd(brick.Id())
 
 						// Save values
-						err := device.Save(tx)
+						err := brick.Save(tx)
 						if err != nil {
 							return err
 						}
+
+						err = device.Save(tx)
+						if err != nil {
+							return err
+						}
+
 						return nil
 					}
 				}
