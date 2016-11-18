@@ -27,12 +27,14 @@ setup(
     test_suite='nose.collector',
     install_requires=['pyjwt', 'requests'],
     classifiers=[
-        'Development Status :: 5 - Production/Stable'
-        'Intended Audience :: Information Technology'
-        'Intended Audience :: System Administrators'
-        'License :: OSI Approved :: Apache Software License'
-        'Operating System :: POSIX :: Linux'
-        'Programming Language :: Python'
-        'Programming Language :: Python :: 2.7'
+        'Development Status :: 5 - Production/Stable',
+        'Intended Audience :: Information Technology',
+        'Intended Audience :: System Administrators',
+        'License :: OSI Approved :: Apache Software License',
+        'Operating System :: POSIX :: Linux',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 2.7',
+        'Topic :: System :: Filesystems',
+        'Topic :: System :: Distributed Computing',
     ],
 )

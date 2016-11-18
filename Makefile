@@ -29,7 +29,7 @@ GO=go
 # Sources and Targets
 EXECUTABLES :=$(APP_NAME)
 # Build Binaries setting main.version and main.build vars
-LDFLAGS :=-ldflags "-X main.HEKETI_VERSION=$(VERSION)"
+LDFLAGS :=-ldflags "-X main.HEKETI_VERSION=$(VERSION) -extldflags '-z relro -z now'"
 # Package target
 PACKAGE :=$(DIR)/dist/$(APP_NAME)-$(VERSION).$(GOOS).$(ARCH).tar.gz
 CLIENT_PACKAGE :=$(DIR)/dist/$(APP_NAME)-client-$(VERSION).$(GOOS).$(ARCH).tar.gz
@@ -84,9 +84,12 @@ $(PACKAGE): all
 $(CLIENT_PACKAGE): all
 	@echo Packaging client Binaries...
 	@mkdir -p tmp/$(CLIENT_PKG_NAME)/bin
-	@mkdir -p tmp/$(CLIENT_PKG_NAME)/share/heketi/templates
+	@mkdir -p tmp/$(CLIENT_PKG_NAME)/share/heketi/openshift/templates
+	@mkdir -p tmp/$(CLIENT_PKG_NAME)/share/heketi/kubernetes
+	@cp client/cli/go/topology-sample.json tmp/$(CLIENT_PKG_NAME)/share/heketi
 	@cp client/cli/go/heketi-cli tmp/$(CLIENT_PKG_NAME)/bin
-	@cp extras/openshift/templates/* tmp/$(CLIENT_PKG_NAME)/share/heketi/templates
+	@cp extras/openshift/templates/* tmp/$(CLIENT_PKG_NAME)/share/heketi/openshift/templates
+	@cp extras/kubernetes/* tmp/$(CLIENT_PKG_NAME)/share/heketi/kubernetes
 	@mkdir -p $(DIR)/dist/
 	tar -czf $@ -C tmp $(CLIENT_PKG_NAME);
 	@rm -rf tmp

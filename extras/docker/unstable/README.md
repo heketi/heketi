@@ -9,7 +9,7 @@ First you will need to download the latest development container:
 
     # docker pull heketi/heketi:dev
     
-> NOTE: Must likely you will always need to do a new pull before staring your tests since the container changes so often.
+> NOTE: Most likely you will always need to do a new pull before staring your tests since the container changes so often.
 
 ## Server Setup
 You will need to create a directory which has a directory containing configuraiton and any private key if necessary, and an empty directory used for storing the database.  Directory and files must be read/write by user with id 1000 and if an ssh private key is used, it must also have a mod of 0600.
