@@ -19,8 +19,8 @@ docker_set_env() {
     ### CENTOS WORKAROUND ###
     ### Suffering from same bug as https://github.com/getcarina/carina/issues/112
     ###
-    if grep -q -s "CentOS" /etc/redhat-release ; then
-        echo "CentOS DOCKER WORKAROUND"
+    if grep -q -s "CentOS\|Fedora" /etc/redhat-release ; then
+        echo "CentOS/Fedora DOCKER WORKAROUND"
         curl -sL https://download.getcarina.com/dvm/latest/install.sh | sh
         eval $(minikube docker-env)
         source ~/.dvm/dvm.sh
