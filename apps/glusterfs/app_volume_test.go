@@ -11,6 +11,7 @@ package glusterfs
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -1115,4 +1116,83 @@ func TestVolumeClusterResizeByAddingDevices(t *testing.T) {
 	tests.Assert(t, v != nil)
 	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == ErrNoSpace)
+}
+
+// Test for https://github.com/heketi/heketi/issues/382:
+//
+// A TopologyInfo request running concurrently to a
+// VolumeCreate request failed with "Id not found" due
+// to unsaved brick info.
+func TestVolumeCreateVsTopologyInfo(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Create a cluster
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		10,   // nodes_per_cluster
+		10,   // devices_per_node,
+		5*TB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	// Create a client
+	c := client.NewClientNoAuth(ts.URL)
+	tests.Assert(t, c != nil)
+
+	// Start Several concurrent VolumeCreate and
+	// TopologyInfo requests so that there is a
+	// chance for a TopologyInfo request to hit
+	// the race of unsaved // brick data.
+	sg := utils.NewStatusGroup()
+	for i := 0; i < 20; i++ {
+		sg.Add(1)
+		go func() {
+			defer sg.Done()
+
+			volumeReq := &api.VolumeCreateRequest{}
+			volumeReq.Size = 10
+
+			volume, err := c.VolumeCreate(volumeReq)
+			sg.Err(err)
+			if err != nil {
+				return
+			}
+
+			if volume.Id == "" {
+				sg.Err(errors.New("Empty volume Id."))
+				return
+			}
+
+			if volume.Size != volumeReq.Size {
+				sg.Err(fmt.Errorf("Unexpected Volume size "+
+					"[%d] instead of [%d].",
+					volume.Size, volumeReq.Size))
+			}
+		}()
+
+		sg.Add(1)
+		go func() {
+			defer sg.Done()
+
+			_, err := c.TopologyInfo()
+			if err != nil {
+				err = fmt.Errorf("TopologyInfo failed: %s", err)
+			}
+			sg.Err(err)
+		}()
+	}
+
+	err = sg.Result()
+	tests.Assert(t, err == nil, err)
 }
