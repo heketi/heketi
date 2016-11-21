@@ -91,7 +91,7 @@ setup_minikube() {
 
     echo -e "\nGet minikube"
     curl -Lo minikube \
-        https://storage.googleapis.com/minikube/releases/v0.12.0/minikube-linux-amd64 || fail "Unable to get minikube"
+        https://storage.googleapis.com/minikube/releases/v0.12.2/minikube-linux-amd64 || fail "Unable to get minikube"
     chmod +x minikube
     _sudo mv minikube /usr/local/bin
 
