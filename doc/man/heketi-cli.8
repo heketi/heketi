@@ -268,11 +268,12 @@ Create a GlusterFS volume
 .fi
 .RE
 .PP
-\fB               \-\-gid\fP="0"
+\fB               \-\-gid\fP=0
 .PP
 .RS
 .nf
             Optional: Initialize volume with the specified group id
+            Default is 0
 .fi
 .RE
 .PP
@@ -417,14 +418,6 @@ Lists the volumes managed by Heketi
 .RS
 .nf
 Print response as JSON
-.fi
-.RE
-.PP
-\fB\-\-log\-flush\-frequency\fP="5s"
-.PP
-.RS
-.nf
-Maximum number of seconds between log flushes
 .fi
 .RE
 .PP
