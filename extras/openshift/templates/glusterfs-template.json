@@ -90,6 +90,10 @@
                                         "mountPath": "/dev"
                                     },
                                     {
+                                        "name": "glusterfs-misc",
+                                        "mountPath": "/var/lib/misc/glusterfsd"
+                                    },
+                                    {
                                         "name": "glusterfs-cgroup",
                                         "mountPath": "/sys/fs/cgroup"
                                     }
@@ -160,6 +164,12 @@
                                 "name": "glusterfs-dev",
                                 "hostPath": {
                                     "path": "/dev"
+                                }
+                            },
+                            {
+                                "name": "glusterfs-misc",
+                                "hostPath": {
+                                    "path": "/var/lib/misc/glusterfsd"
                                 }
                             },
                             {
