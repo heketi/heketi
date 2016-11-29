@@ -65,7 +65,7 @@ setup_all_pods() {
 
 	# Start Heketi
 	echo -e "\nStart Heketi container"
-    sed -e "s#heketi/heketi#heketi/heketi:ci#" \
+    sed -e "s#heketi/heketi:dev#heketi/heketi:ci#" \
         -e "s#Always#IfNotPresent#" \
         -e "s#<HEKETI_KUBE_SECRETNAME>#\"$KUBESEC\"#" \
         -e "s#<HEKETI_KUBE_APIHOST>#\"$KUBEAPI\"#" \
