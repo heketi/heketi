@@ -109,9 +109,6 @@ test_peer_probe() {
 	heketi-cli topology info
 }
 
-
-
-
 display_information
 setup_all_pods
 
