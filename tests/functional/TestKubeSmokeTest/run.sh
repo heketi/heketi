@@ -112,6 +112,13 @@ start_minikube() {
 		--memory=2048 \
 		--vm-driver=kvm \
 		--kubernetes-version="${KUBEVERSION}" || fail "Unable to start minikube"
+
+    # wait until it is ready
+    echo -e "\nWait until kubernetes containers are running and ready"
+    while [ 3 -ne $(kubectl get pods --all-namespaces | grep Running | wc -l) ] ; do
+        echo -n "."
+        sleep 1
+    done
 }
 
 setup() {
