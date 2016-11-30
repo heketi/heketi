@@ -9,7 +9,7 @@ PATH=$PATH:$RESOURCES_DIR
 source ${FUNCTIONAL_DIR}/lib.sh
 
 # Setup Docker environment
-eval $(minikube docker-env) 
+eval $(minikube docker-env)
 
 display_information() {
 	# Display information
@@ -44,7 +44,7 @@ setup_heketi() {
 
 	echo -e "\nShow Topology"
 	export HEKETI_CLI_SERVER=$(minikube service heketi --url)
-	heketi-cli topology info 
+	heketi-cli topology info
 
 	echo -e "\nRegister mock endpoints"
 	kubectl create -f mock-endpoints.json || fail "Unable to submit mock-endpoints"
@@ -95,9 +95,6 @@ test_delete() {
 		fail "Incorrect number of volumes in Heketi"
 	fi
 }
-	
-
-
 
 display_information
 setup_heketi

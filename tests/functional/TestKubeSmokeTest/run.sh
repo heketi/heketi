@@ -19,8 +19,8 @@ docker_set_env() {
     ### CENTOS WORKAROUND ###
     ### Suffering from same bug as https://github.com/getcarina/carina/issues/112
     ###
-    if grep "CentOS" /etc/redhat-release > /dev/null 2>&1 ; then
-        echo "CentOS DOCKER WORKAROUND"
+    if grep -q -s "CentOS\|Fedora" /etc/redhat-release ; then
+        echo "CentOS/Fedora DOCKER WORKAROUND"
         curl -sL https://download.getcarina.com/dvm/latest/install.sh | sh
         eval $(minikube docker-env)
         source ~/.dvm/dvm.sh
@@ -44,6 +44,7 @@ build_docker_file(){
         cp $TOP/heketi $DOCKERDIR/ci || fail "Unable to copy $TOP/heketi to $DOCKERDIR/ci"
         _sudo docker build --rm --tag heketi/heketi:ci . || fail "Unable to create docker container"
         _sudo docker save -o $HEKETI_DOCKER_IMG heketi/heketi:ci || fail "Unable to save docker image"
+        _sudo chmod 0666 $HEKETI_DOCKER_IMG || fail "Unable to chmod docker image"
         cp $HEKETI_DOCKER_IMG $heketi_docker || fail "Unable to copy image"
         _sudo docker rmi heketi/heketi:ci
         cd $CURRENT_DIR
@@ -75,31 +76,33 @@ setup_minikube() {
         mkdir $RESOURCES_DIR
     fi
 
-    echo -e "\nGet docker-machine"
-    curl -Lo docker-machine https://github.com/docker/machine/releases/download/v0.8.2/docker-machine-Linux-x86_64 || fail "Unable to get docker-machine"
-    chmod +x docker-machine
-    _sudo mv docker-machine /usr/local/bin
+    if ! md5sum -c md5sums > /dev/null 2>&1 ; then
+        echo -e "\nGet docker-machine"
+        curl -Lo docker-machine https://github.com/docker/machine/releases/download/v0.8.2/docker-machine-Linux-x86_64 || fail "Unable to get docker-machine"
+        chmod +x docker-machine
+        _sudo mv docker-machine /usr/local/bin
 
-    echo -e "\nGet docker-machine-driver-kvm"
-    curl -Lo docker-machine-driver-kvm \
-        https://github.com/dhiltgen/docker-machine-kvm/releases/download/v0.7.0/docker-machine-driver-kvm || fail "Unable to get docker-machine-driver-kvm"
-    chmod +x docker-machine-driver-kvm
-    _sudo mv docker-machine-driver-kvm /usr/local/bin
+        echo -e "\nGet docker-machine-driver-kvm"
+        curl -Lo docker-machine-driver-kvm \
+            https://github.com/dhiltgen/docker-machine-kvm/releases/download/v0.7.0/docker-machine-driver-kvm || fail "Unable to get docker-machine-driver-kvm"
+        chmod +x docker-machine-driver-kvm
+        _sudo mv docker-machine-driver-kvm /usr/local/bin
 
-    _sudo usermod -a -G libvirt $(whoami)
-    #newgrp libvirt
+        _sudo usermod -a -G libvirt $(whoami)
+        #newgrp libvirt
 
-    echo -e "\nGet minikube"
-    curl -Lo minikube \
-        https://storage.googleapis.com/minikube/releases/v0.12.0/minikube-linux-amd64 || fail "Unable to get minikube"
-    chmod +x minikube
-    _sudo mv minikube /usr/local/bin
+        echo -e "\nGet minikube"
+        curl -Lo minikube \
+            https://storage.googleapis.com/minikube/releases/v0.12.2/minikube-linux-amd64 || fail "Unable to get minikube"
+        chmod +x minikube
+        _sudo mv minikube /usr/local/bin
 
-    echo -e "\nGet kubectl $KUBEVERSION"
-    curl -Lo kubectl \
-        http://storage.googleapis.com/kubernetes-release/release/${KUBEVERSION}/bin/linux/amd64/kubectl || fail "Unable to get kubectl"
-    chmod +x kubectl
-    _sudo mv kubectl /usr/local/bin
+        echo -e "\nGet kubectl $KUBEVERSION"
+        curl -Lo kubectl \
+            http://storage.googleapis.com/kubernetes-release/release/${KUBEVERSION}/bin/linux/amd64/kubectl || fail "Unable to get kubectl"
+        chmod +x kubectl
+        _sudo mv kubectl /usr/local/bin
+    fi
 
     echo -e "\nOpt-out of errors"
     minikube config set WantReportErrorPrompt false
@@ -111,6 +114,13 @@ start_minikube() {
 		--memory=2048 \
 		--vm-driver=kvm \
 		--kubernetes-version="${KUBEVERSION}" || fail "Unable to start minikube"
+
+    # wait until it is ready
+    echo -e "\nWait until kubernetes containers are running and ready"
+    while [ 3 -ne $(kubectl get pods --all-namespaces | grep Running | wc -l) ] ; do
+        echo -n "."
+        sleep 1
+    done
 }
 
 setup() {
