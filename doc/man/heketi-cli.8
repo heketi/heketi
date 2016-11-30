@@ -7,7 +7,7 @@
 .\" cases as published by the Free Software Foundation.
 .\"
 
-.TH heketi-cli 8 "Heketi command line program" "Apr 2016" "The heketi Authors"
+.TH heketi\-cli 8 "Heketi command line program" "Nov 2016" "The heketi Authors"
 .nh
 .ad l
 .SH NAME
@@ -29,22 +29,22 @@ Command line program for Heketi
 \fBheketi\-cli cluster create\fP
 Create a cluster
     \fBExample\fP
-    $ heketi-cli cluster create
+    $ heketi\-cli cluster create
 .PP
 .TP
 
-\fBheketi\-cli cluster delete <CLUSTER-ID>\fP
+\fBheketi\-cli cluster delete <CLUSTER\-ID>\fP
 Delete a cluster
     \fBExample\fP
-    $ heketi-cli cluster delete 886a86a868711bef83001
+    $ heketi\-cli cluster delete 886a86a868711bef83001
 .PP
 .TP
 
-\fBheketi\-cli cluster info  <CLUSTER-ID>\fP
+\fBheketi\-cli cluster info  <CLUSTER\-ID>\fP
 Retrieves information about cluster
 
     \fBExample\fP
-    $ heketi-cli cluster info 886a86a868711bef83001
+    $ heketi\-cli cluster info 886a86a868711bef83001
 .PP
 .TP
 
@@ -52,14 +52,14 @@ Retrieves information about cluster
 Lists the clusters managed by Heketi
 
     \fBExample\fP
-    $ heketi-cli cluster list
+    $ heketi\-cli cluster list
 
 
 .SS "Device Commands"
 .PP
 .TP
 
-\fBheketi\-cli device add \-\-name=<DEVICE-NAME> \-\-node=<NODE-ID>\fP
+\fBheketi\-cli device add \-\-name=<DEVICE\-NAME> \-\-node=<NODE\-ID>\fP
 Add new device to node to be managed by Heketi
 .TP
 \fB           Options\fP
@@ -72,32 +72,49 @@ Add new device to node to be managed by Heketi
 
     \fB       Example\fP
            $ heketi\-cli device add \\
-               \-\-name=/dev/sdb
+               \-\-name=/dev/sdb \\
                \-\-node=3e098cb4407d7109806bb196d9e8f095
 
 .PP
 .TP
 
-\fBheketi\-cli device delete <DEVICE-ID>\fP
+\fBheketi\-cli device delete <DEVICE\-ID>\fP
 Deletes a device from Heketi node
 
     \fBExample\fP
-    $ heketi-cli device delete 886a86a868711bef83001
+    $ heketi\-cli device delete 886a86a868711bef83001
 .PP
 .TP
 
-\fBheketi\-cli device info  <DEVICE-ID>\fP
+\fBheketi\-cli device disable <DEVICE\-ID>\fP
+Disallow usage of a device by placing it offline
+
+    \fBExample\fP
+    $ heketi\-cli device disable 886a86a868711bef83001
+.PP
+.TP
+
+\fBheketi\-cli device enable <DEVICE\-ID>\fP
+Allows device to go online
+
+    \fBExample\fP
+    $ heketi\-cli device enable 886a86a868711bef83001
+.PP
+.TP
+
+\fBheketi\-cli device info  <DEVICE\-ID>\fP
 Retrieves information about device
 
     \fBExample\fP
-    $ heketi-cli device info 886a86a868711bef83001
+    $ heketi\-cli device info 886a86a868711bef83001
+.PP
 
 
 .SS "Node Commands"
 .PP
 .TP
 
-\fBheketi\-cli node add \-\-zone=<ZONE-NUMBER> \-\-cluster=<CLUSTER-ID> \-\-management\-host\-name=<MANAGEMENT-HOSTNAME> \-\-storage-host-name=<STORAGE-HOSTNAME>\fP
+\fBheketi\-cli node add \-\-zone=<ZONE\-NUMBER> \-\-cluster=<CLUSTER\-ID> \-\-management\-host\-name=<MANAGEMENT\-HOSTNAME> \-\-storage\-host\-name=<STORAGE\-HOSTNAME>\fP
 Add new node to be managed by Heketi
 .TP
 \fB           Options\fP
@@ -124,26 +141,72 @@ Add new node to be managed by Heketi
 .PP
 .TP
 
-\fBheketi\-cli node delete <NODE-ID>\fP
+\fBheketi\-cli node delete <NODE\-ID>\fP
 Deletes a node from Heketi management
 
     \fBExample\fP
-    $ heketi-cli node delete 886a86a868711bef83001
+    $ heketi\-cli node delete 886a86a868711bef83001
 .PP
 .TP
 
-\fBheketi\-cli node info  <NODE-ID>\fP
+\fBheketi\-cli node disable <NODE\-ID>\fP
+Disallow usage of a node by placing it offline
+
+    \fBExample\fP
+    $ heketi\-cli node disable 886a86a868711bef83001
+.PP
+.TP
+
+\fBheketi\-cli node enable <NODE\-ID>\fP
+Allows node to go online
+
+    \fBExample\fP
+    $ heketi\-cli node enable 886a86a868711bef83001
+.PP
+.TP
+
+\fBheketi\-cli node info  <NODE\-ID>\fP
 Retrieves information about node
 
     \fBExample\fP
-    $ heketi-cli node info 886a86a868711bef83001
+    $ heketi\-cli node info 886a86a868711bef83001
+.PP
+.TP
+
+\fBheketi\-cli node list\fP
+List all nodes in cluster
+
+    \fBExample\fP
+    $ heketi\-cli node list
+
+
+
+.SS "Setup OpenShift/Kubernetes persistent storage for Heketi"
+.PP
+.TP
+
+\fBheketi\-cli setup\-openshift\-heketi\-storage\fP
+Creates a dedicated GlusterFS volume for Heketi.
+Once the volume is created, a Kubernetes/OpenShift
+list object is created to configure the volume.
+.TP
+\fB           Options\fP
+.PP
+\fB               \-\-listfile\fP="heketi\-storage.json"
+                   Filename to contain list of objects
+
+    \fB       Example\fP
+           $ heketi\-cli setup\-openshift\-heketi\-storage
+
+.PP
+
 
 
 .SS "Topology Commands"
 .PP
 .TP
 
-\fBheketi\-cli topology load \-\-json=<JSON-FILENAME>\fP
+\fBheketi\-cli topology load \-\-json=<JSON\-FILENAME>\fP
 Add devices to Heketi from a configuration file
 .TP
 \fB           Options\fP
@@ -152,7 +215,7 @@ Add devices to Heketi from a configuration file
                    Configuration containing devices, nodes, and clusters, in JSON format
 
     \fB       Example\fP
-           $ heketi-cli topology load --json=topo.json
+           $ heketi\-cli topology load \-\-json=topo.json
 
 .PP
 .TP
@@ -161,14 +224,14 @@ Add devices to Heketi from a configuration file
 Retreives information about the current Topology
 
     \fBExample\fP
-    $ heketi-cli topology info
+    $ heketi\-cli topology info
 
 
 .SS "Volume Commands"
 .PP
 .TP
 
-\fBheketi\-cli volume create \-\-cluster=<CLUSTER-ID> \-\-disperse-data=<DISPERSION-VALUE> \-\-durability=<TYPE> \-\-name=<VOLUME-NAME> \-\-redundancy=<REDUNDENCY-VALUE> \-\-replica=<REPLICA-VALUE> \-\-size=<VOLUME-SIZE> \-\-snapshot-factor=<SNAPSHOT-FACTOR-VALUE>\fP
+\fBheketi\-cli volume create \-\-cluster=<CLUSTER\-ID> \-\-disperse\-data=<DISPERSION\-VALUE> \-\-durability=<TYPE> \-\-name=<VOLUME\-NAME> \-\-redundancy=<REDUNDENCY\-VALUE> \-\-replica=<REPLICA\-VALUE> \-\-size=<VOLUME\-SIZE> \-\-snapshot\-factor=<SNAPSHOT\-FACTOR\-VALUE>\fP
 Create a GlusterFS volume
 .TP
 \fB           Options\fP
@@ -206,11 +269,45 @@ Create a GlusterFS volume
 .fi
 .RE
 .PP
+\fB               \-\-gid\fP="0"
+.PP
+.RS
+.nf
+            Optional: Initialize volume with the specified group id
+.fi
+.RE
+.PP
 \fB               \-\-name\fP=""
 .PP
 .RS
 .nf
             Optional: Name of volume. Only set if really necessary
+.fi
+.RE
+.PP
+\fB               \-\-persistent\-volume\fP[=false]
+.PP
+.RS
+.nf
+            Optional: Output to standard out a persistent volume JSON file for OpenShift or
+            Kubernetes with the name provided.
+.fi
+.RE
+.PP
+\fB               \-\-persistent\-volume\-endpoint\fP=""
+.PP
+.RS
+.nf
+            Optional: Endpoint name for the persistent volume
+.fi
+.RE
+.PP
+\fB               \-\-persistent\-volume\-file\fP=""
+.PP
+.RS
+.nf
+            Optional: Create a persistent volume JSON file for OpenShift or
+            Kubernetes with the name provided.
 .fi
 .RE
 .PP
@@ -272,15 +369,15 @@ Create a GlusterFS volume
 .PP
 .TP
 
-\fBheketi\-cli volume delete <VOLUME-ID>\fP
+\fBheketi\-cli volume delete <VOLUME\-ID>\fP
 Deletes the volume
 
     \fBExample\fP
-    $ heketi-cli volume delete 886a86a868711bef83001
+    $ heketi\-cli volume delete 886a86a868711bef83001
 .PP
 .TP
 
-\fBheketi\-cli volume expand --expand-size=<SIZE> --volume=<VOLUME-ID>\fP
+\fBheketi\-cli volume expand \-\-expand\-size=<SIZE> \-\-volume=<VOLUME\-ID>\fP
 Expand a volume
 .TP
 \fB           Options\fP
@@ -299,11 +396,11 @@ Expand a volume
 .PP
 .TP
 
-\fBheketi\-cli volume info  <VOLUME-ID>\fP
+\fBheketi\-cli volume info  <VOLUME\-ID>\fP
 Retrieves information about volume
 
     \fBExample\fP
-    $ heketi-cli volume info 886a86a868711bef83001
+    $ heketi\-cli volume info 886a86a868711bef83001
 
 .PP
 .TP
@@ -312,7 +409,7 @@ Retrieves information about volume
 Lists the volumes managed by Heketi
 
     \fBExample\fP
-    $ heketi-cli volume list
+    $ heketi\-cli volume list
 
 .SH GLOBAL OPTIONS
 .PP
@@ -321,6 +418,14 @@ Lists the volumes managed by Heketi
 .RS
 .nf
 Print response as JSON
+.fi
+.RE
+.PP
+\fB\-\-log\-flush\-frequency\fP="5s"
+.PP
+.RS
+.nf
+Maximum number of seconds between log flushes
 .fi
 .RE
 .PP
