@@ -86,6 +86,22 @@ Deletes a device from Heketi node
 .PP
 .TP
 
+\fBheketi\-cli device disable <DEVICE\-ID>\fP
+Disallow usage of a device by placing it offline
+
+    \fBExample\fP
+    $ heketi\-cli device disable 886a86a868711bef83001
+.PP
+.TP
+
+\fBheketi\-cli device enable <DEVICE\-ID>\fP
+Allows device to go online
+
+    \fBExample\fP
+    $ heketi\-cli device enable 886a86a868711bef83001
+.PP
+.TP
+
 \fBheketi\-cli device info  <DEVICE-ID>\fP
 Retrieves information about device
 
@@ -132,11 +148,57 @@ Deletes a node from Heketi management
 .PP
 .TP
 
+\fBheketi\-cli node disable <NODE\-ID>\fP
+Disallow usage of a node by placing it offline
+
+    \fBExample\fP
+    $ heketi\-cli node disable 886a86a868711bef83001
+.PP
+.TP
+
+\fBheketi\-cli node enable <NODE\-ID>\fP
+Allows node to go online
+
+    \fBExample\fP
+    $ heketi\-cli node enable 886a86a868711bef83001
+.PP
+.TP
+
 \fBheketi\-cli node info  <NODE-ID>\fP
 Retrieves information about node
 
     \fBExample\fP
     $ heketi-cli node info 886a86a868711bef83001
+.PP
+.TP
+
+\fBheketi\-cli node list\fP
+List all nodes in cluster
+
+    \fBExample\fP
+    $ heketi\-cli node list
+
+
+
+.SS "Setup OpenShift/Kubernetes persistent storage for Heketi"
+.PP
+.TP
+
+\fBheketi\-cli setup\-openshift\-heketi\-storage\fP
+Creates a dedicated GlusterFS volume for Heketi.
+Once the volume is created, a Kubernetes/OpenShift
+list object is created to configure the volume.
+.TP
+\fB           Options\fP
+.PP
+\fB               \-\-listfile\fP="heketi\-storage.json"
+                   Filename to contain list of objects
+
+    \fB       Example\fP
+           $ heketi\-cli setup\-openshift\-heketi\-storage
+
+.PP
+
 
 
 .SS "Topology Commands"
@@ -206,11 +268,46 @@ Create a GlusterFS volume
 .fi
 .RE
 .PP
+\fB               \-\-gid\fP=0
+.PP
+.RS
+.nf
+            Optional: Initialize volume with the specified group id
+            Default is 0
+.fi
+.RE
+.PP
 \fB               \-\-name\fP=""
 .PP
 .RS
 .nf
             Optional: Name of volume. Only set if really necessary
+.fi
+.RE
+.PP
+\fB               \-\-persistent\-volume\fP[=false]
+.PP
+.RS
+.nf
+            Optional: Output to standard out a persistent volume JSON file for OpenShift or
+            Kubernetes with the name provided.
+.fi
+.RE
+.PP
+\fB               \-\-persistent\-volume\-endpoint\fP=""
+.PP
+.RS
+.nf
+            Optional: Endpoint name for the persistent volume
+.fi
+.RE
+.PP
+\fB               \-\-persistent\-volume\-file\fP=""
+.PP
+.RS
+.nf
+            Optional: Create a persistent volume JSON file for OpenShift or
+            Kubernetes with the name provided.
 .fi
 .RE
 .PP
