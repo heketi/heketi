@@ -128,7 +128,7 @@ test_peer_probe() {
 
 	echo -e "\nAdd device"
 	nodeid=$(heketi-cli node list | awk '{print $1}' | awk -F: '{print $2}')
-	heketi-cli device add --name=/dev/fakedevice --node=$nodeid # || fail "Unable to add device"
+	heketi-cli device add --name=/dev/fakedevice --node=$nodeid || fail "Unable to add device"
 
 	echo -e "\nShow Topology"
 	heketi-cli topology info
