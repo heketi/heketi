@@ -19,7 +19,7 @@
     - pyOpenSSL
 
 - name: get openshift-ansible release 1.3
-  git: repo=https://github.com/openshift/openshift-ansible dest=/home/vagrant/openshift-ansible version=3cc5b0562de1b8a2334104542c15a6cce67b68bf
+  git: repo=https://github.com/openshift/openshift-ansible dest=/home/vagrant/openshift-ansible version=62718f0579871ea66e055e1b2e2ba30349b0e54d
 
 - name: copy hosts.conf
   copy: src=hosts.conf dest=/home/vagrant force=yes mode=0644
@@ -46,7 +46,7 @@
   lineinfile: dest=/etc/rc.d/rc.local regexp="^sed" line="sed -i '1s/^/nameserver 127.0.0.1\\n/' /etc/resolv.conf"
 
 - name: make rc.local executable
-  command: chmod a+x /etc/rc.d/rc.local
+  file: path=/etc/rc.d/rc.local state=file mode=a+x
 
 - name: get oc client
   unarchive: src=https://github.com/openshift/origin/releases/download/v1.3.0/openshift-origin-client-tools-v1.3.0-3ab7af3d097b57f933eccef684a714f2368804e7-linux-64bit.tar.gz dest=/home/vagrant copy=no
