@@ -4,7 +4,7 @@ source ./lib.sh
 
 teardown_all() {
     results=0
-    for testDir in * ; do
+    for testDir in Test* ; do
         if [ -x $testDir/teardown.sh ] ; then
             println "TEARDOWN $testDir"
             cd $testDir
@@ -30,7 +30,7 @@ teardown_all
 
 # Check each dir for tests
 results=0
-for testDir in * ; do
+for testDir in Test* ; do
     if [ -x $testDir/run.sh ] ; then
         println "TEST $testDir"
         cd $testDir
