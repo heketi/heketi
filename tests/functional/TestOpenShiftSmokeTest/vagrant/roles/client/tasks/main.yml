@@ -46,7 +46,7 @@
   lineinfile: dest=/etc/rc.d/rc.local regexp="^sed" line="sed -i '1s/^/nameserver 127.0.0.1\\n/' /etc/resolv.conf"
 
 - name: make rc.local executable
-  command: chmod a+x /etc/rc.d/rc.local
+  file: path=/etc/rc.d/rc.local state=file mode=a+x
 
 - name: get oc client
   unarchive: src=https://github.com/openshift/origin/releases/download/v1.3.0/openshift-origin-client-tools-v1.3.0-3ab7af3d097b57f933eccef684a714f2368804e7-linux-64bit.tar.gz dest=/home/vagrant copy=no
