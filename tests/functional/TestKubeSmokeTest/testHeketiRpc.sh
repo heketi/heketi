@@ -45,7 +45,9 @@ create_fake_vgdisplay() {
 	pod=$1
 	app=vgdisplay
 	kubectl exec $pod -- sh -c "echo '#!/bin/sh' > /bin/${app}" || fail "Unable to create /bin/${app}"
-	kubectl exec $pod -- sh -c "echo 'echo mock:r/w:772:-1:0:2:2:-1:0:1:1:249278464:4096:60859:60859:0:FcehVp-rc3l-xTBH-ZGxK-53G2-GrOr-bDQzQF' >> /bin/${app}" || fail "Unable to add to /bin/${app}"
+
+	## This pretends that there is a disk with 99G of free space and 0 used.
+	kubectl exec $pod -- sh -c "echo 'echo mock:r/w:772:-1:0:0:0:-1:0:1:1:104722432:4096:25567:0:25567:3xn8HX-x6cB-CJJy-Sj6Q-I0CY-gJLY-qlipv5' >> /bin/${app}" || fail "Unable to add to /bin/${app}"
 	kubectl exec $pod -- chmod +x /bin/${app} || fail "Unable to chmod +x /bin/${app}"
 }
 
@@ -129,6 +131,20 @@ test_peer_probe() {
 	echo -e "\nAdd device"
 	nodeid=$(heketi-cli node list | awk '{print $1}' | awk -F: '{print $2}')
 	heketi-cli device add --name=/dev/fakedevice --node=$nodeid || fail "Unable to add device"
+
+	# Check sizes
+	device_size=$(heketi-cli topology info | grep fakedevice | awk '{print $5}' | cut -d: -f2)
+	device_used=$(heketi-cli topology info | grep fakedevice | awk '{print $7}' | cut -d: -f2)
+	device_free=$(heketi-cli topology info | grep fakedevice | awk '{print $9}' | cut -d: -f2)
+	if [ 99 -ne $device_size ] ; then
+		fail "Expected size of 99 instead got $device_size"
+	fi
+	if [ 0 -ne $device_used ] ; then
+		fail "Expected used of 0 instead got $device_used"
+	fi
+	if [ 99 -ne $device_free ] ; then
+		fail "Expected free of 99 instead got $device_free"
+	fi
 
 	echo -e "\nShow Topology"
 	heketi-cli topology info
