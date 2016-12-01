@@ -16,6 +16,9 @@ teardown_all() {
 
 ### MAIN ###
 
+# See https://bugzilla.redhat.com/show_bug.cgi?id=1327740
+_sudo setenforce 0
+
 starttime=`date`
 export PATH=$PATH:.
 
