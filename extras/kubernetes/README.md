@@ -13,12 +13,16 @@ documentation, please visit the Heketi wiki page.
 $ kubectl get nodes
 ```
 
-* Deploy gluster container onto specified node:
+* Deploy the GlusterFS DaemonSet
 
 ```
-$ sed -e \
-   's#<GLUSTERFS_NODE>#..type your node name here..#' \
-   glusterfs-deployment.json | kubectl create -f -
+$ kubectl create -f gluster-daemonset.json
+```
+
+* Deploy gluster container onto specified node by setting the label `storagenode=glusterfs` on that node:
+
+```
+$ kubectl label node <...node...> storagenode=glusterfs
 ```
 
 Repeat as needed.
