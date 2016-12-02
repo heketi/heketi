@@ -395,8 +395,8 @@ func (k *KubeExecutor) getPodNameFromDaemonSet(conn *client.Client,
 		}
 	}
 	if glusterPod == "" {
-		return "", logger.LogError("Unable to find a Gluster Pod on host %v"+
-			"with DaemonSet nodeSelector %v", host, KubeGlusterFSPodLabelKey)
+		return "", logger.LogError("Unable to find a GlusterFS pod on host %v "+
+			"with a label key %v", host, KubeGlusterFSPodLabelKey)
 	}
 
 	// Get pod name
