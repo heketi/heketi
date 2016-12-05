@@ -82,6 +82,10 @@
                             "value": "y"
                           },
                           {
+                            "name": "HEKETI_KUBE_GLUSTER_DAEMONSET",
+                            "value": "y"
+                          },
+                          {
                             "name": "HEKETI_KUBE_APIHOST",
                             "value": <HEKETI_KUBE_APIHOST>
                           }
