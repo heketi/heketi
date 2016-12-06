@@ -221,6 +221,7 @@ func (a *App) NodeDelete(w http.ResponseWriter, r *http.Request) {
 		// Check the node can be deleted
 		if !node.IsDeleteOk() {
 			http.Error(w, node.ConflictString(), http.StatusConflict)
+			logger.LogError(node.ConflictString())
 			return ErrConflict
 		}
 
