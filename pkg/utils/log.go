@@ -44,6 +44,19 @@ type Logger struct {
 	level LogLevel
 }
 
+/*
+func LoggerFile(filename string) *log.Logger {
+	file, err :=
+	defer file.Close()
+
+	if err != nil {
+		log.Fatalf("Failed to open heketi log file")
+	}
+	logger := log.New(file, "", log.Ldate|log.Ltime|log.Lshortfile)
+	log.SetOutput(file)
+	return logger
+}
+*/
 func logWithLongFile(l *log.Logger, format string, v ...interface{}) {
 	_, file, line, _ := runtime.Caller(2)
 
@@ -73,12 +86,14 @@ func NewLogger(prefix string, level LogLevel) *Logger {
 	} else {
 		l.level = level
 	}
-
+	stdout, _ = os.OpenFile("/var/log/heketi/heketi.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	l.critlog = log.New(stderr, prefix+" CRITICAL ", log.LstdFlags)
 	l.errorlog = log.New(stderr, prefix+" ERROR ", log.LstdFlags)
 	l.warninglog = log.New(stdout, prefix+" WARNING ", log.LstdFlags)
 	l.infolog = log.New(stdout, prefix+" INFO ", log.LstdFlags)
 	l.debuglog = log.New(stdout, prefix+" DEBUG ", log.LstdFlags)
+
+	//LoggerFile("/var/log/heketi/heketi.log")
 
 	godbc.Ensure(l.critlog != nil)
 	godbc.Ensure(l.errorlog != nil)
