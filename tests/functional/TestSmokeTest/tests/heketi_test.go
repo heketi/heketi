@@ -264,12 +264,39 @@ func TestHeketiCreateVolumeWithGid(t *testing.T) {
 	volInfo, err := heketi.VolumeCreate(volReq)
 	tests.Assert(t, err == nil)
 
-	// SSH into system and execute gluster command to create a snapshot
-	exec := ssh.NewSshExecWithKeyFile(logger, "vagrant", "../config/insecure_private_key")
+	// SSH into system and create two writers belonging to writegroup gid
+	vagrantexec := ssh.NewSshExecWithKeyFile(logger, "vagrant", "../config/insecure_private_key")
 	cmd := []string{
+		"sudo groupadd writegroup",
+		"sudo useradd writer1 -G writegroup -p$6$WBG5yf03$3DvyE41cicXEZDW.HDeJg3S4oEoELqKWoS/n6l28vorNxhIlcBe2SLQFDhqq6.Pq",
+		"sudo useradd writer2 -G writegroup -p$6$WBG5yf03$3DvyE41cicXEZDW.HDeJg3S4oEoELqKWoS/n6l28vorNxhIlcBe2SLQFDhqq6.Pq",
 		fmt.Sprintf("sudo mount -t glusterfs %v /mnt", volInfo.Mount.GlusterFS.MountPoint),
-		"touch /mnt/testfile",
 	}
-	_, err = exec.ConnectAndExec("192.168.10.100:22", cmd, 10, true)
+	_, err = vagrantexec.ConnectAndExec("192.168.10.100:22", cmd, 10, true)
 	tests.Assert(t, err == nil, err)
+
+	writer1exec := ssh.NewSshExecWithPassword(logger, "writer1", "$6$WBG5yf03$3DvyE41cicXEZDW.HDeJg3S4oEoELqKWoS/n6l28vorNxhIlcBe2SLQFDhqq6.Pq")
+	cmd = []string{
+		"touch /mnt/writer1testfile",
+		"mkdir /mnt/writer1dir",
+		"touch /mnt/writer1dir/testfile",
+	}
+	_, err = writer1exec.ConnectAndExec("192.168.10.100:22", cmd, 10, false)
+	tests.Assert(t, err == nil, err)
+
+	writer2exec := ssh.NewSshExecWithPassword(logger, "writer2", "$6$WBG5yf03$3DvyE41cicXEZDW.HDeJg3S4oEoELqKWoS/n6l28vorNxhIlcBe2SLQFDhqq6.Pq")
+	cmd = []string{
+		"touch /mnt/writer2testfile",
+		"mkdir /mnt/writer2dir",
+		"touch /mnt/writer2dir/testfile",
+	}
+	_, err = writer2exec.ConnectAndExec("192.168.10.100:22", cmd, 10, false)
+	tests.Assert(t, err == nil, err)
+	cmd = []string{
+		"mkdir /mnt/writer1dir/writer2subdir",
+		"touch /mnt/writer1dir/writer2testfile",
+	}
+	_, err = writer2exec.ConnectAndExec("192.168.10.100:22", cmd, 10, false)
+	tests.Assert(t, err == nil, err)
+
 }
