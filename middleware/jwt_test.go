@@ -12,11 +12,11 @@ package middleware
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"github.com/codegangsta/negroni"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/context"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
+	"github.com/urfave/negroni"
 	"net/http"
 	"net/http/httptest"
 	"strings"

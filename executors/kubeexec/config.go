@@ -15,18 +15,7 @@ import (
 
 type KubeConfig struct {
 	sshexec.CLICommandConfig
-	Host      string `json:"host"`
-	CertFile  string `json:"cert"`
-	Insecure  bool   `json:"insecure"`
-	User      string `json:"user"`
-	Password  string `json:"password"`
-	Token     string `json:"token"`
-	Namespace string `json:"namespace"`
-	// Use Secrets to get the Bearerkey
-	UseSecrets bool `json:"use_secrets"`
-
-	TokenFile        string `json:"token_file"`
-	NamespaceFile    string `json:"namespace_file"`
+	Namespace        string `json:"namespace"`
 	GlusterDaemonSet bool   `json:"gluster_daemonset"`
 
 	// Use POD name instead of using label
