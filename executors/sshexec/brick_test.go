@@ -185,7 +185,7 @@ func TestSshExecBrickCreateWithGid(t *testing.T) {
 
 			case 7:
 				tests.Assert(t,
-					cmd == "chmod 775 "+
+					cmd == "chmod 2775 "+
 						"/var/lib/heketi/mounts/vg_xvgid/brick_id/brick", cmd)
 			}
 		}
