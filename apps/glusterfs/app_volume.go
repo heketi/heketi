@@ -39,9 +39,11 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case msg.Gid < 0:
 		http.Error(w, "Bad group id less than zero", http.StatusBadRequest)
+		logger.LogError("Bad group id less than zero")
 		return
 	case msg.Gid >= math.MaxInt32:
 		http.Error(w, "Bad group id equal or greater than 2**32", http.StatusBadRequest)
+		logger.LogError("Bad group id equal or greater than 2**32")
 		return
 	}
 
@@ -54,17 +56,20 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 		msg.Durability.Type = api.DurabilityDistributeOnly
 	default:
 		http.Error(w, "Unknown durability type", http.StatusBadRequest)
+		logger.LogError("Unknown durability type")
 		return
 	}
 
 	// Check the message has devices
 	if msg.Size < 1 {
 		http.Error(w, "Invalid volume size", http.StatusBadRequest)
+		logger.LogError("Invalid volume size")
 		return
 	}
 	if msg.Snapshot.Enable {
 		if msg.Snapshot.Factor < 1 || msg.Snapshot.Factor > VOLUME_CREATE_MAX_SNAPSHOT_FACTOR {
 			http.Error(w, "Invalid snapshot factor", http.StatusBadRequest)
+			logger.LogError("Invalid snapshot factor")
 			return
 		}
 	}
@@ -73,6 +78,7 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 	if msg.Durability.Type == api.DurabilityReplicate {
 		if msg.Durability.Replicate.Replica > 3 {
 			http.Error(w, "Invalid replica value", http.StatusBadRequest)
+			logger.LogError("Invalid replica value")
 			return
 		}
 	}
@@ -89,6 +95,7 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 			http.Error(w,
 				fmt.Sprintf("Invalid dispersion combination: %v+%v", d.Data, d.Redundancy),
 				http.StatusBadRequest)
+			logger.LogError(fmt.Sprintf("Invalid dispersion combination: %v+%v", d.Data, d.Redundancy))
 			return
 		}
 	}
@@ -105,6 +112,7 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 		}
 		if len(clusters) == 0 {
 			http.Error(w, fmt.Sprintf("No clusters configured"), http.StatusBadRequest)
+			logger.LogError("No clusters configured")
 			return ErrNotFound
 		}
 
@@ -113,6 +121,7 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 			_, err := NewClusterEntryFromId(tx, clusterid)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("Cluster id %v not found", clusterid), http.StatusBadRequest)
+				logger.LogError(fmt.Sprintf("Cluster id %v not found", clusterid))
 				return err
 			}
 		}
@@ -131,6 +140,9 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 			"smaller than the minimum supported volume size (%v)",
 			msg.Size, vol.Durability.MinVolumeSize()),
 			http.StatusBadRequest)
+		logger.LogError(fmt.Sprintf("Requested volume size (%v GB) is "+
+			"smaller than the minimum supported volume size (%v)",
+			msg.Size, vol.Durability.MinVolumeSize()))
 		return
 	}
 
