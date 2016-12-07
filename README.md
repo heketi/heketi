@@ -20,7 +20,9 @@ Please visit the [WIKI](http://github.com/heketi/heketi/wiki) for project docume
 Please visit [Vagrant-Heketi](https://github.com/heketi/vagrant-heketi) to try out the demo.
 
 # Community
-[Join our mailing list](http://lists.gluster.org/mailman/listinfo/heketi-devel)
+
+* Mailing list: [Join our mailing list](http://lists.gluster.org/mailman/listinfo/heketi-devel)
+* IRC: #heketi on Freenode
 
 # Talks
 
