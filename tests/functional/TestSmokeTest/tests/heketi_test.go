@@ -264,7 +264,7 @@ func TestHeketiCreateVolumeWithGid(t *testing.T) {
 	volInfo, err := heketi.VolumeCreate(volReq)
 	tests.Assert(t, err == nil)
 
-	// SSH into system and execute gluster command to create a snapshot
+	// SSH into system and try creating files from user belonging to gid
 	exec := ssh.NewSshExecWithKeyFile(logger, "vagrant", "../config/insecure_private_key")
 	cmd := []string{
 		fmt.Sprintf("sudo mount -t glusterfs %v /mnt", volInfo.Mount.GlusterFS.MountPoint),
