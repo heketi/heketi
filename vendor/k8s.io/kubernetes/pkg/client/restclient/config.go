@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright 2016 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import (
 	"path"
 	gruntime "runtime"
 	"strings"
+	"time"
 
 	"github.com/golang/glog"
 
@@ -32,9 +33,14 @@ import (
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	clientcmdapi "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api"
 	"k8s.io/kubernetes/pkg/runtime"
-	"k8s.io/kubernetes/pkg/util/crypto"
+	certutil "k8s.io/kubernetes/pkg/util/cert"
 	"k8s.io/kubernetes/pkg/util/flowcontrol"
 	"k8s.io/kubernetes/pkg/version"
+)
+
+const (
+	DefaultQPS   float32 = 5.0
+	DefaultBurst int     = 10
 )
 
 // Config holds the common attributes that can be passed to a Kubernetes client on
@@ -93,14 +99,23 @@ type Config struct {
 	// on top of the returned RoundTripper.
 	WrapTransport func(rt http.RoundTripper) http.RoundTripper
 
-	// QPS indicates the maximum QPS to the master from this client.  If zero, QPS is unlimited.
+	// QPS indicates the maximum QPS to the master from this client.
+	// If it's zero, the created RESTClient will use DefaultQPS: 5
 	QPS float32
 
-	// Maximum burst for throttle
+	// Maximum burst for throttle.
+	// If it's zero, the created RESTClient will use DefaultBurst: 10.
 	Burst int
 
 	// Rate limiter for limiting connections to the master from this client. If present overwrites QPS/Burst
 	RateLimiter flowcontrol.RateLimiter
+
+	// The maximum length of time to wait before giving up on a server request. A value of zero means no timeout.
+	Timeout time.Duration
+
+	// Version forces a specific version to be used (if registered)
+	// Do we need this?
+	// Version string
 }
 
 // TLSClientConfig contains settings to enable transport layer security
@@ -139,15 +154,6 @@ type ContentConfig struct {
 	// NegotiatedSerializer is used for obtaining encoders and decoders for multiple
 	// supported media types.
 	NegotiatedSerializer runtime.NegotiatedSerializer
-
-	// Codec specifies the encoding and decoding behavior for runtime.Objects passed
-	// to a RESTClient or Client. Required when initializing a RESTClient, optional
-	// when initializing a Client.
-	//
-	// DEPRECATED: Please use NegotiatedSerializer instead.
-	// Codec is currently used only in some tests and will be removed soon.
-	// All production setups should use NegotiatedSerializer.
-	Codec runtime.Codec
 }
 
 // RESTClientFor returns a RESTClient that satisfies the requested attributes on a client Config
@@ -160,6 +166,14 @@ func RESTClientFor(config *Config) (*RESTClient, error) {
 	}
 	if config.NegotiatedSerializer == nil {
 		return nil, fmt.Errorf("NegotiatedSerializer is required when initializing a RESTClient")
+	}
+	qps := config.QPS
+	if config.QPS == 0.0 {
+		qps = DefaultQPS
+	}
+	burst := config.Burst
+	if config.Burst == 0 {
+		burst = DefaultBurst
 	}
 
 	baseURL, versionedAPIPath, err := defaultServerUrlFor(config)
@@ -175,9 +189,12 @@ func RESTClientFor(config *Config) (*RESTClient, error) {
 	var httpClient *http.Client
 	if transport != http.DefaultTransport {
 		httpClient = &http.Client{Transport: transport}
+		if config.Timeout > 0 {
+			httpClient.Timeout = config.Timeout
+		}
 	}
 
-	return NewRESTClient(baseURL, versionedAPIPath, config.ContentConfig, config.QPS, config.Burst, config.RateLimiter, httpClient)
+	return NewRESTClient(baseURL, versionedAPIPath, config.ContentConfig, qps, burst, config.RateLimiter, httpClient)
 }
 
 // UnversionedRESTClientFor is the same as RESTClientFor, except that it allows
@@ -200,6 +217,9 @@ func UnversionedRESTClientFor(config *Config) (*RESTClient, error) {
 	var httpClient *http.Client
 	if transport != http.DefaultTransport {
 		httpClient = &http.Client{Transport: transport}
+		if config.Timeout > 0 {
+			httpClient.Timeout = config.Timeout
+		}
 	}
 
 	versionConfig := config.ContentConfig
@@ -216,12 +236,6 @@ func UnversionedRESTClientFor(config *Config) (*RESTClient, error) {
 func SetKubernetesDefaults(config *Config) error {
 	if len(config.UserAgent) == 0 {
 		config.UserAgent = DefaultKubernetesUserAgent()
-	}
-	if config.QPS == 0.0 {
-		config.QPS = 5.0
-	}
-	if config.Burst == 0 {
-		config.Burst = 10
 	}
 	return nil
 }
@@ -243,7 +257,7 @@ func DefaultKubernetesUserAgent() string {
 
 // InClusterConfig returns a config object which uses the service account
 // kubernetes gives to pods. It's intended for clients that expect to be
-// running inside a pod running on kuberenetes. It will return an error if
+// running inside a pod running on kubernetes. It will return an error if
 // called from a process not running in a kubernetes environment.
 func InClusterConfig() (*Config, error) {
 	host, port := os.Getenv("KUBERNETES_SERVICE_HOST"), os.Getenv("KUBERNETES_SERVICE_PORT")
@@ -257,7 +271,7 @@ func InClusterConfig() (*Config, error) {
 	}
 	tlsClientConfig := TLSClientConfig{}
 	rootCAFile := "/var/run/secrets/kubernetes.io/serviceaccount/" + api.ServiceAccountRootCAKey
-	if _, err := crypto.CertPoolFromFile(rootCAFile); err != nil {
+	if _, err := certutil.NewPool(rootCAFile); err != nil {
 		glog.Errorf("Expected to load root CA config from %s, but got err: %v", rootCAFile, err)
 	} else {
 		tlsClientConfig.CAFile = rootCAFile
@@ -328,4 +342,27 @@ func AddUserAgent(config *Config, userAgent string) *Config {
 	fullUserAgent := DefaultKubernetesUserAgent() + "/" + userAgent
 	config.UserAgent = fullUserAgent
 	return config
+}
+
+// AnonymousClientConfig returns a copy of the given config with all user credentials (cert/key, bearer token, and username/password) removed
+func AnonymousClientConfig(config *Config) *Config {
+	// copy only known safe fields
+	return &Config{
+		Host:          config.Host,
+		APIPath:       config.APIPath,
+		Prefix:        config.Prefix,
+		ContentConfig: config.ContentConfig,
+		TLSClientConfig: TLSClientConfig{
+			CAFile: config.TLSClientConfig.CAFile,
+			CAData: config.TLSClientConfig.CAData,
+		},
+		RateLimiter:   config.RateLimiter,
+		Insecure:      config.Insecure,
+		UserAgent:     config.UserAgent,
+		Transport:     config.Transport,
+		WrapTransport: config.WrapTransport,
+		QPS:           config.QPS,
+		Burst:         config.Burst,
+		Timeout:       config.Timeout,
+	}
 }

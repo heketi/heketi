@@ -14,12 +14,12 @@ import (
 	"net/http/httptest"
 	"os"
 
-	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/apps/glusterfs"
 	"github.com/heketi/heketi/middleware"
 	"github.com/heketi/tests"
 	"github.com/lpabon/godbc"
+	"github.com/urfave/negroni"
 )
 
 // Heketi test server configuration

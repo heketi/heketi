@@ -13,13 +13,22 @@ import (
 	"os"
 	"testing"
 
+	"k8s.io/kubernetes/pkg/client/restclient"
+
 	"github.com/heketi/heketi/executors/sshexec"
+	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
 )
 
+func init() {
+	inClusterConfig = func() (*restclient.Config, error) {
+		return &restclient.Config{}, nil
+	}
+	logger.SetLevel(utils.LEVEL_NOLOG)
+}
+
 func TestNewKubeExecutor(t *testing.T) {
 	config := &KubeConfig{
-		Host: "myhost",
 		CLICommandConfig: sshexec.CLICommandConfig{
 			Fstab: "myfstab",
 		},
@@ -35,7 +44,6 @@ func TestNewKubeExecutor(t *testing.T) {
 
 func TestNewKubeExecutorNoNamespace(t *testing.T) {
 	config := &KubeConfig{
-		Host: "myhost",
 		CLICommandConfig: sshexec.CLICommandConfig{
 			Fstab: "myfstab",
 		},
@@ -52,7 +60,6 @@ func TestNewKubeExecutorRebalanceOnExpansion(t *testing.T) {
 	// from the sshconfig exector
 
 	config := &KubeConfig{
-		Host: "myhost",
 		CLICommandConfig: sshexec.CLICommandConfig{
 			Fstab: "myfstab",
 		},
@@ -67,7 +74,6 @@ func TestNewKubeExecutorRebalanceOnExpansion(t *testing.T) {
 	tests.Assert(t, k.RebalanceOnExpansion() == false)
 
 	config = &KubeConfig{
-		Host: "myhost",
 		CLICommandConfig: sshexec.CLICommandConfig{
 			Fstab:                "myfstab",
 			RebalanceOnExpansion: true,
@@ -95,7 +101,6 @@ func TestKubeExecutorEnvVariables(t *testing.T) {
 	defer os.Unsetenv("HEKETI_FSTAB")
 
 	config := &KubeConfig{
-		Host: "myhost",
 		CLICommandConfig: sshexec.CLICommandConfig{
 			Fstab: "myfstab",
 		},

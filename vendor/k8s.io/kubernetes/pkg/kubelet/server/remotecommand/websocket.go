@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright 2016 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,16 +32,21 @@ const (
 	stderrChannel
 	errorChannel
 	resizeChannel
+
+	preV4BinaryWebsocketProtocol = wsstream.ChannelWebSocketProtocol
+	preV4Base64WebsocketProtocol = wsstream.Base64ChannelWebSocketProtocol
+	v4BinaryWebsocketProtocol    = "v4." + wsstream.ChannelWebSocketProtocol
+	v4Base64WebsocketProtocol    = "v4." + wsstream.Base64ChannelWebSocketProtocol
 )
 
 // createChannels returns the standard channel types for a shell connection (STDIN 0, STDOUT 1, STDERR 2)
 // along with the approximate duplex value. It also creates the error (3) and resize (4) channels.
-func createChannels(opts *options) []wsstream.ChannelType {
+func createChannels(opts *Options) []wsstream.ChannelType {
 	// open the requested channels, and always open the error channel
 	channels := make([]wsstream.ChannelType, 5)
-	channels[stdinChannel] = readChannel(opts.stdin)
-	channels[stdoutChannel] = writeChannel(opts.stdout)
-	channels[stderrChannel] = writeChannel(opts.stderr)
+	channels[stdinChannel] = readChannel(opts.Stdin)
+	channels[stdoutChannel] = writeChannel(opts.Stdout)
+	channels[stderrChannel] = writeChannel(opts.Stderr)
 	channels[errorChannel] = wsstream.WriteChannel
 	channels[resizeChannel] = wsstream.ReadChannel
 	return channels
@@ -65,11 +70,32 @@ func writeChannel(real bool) wsstream.ChannelType {
 
 // createWebSocketStreams returns a context containing the websocket connection and
 // streams needed to perform an exec or an attach.
-func createWebSocketStreams(req *http.Request, w http.ResponseWriter, opts *options, idleTimeout time.Duration) (*context, bool) {
+func createWebSocketStreams(req *http.Request, w http.ResponseWriter, opts *Options, idleTimeout time.Duration) (*context, bool) {
 	channels := createChannels(opts)
-	conn := wsstream.NewConn(channels...)
+	conn := wsstream.NewConn(map[string]wsstream.ChannelProtocolConfig{
+		"": {
+			Binary:   true,
+			Channels: channels,
+		},
+		preV4BinaryWebsocketProtocol: {
+			Binary:   true,
+			Channels: channels,
+		},
+		preV4Base64WebsocketProtocol: {
+			Binary:   false,
+			Channels: channels,
+		},
+		v4BinaryWebsocketProtocol: {
+			Binary:   true,
+			Channels: channels,
+		},
+		v4Base64WebsocketProtocol: {
+			Binary:   false,
+			Channels: channels,
+		},
+	})
 	conn.SetIdleTimeout(idleTimeout)
-	streams, err := conn.Open(httplog.Unlogged(w), req)
+	negotiatedProtocol, streams, err := conn.Open(httplog.Unlogged(w), req)
 	if err != nil {
 		runtime.HandleError(fmt.Errorf("Unable to upgrade websocket connection: %v", err))
 		return nil, false
@@ -78,21 +104,29 @@ func createWebSocketStreams(req *http.Request, w http.ResponseWriter, opts *opti
 	// Send an empty message to the lowest writable channel to notify the client the connection is established
 	// TODO: make generic to SPDY and WebSockets and do it outside of this method?
 	switch {
-	case opts.stdout:
+	case opts.Stdout:
 		streams[stdoutChannel].Write([]byte{})
-	case opts.stderr:
+	case opts.Stderr:
 		streams[stderrChannel].Write([]byte{})
 	default:
 		streams[errorChannel].Write([]byte{})
 	}
 
-	return &context{
+	ctx := &context{
 		conn:         conn,
 		stdinStream:  streams[stdinChannel],
 		stdoutStream: streams[stdoutChannel],
 		stderrStream: streams[stderrChannel],
-		errorStream:  streams[errorChannel],
-		tty:          opts.tty,
+		tty:          opts.TTY,
 		resizeStream: streams[resizeChannel],
-	}, true
+	}
+
+	switch negotiatedProtocol {
+	case v4BinaryWebsocketProtocol, v4Base64WebsocketProtocol:
+		ctx.writeStatus = v4WriteStatusFunc(streams[errorChannel])
+	default:
+		ctx.writeStatus = v1WriteStatusFunc(streams[errorChannel])
+	}
+
+	return ctx, true
 }

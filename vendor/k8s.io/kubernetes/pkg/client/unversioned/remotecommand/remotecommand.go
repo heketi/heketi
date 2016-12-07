@@ -1,5 +1,5 @@
 /*
-Copyright 2015 The Kubernetes Authors All rights reserved.
+Copyright 2015 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -98,7 +98,7 @@ func NewExecutor(config *restclient.Config, method string, url *url.URL) (Stream
 // to wrap the round tripper. This method may be used by clients that are lower level than
 // Kubernetes clients or need to provide their own upgrade round tripper.
 func NewStreamExecutor(upgrader httpstream.UpgradeRoundTripper, fn func(http.RoundTripper) http.RoundTripper, method string, url *url.URL) (StreamExecutor, error) {
-	var rt http.RoundTripper = upgrader
+	rt := http.RoundTripper(upgrader)
 	if fn != nil {
 		rt = fn(rt)
 	}
@@ -162,6 +162,8 @@ func (e *streamExecutor) Stream(options StreamOptions) error {
 	var streamer streamProtocolHandler
 
 	switch protocol {
+	case remotecommand.StreamProtocolV4Name:
+		streamer = newStreamProtocolV4(options)
 	case remotecommand.StreamProtocolV3Name:
 		streamer = newStreamProtocolV3(options)
 	case remotecommand.StreamProtocolV2Name:

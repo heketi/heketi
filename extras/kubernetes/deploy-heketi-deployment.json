@@ -1,4 +1,11 @@
 {
+  "kind": "ServiceAccount",
+  "apiVersion": "v1",
+  "metadata": {
+    "name": "heketi-service-account"
+  }
+}
+{
   "kind": "Service",
   "apiVersion": "v1",
   "metadata": {
@@ -48,6 +55,7 @@
                 }
             },
             "spec": {
+                "serviceAccountName": "heketi-service-account",
                 "containers": [
                     {
                         "image": "heketi/heketi:dev",
@@ -59,18 +67,6 @@
                             "value": "kubernetes"
                           },
                           {
-                            "name": "HEKETI_KUBE_USE_SECRET",
-                            "value": "y"
-                          },
-                          {
-                            "name": "HEKETI_KUBE_TOKENFILE",
-                            "value": "/var/lib/heketi/secret/token"
-                          },
-                          {
-                            "name": "HEKETI_KUBE_NAMESPACEFILE",
-                            "value": "/var/lib/heketi/secret/namespace"
-                          },
-                          {
                             "name": "HEKETI_FSTAB",
                             "value": "/var/lib/heketi/fstab"
                           },
@@ -79,16 +75,8 @@
                             "value": "14"
                           },
                           {
-                            "name": "HEKETI_KUBE_INSECURE",
-                            "value": "y"
-                          },
-                          {
                             "name": "HEKETI_KUBE_GLUSTER_DAEMONSET",
                             "value": "y"
-                          },
-                          {
-                            "name": "HEKETI_KUBE_APIHOST",
-                            "value": <HEKETI_KUBE_APIHOST>
                           }
                         ],
                         "ports": [
@@ -100,10 +88,6 @@
                           {
                             "name": "db",
                             "mountPath": "/var/lib/heketi"
-                          },
-                          {
-                            "name": "secret",
-                            "mountPath": "/var/lib/heketi/secret"
                           }
                         ],
                         "readinessProbe": {
@@ -127,12 +111,6 @@
                     "volumes": [
                       {
                         "name": "db"
-                      },
-                      {
-                        "name": "secret",
-                        "secret": {
-                          "secretName": <HEKETI_KUBE_SECRETNAME>
-                        }
                       }
                     ]
             }
