@@ -67,48 +67,6 @@ func setWithEnvVariables(options *Config) {
 	}
 }
 
-func fake_main() {
-	flag.Parse()
-	printVersion()
-
-	// Quit here if all we needed to do was show version
-	if showVersion {
-		return
-	}
-
-	// Check configuration file was given
-	if configfile == "" {
-		fmt.Fprintln(os.Stderr, "Please provide configuration file")
-		os.Exit(1)
-	}
-
-	// Read configuration
-	fp, err := os.Open(configfile)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Unable to open config file %v: %v\n",
-			configfile,
-			err.Error())
-		os.Exit(1)
-	}
-	defer fp.Close()
-
-	configParser := json.NewDecoder(fp)
-	var options Config
-	if err = configParser.Decode(&options); err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Unable to parse %v: %v\n",
-			configfile,
-			err.Error())
-		os.Exit(1)
-	}
-
-	// Substitue values using any set environment variables
-	setWithEnvVariables(&options)
-
-	// Go to the beginning of the file when we pass it
-	// to the application
-	fp.Seek(0, os.SEEK_SET)
-}
-
 func main() {
 	flag.Parse()
 	printVersion()
