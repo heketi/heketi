@@ -74,6 +74,8 @@ func NewLogger(prefix string, level LogLevel) *Logger {
 		l.level = level
 	}
 
+	stdout, _ = os.OpenFile("/var/log/heketi/heketi.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	//stdout = os.Stdout
 	l.critlog = log.New(stderr, prefix+" CRITICAL ", log.LstdFlags)
 	l.errorlog = log.New(stderr, prefix+" ERROR ", log.LstdFlags)
 	l.warninglog = log.New(stdout, prefix+" WARNING ", log.LstdFlags)
