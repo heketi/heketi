@@ -150,6 +150,10 @@
                   {
                     "name": "db",
                     "mountPath": "/var/lib/heketi"
+                  },
+                  {
+                    "name": "db",
+                    "mountPath": "/var/log/heketi"
                   }
                 ],
                 "readinessProbe": {
