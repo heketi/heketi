@@ -74,14 +74,19 @@ func NewLogger(prefix string, level LogLevel) *Logger {
 		l.level = level
 	}
 
-	stdout, _ = os.OpenFile("/var/log/heketi/heketi.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	//stdout = os.Stdout}
+	fileout, err := os.OpenFile("/var/log/heketi/heketi.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Println("err")
+	}
 
-	l.critlog = log.New(stderr, prefix+" CRITICAL ", log.LstdFlags)
-	l.errorlog = log.New(stderr, prefix+" ERROR ", log.LstdFlags)
-	l.warninglog = log.New(stdout, prefix+" WARNING ", log.LstdFlags)
-	l.infolog = log.New(stdout, prefix+" INFO ", log.LstdFlags)
-	l.debuglog = log.New(stdout, prefix+" DEBUG ", log.LstdFlags)
+	mstdout := io.MultiWriter(fileout, os.Stdout)
+	mstderr := io.MultiWriter(fileout, os.Stderr)
+
+	l.critlog = log.New(mstderr, prefix+" CRITICAL ", log.LstdFlags)
+	l.errorlog = log.New(mstderr, prefix+" ERROR ", log.LstdFlags)
+	l.warninglog = log.New(mstdout, prefix+" WARNING ", log.LstdFlags)
+	l.infolog = log.New(mstdout, prefix+" INFO ", log.LstdFlags)
+	l.debuglog = log.New(mstdout, prefix+" DEBUG ", log.LstdFlags)
 
 	godbc.Ensure(l.critlog != nil)
 	godbc.Ensure(l.errorlog != nil)
