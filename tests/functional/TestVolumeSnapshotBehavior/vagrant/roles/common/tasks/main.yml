@@ -6,6 +6,12 @@
     - /dev/vdd
     - /dev/vde
 
+- name: update
+  yum: name='*' state=latest
+
+- name: update ssl certificates
+  command: yum upgrade ca-certificates
+
 - name: install packages
   yum: name={{ item }} state=present
   with_items:
