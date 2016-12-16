@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright 2016 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,6 +25,8 @@ import (
 	"time"
 
 	"k8s.io/kubernetes/pkg/api"
+	apierrors "k8s.io/kubernetes/pkg/api/errors"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/util/httpstream"
 	"k8s.io/kubernetes/pkg/util/httpstream/spdy"
 	"k8s.io/kubernetes/pkg/util/runtime"
@@ -34,18 +36,18 @@ import (
 	"github.com/golang/glog"
 )
 
-// options contains details about which streams are required for
+// Options contains details about which streams are required for
 // remote command execution.
-type options struct {
-	stdin           bool
-	stdout          bool
-	stderr          bool
-	tty             bool
+type Options struct {
+	Stdin           bool
+	Stdout          bool
+	Stderr          bool
+	TTY             bool
 	expectedStreams int
 }
 
-// newOptions creates a new options from the Request.
-func newOptions(req *http.Request) (*options, error) {
+// NewOptions creates a new Options from the Request.
+func NewOptions(req *http.Request) (*Options, error) {
 	tty := req.FormValue(api.ExecTTYParam) == "1"
 	stdin := req.FormValue(api.ExecStdinParam) == "1"
 	stdout := req.FormValue(api.ExecStdoutParam) == "1"
@@ -72,11 +74,11 @@ func newOptions(req *http.Request) (*options, error) {
 		return nil, fmt.Errorf("you must specify at least 1 of stdin, stdout, stderr")
 	}
 
-	return &options{
-		stdin:           stdin,
-		stdout:          stdout,
-		stderr:          stderr,
-		tty:             tty,
+	return &Options{
+		Stdin:           stdin,
+		Stdout:          stdout,
+		Stderr:          stderr,
+		TTY:             tty,
 		expectedStreams: expectedStreams,
 	}, nil
 }
@@ -88,7 +90,7 @@ type context struct {
 	stdinStream  io.ReadCloser
 	stdoutStream io.WriteCloser
 	stderrStream io.WriteCloser
-	errorStream  io.WriteCloser
+	writeStatus  func(status *apierrors.StatusError) error
 	resizeStream io.ReadCloser
 	resizeChan   chan term.Size
 	tty          bool
@@ -114,7 +116,7 @@ func waitStreamReply(replySent <-chan struct{}, notify chan<- struct{}, stop <-c
 }
 
 func createStreams(req *http.Request, w http.ResponseWriter, supportedStreamProtocols []string, idleTimeout, streamCreationTimeout time.Duration) (*context, bool) {
-	opts, err := newOptions(req)
+	opts, err := NewOptions(req)
 	if err != nil {
 		runtime.HandleError(err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -141,7 +143,7 @@ func createStreams(req *http.Request, w http.ResponseWriter, supportedStreamProt
 	return ctx, true
 }
 
-func createHttpStreamStreams(req *http.Request, w http.ResponseWriter, opts *options, supportedStreamProtocols []string, idleTimeout, streamCreationTimeout time.Duration) (*context, bool) {
+func createHttpStreamStreams(req *http.Request, w http.ResponseWriter, opts *Options, supportedStreamProtocols []string, idleTimeout, streamCreationTimeout time.Duration) (*context, bool) {
 	protocol, err := httpstream.Handshake(req, w, supportedStreamProtocols)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -168,6 +170,8 @@ func createHttpStreamStreams(req *http.Request, w http.ResponseWriter, opts *opt
 
 	var handler protocolHandler
 	switch protocol {
+	case StreamProtocolV4Name:
+		handler = &v4ProtocolHandler{}
 	case StreamProtocolV3Name:
 		handler = &v3ProtocolHandler{}
 	case StreamProtocolV2Name:
@@ -179,11 +183,12 @@ func createHttpStreamStreams(req *http.Request, w http.ResponseWriter, opts *opt
 		handler = &v1ProtocolHandler{}
 	}
 
-	if opts.tty && handler.supportsTerminalResizing() {
+	if opts.TTY && handler.supportsTerminalResizing() {
 		opts.expectedStreams++
 	}
 
 	expired := time.NewTimer(streamCreationTimeout)
+	defer expired.Stop()
 
 	ctx, err := handler.waitForStreams(streamCh, opts.expectedStreams, expired.C)
 	if err != nil {
@@ -192,7 +197,7 @@ func createHttpStreamStreams(req *http.Request, w http.ResponseWriter, opts *opt
 	}
 
 	ctx.conn = conn
-	ctx.tty = opts.tty
+	ctx.tty = opts.TTY
 
 	return ctx, true
 }
@@ -204,6 +209,59 @@ type protocolHandler interface {
 	// supportsTerminalResizing returns true if the protocol handler supports terminal resizing
 	supportsTerminalResizing() bool
 }
+
+// v4ProtocolHandler implements the V4 protocol version for streaming command execution. It only differs
+// in from v3 in the error stream format using an json-marshaled unversioned.Status which carries
+// the process' exit code.
+type v4ProtocolHandler struct{}
+
+func (*v4ProtocolHandler) waitForStreams(streams <-chan streamAndReply, expectedStreams int, expired <-chan time.Time) (*context, error) {
+	ctx := &context{}
+	receivedStreams := 0
+	replyChan := make(chan struct{})
+	stop := make(chan struct{})
+	defer close(stop)
+WaitForStreams:
+	for {
+		select {
+		case stream := <-streams:
+			streamType := stream.Headers().Get(api.StreamType)
+			switch streamType {
+			case api.StreamTypeError:
+				ctx.writeStatus = v4WriteStatusFunc(stream) // write json errors
+				go waitStreamReply(stream.replySent, replyChan, stop)
+			case api.StreamTypeStdin:
+				ctx.stdinStream = stream
+				go waitStreamReply(stream.replySent, replyChan, stop)
+			case api.StreamTypeStdout:
+				ctx.stdoutStream = stream
+				go waitStreamReply(stream.replySent, replyChan, stop)
+			case api.StreamTypeStderr:
+				ctx.stderrStream = stream
+				go waitStreamReply(stream.replySent, replyChan, stop)
+			case api.StreamTypeResize:
+				ctx.resizeStream = stream
+				go waitStreamReply(stream.replySent, replyChan, stop)
+			default:
+				runtime.HandleError(fmt.Errorf("Unexpected stream type: %q", streamType))
+			}
+		case <-replyChan:
+			receivedStreams++
+			if receivedStreams == expectedStreams {
+				break WaitForStreams
+			}
+		case <-expired:
+			// TODO find a way to return the error to the user. Maybe use a separate
+			// stream to report errors?
+			return nil, errors.New("timed out waiting for client to create streams")
+		}
+	}
+
+	return ctx, nil
+}
+
+// supportsTerminalResizing returns true because v4ProtocolHandler supports it
+func (*v4ProtocolHandler) supportsTerminalResizing() bool { return true }
 
 // v3ProtocolHandler implements the V3 protocol version for streaming command execution.
 type v3ProtocolHandler struct{}
@@ -221,7 +279,7 @@ WaitForStreams:
 			streamType := stream.Headers().Get(api.StreamType)
 			switch streamType {
 			case api.StreamTypeError:
-				ctx.errorStream = stream
+				ctx.writeStatus = v1WriteStatusFunc(stream)
 				go waitStreamReply(stream.replySent, replyChan, stop)
 			case api.StreamTypeStdin:
 				ctx.stdinStream = stream
@@ -272,7 +330,7 @@ WaitForStreams:
 			streamType := stream.Headers().Get(api.StreamType)
 			switch streamType {
 			case api.StreamTypeError:
-				ctx.errorStream = stream
+				ctx.writeStatus = v1WriteStatusFunc(stream)
 				go waitStreamReply(stream.replySent, replyChan, stop)
 			case api.StreamTypeStdin:
 				ctx.stdinStream = stream
@@ -320,7 +378,7 @@ WaitForStreams:
 			streamType := stream.Headers().Get(api.StreamType)
 			switch streamType {
 			case api.StreamTypeError:
-				ctx.errorStream = stream
+				ctx.writeStatus = v1WriteStatusFunc(stream)
 
 				// This defer statement shouldn't be here, but due to previous refactoring, it ended up in
 				// here. This is what 1.0.x kubelets do, so we're retaining that behavior. This is fixed in
@@ -372,5 +430,28 @@ func handleResizeEvents(stream io.Reader, channel chan<- term.Size) {
 			break
 		}
 		channel <- size
+	}
+}
+
+func v1WriteStatusFunc(stream io.WriteCloser) func(status *apierrors.StatusError) error {
+	return func(status *apierrors.StatusError) error {
+		if status.Status().Status == unversioned.StatusSuccess {
+			return nil // send error messages
+		}
+		_, err := stream.Write([]byte(status.Error()))
+		return err
+	}
+}
+
+// v4WriteStatusFunc returns a WriteStatusFunc that marshals a given api Status
+// as json in the error channel.
+func v4WriteStatusFunc(stream io.WriteCloser) func(status *apierrors.StatusError) error {
+	return func(status *apierrors.StatusError) error {
+		bs, err := json.Marshal(status.Status())
+		if err != nil {
+			return err
+		}
+		_, err = stream.Write(bs)
+		return err
 	}
 }

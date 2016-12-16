@@ -78,23 +78,10 @@ setup_all_pods() {
 
 	kubectl get nodes --show-labels
 
-	echo -e "\nCreate a ServiceAccount"
-	kubectl create -f $RESOURCES_DIR/heketi-service-account.yaml || fail "Unable to create a serviceAccount"
-
-	KUBESEC=$(kubectl get sa heketi-service-account -o="go-template" --template="{{(index .secrets 0).name}}")
-	KUBEAPI=https://$(minikube ip):8443
-
-	echo -e "\nSecret is = $KUBESEC"
-	if [ -z "$KUBESEC" ] ; then
-		fail "Secret is empty"
-	fi
-
 	# Start Heketi
 	echo -e "\nStart Heketi container"
     sed -e "s#heketi/heketi:dev#heketi/heketi:ci#" \
         -e "s#Always#IfNotPresent#" \
-        -e "s#<HEKETI_KUBE_SECRETNAME>#\"$KUBESEC\"#" \
-        -e "s#<HEKETI_KUBE_APIHOST>#\"$KUBEAPI\"#" \
         $RESOURCES_DIR/deploy-heketi-deployment.json | kubectl create -f -
 
 	# Wait until it is running
@@ -118,7 +105,7 @@ setup_all_pods() {
 	start_mock_gluster_container 1
 }
 
-test_peer_probe() {
+test_add_devices() {
 	echo -e "\nGet the Heketi server connection"
 	heketi-cli cluster create || fail "Unable to create cluster"
 
@@ -154,6 +141,6 @@ display_information
 setup_all_pods
 
 echo -e "\n*** Start tests ***"
-test_peer_probe
+test_add_devices
 
 # Ok now start test

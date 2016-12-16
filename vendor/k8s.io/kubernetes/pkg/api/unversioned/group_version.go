@@ -1,5 +1,5 @@
 /*
-Copyright 2015 The Kubernetes Authors All rights reserved.
+Copyright 2015 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ func (gr GroupResource) WithVersion(version string) GroupVersionResource {
 	return GroupVersionResource{Group: gr.Group, Version: version, Resource: gr.Resource}
 }
 
-func (gr GroupResource) IsEmpty() bool {
+func (gr GroupResource) Empty() bool {
 	return len(gr.Group) == 0 && len(gr.Resource) == 0
 }
 
@@ -81,7 +81,7 @@ type GroupVersionResource struct {
 	Resource string `protobuf:"bytes,3,opt,name=resource"`
 }
 
-func (gvr GroupVersionResource) IsEmpty() bool {
+func (gvr GroupVersionResource) Empty() bool {
 	return len(gvr.Group) == 0 && len(gvr.Version) == 0 && len(gvr.Resource) == 0
 }
 
@@ -106,7 +106,7 @@ type GroupKind struct {
 	Kind  string `protobuf:"bytes,2,opt,name=kind"`
 }
 
-func (gk GroupKind) IsEmpty() bool {
+func (gk GroupKind) Empty() bool {
 	return len(gk.Group) == 0 && len(gk.Kind) == 0
 }
 
@@ -131,8 +131,8 @@ type GroupVersionKind struct {
 	Kind    string `protobuf:"bytes,3,opt,name=kind"`
 }
 
-// IsEmpty returns true if group, version, and kind are empty
-func (gvk GroupVersionKind) IsEmpty() bool {
+// Empty returns true if group, version, and kind are empty
+func (gvk GroupVersionKind) Empty() bool {
 	return len(gvk.Group) == 0 && len(gvk.Version) == 0 && len(gvk.Kind) == 0
 }
 
@@ -156,8 +156,8 @@ type GroupVersion struct {
 	Version string `protobuf:"bytes,2,opt,name=version"`
 }
 
-// IsEmpty returns true if group and version are empty
-func (gv GroupVersion) IsEmpty() bool {
+// Empty returns true if group and version are empty
+func (gv GroupVersion) Empty() bool {
 	return len(gv.Group) == 0 && len(gv.Version) == 0
 }
 
@@ -165,7 +165,7 @@ func (gv GroupVersion) IsEmpty() bool {
 // it returns "v1".
 func (gv GroupVersion) String() string {
 	// special case the internal apiVersion for the legacy kube types
-	if gv.IsEmpty() {
+	if gv.Empty() {
 		return ""
 	}
 
@@ -179,17 +179,24 @@ func (gv GroupVersion) String() string {
 	return gv.Version
 }
 
-// VersionForGroupKind identifies the preferred GroupVersion for a GroupKind, or false if no
-// group version is preferred.
-func (gv GroupVersion) VersionForGroupKind(src GroupKind) (GroupVersion, bool) {
-	if src.Group == gv.Group {
-		return gv, true
+// KindForGroupVersionKinds identifies the preferred GroupVersionKind out of a list. It returns ok false
+// if none of the options match the group. It prefers a match to group and version over just group.
+// TODO: Move GroupVersion to a package under pkg/runtime, since it's used by scheme.
+// TODO: Introduce an adapter type between GroupVersion and runtime.GroupVersioner, and use LegacyCodec(GroupVersion)
+//   in fewer places.
+func (gv GroupVersion) KindForGroupVersionKinds(kinds []GroupVersionKind) (target GroupVersionKind, ok bool) {
+	for _, gvk := range kinds {
+		if gvk.Group == gv.Group && gvk.Version == gv.Version {
+			return gvk, true
+		}
 	}
-	return GroupVersion{}, false
+	for _, gvk := range kinds {
+		if gvk.Group == gv.Group {
+			return gv.WithKind(gvk.Kind), true
+		}
+	}
+	return GroupVersionKind{}, false
 }
-
-// PrefersGroup always returns the current group.
-func (gv GroupVersion) PrefersGroup() (string, bool) { return gv.Group, true }
 
 // ParseGroupVersion turns "group/version" string into a GroupVersion struct. It reports error
 // if it cannot parse the string.
@@ -254,25 +261,42 @@ func (gv *GroupVersion) UnmarshalText(value []byte) error {
 }
 
 // GroupVersions can be used to represent a set of desired group versions.
+// TODO: Move GroupVersions to a package under pkg/runtime, since it's used by scheme.
+// TODO: Introduce an adapter type between GroupVersions and runtime.GroupVersioner, and use LegacyCodec(GroupVersion)
+//   in fewer places.
 type GroupVersions []GroupVersion
 
-// VersionForGroupKind identifies the preferred GroupVersion for a GroupKind, or false if no
-// group version is preferred.
-func (gvs GroupVersions) VersionForGroupKind(src GroupKind) (GroupVersion, bool) {
+// KindForGroupVersionKinds identifies the preferred GroupVersionKind out of a list. It returns ok false
+// if none of the options match the group.
+func (gvs GroupVersions) KindForGroupVersionKinds(kinds []GroupVersionKind) (GroupVersionKind, bool) {
+	var targets []GroupVersionKind
 	for _, gv := range gvs {
-		if src.Group == gv.Group {
-			return gv, true
+		target, ok := gv.KindForGroupVersionKinds(kinds)
+		if !ok {
+			continue
 		}
+		targets = append(targets, target)
 	}
-	return GroupVersion{}, false
+	if len(targets) == 1 {
+		return targets[0], true
+	}
+	if len(targets) > 1 {
+		return bestMatch(kinds, targets), true
+	}
+	return GroupVersionKind{}, false
 }
 
-// PrefersGroup returns the first group, or false.
-func (gvs GroupVersions) PrefersGroup() (string, bool) {
-	if len(gvs) == 0 {
-		return "", false
+// bestMatch tries to pick best matching GroupVersionKind and falls back to the first
+// found if no exact match exists.
+func bestMatch(kinds []GroupVersionKind, targets []GroupVersionKind) GroupVersionKind {
+	for _, gvk := range targets {
+		for _, k := range kinds {
+			if k == gvk {
+				return k
+			}
+		}
 	}
-	return gvs[0].Group, true
+	return targets[0]
 }
 
 // ToAPIVersionAndKind is a convenience method for satisfying runtime.Object on types that

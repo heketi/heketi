@@ -19,7 +19,8 @@ $ kubectl get nodes
 $ kubectl create -f gluster-daemonset.json
 ```
 
-* Deploy gluster container onto specified node by setting the label `storagenode=glusterfs` on that node:
+* Deploy gluster container onto specified node by setting the label
+`storagenode=glusterfs` on that node:
 
 ```
 $ kubectl label node <...node...> storagenode=glusterfs
@@ -29,26 +30,13 @@ Repeat as needed.
 
 ## Deploy Heketi
 
-* Create a service account for Heketi
+First you will need to deploy the bootstrap Heketi container:
 
 ```
-$ kubectl create -f heketi-service-account.json
+$ kubectl create -f deploy-heketi-deployment.json
 ```
 
-* Note the secret for the service account 
-
-```
-$ heketi_secret=$(kubectl get sa heketi-service-account -o="go-template" --template="{{(index .secrets 0).name}}")
-```
-
-* Deploy deploy-heketi.  Before deploying you will need to determine the Kubernetes API endpoint and namespace.
-
-In this example, we will use `https://1.1.1.1:443` as our Kubernetes API endpoint
-
-```
-$ sed -e "s#<HEKETI_KUBE_SECRETNAME>#\"$heketi_secret\"#" \
-      -e "s#<HEKETI_KUBE_APIHOST>#\"http://1.1.1.1:443\"#" deploy-heketi-deployment.json | kubectl create -f -
-```
-
-Please refer to the wiki Kubernetes Deployment page for more information
+This will deploy the a Heketi container used to bootstrap the Heketi
+database.  Please refer to the wiki Kubernetes Deployment page for
+more information
 
