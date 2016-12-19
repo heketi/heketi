@@ -96,7 +96,7 @@
                                     {
                                         "name": "glusterfs-cgroup",
                                         "mountPath": "/sys/fs/cgroup",
-                                        "readOnly": "true"
+                                        "readOnly": true
                                     }
                                 ],
                                 "securityContext": {
