@@ -82,7 +82,7 @@ func TestAppAdvsettings(t *testing.T) {
 			"allocator" : "simple",
 			"db" : "` + dbfile + `",
 			"brick_max_size_gb" : 1024,
-			"brick_min_size_gb" : 1,
+			"brick_min_size_gb" : 4,
 			"max_bricks_per_volume" : 33
 		}
 	}`)
@@ -98,7 +98,7 @@ func TestAppAdvsettings(t *testing.T) {
 	tests.Assert(t, app.conf.Executor == "mock")
 	tests.Assert(t, BrickMaxNum == 33)
 	tests.Assert(t, BrickMaxSize == 1*TB)
-	tests.Assert(t, BrickMinSize == 1*GB)
+	tests.Assert(t, BrickMinSize == 4*GB)
 }
 
 func TestAppLogLevel(t *testing.T) {
