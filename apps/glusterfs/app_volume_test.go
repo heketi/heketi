@@ -169,8 +169,16 @@ func TestVolumeCreateSmallSize(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
+	os.Setenv("HEKETI_EXECUTOR", "mock")
+	defer os.Unsetenv("HEKETI_EXECUTOR")
+	data := []byte(`{
+		"glusterfs" : {
+			"db" : "` + tmpfile + `",
+			"brick_min_size_gb" : 4
+		}
+	}`)
 	// Create the app
-	app := NewTestApp(tmpfile)
+	app := NewApp(bytes.NewReader(data))
 	defer app.Close()
 	router := mux.NewRouter()
 	app.SetRoutes(router)
