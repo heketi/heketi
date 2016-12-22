@@ -93,6 +93,7 @@ func TestAppAdvsettings(t *testing.T) {
 	}()
 
 	app := NewApp(bytes.NewReader(data))
+	defer app.Close()
 	tests.Assert(t, app != nil)
 	tests.Assert(t, app.conf.Executor == "mock")
 	tests.Assert(t, BrickMaxNum == 33)
@@ -156,6 +157,7 @@ func TestAppLogLevel(t *testing.T) {
 		}`)
 
 	app := NewApp(bytes.NewReader(data))
+	defer app.Close()
 	tests.Assert(t, app != nil)
 	tests.Assert(t, logger.Level() == utils.LEVEL_NOLOG)
 }
@@ -187,6 +189,7 @@ func TestAppReadOnlyDb(t *testing.T) {
 
 	// Now open it again and notice how it opened
 	app = NewApp(bytes.NewReader(data))
+	defer app.Close()
 	tests.Assert(t, app != nil)
 	tests.Assert(t, app.dbReadOnly == true)
 }
