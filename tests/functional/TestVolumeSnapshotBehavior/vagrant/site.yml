@@ -1,9 +1,11 @@
 - hosts: all
-  sudo: True
+  become: yes
+  become_method: sudo
   roles:
     - common
 
 - hosts: gluster
-  sudo: True
+  become: yes
+  become_method: sudo
   roles:
     - gluster
