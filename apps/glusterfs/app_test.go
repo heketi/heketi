@@ -82,7 +82,7 @@ func TestAppAdvsettings(t *testing.T) {
 			"allocator" : "simple",
 			"db" : "` + dbfile + `",
 			"brick_max_size_gb" : 1024,
-			"brick_min_size_gb" : 1,
+			"brick_min_size_gb" : 4,
 			"max_bricks_per_volume" : 33
 		}
 	}`)
@@ -93,11 +93,12 @@ func TestAppAdvsettings(t *testing.T) {
 	}()
 
 	app := NewApp(bytes.NewReader(data))
+	defer app.Close()
 	tests.Assert(t, app != nil)
 	tests.Assert(t, app.conf.Executor == "mock")
 	tests.Assert(t, BrickMaxNum == 33)
 	tests.Assert(t, BrickMaxSize == 1*TB)
-	tests.Assert(t, BrickMinSize == 1*GB)
+	tests.Assert(t, BrickMinSize == 4*GB)
 }
 
 func TestAppLogLevel(t *testing.T) {
@@ -156,6 +157,7 @@ func TestAppLogLevel(t *testing.T) {
 		}`)
 
 	app := NewApp(bytes.NewReader(data))
+	defer app.Close()
 	tests.Assert(t, app != nil)
 	tests.Assert(t, logger.Level() == utils.LEVEL_NOLOG)
 }
@@ -187,6 +189,7 @@ func TestAppReadOnlyDb(t *testing.T) {
 
 	// Now open it again and notice how it opened
 	app = NewApp(bytes.NewReader(data))
+	defer app.Close()
 	tests.Assert(t, app != nil)
 	tests.Assert(t, app.dbReadOnly == true)
 }
