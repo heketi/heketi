@@ -1,9 +1,0 @@
-#!/bin/sh
-
-REPO="github.com/heketi/utils"
-REPODIR="../../heketi"
-
-if ! git remote -v | grep origin | grep ${REPO} ; then
-    mkdir -p ${REPODIR}
-    ln -s $PWD ${REPODIR}/utils
-fi
