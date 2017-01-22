@@ -104,11 +104,13 @@ linux_amd64_dist:
 linux_arm_dist:
 	GOOS=linux GOARCH=arm $(MAKE) dist
 
+linux_arm64_dist:
+	GOOS=linux GOARCH=arm64 $(MAKE) dist
+
 darwin_amd64_dist:
 	GOOS=darwin GOARCH=amd64 $(MAKE) dist
 
-release: darwin_amd64_dist linux_arm_dist linux_amd64_dist
+release: darwin_amd64_dist linux_arm64_dist linux_arm_dist linux_amd64_dist
 
 .PHONY: server client test clean name run version release \
-        darwin_amd64_dist linux_arm_dist linux_amd64_dist
-	    darw
+        darwin_amd64_dist linux_arm_dist linux_amd64_dist linux_arm64_dist
