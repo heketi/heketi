@@ -18,7 +18,7 @@ func NewTestApp(dbfile string) *App {
 
 	// Create simple configuration for unit tests
 	appConfig := bytes.NewBuffer([]byte(`{
-		"glusterfs" : { 
+		"glusterfs" : {
 			"executor" : "mock",
 			"allocator" : "simple",
 			"db" : "` + dbfile + `"
