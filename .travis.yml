@@ -8,7 +8,6 @@ install:
 - bash .travis-fork-fix
 - go get github.com/mattn/goveralls
 - go get github.com/wadey/gocovmerge
-- go get github.com/tools/godep
 - go get -v github.com/Masterminds/glide
 - cd $GOPATH/src/github.com/Masterminds/glide && git checkout tags/0.10.2 && go install && cd -
 - glide install
@@ -26,8 +25,8 @@ matrix:
   - go: 1.7.1
     env: OPTIONS="-race" GO15VENDOREXPERIMENT=1
 script:
-- go fmt $(go list ./... | grep -v vendor) | wc -l | grep 0
-- go vet $(go list ./... | grep -v vendor)
+#- go fmt $(go list ./... | grep -v vendor) | wc -l | grep 0
+#- go vet $(go list ./... | grep -v vendor)
 - go test $(glide novendor)
 - if [[ -z "$COVERAGE" ]]; then go test $OPTIONS $(go list ./... | grep -v vendor) ; fi
 - if [[ -n "$COVERAGE" ]]; then bash .travis-coverage; fi
