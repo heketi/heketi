@@ -60,7 +60,6 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check the message has devices
 	if msg.Size < 1 {
 		http.Error(w, "Invalid volume size", http.StatusBadRequest)
 		logger.LogError("Invalid volume size")
@@ -196,11 +195,11 @@ func (a *App) VolumeList(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) VolumeInfo(w http.ResponseWriter, r *http.Request) {
 
-	// Get device id from URL
+	// Get volume id from URL
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	// Get device information
+	// Get volume information
 	var info *api.VolumeInfoResponse
 	err := a.db.View(func(tx *bolt.Tx) error {
 		entry, err := NewVolumeEntryFromId(tx, id)
@@ -331,7 +330,7 @@ func (a *App) VolumeExpand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Expand device in an asynchronous function
+	// Expand volume in an asynchronous function
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
 
 		logger.Info("Expanding volume %v", volume.Info.Id)
