@@ -87,7 +87,7 @@ func Packages(context *generator.Context, arguments *args.GeneratorArgs) generat
 	for _, inputDir := range arguments.InputDirs {
 		p := context.Universe.Package(inputDir)
 
-		objectMeta, err := objectMetaForPackage(p)
+		objectMeta, internal, err := objectMetaForPackage(p)
 		if err != nil {
 			glog.Fatal(err)
 		}
@@ -99,7 +99,7 @@ func Packages(context *generator.Context, arguments *args.GeneratorArgs) generat
 		var gv clientgentypes.GroupVersion
 		var internalGVPkg string
 
-		if isInternal(objectMeta) {
+		if internal {
 			lastSlash := strings.LastIndex(p.Path, "/")
 			if lastSlash == -1 {
 				glog.Fatalf("error constructing internal group version for package %q", p.Path)
@@ -114,19 +114,35 @@ func Packages(context *generator.Context, arguments *args.GeneratorArgs) generat
 			internalGVPkg = strings.Join(parts[0:len(parts)-1], "/")
 		}
 
+		var typesToGenerate []*types.Type
+		for _, t := range p.Types {
+			// filter out types which dont have genclient=true.
+			if extractBoolTagOrDie("genclient", t.SecondClosestCommentLines) == false {
+				continue
+			}
+			typesToGenerate = append(typesToGenerate, t)
+		}
+		orderer := namer.Orderer{Namer: namer.NewPrivateNamer(0)}
+		typesToGenerate = orderer.OrderTypes(typesToGenerate)
+
+		packagePath := filepath.Join(arguments.OutputPackagePath, strings.ToLower(gv.Group.NonEmpty()), strings.ToLower(gv.Version.NonEmpty()))
 		packageList = append(packageList, &generator.DefaultPackage{
 			PackageName: strings.ToLower(gv.Version.NonEmpty()),
-			PackagePath: filepath.Join(arguments.OutputPackagePath, strings.ToLower(gv.Group.NonEmpty()), strings.ToLower(gv.Version.NonEmpty())),
+			PackagePath: packagePath,
 			HeaderText:  boilerplate,
 			GeneratorFunc: func(c *generator.Context) (generators []generator.Generator) {
-				for _, t := range p.Types {
-					// filter out types which dont have genclient=true.
-					if extractBoolTagOrDie("genclient", t.SecondClosestCommentLines) == false {
-						continue
-					}
+				generators = append(generators, &expansionGenerator{
+					DefaultGen: generator.DefaultGen{
+						OptionalName: "expansion_generated",
+					},
+					packagePath: filepath.Join(arguments.OutputBase, packagePath),
+					types:       typesToGenerate,
+				})
+
+				for _, t := range typesToGenerate {
 					generators = append(generators, &listerGenerator{
 						DefaultGen: generator.DefaultGen{
-							OptionalName: arguments.OutputFileBaseName + "." + strings.ToLower(t.Name.Name),
+							OptionalName: strings.ToLower(t.Name.Name),
 						},
 						outputPackage:  arguments.OutputPackagePath,
 						groupVersion:   gv,
@@ -149,7 +165,7 @@ func Packages(context *generator.Context, arguments *args.GeneratorArgs) generat
 }
 
 // objectMetaForPackage returns the type of ObjectMeta used by package p.
-func objectMetaForPackage(p *types.Package) (*types.Type, error) {
+func objectMetaForPackage(p *types.Package) (*types.Type, bool, error) {
 	generatingForPackage := false
 	for _, t := range p.Types {
 		// filter out types which dont have genclient=true.
@@ -159,19 +175,19 @@ func objectMetaForPackage(p *types.Package) (*types.Type, error) {
 		generatingForPackage = true
 		for _, member := range t.Members {
 			if member.Name == "ObjectMeta" {
-				return member.Type, nil
+				return member.Type, isInternal(member), nil
 			}
 		}
 	}
 	if generatingForPackage {
-		return nil, fmt.Errorf("unable to find ObjectMeta for any types in package %s", p.Path)
+		return nil, false, fmt.Errorf("unable to find ObjectMeta for any types in package %s", p.Path)
 	}
-	return nil, nil
+	return nil, false, nil
 }
 
-// isInternal returns true if t's package is k8s.io/kubernetes/pkg/api.
-func isInternal(t *types.Type) bool {
-	return t.Name.Package == "k8s.io/kubernetes/pkg/api"
+// isInternal returns true if the tags for a member do not contain a json tag
+func isInternal(m types.Member) bool {
+	return !strings.Contains(m.Tags, "json")
 }
 
 // listerGenerator produces a file of listers for a given GroupVersion and
@@ -200,10 +216,10 @@ func (g *listerGenerator) Namers(c *generator.Context) namer.NameSystems {
 
 func (g *listerGenerator) Imports(c *generator.Context) (imports []string) {
 	imports = append(imports, g.imports.ImportLines()...)
-	imports = append(imports, "k8s.io/kubernetes/pkg/api/errors")
-	imports = append(imports, "k8s.io/kubernetes/pkg/labels")
+	imports = append(imports, "k8s.io/apimachinery/pkg/api/errors")
+	imports = append(imports, "k8s.io/apimachinery/pkg/labels")
 	// for Indexer
-	imports = append(imports, "k8s.io/kubernetes/pkg/client/cache")
+	imports = append(imports, "k8s.io/client-go/tools/cache")
 	return
 }
 
@@ -248,6 +264,7 @@ type $.type|public$Lister interface {
 	List(selector labels.Selector) (ret []*$.type|raw$, err error)
 	// $.type|publicPlural$ returns an object that can list and get $.type|publicPlural$.
 	$.type|publicPlural$(namespace string) $.type|public$NamespaceLister
+	$.type|public$ListerExpansion
 }
 `
 
@@ -258,6 +275,7 @@ type $.type|public$Lister interface {
 	List(selector labels.Selector) (ret []*$.type|raw$, err error)
 	// Get retrieves the $.type|public$ from the index for a given name.
 	Get(name string) (*$.type|raw$, error)
+	$.type|public$ListerExpansion
 }
 `
 
@@ -314,6 +332,7 @@ type $.type|public$NamespaceLister interface {
 	List(selector labels.Selector) (ret []*$.type|raw$, err error)
 	// Get retrieves the $.type|public$ from the indexer for a given namespace and name.
 	Get(name string) (*$.type|raw$, error)
+	$.type|public$NamespaceListerExpansion
 }
 `
 

@@ -16,23 +16,24 @@ limitations under the License.
 
 package v1alpha1
 
-import (
-	"k8s.io/kubernetes/pkg/runtime"
-)
+import "k8s.io/apimachinery/pkg/runtime"
 
 const (
 	DefaultServiceDNSDomain  = "cluster.local"
 	DefaultServicesSubnet    = "10.96.0.0/12"
-	DefaultKubernetesVersion = "v1.4.4"
-	DefaultAPIBindPort       = 6443
-	DefaultDiscoveryBindPort = 9898
+	DefaultKubernetesVersion = "stable"
+	// This is only for clusters without internet, were the latest stable version can't be determined
+	DefaultKubernetesFallbackVersion = "v1.5.2"
+	DefaultAPIBindPort               = 6443
+	DefaultDiscoveryBindPort         = 9898
+	// TODO: Default this to RBAC when DefaultKubernetesFallbackVersion is v1.6-something
+	DefaultAuthorizationMode = "AlwaysAllow"
 )
 
 func addDefaultingFuncs(scheme *runtime.Scheme) error {
 	RegisterDefaults(scheme)
 	return scheme.AddDefaultingFuncs(
 		SetDefaults_MasterConfiguration,
-		SetDefaults_NodeConfiguration,
 	)
 }
 
@@ -41,12 +42,8 @@ func SetDefaults_MasterConfiguration(obj *MasterConfiguration) {
 		obj.KubernetesVersion = DefaultKubernetesVersion
 	}
 
-	if obj.API.BindPort == 0 {
-		obj.API.BindPort = DefaultAPIBindPort
-	}
-
-	if obj.Discovery.BindPort == 0 {
-		obj.Discovery.BindPort = DefaultDiscoveryBindPort
+	if obj.API.Port == 0 {
+		obj.API.Port = DefaultAPIBindPort
 	}
 
 	if obj.Networking.ServiceSubnet == "" {
@@ -56,14 +53,12 @@ func SetDefaults_MasterConfiguration(obj *MasterConfiguration) {
 	if obj.Networking.DNSDomain == "" {
 		obj.Networking.DNSDomain = DefaultServiceDNSDomain
 	}
-}
 
-func SetDefaults_NodeConfiguration(obj *NodeConfiguration) {
-	if obj.APIPort == 0 {
-		obj.APIPort = DefaultAPIBindPort
+	if obj.Discovery.Token == nil && obj.Discovery.File == nil && obj.Discovery.HTTPS == nil {
+		obj.Discovery.Token = &TokenDiscovery{}
 	}
 
-	if obj.DiscoveryPort == 0 {
-		obj.DiscoveryPort = DefaultDiscoveryBindPort
+	if obj.AuthorizationMode == "" {
+		obj.AuthorizationMode = DefaultAuthorizationMode
 	}
 }

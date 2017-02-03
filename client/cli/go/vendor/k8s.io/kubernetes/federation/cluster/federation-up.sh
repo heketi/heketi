@@ -18,15 +18,74 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-KUBE_ROOT=$(readlink -m $(dirname "${BASH_SOURCE}")/../../)
+# This script is only used for e2e tests! Don't use it in production!
+# This is also a temporary bridge to slowly switch over everything to
+# federation/develop.sh. Carefully moving things step-by-step, ensuring
+# things don't break.
+# TODO(madhusudancs): Remove this script and its dependencies.
 
-. ${KUBE_ROOT}/federation/cluster/common.sh
 
-tagfile="${KUBE_ROOT}/federation/manifests/federated-image.tag"
-if [[ ! -f "$tagfile" ]]; then
-    echo "FATAL: tagfile ${tagfile} does not exist. Make sure that you have run build-tools/push-federation-images.sh"
-    exit 1
+KUBE_ROOT=$(dirname "${BASH_SOURCE}")/../..
+# For `kube::log::status` function since it already sources
+# "${KUBE_ROOT}/cluster/lib/logging.sh" and DEFAULT_KUBECONFIG
+source "${KUBE_ROOT}/cluster/common.sh"
+# For $FEDERATION_PUSH_REPO_BASE and $FEDERATION_NAMESPACE.
+source "${KUBE_ROOT}/federation/cluster/common.sh"
+
+FEDERATION_NAME="${FEDERATION_NAME:-e2e-federation}"
+FEDERATION_KUBE_CONTEXT="${FEDERATION_KUBE_CONTEXT:-e2e-federation}"
+DNS_ZONE_NAME="${FEDERATION_DNS_ZONE_NAME:-}"
+HOST_CLUSTER_CONTEXT="${FEDERATION_HOST_CLUSTER_CONTEXT:-${1}}"
+
+# Initializes the control plane.
+# TODO(madhusudancs): Move this to federation/develop.sh.
+function init() {
+  kube::log::status "Deploying federation control plane for ${FEDERATION_NAME} in cluster ${HOST_CLUSTER_CONTEXT}"
+
+  local -r project="${KUBE_PROJECT:-${PROJECT:-}}"
+  local -r kube_registry="${KUBE_REGISTRY:-gcr.io/${project}}"
+  local -r kube_version="${KUBERNETES_RELEASE:-}"
+
+  "${KUBE_ROOT}/federation/develop/kubefed.sh" init \
+      "${FEDERATION_NAME}" \
+      --host-cluster-context="${HOST_CLUSTER_CONTEXT}" \
+      --dns-zone-name="${DNS_ZONE_NAME}" \
+      --image="${kube_registry}/hyperkube-amd64:${kube_version}"
+}
+
+# create_cluster_secrets creates the secrets containing the kubeconfigs
+# of the participating clusters in the host cluster. The kubeconfigs itself
+# are created while deploying clusters, i.e. when kube-up is run.
+function create_cluster_secrets() {
+  local -r kubeconfig_dir="$(dirname ${DEFAULT_KUBECONFIG})"
+  local -r base_dir="${kubeconfig_dir}/federation/kubernetes-apiserver"
+
+  # Create secrets with all the kubernetes-apiserver's kubeconfigs.
+  for dir in $(ls "${base_dir}"); do
+    # We create a secret with the same name as the directory name (which is
+    # same as cluster name in kubeconfig).
+    # Massage the name so that it is valid (should not contain "_" and max 253
+    # chars)
+    name=$(echo "${dir}" | sed -e "s/_/-/g")  # Replace "_" by "-"
+    name=${name:0:252}
+    kube::log::status "Creating secret with name: ${name} in namespace ${FEDERATION_NAMESPACE}"
+    "${KUBE_ROOT}/cluster/kubectl.sh" create secret generic ${name} --from-file="${base_dir}/${dir}/kubeconfig" --namespace="${FEDERATION_NAMESPACE}"
+  done
+}
+
+USE_KUBEFED="${USE_KUBEFED:-}"
+if [[ "${USE_KUBEFED}" == "true" ]]; then
+  init
+  # TODO(madhusudancs): Call to create_cluster_secrets and the function
+  # itself must be removed after implementing cluster join with kubefed
+  # here. This call is now required for the cluster joins in the
+  # BeforeEach blocks of each e2e test to work.
+  create_cluster_secrets
+else
+  # Read the version back from the versions file if no version is given.
+  readonly kube_version="$(cat ${KUBE_ROOT}/_output/federation/versions | python -c '\
+import json, sys;\
+print json.load(sys.stdin)["KUBE_VERSION"]')"
+  export FEDERATION_IMAGE_TAG="$(echo ${KUBERNETES_RELEASE:-${kube_version}} | tr + _)"
+  create-federation-api-objects
 fi
-export FEDERATION_IMAGE_TAG="$(cat "${KUBE_ROOT}/federation/manifests/federated-image.tag")"
-
-create-federation-api-objects

@@ -24,31 +24,52 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	kadmission "k8s.io/kubernetes/pkg/admission"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/diff"
+	"k8s.io/apimachinery/pkg/util/sets"
+	kadmission "k8s.io/apiserver/pkg/admission"
+	"k8s.io/apiserver/pkg/authentication/user"
+	"k8s.io/apiserver/pkg/authorization/authorizer"
+	"k8s.io/client-go/tools/cache"
 	kapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/auth/user"
-	"k8s.io/kubernetes/pkg/client/cache"
-	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
-	clientsetfake "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 	"k8s.io/kubernetes/pkg/security/apparmor"
 	kpsp "k8s.io/kubernetes/pkg/security/podsecuritypolicy"
 	"k8s.io/kubernetes/pkg/security/podsecuritypolicy/seccomp"
 	psputil "k8s.io/kubernetes/pkg/security/podsecuritypolicy/util"
-	"k8s.io/kubernetes/pkg/util/diff"
 )
 
 const defaultContainerName = "test-c"
 
-func NewTestAdmission(store cache.Store, kclient clientset.Interface) kadmission.Interface {
+// NewTestAdmission provides an admission plugin with test implementations of internal structs.  It uses
+// an authorizer that always returns true.
+func NewTestAdmission(store cache.Store) kadmission.Interface {
 	return &podSecurityPolicyPlugin{
 		Handler:         kadmission.NewHandler(kadmission.Create),
-		client:          kclient,
 		store:           store,
 		strategyFactory: kpsp.NewSimpleStrategyFactory(),
 		pspMatcher:      getMatchingPolicies,
+		authz:           &TestAuthorizer{},
 	}
 }
+
+// TestAlwaysAllowedAuthorizer is a testing struct for testing that fulfills the authorizer interface.
+type TestAuthorizer struct {
+	// disallowed contains names of disallowed policies.  Map is keyed by user.Info.GetName()
+	disallowed map[string][]string
+}
+
+func (t *TestAuthorizer) Authorize(a authorizer.Attributes) (authorized bool, reason string, err error) {
+	disallowedForUser, _ := t.disallowed[a.GetUser().GetName()]
+	for _, name := range disallowedForUser {
+		if a.GetName() == name {
+			return false, "", nil
+		}
+	}
+	return true, "", nil
+}
+
+var _ authorizer.Authorizer = &TestAuthorizer{}
 
 func useInitContainers(pod *kapi.Pod) *kapi.Pod {
 	pod.Spec.InitContainers = pod.Spec.Containers
@@ -152,7 +173,7 @@ func TestAdmitSeccomp(t *testing.T) {
 		psp := restrictivePSP()
 		psp.Annotations = v.pspAnnotations
 		pod := &kapi.Pod{
-			ObjectMeta: kapi.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Annotations: v.podAnnotations,
 			},
 			Spec: kapi.PodSpec{
@@ -728,7 +749,7 @@ func TestAdmitSELinux(t *testing.T) {
 func TestAdmitAppArmor(t *testing.T) {
 	createPodWithAppArmor := func(profile string) *kapi.Pod {
 		pod := goodPod()
-		apparmor.SetProfileName(pod, defaultContainerName, profile)
+		apparmor.SetProfileNameFromPodAnnotations(pod.Annotations, defaultContainerName, profile)
 		return pod
 	}
 
@@ -799,7 +820,7 @@ func TestAdmitAppArmor(t *testing.T) {
 		testPSPAdmit(k, []*extensions.PodSecurityPolicy{v.psp}, v.pod, v.shouldPass, v.psp.Name, t)
 
 		if v.shouldPass {
-			assert.Equal(t, v.expectedProfile, apparmor.GetProfileName(v.pod, defaultContainerName), k)
+			assert.Equal(t, v.expectedProfile, apparmor.GetProfileNameFromPodAnnotations(v.pod.Annotations, defaultContainerName), k)
 		}
 	}
 }
@@ -1316,16 +1337,13 @@ func TestAdmitSysctls(t *testing.T) {
 }
 
 func testPSPAdmit(testCaseName string, psps []*extensions.PodSecurityPolicy, pod *kapi.Pod, shouldPass bool, expectedPSP string, t *testing.T) {
-	namespace := createNamespaceForTest()
-	serviceAccount := createSAForTest()
-	tc := clientsetfake.NewSimpleClientset(namespace, serviceAccount)
 	store := cache.NewStore(cache.MetaNamespaceKeyFunc)
 
 	for _, psp := range psps {
 		store.Add(psp)
 	}
 
-	plugin := NewTestAdmission(store, tc)
+	plugin := NewTestAdmission(store)
 
 	attrs := kadmission.NewAttributesRecord(pod, nil, kapi.Kind("Pod").WithVersion("version"), "namespace", "", kapi.Resource("pods").WithVersion("version"), "", kadmission.Create, &user.DefaultInfo{})
 	err := plugin.Admit(attrs)
@@ -1440,7 +1458,7 @@ func TestCreateProvidersFromConstraints(t *testing.T) {
 		"valid psp": {
 			psp: func() *extensions.PodSecurityPolicy {
 				return &extensions.PodSecurityPolicy{
-					ObjectMeta: kapi.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "valid psp",
 					},
 					Spec: extensions.PodSecurityPolicySpec{
@@ -1463,7 +1481,7 @@ func TestCreateProvidersFromConstraints(t *testing.T) {
 		"bad psp strategy options": {
 			psp: func() *extensions.PodSecurityPolicy {
 				return &extensions.PodSecurityPolicy{
-					ObjectMeta: kapi.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "bad psp user options",
 					},
 					Spec: extensions.PodSecurityPolicySpec{
@@ -1489,10 +1507,8 @@ func TestCreateProvidersFromConstraints(t *testing.T) {
 	for k, v := range testCases {
 		store := cache.NewStore(cache.MetaNamespaceKeyFunc)
 
-		tc := clientsetfake.NewSimpleClientset()
 		admit := &podSecurityPolicyPlugin{
 			Handler:         kadmission.NewHandler(kadmission.Create, kadmission.Update),
-			client:          tc,
 			store:           store,
 			strategyFactory: kpsp.NewSimpleStrategyFactory(),
 		}
@@ -1522,9 +1538,120 @@ func TestCreateProvidersFromConstraints(t *testing.T) {
 	}
 }
 
+func TestGetMatchingPolicies(t *testing.T) {
+	policyWithName := func(name string) *extensions.PodSecurityPolicy {
+		p := restrictivePSP()
+		p.Name = name
+		return p
+	}
+
+	tests := map[string]struct {
+		user               user.Info
+		sa                 user.Info
+		expectedPolicies   sets.String
+		inPolicies         []*extensions.PodSecurityPolicy
+		disallowedPolicies map[string][]string
+	}{
+		"policy allowed by user": {
+			user: &user.DefaultInfo{Name: "user"},
+			sa:   &user.DefaultInfo{Name: "sa"},
+			disallowedPolicies: map[string][]string{
+				"sa": {"policy"},
+			},
+			inPolicies:       []*extensions.PodSecurityPolicy{policyWithName("policy")},
+			expectedPolicies: sets.NewString("policy"),
+		},
+		"policy allowed by sa": {
+			user: &user.DefaultInfo{Name: "user"},
+			sa:   &user.DefaultInfo{Name: "sa"},
+			disallowedPolicies: map[string][]string{
+				"user": {"policy"},
+			},
+			inPolicies:       []*extensions.PodSecurityPolicy{policyWithName("policy")},
+			expectedPolicies: sets.NewString("policy"),
+		},
+		"no policies allowed": {
+			user: &user.DefaultInfo{Name: "user"},
+			sa:   &user.DefaultInfo{Name: "sa"},
+			disallowedPolicies: map[string][]string{
+				"user": {"policy"},
+				"sa":   {"policy"},
+			},
+			inPolicies:       []*extensions.PodSecurityPolicy{policyWithName("policy")},
+			expectedPolicies: sets.NewString(),
+		},
+		"multiple policies allowed": {
+			user: &user.DefaultInfo{Name: "user"},
+			sa:   &user.DefaultInfo{Name: "sa"},
+			disallowedPolicies: map[string][]string{
+				"user": {"policy1", "policy3"},
+				"sa":   {"policy2", "policy3"},
+			},
+			inPolicies: []*extensions.PodSecurityPolicy{
+				policyWithName("policy1"), // allowed by sa
+				policyWithName("policy2"), // allowed by user
+				policyWithName("policy3"), // not allowed
+			},
+			expectedPolicies: sets.NewString("policy1", "policy2"),
+		},
+		"policies are allowed for nil user info": {
+			user: nil,
+			sa:   &user.DefaultInfo{Name: "sa"},
+			disallowedPolicies: map[string][]string{
+				"user": {"policy1", "policy3"},
+				"sa":   {"policy2", "policy3"},
+			},
+			inPolicies: []*extensions.PodSecurityPolicy{
+				policyWithName("policy1"),
+				policyWithName("policy2"),
+				policyWithName("policy3"),
+			},
+			// all policies are allowed regardless of the permissions when user info is nil
+			// (ie. a request hitting the unsecure port)
+			expectedPolicies: sets.NewString("policy1", "policy2", "policy3"),
+		},
+		"policies are allowed for nil sa info": {
+			user: &user.DefaultInfo{Name: "user"},
+			sa:   nil,
+			disallowedPolicies: map[string][]string{
+				"user": {"policy1", "policy3"},
+				"sa":   {"policy2", "policy3"},
+			},
+			inPolicies: []*extensions.PodSecurityPolicy{
+				policyWithName("policy1"),
+				policyWithName("policy2"),
+				policyWithName("policy3"),
+			},
+			// all policies are allowed regardless of the permissions when sa info is nil
+			// (ie. a request hitting the unsecure port)
+			expectedPolicies: sets.NewString("policy1", "policy2", "policy3"),
+		},
+	}
+	for k, v := range tests {
+		store := cache.NewStore(cache.MetaNamespaceKeyFunc)
+		for _, psp := range v.inPolicies {
+			store.Add(psp)
+		}
+
+		authz := &TestAuthorizer{disallowed: v.disallowedPolicies}
+		allowedPolicies, err := getMatchingPolicies(store, v.user, v.sa, authz)
+		if err != nil {
+			t.Errorf("%s got unexpected error %#v", k, err)
+			continue
+		}
+		allowedPolicyNames := sets.NewString()
+		for _, p := range allowedPolicies {
+			allowedPolicyNames.Insert(p.Name)
+		}
+		if !v.expectedPolicies.Equal(allowedPolicyNames) {
+			t.Errorf("%s received unexpected policies.  Expected %#v but got %#v", k, v.expectedPolicies.List(), allowedPolicyNames.List())
+		}
+	}
+}
+
 func restrictivePSP() *extensions.PodSecurityPolicy {
 	return &extensions.PodSecurityPolicy{
-		ObjectMeta: kapi.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:        "restrictive",
 			Annotations: map[string]string{},
 		},
@@ -1559,7 +1686,7 @@ func restrictivePSP() *extensions.PodSecurityPolicy {
 
 func createNamespaceForTest() *kapi.Namespace {
 	return &kapi.Namespace{
-		ObjectMeta: kapi.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: "default",
 		},
 	}
@@ -1567,7 +1694,7 @@ func createNamespaceForTest() *kapi.Namespace {
 
 func createSAForTest() *kapi.ServiceAccount {
 	return &kapi.ServiceAccount{
-		ObjectMeta: kapi.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "default",
 			Name:      "default",
 		},
@@ -1579,7 +1706,7 @@ func createSAForTest() *kapi.ServiceAccount {
 // psp when defaults are filled in.
 func goodPod() *kapi.Pod {
 	return &kapi.Pod{
-		ObjectMeta: kapi.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{},
 		},
 		Spec: kapi.PodSpec{

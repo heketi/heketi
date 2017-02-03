@@ -24,3 +24,26 @@ aliases:
     - soltysh
     - sttts
     - ymqytw
+  test-infra-maintainers:
+    - fejta
+    - ixdy
+    - rmmh
+    - spxtr
+  sig-node-reviewers:
+    - Random-Liu
+    - dashpole
+    - dchen1107
+    - derekwaynecarr
+    - dims
+    - euank
+    - feiskyer
+    - mtaufen
+    - ncdc
+    - pmorie
+    - resouer
+    - sjpotter
+    - timstclair
+    - tmrts
+    - vishh
+    - yifan-gu
+    - yujuhong

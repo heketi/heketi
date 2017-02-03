@@ -21,21 +21,21 @@ import (
 	"reflect"
 	"testing"
 
-	runtimeApi "k8s.io/kubernetes/pkg/kubelet/api/v1alpha1/runtime"
+	runtimeapi "k8s.io/kubernetes/pkg/kubelet/api/v1alpha1/runtime"
 )
 
 var (
 	emptyImgStoreConfig = ImageStoreConfig{}
 	// TODO(tmrts): fill the pod configuration
-	testPodConfig *runtimeApi.PodSandboxConfig = nil
+	testPodConfig *runtimeapi.PodSandboxConfig = nil
 )
 
 type imageTestCase struct {
-	Spec           *runtimeApi.ImageSpec
-	ExpectedStatus *runtimeApi.Image
+	Spec           *runtimeapi.ImageSpec
+	ExpectedStatus *runtimeapi.Image
 }
 
-func compareContainerImages(got, expected runtimeApi.Image) error {
+func compareContainerImages(got, expected runtimeapi.Image) error {
 	if got.Id != expected.Id {
 		return fmt.Errorf("mismatching Ids -> expected %q, got %q", got.Id, expected.Id)
 	}
@@ -62,25 +62,25 @@ var (
 
 var testImgSpecs = map[string]imageTestCase{
 	"non-existent-image": {
-		&runtimeApi.ImageSpec{
-			Image: &gibberishStr,
+		&runtimeapi.ImageSpec{
+			Image: gibberishStr,
 		},
 		nil,
 	},
 	"busybox": {
-		&runtimeApi.ImageSpec{
-			Image: &busyboxStr,
+		&runtimeapi.ImageSpec{
+			Image: busyboxStr,
 		},
-		&runtimeApi.Image{
-			Id:          nil,
+		&runtimeapi.Image{
+			Id:          "",
 			RepoTags:    []string{},
 			RepoDigests: []string{},
-			Size_:       nil,
+			Size_:       0,
 		},
 	},
 }
 
-var testAuthConfig = map[string]runtimeApi.AuthConfig{
+var testAuthConfig = map[string]runtimeapi.AuthConfig{
 	"no-auth": {},
 }
 
@@ -201,7 +201,7 @@ func TestListsImages(t *testing.T) {
 	}
 
 	for _, img := range imgs {
-		expectedImg := *testImgSpecs[*img.Id].ExpectedStatus
+		expectedImg := *testImgSpecs[img.Id].ExpectedStatus
 
 		if err := compareContainerImages(img, expectedImg); err != nil {
 			t.Errorf("rktshim.ImageStore.List() for %q, %v", img.Id, err)

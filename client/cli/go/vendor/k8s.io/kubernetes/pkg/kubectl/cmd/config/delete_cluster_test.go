@@ -24,8 +24,8 @@ import (
 	"reflect"
 	"testing"
 
-	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
-	clientcmdapi "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api"
+	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
 type deleteClusterTest struct {
@@ -46,7 +46,7 @@ func TestDeleteCluster(t *testing.T) {
 		config:           conf,
 		clusterToDelete:  "minikube",
 		expectedClusters: []string{"otherkube"},
-		expectedOut:      "deleted cluster minikube from %s",
+		expectedOut:      "deleted cluster minikube from %s\n",
 	}
 
 	test.run(t)

@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors.
+Copyright 2017 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ type tokenReviews struct {
 }
 
 // newTokenReviews returns a TokenReviews
-func newTokenReviews(c *AuthenticationClient) *tokenReviews {
+func newTokenReviews(c *AuthenticationV1beta1Client) *tokenReviews {
 	return &tokenReviews{
 		client: c.RESTClient(),
 	}

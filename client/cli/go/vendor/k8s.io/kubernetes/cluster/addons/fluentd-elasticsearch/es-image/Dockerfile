@@ -18,7 +18,6 @@
 
 FROM java:openjdk-8-jre
 
-MAINTAINER Mik Vyatskov "vmik@google.com"
 
 ENV DEBIAN_FRONTEND noninteractive
 ENV ELASTICSEARCH_VERSION 2.4.1
@@ -44,9 +43,9 @@ COPY elasticsearch_logging_discovery /
 
 RUN useradd --no-create-home --user-group elasticsearch \
     && mkdir /data \
-    && chown -R elasticsearch:elasticsearch /elasticsearch /elasticsearch_logging_discovery /run.sh /data
+    && chown -R elasticsearch:elasticsearch /elasticsearch
 
 VOLUME ["/data"]
 EXPOSE 9200 9300
 
-CMD ["/bin/su", "-c", "/run.sh", "elasticsearch"]
+CMD /run.sh

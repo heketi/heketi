@@ -1,5 +1,5 @@
 hash: 902e35f142e029485dce766ba9cf1d6e5508afe719b8efb2841dbeb40ab09122
-updated: 2017-01-24T18:13:29.963055486+05:30
+updated: 2017-02-03T15:28:52.057625108+05:30
 imports:
 - name: github.com/davecgh/go-spew
   version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
@@ -40,6 +40,7 @@ imports:
   version: 22da92428ed757851ae201fc80010ccdb59a419c
   subpackages:
   - client/api/go-client
+  - client/cli/go/cmds
   - pkg/db
   - pkg/glusterfs/api
   - pkg/kubernetes
@@ -54,8 +55,6 @@ imports:
   - buffer
   - jlexer
   - jwriter
-- name: github.com/pborman/uuid
-  version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
 - name: github.com/PuerkitoBio/purell
   version: 8a290539e2e8629dbc4e6bad948158f790ec31f4
 - name: github.com/PuerkitoBio/urlesc
@@ -81,7 +80,12 @@ imports:
   version: 2910a502d2bf9e43193af9d68ca516529614eed3
   subpackages:
   - cases
+  - encoding
+  - encoding/internal
+  - encoding/internal/identifier
+  - encoding/unicode
   - internal/tag
+  - internal/utf8internal
   - language
   - runes
   - secure/bidirule
@@ -94,51 +98,55 @@ imports:
   version: 3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4
 - name: gopkg.in/yaml.v2
   version: a83829b6f1293c91addabc89d0571c246397bbf4
-- name: k8s.io/kubernetes
-  version: 42fe4ab0270e44c750d77c682e2fcab394aeb392
+- name: k8s.io/apimachinery
+  version: bb0944e83985eee62505a0386e7df9014cc55263
   subpackages:
-  - pkg/api
   - pkg/api/meta
-  - pkg/api/meta/metatypes
   - pkg/api/resource
-  - pkg/api/unversioned
-  - pkg/api/v1
-  - pkg/apis/autoscaling
-  - pkg/apis/batch
-  - pkg/apis/batch/v1
-  - pkg/apis/extensions
-  - pkg/auth/user
+  - pkg/apimachinery
+  - pkg/apimachinery/announced
+  - pkg/apimachinery/registered
+  - pkg/apis/meta/v1
+  - pkg/apis/meta/v1/unstructured
   - pkg/conversion
   - pkg/conversion/queryparams
   - pkg/fields
-  - pkg/genericapiserver/openapi/common
   - pkg/labels
+  - pkg/openapi
   - pkg/runtime
+  - pkg/runtime/schema
   - pkg/runtime/serializer
   - pkg/runtime/serializer/json
   - pkg/runtime/serializer/protobuf
   - pkg/runtime/serializer/recognizer
-  - pkg/runtime/serializer/streaming
   - pkg/runtime/serializer/versioning
   - pkg/selection
   - pkg/types
-  - pkg/util
   - pkg/util/errors
   - pkg/util/framer
   - pkg/util/intstr
   - pkg/util/json
-  - pkg/util/labels
   - pkg/util/net
-  - pkg/util/parsers
   - pkg/util/rand
   - pkg/util/runtime
   - pkg/util/sets
-  - pkg/util/uuid
   - pkg/util/validation
   - pkg/util/validation/field
   - pkg/util/wait
   - pkg/util/yaml
   - pkg/watch
-  - pkg/watch/versioned
   - third_party/forked/golang/reflect
+- name: k8s.io/kubernetes
+  version: 424a0e9e827a39c714ee03e1891c43635adabcdc
+  subpackages:
+  - pkg/api
+  - pkg/api/resource
+  - pkg/api/v1
+  - pkg/apis/autoscaling
+  - pkg/apis/batch
+  - pkg/apis/batch/v1
+  - pkg/apis/extensions
+  - pkg/util
+  - pkg/util/labels
+  - pkg/util/parsers
 testImports: []

@@ -20,65 +20,175 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
+	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
+	kubeadmapiext "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1alpha1"
+	"k8s.io/kubernetes/pkg/api"
+	v1 "k8s.io/kubernetes/pkg/api/v1"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 )
 
 const (
-	TokenIDLen = 6
-	TokenBytes = 8
+	TokenIDBytes               = 3
+	TokenSecretBytes           = 8
+	BootstrapTokenSecretPrefix = "bootstrap-token-"
+	DefaultTokenDuration       = time.Duration(8) * time.Hour
+	tokenCreateRetries         = 5
 )
 
-func RandBytes(length int) ([]byte, string, error) {
+var (
+	tokenIDRegexpString = "^([a-z0-9]{6})$"
+	tokenIDRegexp       = regexp.MustCompile(tokenIDRegexpString)
+	tokenRegexpString   = "^([a-z0-9]{6})\\:([a-z0-9]{16})$"
+	tokenRegexp         = regexp.MustCompile(tokenRegexpString)
+)
+
+func randBytes(length int) (string, error) {
 	b := make([]byte, length)
 	_, err := rand.Read(b)
 	if err != nil {
-		return nil, "", err
+		return "", err
 	}
-	// It's only the tokenID that doesn't care about raw byte slice,
-	// so we just encoded it in place and ignore bytes slice where we
-	// do not want it
-	return b, hex.EncodeToString(b), nil
+	return hex.EncodeToString(b), nil
 }
 
-func GenerateToken(s *kubeadmapi.Secrets) error {
-	_, tokenID, err := RandBytes(TokenIDLen / 2)
+// GenerateToken generates a new token with a token ID that is valid as a
+// Kubernetes DNS label.
+// For more info, see kubernetes/pkg/util/validation/validation.go.
+func GenerateToken(d *kubeadmapi.TokenDiscovery) error {
+	tokenID, err := randBytes(TokenIDBytes)
 	if err != nil {
 		return err
 	}
 
-	tokenBytes, token, err := RandBytes(TokenBytes)
+	token, err := randBytes(TokenSecretBytes)
 	if err != nil {
 		return err
 	}
 
-	s.TokenID = tokenID
-	s.BearerToken = token
-	s.Token = tokenBytes
-	s.GivenToken = fmt.Sprintf("%s.%s", tokenID, token)
+	d.ID = strings.ToLower(tokenID)
+	d.Secret = strings.ToLower(token)
 	return nil
 }
 
-func UseGivenTokenIfValid(s *kubeadmapi.Secrets) (bool, error) {
-	if s.GivenToken == "" {
-		return false, nil // not given
+// ParseTokenID tries and parse a valid token ID from a string.
+// An error is returned in case of failure.
+func ParseTokenID(s string) error {
+	if !tokenIDRegexp.MatchString(s) {
+		return fmt.Errorf("token ID [%q] was not of form [%q]", s, tokenIDRegexpString)
 	}
-	fmt.Println("<util/tokens> validating provided token")
-	givenToken := strings.Split(strings.ToLower(s.GivenToken), ".")
-	// TODO(phase1+) could also print more specific messages in each case
-	invalidErr := "<util/tokens> provided token does not match expected <6 characters>.<16 characters> format - %s"
-	if len(givenToken) != 2 {
-		return false, fmt.Errorf(invalidErr, "not in 2-part dot-separated format")
+	return nil
+
+}
+
+// ParseToken tries and parse a valid token from a string.
+// A token ID and token secret are returned in case of success, an error otherwise.
+func ParseToken(s string) (string, string, error) {
+	split := tokenRegexp.FindStringSubmatch(s)
+	if len(split) != 3 {
+		return "", "", fmt.Errorf("token [%q] was not of form [%q]", s, tokenRegexpString)
 	}
-	if len(givenToken[0]) != TokenIDLen {
-		return false, fmt.Errorf(invalidErr, fmt.Sprintf(
-			"length of first part is incorrect [%d (given) != %d (expected) ]",
-			len(givenToken[0]), TokenIDLen))
+	return split[1], split[2], nil
+
+}
+
+// BearerToken returns a string representation of the passed token.
+func BearerToken(d *kubeadmapi.TokenDiscovery) string {
+	return fmt.Sprintf("%s:%s", d.ID, d.Secret)
+}
+
+// ValidateToken validates whether a token is well-formed.
+// In case it's not, the corresponding error is returned as well.
+func ValidateToken(d *kubeadmapi.TokenDiscovery) (bool, error) {
+	if _, _, err := ParseToken(d.ID + ":" + d.Secret); err != nil {
+		return false, err
 	}
-	tokenBytes := []byte(givenToken[1])
-	s.TokenID = givenToken[0]
-	s.BearerToken = givenToken[1]
-	s.Token = tokenBytes
-	return true, nil // given and valid
+	return true, nil
+}
+
+func DiscoveryPort(d *kubeadmapi.TokenDiscovery) int32 {
+	if len(d.Addresses) == 0 {
+		return kubeadmapiext.DefaultDiscoveryBindPort
+	}
+	split := strings.Split(d.Addresses[0], ":")
+	if len(split) == 1 {
+		return kubeadmapiext.DefaultDiscoveryBindPort
+	}
+	if i, err := strconv.Atoi(split[1]); err != nil {
+		return int32(i)
+	}
+	return kubeadmapiext.DefaultDiscoveryBindPort
+}
+
+// UpdateOrCreateToken attempts to update a token with the given ID, or create if it does
+// not already exist.
+func UpdateOrCreateToken(client *clientset.Clientset, d *kubeadmapi.TokenDiscovery, tokenDuration time.Duration) error {
+	// Let's make sure
+	if valid, err := ValidateToken(d); !valid {
+		return err
+	}
+	secretName := fmt.Sprintf("%s%s", BootstrapTokenSecretPrefix, d.ID)
+	var lastErr error
+	for i := 0; i < tokenCreateRetries; i++ {
+		secret, err := client.Secrets(metav1.NamespaceSystem).Get(secretName, metav1.GetOptions{})
+		if err == nil {
+			// Secret with this ID already exists, update it:
+			secret.Data = encodeTokenSecretData(d, tokenDuration)
+			if _, err := client.Secrets(metav1.NamespaceSystem).Update(secret); err == nil {
+				return nil
+			} else {
+				lastErr = err
+			}
+			continue
+		}
+
+		// Secret does not already exist:
+		if apierrors.IsNotFound(err) {
+			secret = &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: secretName,
+				},
+				Type: api.SecretTypeBootstrapToken,
+				Data: encodeTokenSecretData(d, tokenDuration),
+			}
+			if _, err := client.Secrets(metav1.NamespaceSystem).Create(secret); err == nil {
+				return nil
+			} else {
+				lastErr = err
+			}
+
+			continue
+		}
+
+	}
+	return fmt.Errorf(
+		"unable to create bootstrap token after %d attempts [%v]",
+		tokenCreateRetries,
+		lastErr,
+	)
+}
+
+func encodeTokenSecretData(d *kubeadmapi.TokenDiscovery, duration time.Duration) map[string][]byte {
+	var (
+		data = map[string][]byte{}
+	)
+
+	data["token-id"] = []byte(d.ID)
+	data["token-secret"] = []byte(d.Secret)
+
+	data["usage-bootstrap-signing"] = []byte("true")
+
+	if duration > 0 {
+		t := time.Now()
+		t = t.Add(duration)
+		data["expiration"] = []byte(t.Format(time.RFC3339))
+	}
+
+	return data
 }

@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors.
+Copyright 2017 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,17 +22,17 @@ import (
 	testing "k8s.io/client-go/testing"
 )
 
-type FakeAutoscaling struct {
+type FakeAutoscalingV1 struct {
 	*testing.Fake
 }
 
-func (c *FakeAutoscaling) HorizontalPodAutoscalers(namespace string) v1.HorizontalPodAutoscalerInterface {
+func (c *FakeAutoscalingV1) HorizontalPodAutoscalers(namespace string) v1.HorizontalPodAutoscalerInterface {
 	return &FakeHorizontalPodAutoscalers{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *FakeAutoscaling) RESTClient() rest.Interface {
+func (c *FakeAutoscalingV1) RESTClient() rest.Interface {
 	var ret *rest.RESTClient
 	return ret
 }

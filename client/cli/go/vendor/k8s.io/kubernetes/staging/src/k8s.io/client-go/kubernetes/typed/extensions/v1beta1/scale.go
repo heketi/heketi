@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors.
+Copyright 2017 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ type scales struct {
 }
 
 // newScales returns a Scales
-func newScales(c *ExtensionsClient, namespace string) *scales {
+func newScales(c *ExtensionsV1beta1Client, namespace string) *scales {
 	return &scales{
 		client: c.RESTClient(),
 		ns:     namespace,

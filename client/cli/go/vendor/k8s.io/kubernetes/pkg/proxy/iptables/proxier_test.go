@@ -23,9 +23,12 @@ import (
 	"net"
 	"strings"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/service"
 	"k8s.io/kubernetes/pkg/proxy"
-	"k8s.io/kubernetes/pkg/types"
 	"k8s.io/kubernetes/pkg/util/exec"
 	utiliptables "k8s.io/kubernetes/pkg/util/iptables"
 	iptablestest "k8s.io/kubernetes/pkg/util/iptables/testing"
@@ -257,11 +260,12 @@ func TestExecConntrackTool(t *testing.T) {
 	}
 }
 
-func newFakeServiceInfo(service proxy.ServicePortName, ip net.IP, protocol api.Protocol, onlyNodeLocalEndpoints bool) *serviceInfo {
+func newFakeServiceInfo(service proxy.ServicePortName, ip net.IP, port int, protocol api.Protocol, onlyNodeLocalEndpoints bool) *serviceInfo {
 	return &serviceInfo{
 		sessionAffinityType:    api.ServiceAffinityNone, // default
-		stickyMaxAgeSeconds:    180,                     // TODO: paramaterize this in the API.
+		stickyMaxAgeMinutes:    180,                     // TODO: paramaterize this in the API.
 		clusterIP:              ip,
+		port:                   port,
 		protocol:               protocol,
 		onlyNodeLocalEndpoints: onlyNodeLocalEndpoints,
 	}
@@ -285,10 +289,10 @@ func TestDeleteEndpointConnections(t *testing.T) {
 	}
 
 	serviceMap := make(map[proxy.ServicePortName]*serviceInfo)
-	svc1 := proxy.ServicePortName{NamespacedName: types.NamespacedName{Namespace: "ns1", Name: "svc1"}, Port: ""}
-	svc2 := proxy.ServicePortName{NamespacedName: types.NamespacedName{Namespace: "ns1", Name: "svc2"}, Port: ""}
-	serviceMap[svc1] = newFakeServiceInfo(svc1, net.IPv4(10, 20, 30, 40), api.ProtocolUDP, false)
-	serviceMap[svc2] = newFakeServiceInfo(svc1, net.IPv4(10, 20, 30, 41), api.ProtocolTCP, false)
+	svc1 := proxy.ServicePortName{NamespacedName: types.NamespacedName{Namespace: "ns1", Name: "svc1"}, Port: "80"}
+	svc2 := proxy.ServicePortName{NamespacedName: types.NamespacedName{Namespace: "ns1", Name: "svc2"}, Port: "80"}
+	serviceMap[svc1] = newFakeServiceInfo(svc1, net.IPv4(10, 20, 30, 40), 80, api.ProtocolUDP, false)
+	serviceMap[svc2] = newFakeServiceInfo(svc1, net.IPv4(10, 20, 30, 41), 80, api.ProtocolTCP, false)
 
 	fakeProxier := Proxier{exec: &fexec, serviceMap: serviceMap}
 
@@ -505,18 +509,146 @@ func NewFakeProxier(ipt utiliptables.Interface) *Proxier {
 }
 
 func hasJump(rules []iptablestest.Rule, destChain, destIP, destPort string) bool {
+	match := false
 	for _, r := range rules {
 		if r[iptablestest.Jump] == destChain {
+			match = true
 			if destIP != "" {
-				return strings.Contains(r[iptablestest.Destination], destIP)
+				if strings.Contains(r[iptablestest.Destination], destIP) && (strings.Contains(r[iptablestest.DPort], destPort) || r[iptablestest.DPort] == "") {
+					return true
+				}
+				match = false
 			}
 			if destPort != "" {
-				return strings.Contains(r[iptablestest.DPort], destPort)
+				if strings.Contains(r[iptablestest.DPort], destPort) && (strings.Contains(r[iptablestest.Destination], destIP) || r[iptablestest.Destination] == "") {
+					return true
+				}
+				match = false
 			}
-			return true
 		}
 	}
-	return false
+	return match
+}
+
+func TestHasJump(t *testing.T) {
+	testCases := map[string]struct {
+		rules     []iptablestest.Rule
+		destChain string
+		destIP    string
+		destPort  string
+		expected  bool
+	}{
+		"case 1": {
+			// Match the 1st rule(both dest IP and dest Port)
+			rules: []iptablestest.Rule{
+				{"-d ": "10.20.30.41/32", "--dport ": "80", "-p ": "tcp", "-j ": "REJECT"},
+				{"--dport ": "3001", "-p ": "tcp", "-j ": "KUBE-MARK-MASQ"},
+			},
+			destChain: "REJECT",
+			destIP:    "10.20.30.41",
+			destPort:  "80",
+			expected:  true,
+		},
+		"case 2": {
+			// Match the 2nd rule(dest Port)
+			rules: []iptablestest.Rule{
+				{"-d ": "10.20.30.41/32", "-p ": "tcp", "-j ": "REJECT"},
+				{"--dport ": "3001", "-p ": "tcp", "-j ": "REJECT"},
+			},
+			destChain: "REJECT",
+			destIP:    "",
+			destPort:  "3001",
+			expected:  true,
+		},
+		"case 3": {
+			// Match both dest IP and dest Port
+			rules: []iptablestest.Rule{
+				{"-d ": "1.2.3.4/32", "--dport ": "80", "-p ": "tcp", "-j ": "KUBE-XLB-GF53O3C2HZEXL2XN"},
+			},
+			destChain: "KUBE-XLB-GF53O3C2HZEXL2XN",
+			destIP:    "1.2.3.4",
+			destPort:  "80",
+			expected:  true,
+		},
+		"case 4": {
+			// Match dest IP but doesn't match dest Port
+			rules: []iptablestest.Rule{
+				{"-d ": "1.2.3.4/32", "--dport ": "80", "-p ": "tcp", "-j ": "KUBE-XLB-GF53O3C2HZEXL2XN"},
+			},
+			destChain: "KUBE-XLB-GF53O3C2HZEXL2XN",
+			destIP:    "1.2.3.4",
+			destPort:  "8080",
+			expected:  false,
+		},
+		"case 5": {
+			// Match dest Port but doesn't match dest IP
+			rules: []iptablestest.Rule{
+				{"-d ": "1.2.3.4/32", "--dport ": "80", "-p ": "tcp", "-j ": "KUBE-XLB-GF53O3C2HZEXL2XN"},
+			},
+			destChain: "KUBE-XLB-GF53O3C2HZEXL2XN",
+			destIP:    "10.20.30.40",
+			destPort:  "80",
+			expected:  false,
+		},
+		"case 6": {
+			// Match the 2nd rule(dest IP)
+			rules: []iptablestest.Rule{
+				{"-d ": "10.20.30.41/32", "-p ": "tcp", "-j ": "REJECT"},
+				{"-d ": "1.2.3.4/32", "-p ": "tcp", "-j ": "REJECT"},
+				{"--dport ": "3001", "-p ": "tcp", "-j ": "REJECT"},
+			},
+			destChain: "REJECT",
+			destIP:    "1.2.3.4",
+			destPort:  "8080",
+			expected:  true,
+		},
+		"case 7": {
+			// Match the 2nd rule(dest Port)
+			rules: []iptablestest.Rule{
+				{"-d ": "10.20.30.41/32", "-p ": "tcp", "-j ": "REJECT"},
+				{"--dport ": "3001", "-p ": "tcp", "-j ": "REJECT"},
+			},
+			destChain: "REJECT",
+			destIP:    "1.2.3.4",
+			destPort:  "3001",
+			expected:  true,
+		},
+		"case 8": {
+			// Match the 1st rule(dest IP)
+			rules: []iptablestest.Rule{
+				{"-d ": "10.20.30.41/32", "-p ": "tcp", "-j ": "REJECT"},
+				{"--dport ": "3001", "-p ": "tcp", "-j ": "REJECT"},
+			},
+			destChain: "REJECT",
+			destIP:    "10.20.30.41",
+			destPort:  "8080",
+			expected:  true,
+		},
+		"case 9": {
+			rules: []iptablestest.Rule{
+				{"-j ": "KUBE-SEP-LWSOSDSHMKPJHHJV"},
+			},
+			destChain: "KUBE-SEP-LWSOSDSHMKPJHHJV",
+			destIP:    "",
+			destPort:  "",
+			expected:  true,
+		},
+		"case 10": {
+			rules: []iptablestest.Rule{
+				{"-j ": "KUBE-SEP-FOO"},
+			},
+			destChain: "KUBE-SEP-BAR",
+			destIP:    "",
+			destPort:  "",
+			expected:  false,
+		},
+	}
+
+	for k, tc := range testCases {
+		if got := hasJump(tc.rules, tc.destChain, tc.destIP, tc.destPort); got != tc.expected {
+			t.Errorf("%v: expected %v, got %v", k, tc.expected, got)
+		}
+	}
 }
 
 func hasDNAT(rules []iptablestest.Rule, endpoint string) bool {
@@ -541,8 +673,8 @@ func TestClusterIPReject(t *testing.T) {
 	svcName := "svc1"
 	svcIP := net.IPv4(10, 20, 30, 41)
 
-	svc := proxy.ServicePortName{NamespacedName: types.NamespacedName{Namespace: "ns1", Name: svcName}, Port: ""}
-	fp.serviceMap[svc] = newFakeServiceInfo(svc, svcIP, api.ProtocolTCP, false)
+	svc := proxy.ServicePortName{NamespacedName: types.NamespacedName{Namespace: "ns1", Name: svcName}, Port: "80"}
+	fp.serviceMap[svc] = newFakeServiceInfo(svc, svcIP, 80, api.ProtocolTCP, false)
 	fp.syncProxyRules()
 
 	svcChain := string(servicePortChainName(svc, strings.ToLower(string(api.ProtocolTCP))))
@@ -551,7 +683,7 @@ func TestClusterIPReject(t *testing.T) {
 		errorf(fmt.Sprintf("Unexpected rule for chain %v service %v without endpoints", svcChain, svcName), svcRules, t)
 	}
 	kubeSvcRules := ipt.GetRules(string(kubeServicesChain))
-	if !hasJump(kubeSvcRules, iptablestest.Reject, svcIP.String(), "") {
+	if !hasJump(kubeSvcRules, iptablestest.Reject, svcIP.String(), "80") {
 		errorf(fmt.Sprintf("Failed to find a %v rule for service %v with no endpoints", iptablestest.Reject, svcName), kubeSvcRules, t)
 	}
 }
@@ -563,7 +695,7 @@ func TestClusterIPEndpointsJump(t *testing.T) {
 	svcIP := net.IPv4(10, 20, 30, 41)
 
 	svc := proxy.ServicePortName{NamespacedName: types.NamespacedName{Namespace: "ns1", Name: svcName}, Port: "80"}
-	fp.serviceMap[svc] = newFakeServiceInfo(svc, svcIP, api.ProtocolTCP, true)
+	fp.serviceMap[svc] = newFakeServiceInfo(svc, svcIP, 80, api.ProtocolTCP, true)
 	ep := "10.180.0.1:80"
 	fp.endpointsMap[svc] = []*endpointsInfo{{ep, false}}
 
@@ -573,7 +705,7 @@ func TestClusterIPEndpointsJump(t *testing.T) {
 	epChain := string(servicePortEndpointChainName(svc, strings.ToLower(string(api.ProtocolTCP)), ep))
 
 	kubeSvcRules := ipt.GetRules(string(kubeServicesChain))
-	if !hasJump(kubeSvcRules, svcChain, svcIP.String(), "") {
+	if !hasJump(kubeSvcRules, svcChain, svcIP.String(), "80") {
 		errorf(fmt.Sprintf("Failed to find jump from KUBE-SERVICES to %v chain", svcChain), kubeSvcRules, t)
 	}
 
@@ -602,7 +734,7 @@ func TestLoadBalancer(t *testing.T) {
 	svcIP := net.IPv4(10, 20, 30, 41)
 
 	svc := proxy.ServicePortName{NamespacedName: types.NamespacedName{Namespace: "ns1", Name: svcName}, Port: "80"}
-	svcInfo := newFakeServiceInfo(svc, svcIP, api.ProtocolTCP, false)
+	svcInfo := newFakeServiceInfo(svc, svcIP, 80, api.ProtocolTCP, false)
 	fp.serviceMap[svc] = typeLoadBalancer(svcInfo)
 
 	ep1 := "10.180.0.1:80"
@@ -616,7 +748,7 @@ func TestLoadBalancer(t *testing.T) {
 	//lbChain := string(serviceLBChainName(svc, proto))
 
 	kubeSvcRules := ipt.GetRules(string(kubeServicesChain))
-	if !hasJump(kubeSvcRules, fwChain, svcInfo.loadBalancerStatus.Ingress[0].IP, "") {
+	if !hasJump(kubeSvcRules, fwChain, svcInfo.loadBalancerStatus.Ingress[0].IP, "80") {
 		errorf(fmt.Sprintf("Failed to find jump to firewall chain %v", fwChain), kubeSvcRules, t)
 	}
 
@@ -633,7 +765,7 @@ func TestNodePort(t *testing.T) {
 	svcIP := net.IPv4(10, 20, 30, 41)
 
 	svc := proxy.ServicePortName{NamespacedName: types.NamespacedName{Namespace: "ns1", Name: svcName}, Port: "80"}
-	svcInfo := newFakeServiceInfo(svc, svcIP, api.ProtocolTCP, false)
+	svcInfo := newFakeServiceInfo(svc, svcIP, 80, api.ProtocolTCP, false)
 	svcInfo.nodePort = 3001
 	fp.serviceMap[svc] = svcInfo
 
@@ -658,7 +790,7 @@ func TestOnlyLocalLoadBalancing(t *testing.T) {
 	svcIP := net.IPv4(10, 20, 30, 41)
 
 	svc := proxy.ServicePortName{NamespacedName: types.NamespacedName{Namespace: "ns1", Name: svcName}, Port: "80"}
-	svcInfo := newFakeServiceInfo(svc, svcIP, api.ProtocolTCP, true)
+	svcInfo := newFakeServiceInfo(svc, svcIP, 80, api.ProtocolTCP, true)
 	fp.serviceMap[svc] = typeLoadBalancer(svcInfo)
 
 	nonLocalEp := "10.180.0.1:80"
@@ -696,14 +828,27 @@ func TestOnlyLocalLoadBalancing(t *testing.T) {
 	}
 }
 
+func TestOnlyLocalNodePortsNoClusterCIDR(t *testing.T) {
+	ipt := iptablestest.NewFake()
+	fp := NewFakeProxier(ipt)
+	// set cluster CIDR to empty before test
+	fp.clusterCIDR = ""
+	onlyLocalNodePorts(t, fp, ipt)
+}
+
 func TestOnlyLocalNodePorts(t *testing.T) {
 	ipt := iptablestest.NewFake()
 	fp := NewFakeProxier(ipt)
+	onlyLocalNodePorts(t, fp, ipt)
+}
+
+func onlyLocalNodePorts(t *testing.T, fp *Proxier, ipt *iptablestest.FakeIPTables) {
+	shouldLBTOSVCRuleExist := len(fp.clusterCIDR) > 0
 	svcName := "svc1"
 	svcIP := net.IPv4(10, 20, 30, 41)
 
 	svc := proxy.ServicePortName{NamespacedName: types.NamespacedName{Namespace: "ns1", Name: svcName}, Port: "80"}
-	svcInfo := newFakeServiceInfo(svc, svcIP, api.ProtocolTCP, true)
+	svcInfo := newFakeServiceInfo(svc, svcIP, 80, api.ProtocolTCP, true)
 	svcInfo.nodePort = 3001
 	fp.serviceMap[svc] = svcInfo
 
@@ -724,12 +869,306 @@ func TestOnlyLocalNodePorts(t *testing.T) {
 		errorf(fmt.Sprintf("Failed to find jump to lb chain %v", lbChain), kubeNodePortRules, t)
 	}
 
+	svcChain := string(servicePortChainName(svc, strings.ToLower(string(api.ProtocolTCP))))
 	lbRules := ipt.GetRules(lbChain)
 	if hasJump(lbRules, nonLocalEpChain, "", "") {
 		errorf(fmt.Sprintf("Found jump from lb chain %v to non-local ep %v", lbChain, nonLocalEp), lbRules, t)
 	}
+	if hasJump(lbRules, svcChain, "", "") != shouldLBTOSVCRuleExist {
+		prefix := "Did not find "
+		if !shouldLBTOSVCRuleExist {
+			prefix = "Found "
+		}
+		errorf(fmt.Sprintf("%s jump from lb chain %v to svc %v", prefix, lbChain, svcChain), lbRules, t)
+	}
 	if !hasJump(lbRules, localEpChain, "", "") {
 		errorf(fmt.Sprintf("Didn't find jump from lb chain %v to local ep %v", lbChain, nonLocalEp), lbRules, t)
+	}
+}
+
+func makeTestService(namespace, name string, svcFunc func(*api.Service)) api.Service {
+	svc := api.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec:   api.ServiceSpec{},
+		Status: api.ServiceStatus{},
+	}
+	svcFunc(&svc)
+	return svc
+}
+
+func addTestPort(array []api.ServicePort, name string, protocol api.Protocol, port, nodeport int32, targetPort int) []api.ServicePort {
+	svcPort := api.ServicePort{
+		Name:       name,
+		Protocol:   protocol,
+		Port:       port,
+		NodePort:   nodeport,
+		TargetPort: intstr.FromInt(targetPort),
+	}
+	return append(array, svcPort)
+}
+
+func TestBuildServiceMapAddRemove(t *testing.T) {
+	services := []api.Service{
+		makeTestService("somewhere-else", "cluster-ip", func(svc *api.Service) {
+			svc.Spec.Type = api.ServiceTypeClusterIP
+			svc.Spec.ClusterIP = "172.16.55.4"
+			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "something", "UDP", 1234, 4321, 0)
+			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "somethingelse", "UDP", 1235, 5321, 0)
+		}),
+		makeTestService("somewhere-else", "node-port", func(svc *api.Service) {
+			svc.Spec.Type = api.ServiceTypeNodePort
+			svc.Spec.ClusterIP = "172.16.55.10"
+			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "blahblah", "UDP", 345, 678, 0)
+			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "moreblahblah", "TCP", 344, 677, 0)
+		}),
+		makeTestService("somewhere", "load-balancer", func(svc *api.Service) {
+			svc.Spec.Type = api.ServiceTypeLoadBalancer
+			svc.Spec.ClusterIP = "172.16.55.11"
+			svc.Spec.LoadBalancerIP = "5.6.7.8"
+			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "foobar", "UDP", 8675, 30061, 7000)
+			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "baz", "UDP", 8676, 30062, 7001)
+			svc.Status.LoadBalancer = api.LoadBalancerStatus{
+				Ingress: []api.LoadBalancerIngress{
+					{IP: "10.1.2.4"},
+				},
+			}
+		}),
+		makeTestService("somewhere", "only-local-load-balancer", func(svc *api.Service) {
+			svc.ObjectMeta.Annotations = map[string]string{
+				service.BetaAnnotationExternalTraffic:     service.AnnotationValueExternalTrafficLocal,
+				service.BetaAnnotationHealthCheckNodePort: "345",
+			}
+			svc.Spec.Type = api.ServiceTypeLoadBalancer
+			svc.Spec.ClusterIP = "172.16.55.12"
+			svc.Spec.LoadBalancerIP = "5.6.7.8"
+			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "foobar2", "UDP", 8677, 30063, 7002)
+			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "baz", "UDP", 8678, 30064, 7003)
+			svc.Status.LoadBalancer = api.LoadBalancerStatus{
+				Ingress: []api.LoadBalancerIngress{
+					{IP: "10.1.2.3"},
+				},
+			}
+		}),
+	}
+
+	serviceMap, hcAdd, hcDel, staleUDPServices := buildServiceMap(services, make(proxyServiceMap))
+	if len(serviceMap) != 8 {
+		t.Errorf("expected service map length 8, got %v", serviceMap)
+	}
+
+	// The only-local-loadbalancer ones get added
+	if len(hcAdd) != 2 {
+		t.Errorf("expected healthcheck add length 2, got %v", hcAdd)
+	} else {
+		for _, hc := range hcAdd {
+			if hc.namespace.Namespace != "somewhere" || hc.namespace.Name != "only-local-load-balancer" {
+				t.Errorf("unexpected healthcheck listener added: %v", hc)
+			}
+		}
+	}
+
+	// All the rest get deleted
+	if len(hcDel) != 6 {
+		t.Errorf("expected healthcheck del length 6, got %v", hcDel)
+	} else {
+		for _, hc := range hcDel {
+			if hc.namespace.Namespace == "somewhere" && hc.namespace.Name == "only-local-load-balancer" {
+				t.Errorf("unexpected healthcheck listener deleted: %v", hc)
+			}
+		}
+	}
+
+	if len(staleUDPServices) != 0 {
+		// Services only added, so nothing stale yet
+		t.Errorf("expected stale UDP services length 0, got %d", len(staleUDPServices))
+	}
+
+	// Remove some stuff
+	services = []api.Service{services[0]}
+	services[0].Spec.Ports = []api.ServicePort{services[0].Spec.Ports[1]}
+	serviceMap, hcAdd, hcDel, staleUDPServices = buildServiceMap(services, serviceMap)
+	if len(serviceMap) != 1 {
+		t.Errorf("expected service map length 1, got %v", serviceMap)
+	}
+
+	if len(hcAdd) != 0 {
+		t.Errorf("expected healthcheck add length 1, got %v", hcAdd)
+	}
+
+	// The only OnlyLocal annotation was removed above, so we expect a delete now.
+	// FIXME: Since the BetaAnnotationHealthCheckNodePort is the same for all
+	// ServicePorts, we'll get one delete per ServicePort, even though they all
+	// contain the same information
+	if len(hcDel) != 2 {
+		t.Errorf("expected healthcheck del length 2, got %v", hcDel)
+	} else {
+		for _, hc := range hcDel {
+			if hc.namespace.Namespace != "somewhere" || hc.namespace.Name != "only-local-load-balancer" {
+				t.Errorf("unexpected healthcheck listener deleted: %v", hc)
+			}
+		}
+	}
+
+	// All services but one were deleted. While you'd expect only the ClusterIPs
+	// from the three deleted services here, we still have the ClusterIP for
+	// the not-deleted service, because one of it's ServicePorts was deleted.
+	expectedStaleUDPServices := []string{"172.16.55.10", "172.16.55.4", "172.16.55.11", "172.16.55.12"}
+	if len(staleUDPServices) != len(expectedStaleUDPServices) {
+		t.Errorf("expected stale UDP services length %d, got %v", len(expectedStaleUDPServices), staleUDPServices.List())
+	}
+	for _, ip := range expectedStaleUDPServices {
+		if !staleUDPServices.Has(ip) {
+			t.Errorf("expected stale UDP service service %s", ip)
+		}
+	}
+}
+
+func TestBuildServiceMapServiceHeadless(t *testing.T) {
+	services := []api.Service{
+		makeTestService("somewhere-else", "headless", func(svc *api.Service) {
+			svc.Spec.Type = api.ServiceTypeClusterIP
+			svc.Spec.ClusterIP = api.ClusterIPNone
+			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "rpc", "UDP", 1234, 0, 0)
+		}),
+	}
+
+	// Headless service should be ignored
+	serviceMap, hcAdd, hcDel, staleUDPServices := buildServiceMap(services, make(proxyServiceMap))
+	if len(serviceMap) != 0 {
+		t.Errorf("expected service map length 0, got %d", len(serviceMap))
+	}
+
+	// No proxied services, so no healthchecks
+	if len(hcAdd) != 0 {
+		t.Errorf("expected healthcheck add length 0, got %d", len(hcAdd))
+	}
+	if len(hcDel) != 0 {
+		t.Errorf("expected healthcheck del length 0, got %d", len(hcDel))
+	}
+
+	if len(staleUDPServices) != 0 {
+		t.Errorf("expected stale UDP services length 0, got %d", len(staleUDPServices))
+	}
+}
+
+func TestBuildServiceMapServiceTypeExternalName(t *testing.T) {
+	services := []api.Service{
+		makeTestService("somewhere-else", "external-name", func(svc *api.Service) {
+			svc.Spec.Type = api.ServiceTypeExternalName
+			svc.Spec.ClusterIP = "172.16.55.4" // Should be ignored
+			svc.Spec.ExternalName = "foo2.bar.com"
+			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "blah", "UDP", 1235, 5321, 0)
+		}),
+	}
+
+	serviceMap, hcAdd, hcDel, staleUDPServices := buildServiceMap(services, make(proxyServiceMap))
+	if len(serviceMap) != 0 {
+		t.Errorf("expected service map length 0, got %v", serviceMap)
+	}
+	// No proxied services, so no healthchecks
+	if len(hcAdd) != 0 {
+		t.Errorf("expected healthcheck add length 0, got %v", hcAdd)
+	}
+	if len(hcDel) != 0 {
+		t.Errorf("expected healthcheck del length 0, got %v", hcDel)
+	}
+	if len(staleUDPServices) != 0 {
+		t.Errorf("expected stale UDP services length 0, got %v", staleUDPServices)
+	}
+}
+
+func TestBuildServiceMapServiceUpdate(t *testing.T) {
+	first := []api.Service{
+		makeTestService("somewhere", "some-service", func(svc *api.Service) {
+			svc.Spec.Type = api.ServiceTypeClusterIP
+			svc.Spec.ClusterIP = "172.16.55.4"
+			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "something", "UDP", 1234, 4321, 0)
+			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "somethingelse", "TCP", 1235, 5321, 0)
+		}),
+	}
+
+	second := []api.Service{
+		makeTestService("somewhere", "some-service", func(svc *api.Service) {
+			svc.ObjectMeta.Annotations = map[string]string{
+				service.BetaAnnotationExternalTraffic:     service.AnnotationValueExternalTrafficLocal,
+				service.BetaAnnotationHealthCheckNodePort: "345",
+			}
+			svc.Spec.Type = api.ServiceTypeLoadBalancer
+			svc.Spec.ClusterIP = "172.16.55.4"
+			svc.Spec.LoadBalancerIP = "5.6.7.8"
+			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "something", "UDP", 1234, 4321, 7002)
+			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "somethingelse", "TCP", 1235, 5321, 7003)
+			svc.Status.LoadBalancer = api.LoadBalancerStatus{
+				Ingress: []api.LoadBalancerIngress{
+					{IP: "10.1.2.3"},
+				},
+			}
+		}),
+	}
+
+	serviceMap, hcAdd, hcDel, staleUDPServices := buildServiceMap(first, make(proxyServiceMap))
+	if len(serviceMap) != 2 {
+		t.Errorf("expected service map length 2, got %v", serviceMap)
+	}
+	if len(hcAdd) != 0 {
+		t.Errorf("expected healthcheck add length 0, got %v", hcAdd)
+	}
+	if len(hcDel) != 2 {
+		t.Errorf("expected healthcheck del length 2, got %v", hcDel)
+	}
+	if len(staleUDPServices) != 0 {
+		// Services only added, so nothing stale yet
+		t.Errorf("expected stale UDP services length 0, got %d", len(staleUDPServices))
+	}
+
+	// Change service to load-balancer
+	serviceMap, hcAdd, hcDel, staleUDPServices = buildServiceMap(second, serviceMap)
+	if len(serviceMap) != 2 {
+		t.Errorf("expected service map length 2, got %v", serviceMap)
+	}
+	if len(hcAdd) != 2 {
+		t.Errorf("expected healthcheck add length 2, got %v", hcAdd)
+	}
+	if len(hcDel) != 0 {
+		t.Errorf("expected healthcheck add length 2, got %v", hcDel)
+	}
+	if len(staleUDPServices) != 0 {
+		t.Errorf("expected stale UDP services length 0, got %v", staleUDPServices.List())
+	}
+
+	// No change; make sure the service map stays the same and there are
+	// no health-check changes
+	serviceMap, hcAdd, hcDel, staleUDPServices = buildServiceMap(second, serviceMap)
+	if len(serviceMap) != 2 {
+		t.Errorf("expected service map length 2, got %v", serviceMap)
+	}
+	if len(hcAdd) != 0 {
+		t.Errorf("expected healthcheck add length 0, got %v", hcAdd)
+	}
+	if len(hcDel) != 0 {
+		t.Errorf("expected healthcheck add length 2, got %v", hcDel)
+	}
+	if len(staleUDPServices) != 0 {
+		t.Errorf("expected stale UDP services length 0, got %v", staleUDPServices.List())
+	}
+
+	// And back to ClusterIP
+	serviceMap, hcAdd, hcDel, staleUDPServices = buildServiceMap(first, serviceMap)
+	if len(serviceMap) != 2 {
+		t.Errorf("expected service map length 2, got %v", serviceMap)
+	}
+	if len(hcAdd) != 0 {
+		t.Errorf("expected healthcheck add length 0, got %v", hcAdd)
+	}
+	if len(hcDel) != 2 {
+		t.Errorf("expected healthcheck del length 2, got %v", hcDel)
+	}
+	if len(staleUDPServices) != 0 {
+		// Services only added, so nothing stale yet
+		t.Errorf("expected stale UDP services length 0, got %d", len(staleUDPServices))
 	}
 }
 

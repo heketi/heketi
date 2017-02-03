@@ -4,10 +4,8 @@ licenses(["notice"])
 
 load(
     "@io_bazel_rules_go//go:def.bzl",
-    "go_binary",
     "go_library",
     "go_test",
-    "cgo_library",
 )
 
 go_library(
@@ -19,7 +17,25 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = ["token_test.go"],
-    library = "go_default_library",
+    args = ["--kubeadm-path=../kubeadm"],
+    data = ["//cmd/kubeadm"],
+    library = ":go_default_library",
+    tags = [
+        "automanaged",
+        "integration",
+        "skip",
+    ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
     tags = ["automanaged"],
-    deps = [],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [":package-srcs"],
+    tags = ["automanaged"],
 )

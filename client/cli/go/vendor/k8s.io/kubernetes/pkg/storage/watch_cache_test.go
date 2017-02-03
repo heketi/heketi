@@ -21,20 +21,23 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/errors"
-	"k8s.io/kubernetes/pkg/api/unversioned"
-	"k8s.io/kubernetes/pkg/client/cache"
-	"k8s.io/kubernetes/pkg/runtime"
-	"k8s.io/kubernetes/pkg/util/clock"
-	"k8s.io/kubernetes/pkg/util/sets"
-	"k8s.io/kubernetes/pkg/util/wait"
-	"k8s.io/kubernetes/pkg/watch"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/clock"
 )
 
 func makeTestPod(name string, resourceVersion uint64) *api.Pod {
 	return &api.Pod{
-		ObjectMeta: api.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       "ns",
 			Name:            name,
 			ResourceVersion: strconv.FormatUint(resourceVersion, 10),
@@ -47,7 +50,10 @@ func newTestWatchCache(capacity int) *watchCache {
 	keyFunc := func(obj runtime.Object) (string, error) {
 		return NamespaceKeyFunc("prefix", obj)
 	}
-	wc := newWatchCache(capacity, keyFunc)
+	getAttrsFunc := func(obj runtime.Object) (labels.Set, fields.Set, error) {
+		return nil, nil, nil
+	}
+	wc := newWatchCache(capacity, keyFunc, getAttrsFunc)
 	wc.clock = clock.NewFakeClock(time.Now())
 	return wc
 }
@@ -63,7 +69,7 @@ func TestWatchCacheBasic(t *testing.T) {
 	if item, ok, _ := store.Get(pod1); !ok {
 		t.Errorf("didn't find pod")
 	} else {
-		if !api.Semantic.DeepEqual(&storeElement{Key: "prefix/ns/pod", Object: pod1}, item) {
+		if !apiequality.Semantic.DeepEqual(&storeElement{Key: "prefix/ns/pod", Object: pod1}, item) {
 			t.Errorf("expected %v, got %v", pod1, item)
 		}
 	}
@@ -74,7 +80,7 @@ func TestWatchCacheBasic(t *testing.T) {
 	if item, ok, _ := store.Get(pod2); !ok {
 		t.Errorf("didn't find pod")
 	} else {
-		if !api.Semantic.DeepEqual(&storeElement{Key: "prefix/ns/pod", Object: pod2}, item) {
+		if !apiequality.Semantic.DeepEqual(&storeElement{Key: "prefix/ns/pod", Object: pod2}, item) {
 			t.Errorf("expected %v, got %v", pod1, item)
 		}
 	}
@@ -149,7 +155,7 @@ func TestEvents(t *testing.T) {
 			t.Errorf("unexpected event type: %v", result[0].Type)
 		}
 		pod := makeTestPod("pod", uint64(3))
-		if !api.Semantic.DeepEqual(pod, result[0].Object) {
+		if !apiequality.Semantic.DeepEqual(pod, result[0].Object) {
 			t.Errorf("unexpected item: %v, expected: %v", result[0].Object, pod)
 		}
 		if result[0].PrevObject != nil {
@@ -180,11 +186,11 @@ func TestEvents(t *testing.T) {
 				t.Errorf("unexpected event type: %v", result[i].Type)
 			}
 			pod := makeTestPod("pod", uint64(i+4))
-			if !api.Semantic.DeepEqual(pod, result[i].Object) {
+			if !apiequality.Semantic.DeepEqual(pod, result[i].Object) {
 				t.Errorf("unexpected item: %v, expected: %v", result[i].Object, pod)
 			}
 			prevPod := makeTestPod("pod", uint64(i+3))
-			if !api.Semantic.DeepEqual(prevPod, result[i].PrevObject) {
+			if !apiequality.Semantic.DeepEqual(prevPod, result[i].PrevObject) {
 				t.Errorf("unexpected item: %v, expected: %v", result[i].PrevObject, prevPod)
 			}
 		}
@@ -211,7 +217,7 @@ func TestEvents(t *testing.T) {
 		}
 		for i := 0; i < 5; i++ {
 			pod := makeTestPod("pod", uint64(i+5))
-			if !api.Semantic.DeepEqual(pod, result[i].Object) {
+			if !apiequality.Semantic.DeepEqual(pod, result[i].Object) {
 				t.Errorf("unexpected item: %v, expected: %v", result[i].Object, pod)
 			}
 		}
@@ -232,11 +238,11 @@ func TestEvents(t *testing.T) {
 			t.Errorf("unexpected event type: %v", result[0].Type)
 		}
 		pod := makeTestPod("pod", uint64(10))
-		if !api.Semantic.DeepEqual(pod, result[0].Object) {
+		if !apiequality.Semantic.DeepEqual(pod, result[0].Object) {
 			t.Errorf("unexpected item: %v, expected: %v", result[0].Object, pod)
 		}
 		prevPod := makeTestPod("pod", uint64(9))
-		if !api.Semantic.DeepEqual(prevPod, result[0].PrevObject) {
+		if !apiequality.Semantic.DeepEqual(prevPod, result[0].PrevObject) {
 			t.Errorf("unexpected item: %v, expected: %v", result[0].PrevObject, prevPod)
 		}
 	}
@@ -282,7 +288,7 @@ func TestWaitUntilFreshAndGet(t *testing.T) {
 	if !exists {
 		t.Fatalf("no results returned: %#v", obj)
 	}
-	if !api.Semantic.DeepEqual(&storeElement{Key: "prefix/ns/bar", Object: makeTestPod("bar", 5)}, obj) {
+	if !apiequality.Semantic.DeepEqual(&storeElement{Key: "prefix/ns/bar", Object: makeTestPod("bar", 5)}, obj) {
 		t.Errorf("unexpected element returned: %#v", obj)
 	}
 }
@@ -296,7 +302,7 @@ func TestWaitUntilFreshAndListTimeout(t *testing.T) {
 		for !fc.HasWaiters() {
 			time.Sleep(time.Millisecond)
 		}
-		fc.Step(MaximumListWait)
+		fc.Step(blockTimeout)
 
 		// Add an object to make sure the test would
 		// eventually fail instead of just waiting
@@ -312,14 +318,14 @@ func TestWaitUntilFreshAndListTimeout(t *testing.T) {
 }
 
 type testLW struct {
-	ListFunc  func(options api.ListOptions) (runtime.Object, error)
-	WatchFunc func(options api.ListOptions) (watch.Interface, error)
+	ListFunc  func(options metav1.ListOptions) (runtime.Object, error)
+	WatchFunc func(options metav1.ListOptions) (watch.Interface, error)
 }
 
-func (t *testLW) List(options api.ListOptions) (runtime.Object, error) {
+func (t *testLW) List(options metav1.ListOptions) (runtime.Object, error) {
 	return t.ListFunc(options)
 }
-func (t *testLW) Watch(options api.ListOptions) (watch.Interface, error) {
+func (t *testLW) Watch(options metav1.ListOptions) (watch.Interface, error) {
 	return t.WatchFunc(options)
 }
 
@@ -337,13 +343,13 @@ func TestReflectorForWatchCache(t *testing.T) {
 	}
 
 	lw := &testLW{
-		WatchFunc: func(options api.ListOptions) (watch.Interface, error) {
+		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 			fw := watch.NewFake()
 			go fw.Stop()
 			return fw, nil
 		},
-		ListFunc: func(options api.ListOptions) (runtime.Object, error) {
-			return &api.PodList{ListMeta: unversioned.ListMeta{ResourceVersion: "10"}}, nil
+		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			return &api.PodList{ListMeta: metav1.ListMeta{ResourceVersion: "10"}}, nil
 		},
 	}
 	r := cache.NewReflector(lw, &api.Pod{}, store, 0)

@@ -33,7 +33,7 @@ type getCoreImageTest struct {
 const testversion = "1"
 
 func TestGetCoreImage(t *testing.T) {
-	var tokenTest = []struct {
+	var imageTest = []struct {
 		t        getCoreImageTest
 		expected string
 	}{
@@ -64,12 +64,12 @@ func TestGetCoreImage(t *testing.T) {
 			fmt.Sprintf("%s/%s-%s:%s", gcrPrefix, "kube-proxy", runtime.GOARCH, testversion),
 		},
 	}
-	for _, rt := range tokenTest {
-		actual := GetCoreImage(rt.t.i, rt.t.c, rt.t.o)
-		if actual != rt.expected {
+	for _, it := range imageTest {
+		actual := GetCoreImage(it.t.i, it.t.c, it.t.o)
+		if actual != it.expected {
 			t.Errorf(
 				"failed GetCoreImage:\n\texpected: %s\n\t  actual: %s",
-				rt.expected,
+				it.expected,
 				actual,
 			)
 		}
@@ -77,34 +77,34 @@ func TestGetCoreImage(t *testing.T) {
 }
 
 func TestGetAddonImage(t *testing.T) {
-	var tokenTest = []struct {
+	var imageTest = []struct {
 		t        string
 		expected string
 	}{
 		{"matches nothing", ""},
 		{
 			KubeDNSImage,
-			fmt.Sprintf("%s/%s-%s:%s", gcrPrefix, "kubedns", runtime.GOARCH, kubeDNSVersion),
+			fmt.Sprintf("%s/%s-%s:%s", gcrPrefix, KubeDNSImage, runtime.GOARCH, kubeDNSVersion),
 		},
 		{
 			KubeDNSmasqImage,
-			fmt.Sprintf("%s/%s-%s:%s", gcrPrefix, "kube-dnsmasq", runtime.GOARCH, dnsmasqVersion),
+			fmt.Sprintf("%s/%s-%s:%s", gcrPrefix, KubeDNSmasqImage, runtime.GOARCH, kubeDNSVersion),
 		},
 		{
-			KubeExechealthzImage,
-			fmt.Sprintf("%s/%s-%s:%s", gcrPrefix, "exechealthz", runtime.GOARCH, exechealthzVersion),
+			KubeDNSSidecarImage,
+			fmt.Sprintf("%s/%s-%s:%s", gcrPrefix, KubeDNSSidecarImage, runtime.GOARCH, kubeDNSVersion),
 		},
 		{
 			Pause,
-			fmt.Sprintf("%s/%s-%s:%s", gcrPrefix, "pause", runtime.GOARCH, pauseVersion),
+			fmt.Sprintf("%s/%s-%s:%s", gcrPrefix, Pause, runtime.GOARCH, pauseVersion),
 		},
 	}
-	for _, rt := range tokenTest {
-		actual := GetAddonImage(rt.t)
-		if actual != rt.expected {
+	for _, it := range imageTest {
+		actual := GetAddonImage(it.t)
+		if actual != it.expected {
 			t.Errorf(
-				"failed GetCoreImage:\n\texpected: %s\n\t  actual: %s",
-				rt.expected,
+				"failed GetAddonImage:\n\texpected: %s\n\t  actual: %s",
+				it.expected,
 				actual,
 			)
 		}

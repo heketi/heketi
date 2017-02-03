@@ -24,51 +24,98 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/errors"
-	"k8s.io/kubernetes/pkg/api/meta"
-	"k8s.io/kubernetes/pkg/api/testapi"
-	apitesting "k8s.io/kubernetes/pkg/api/testing"
-	"k8s.io/kubernetes/pkg/api/unversioned"
-	"k8s.io/kubernetes/pkg/fields"
-	"k8s.io/kubernetes/pkg/labels"
-	"k8s.io/kubernetes/pkg/runtime"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/storage"
 	etcdstorage "k8s.io/kubernetes/pkg/storage/etcd"
 	"k8s.io/kubernetes/pkg/storage/etcd/etcdtest"
 	etcdtesting "k8s.io/kubernetes/pkg/storage/etcd/testing"
-	"k8s.io/kubernetes/pkg/util/sets"
-	"k8s.io/kubernetes/pkg/util/wait"
-	"k8s.io/kubernetes/pkg/watch"
+	"k8s.io/kubernetes/pkg/storage/etcd3"
 
 	"golang.org/x/net/context"
+
+	_ "k8s.io/client-go/pkg/api/install"
 )
 
+func DeepEqualSafePodSpec() api.PodSpec {
+	grace := int64(30)
+	return api.PodSpec{
+		RestartPolicy:                 api.RestartPolicyAlways,
+		DNSPolicy:                     api.DNSClusterFirst,
+		TerminationGracePeriodSeconds: &grace,
+		SecurityContext:               &api.PodSecurityContext{},
+		SchedulerName:                 api.DefaultSchedulerName,
+	}
+}
+
+// GetAttrs returns labels and fields of a given object for filtering purposes.
+func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, error) {
+	pod, ok := obj.(*api.Pod)
+	if !ok {
+		return nil, nil, fmt.Errorf("not a pod")
+	}
+	return labels.Set(pod.ObjectMeta.Labels), PodToSelectableFields(pod), nil
+}
+
+// PodToSelectableFields returns a field set that represents the object
+// TODO: fields are not labels, and the validation rules for them do not apply.
+func PodToSelectableFields(pod *api.Pod) fields.Set {
+	// The purpose of allocation with a given number of elements is to reduce
+	// amount of allocations needed to create the fields.Set. If you add any
+	// field here or the number of object-meta related fields changes, this should
+	// be adjusted.
+	podSpecificFieldsSet := make(fields.Set, 5)
+	podSpecificFieldsSet["spec.nodeName"] = pod.Spec.NodeName
+	podSpecificFieldsSet["spec.restartPolicy"] = string(pod.Spec.RestartPolicy)
+	podSpecificFieldsSet["status.phase"] = string(pod.Status.Phase)
+	return AddObjectMetaFieldsSet(podSpecificFieldsSet, &pod.ObjectMeta, true)
+}
+
+func AddObjectMetaFieldsSet(source fields.Set, objectMeta *metav1.ObjectMeta, hasNamespaceField bool) fields.Set {
+	source["metadata.name"] = objectMeta.Name
+	if hasNamespaceField {
+		source["metadata.namespace"] = objectMeta.Namespace
+	}
+	return source
+}
+
 func newEtcdTestStorage(t *testing.T, codec runtime.Codec, prefix string) (*etcdtesting.EtcdTestServer, storage.Interface) {
-	server := etcdtesting.NewEtcdTestClientServer(t)
-	storage := etcdstorage.NewEtcdStorage(server.Client, codec, prefix, false, etcdtest.DeserializationCacheSize)
+	server, _ := etcdtesting.NewUnsecuredEtcd3TestClientServer(t)
+	storage := etcd3.New(server.V3Client, codec, prefix)
 	return server, storage
 }
 
-func newTestCacher(s storage.Interface) *storage.Cacher {
+func newTestCacher(s storage.Interface, cap int) *storage.Cacher {
 	prefix := "pods"
 	config := storage.CacherConfig{
-		CacheCapacity:  10,
+		CacheCapacity:  cap,
 		Storage:        s,
 		Versioner:      etcdstorage.APIObjectVersioner{},
+		Copier:         api.Scheme,
 		Type:           &api.Pod{},
 		ResourcePrefix: prefix,
 		KeyFunc:        func(obj runtime.Object) (string, error) { return storage.NamespaceKeyFunc(prefix, obj) },
+		GetAttrsFunc:   GetAttrs,
 		NewListFunc:    func() runtime.Object { return &api.PodList{} },
-		Codec:          testapi.Default.Codec(),
+		Codec:          api.Codecs.LegacyCodec(v1.SchemeGroupVersion),
 	}
 	return storage.NewCacherFromConfig(config)
 }
 
 func makeTestPod(name string) *api.Pod {
 	return &api.Pod{
-		ObjectMeta: api.ObjectMeta{Namespace: "ns", Name: name},
-		Spec:       apitesting.DeepEqualSafePodSpec(),
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: name},
+		Spec:       DeepEqualSafePodSpec(),
 	}
 }
 
@@ -81,22 +128,53 @@ func updatePod(t *testing.T, s storage.Interface, obj, old *api.Pod) *api.Pod {
 		}
 		return newObj.(*api.Pod), nil, nil
 	}
-	key := etcdtest.AddPrefix("pods/" + obj.Namespace + "/" + obj.Name)
+	key := "pods/" + obj.Namespace + "/" + obj.Name
 	if err := s.GuaranteedUpdate(context.TODO(), key, &api.Pod{}, old == nil, nil, updateFn); err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 	obj.ResourceVersion = ""
 	result := &api.Pod{}
-	if err := s.Get(context.TODO(), key, result, false); err != nil {
+	if err := s.Get(context.TODO(), key, "", result, false); err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 	return result
 }
 
-func TestList(t *testing.T) {
-	server, etcdStorage := newEtcdTestStorage(t, testapi.Default.Codec(), etcdtest.PathPrefix())
+func TestGet(t *testing.T) {
+	server, etcdStorage := newEtcdTestStorage(t, api.Codecs.LegacyCodec(v1.SchemeGroupVersion), etcdtest.PathPrefix())
 	defer server.Terminate(t)
-	cacher := newTestCacher(etcdStorage)
+	cacher := newTestCacher(etcdStorage, 10)
+	defer cacher.Stop()
+
+	podFoo := makeTestPod("foo")
+	fooCreated := updatePod(t, etcdStorage, podFoo, nil)
+
+	// We pass the ResourceVersion from the above Create() operation.
+	result := &api.Pod{}
+	if err := cacher.Get(context.TODO(), "pods/ns/foo", fooCreated.ResourceVersion, result, true); err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	if e, a := *fooCreated, *result; !reflect.DeepEqual(e, a) {
+		t.Errorf("Expected: %#v, got: %#v", e, a)
+	}
+
+	if err := cacher.Get(context.TODO(), "pods/ns/bar", fooCreated.ResourceVersion, result, true); err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	emptyPod := api.Pod{}
+	if e, a := emptyPod, *result; !reflect.DeepEqual(e, a) {
+		t.Errorf("Expected: %#v, got: %#v", e, a)
+	}
+
+	if err := cacher.Get(context.TODO(), "pods/ns/bar", fooCreated.ResourceVersion, result, false); !storage.IsNotFound(err) {
+		t.Errorf("Unexpected error: %v", err)
+	}
+}
+
+func TestList(t *testing.T) {
+	server, etcdStorage := newEtcdTestStorage(t, api.Codecs.LegacyCodec(v1.SchemeGroupVersion), etcdtest.PathPrefix())
+	defer server.Terminate(t)
+	cacher := newTestCacher(etcdStorage, 10)
 	defer cacher.Stop()
 
 	podFoo := makeTestPod("foo")
@@ -119,7 +197,7 @@ func TestList(t *testing.T) {
 	updatePod(t, etcdStorage, podFooNS2, nil)
 
 	deleted := api.Pod{}
-	if err := etcdStorage.Delete(context.TODO(), etcdtest.AddPrefix("pods/ns/bar"), &deleted, nil); err != nil {
+	if err := etcdStorage.Delete(context.TODO(), "pods/ns/bar", &deleted, nil); err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
 
@@ -153,7 +231,7 @@ func TestList(t *testing.T) {
 	for _, item := range result.Items {
 		// unset fields that are set by the infrastructure
 		item.ResourceVersion = ""
-		item.CreationTimestamp = unversioned.Time{}
+		item.CreationTimestamp = metav1.Time{}
 
 		if item.Namespace != "ns" {
 			t.Errorf("Unexpected namespace: %s", item.Namespace)
@@ -174,6 +252,29 @@ func TestList(t *testing.T) {
 	}
 }
 
+func TestInfiniteList(t *testing.T) {
+	server, etcdStorage := newEtcdTestStorage(t, api.Codecs.LegacyCodec(v1.SchemeGroupVersion), etcdtest.PathPrefix())
+	defer server.Terminate(t)
+	cacher := newTestCacher(etcdStorage, 10)
+	defer cacher.Stop()
+
+	podFoo := makeTestPod("foo")
+	fooCreated := updatePod(t, etcdStorage, podFoo, nil)
+
+	// Set up List at fooCreated.ResourceVersion + 10
+	rv, err := storage.ParseWatchResourceVersion(fooCreated.ResourceVersion)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	listRV := strconv.Itoa(int(rv + 10))
+
+	result := &api.PodList{}
+	err = cacher.List(context.TODO(), "pods/ns", listRV, storage.Everything, result)
+	if !errors.IsTimeout(err) {
+		t.Errorf("Unexpected error: %v", err)
+	}
+}
+
 func verifyWatchEvent(t *testing.T, w watch.Interface, eventType watch.EventType, eventObject runtime.Object) {
 	_, _, line, _ := goruntime.Caller(1)
 	select {
@@ -182,7 +283,7 @@ func verifyWatchEvent(t *testing.T, w watch.Interface, eventType watch.EventType
 			t.Logf("(called from line %d)", line)
 			t.Errorf("Expected: %s, got: %s", eventType, event.Type)
 		}
-		if e, a := eventObject, event.Object; !api.Semantic.DeepDerivative(e, a) {
+		if e, a := eventObject, event.Object; !apiequality.Semantic.DeepDerivative(e, a) {
 			t.Logf("(called from line %d)", line)
 			t.Errorf("Expected (%s): %#v, got: %#v", eventType, e, a)
 		}
@@ -206,11 +307,11 @@ func (self *injectListError) List(ctx context.Context, key string, resourceVersi
 }
 
 func TestWatch(t *testing.T) {
-	server, etcdStorage := newEtcdTestStorage(t, testapi.Default.Codec(), etcdtest.PathPrefix())
+	server, etcdStorage := newEtcdTestStorage(t, api.Codecs.LegacyCodec(v1.SchemeGroupVersion), etcdtest.PathPrefix())
 	// Inject one list error to make sure we test the relist case.
 	etcdStorage = &injectListError{errors: 1, Interface: etcdStorage}
 	defer server.Terminate(t)
-	cacher := newTestCacher(etcdStorage)
+	cacher := newTestCacher(etcdStorage, 3) // small capacity to trigger "too old version" error
 	defer cacher.Stop()
 
 	podFoo := makeTestPod("foo")
@@ -283,9 +384,9 @@ func TestWatch(t *testing.T) {
 }
 
 func TestWatcherTimeout(t *testing.T) {
-	server, etcdStorage := newEtcdTestStorage(t, testapi.Default.Codec(), etcdtest.PathPrefix())
+	server, etcdStorage := newEtcdTestStorage(t, api.Codecs.LegacyCodec(v1.SchemeGroupVersion), etcdtest.PathPrefix())
 	defer server.Terminate(t)
-	cacher := newTestCacher(etcdStorage)
+	cacher := newTestCacher(etcdStorage, 10)
 	defer cacher.Stop()
 
 	// initialVersion is used to initate the watcher at the beginning of the world,
@@ -296,12 +397,15 @@ func TestWatcherTimeout(t *testing.T) {
 	}
 	startVersion := strconv.Itoa(int(initialVersion))
 
-	// Create a watcher that will not be reading any result.
-	watcher, err := cacher.WatchList(context.TODO(), "pods/ns", startVersion, storage.Everything)
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
+	// Create a number of watchers that will not be reading any result.
+	nonReadingWatchers := 50
+	for i := 0; i < nonReadingWatchers; i++ {
+		watcher, err := cacher.WatchList(context.TODO(), "pods/ns", startVersion, storage.Everything)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+		defer watcher.Stop()
 	}
-	defer watcher.Stop()
 
 	// Create a second watcher that will be reading result.
 	readingWatcher, err := cacher.WatchList(context.TODO(), "pods/ns", startVersion, storage.Everything)
@@ -310,17 +414,21 @@ func TestWatcherTimeout(t *testing.T) {
 	}
 	defer readingWatcher.Stop()
 
+	startTime := time.Now()
 	for i := 1; i <= 22; i++ {
 		pod := makeTestPod(strconv.Itoa(i))
 		_ = updatePod(t, etcdStorage, pod, nil)
 		verifyWatchEvent(t, readingWatcher, watch.Added, pod)
 	}
+	if time.Since(startTime) > time.Duration(250*nonReadingWatchers)*time.Millisecond {
+		t.Errorf("waiting for events took too long: %v", time.Since(startTime))
+	}
 }
 
 func TestFiltering(t *testing.T) {
-	server, etcdStorage := newEtcdTestStorage(t, testapi.Default.Codec(), etcdtest.PathPrefix())
+	server, etcdStorage := newEtcdTestStorage(t, api.Codecs.LegacyCodec(v1.SchemeGroupVersion), etcdtest.PathPrefix())
 	defer server.Terminate(t)
-	cacher := newTestCacher(etcdStorage)
+	cacher := newTestCacher(etcdStorage, 10)
 	defer cacher.Stop()
 
 	// Ensure that the cacher is initialized, before creating any pods,
@@ -351,7 +459,7 @@ func TestFiltering(t *testing.T) {
 	_ = updatePod(t, etcdStorage, podFooPrime, fooUnfiltered)
 
 	deleted := api.Pod{}
-	if err := etcdStorage.Delete(context.TODO(), etcdtest.AddPrefix("pods/ns/foo"), &deleted, nil); err != nil {
+	if err := etcdStorage.Delete(context.TODO(), "pods/ns/foo", &deleted, nil); err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
 
@@ -380,9 +488,9 @@ func TestFiltering(t *testing.T) {
 }
 
 func TestStartingResourceVersion(t *testing.T) {
-	server, etcdStorage := newEtcdTestStorage(t, testapi.Default.Codec(), etcdtest.PathPrefix())
+	server, etcdStorage := newEtcdTestStorage(t, api.Codecs.LegacyCodec(v1.SchemeGroupVersion), etcdtest.PathPrefix())
 	defer server.Terminate(t)
-	cacher := newTestCacher(etcdStorage)
+	cacher := newTestCacher(etcdStorage, 10)
 	defer cacher.Stop()
 
 	// add 1 object
@@ -424,5 +532,46 @@ func TestStartingResourceVersion(t *testing.T) {
 		}
 	case <-time.After(wait.ForeverTestTimeout):
 		t.Errorf("timed out waiting for event")
+	}
+}
+
+func TestRandomWatchDeliver(t *testing.T) {
+	server, etcdStorage := newEtcdTestStorage(t, api.Codecs.LegacyCodec(v1.SchemeGroupVersion), etcdtest.PathPrefix())
+	defer server.Terminate(t)
+	cacher := newTestCacher(etcdStorage, 10)
+	defer cacher.Stop()
+
+	fooCreated := updatePod(t, etcdStorage, makeTestPod("foo"), nil)
+	rv, err := storage.ParseWatchResourceVersion(fooCreated.ResourceVersion)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	startVersion := strconv.Itoa(int(rv))
+
+	watcher, err := cacher.WatchList(context.TODO(), "pods/ns", startVersion, storage.Everything)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	// Now we can create exactly 21 events that should be delivered
+	// to the watcher, before it will completely block cacher and as
+	// a result will be dropped.
+	for i := 0; i < 21; i++ {
+		updatePod(t, etcdStorage, makeTestPod(fmt.Sprintf("foo-%d", i)), nil)
+	}
+
+	// Now stop the watcher and check if the consecutive events are being delivered.
+	watcher.Stop()
+
+	watched := 0
+	for {
+		event, ok := <-watcher.ResultChan()
+		if !ok {
+			break
+		}
+		if a, e := event.Object.(*api.Pod).Name, fmt.Sprintf("foo-%d", watched); e != a {
+			t.Errorf("Unexpected object watched: %s, expected %s", a, e)
+		}
+		watched++
 	}
 }

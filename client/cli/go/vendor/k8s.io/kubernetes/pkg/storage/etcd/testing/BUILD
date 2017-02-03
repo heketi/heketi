@@ -4,10 +4,7 @@ licenses(["notice"])
 
 load(
     "@io_bazel_rules_go//go:def.bzl",
-    "go_binary",
     "go_library",
-    "go_test",
-    "cgo_library",
 )
 
 go_library(
@@ -17,8 +14,6 @@ go_library(
     deps = [
         "//pkg/storage/etcd/etcdtest:go_default_library",
         "//pkg/storage/etcd/testing/testingcert:go_default_library",
-        "//pkg/storage/storagebackend:go_default_library",
-        "//pkg/util/wait:go_default_library",
         "//vendor:github.com/coreos/etcd/client",
         "//vendor:github.com/coreos/etcd/clientv3",
         "//vendor:github.com/coreos/etcd/etcdserver",
@@ -29,5 +24,23 @@ go_library(
         "//vendor:github.com/coreos/etcd/pkg/types",
         "//vendor:github.com/golang/glog",
         "//vendor:golang.org/x/net/context",
+        "//vendor:k8s.io/apimachinery/pkg/util/wait",
+        "//vendor:k8s.io/apiserver/pkg/storage/storagebackend",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//pkg/storage/etcd/testing/testingcert:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

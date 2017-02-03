@@ -45,13 +45,15 @@ type Zone interface {
 	Name() string
 	// ID returns the unique provider identifier for the zone
 	ID() string
-	// ResourceRecordsets returns the provider's ResourceRecordSets interface, or false if not supported.
+	// ResourceRecordSets returns the provider's ResourceRecordSets interface, or false if not supported.
 	ResourceRecordSets() (ResourceRecordSets, bool)
 }
 
 type ResourceRecordSets interface {
 	// List returns the ResourceRecordSets of the Zone, or an error if the list operation failed.
 	List() ([]ResourceRecordSet, error)
+	// Get returns the ResourceRecordSet with the name in the Zone. if the named resource record set does not exist, but no error occurred, the returned set, and error, are both nil.
+	Get(name string) (ResourceRecordSet, error)
 	// New allocates a new ResourceRecordSet, which can then be passed to ResourceRecordChangeset Add() or Remove()
 	// Arguments are as per the ResourceRecordSet interface below.
 	New(name string, rrdatas []string, ttl int64, rrstype rrstype.RrsType) ResourceRecordSet
@@ -68,6 +70,8 @@ type ResourceRecordChangeset interface {
 	Remove(ResourceRecordSet) ResourceRecordChangeset
 	// Apply applies the accumulated operations to the Zone.
 	Apply() error
+	// IsEmpty returns true if there are no accumulated operations.
+	IsEmpty() bool
 }
 
 type ResourceRecordSet interface {

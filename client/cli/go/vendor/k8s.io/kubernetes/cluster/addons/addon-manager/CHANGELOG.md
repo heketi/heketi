@@ -1,3 +1,15 @@
+### Version 6.3 (Fri January 27 2017 Lucas Käldström <lucas.kaldstrom@hotmail.co.uk>)
+ - Updated the arm base image to `armhf/busybox` and now using qemu v2.7 for emulation.
+
+### Version 6.2 (Thu January 12 2017 Zihong Zheng <zihongz@google.com>)
+ - Update kubectl to the stable version.
+
+### Version 6.1 (Tue November 29 2016 Zihong Zheng <zihongz@google.com>)
+ - Support pruning old Deployments.
+
+### Version 6.0 (Fri November 18 2016 Zihong Zheng <zihongz@google.com>)
+ - Upgrade Addon Manager to use `kubectl apply`.
+
 ### Version 5.2 (Wed October 26 2016 Zihong Zheng <zihongz@google.com>)
  - Added support for ConfigMap and upgraded kubectl version to v1.4.4 (pr #35255)
 

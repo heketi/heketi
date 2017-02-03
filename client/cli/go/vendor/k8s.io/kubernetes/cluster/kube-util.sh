@@ -35,15 +35,29 @@ fi
 
 # Federation utils
 
+# Sets the kubeconfig context value for the current cluster.
+#
+# Vars set:
+#   CLUSTER_CONTEXT
+function kubeconfig-federation-context() {
+  CLUSTER_CONTEXT="federation-e2e-${KUBERNETES_PROVIDER}-$zone"
+}
+
+
 # Should NOT be called within the global scope, unless setting the desired global zone vars
 # This function is currently NOT USED in the global scope
 function set-federation-zone-vars {
   zone="$1"
-  export OVERRIDE_CONTEXT="federation-e2e-${KUBERNETES_PROVIDER}-$zone"
+  kubeconfig-federation-context "${zone}"
+  export OVERRIDE_CONTEXT="${CLUSTER_CONTEXT}"
   echo "Setting zone vars to: $OVERRIDE_CONTEXT"
   if [[ "$KUBERNETES_PROVIDER" == "gce"  ]];then
+    # This needs a revamp, but for now e2e zone name is used as the unique
+    # cluster identifier in our e2e tests and we will continue to use that
+    # pattern.
+    export CLUSTER_NAME="${zone}"
 
-    export KUBE_GCE_ZONE="$zone"
+    export KUBE_GCE_ZONE="${zone}"
     # gcloud has a 61 character limit, and for firewall rules this
     # prefix gets appended to itself, with some extra information
     # need tot keep it short

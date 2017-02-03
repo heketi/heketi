@@ -20,13 +20,13 @@ import (
 	"errors"
 	"testing"
 
-	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/volume"
 	volumetest "k8s.io/kubernetes/pkg/volume/testing"
 
 	"github.com/golang/glog"
-	"k8s.io/kubernetes/pkg/types"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestGetDeviceName_Volume(t *testing.T) {
@@ -54,6 +54,27 @@ func TestGetDeviceName_PersistentVolume(t *testing.T) {
 	}
 	if deviceName != name {
 		t.Errorf("GetDeviceName error: expected %s, got %s", name, deviceName)
+	}
+}
+
+func TestGetDeviceMountPath(t *testing.T) {
+	name := "cinder-volume-id"
+	spec := createVolSpec(name, false)
+	rootDir := "/var/lib/kubelet/"
+	host := volumetest.NewFakeVolumeHost(rootDir, nil, nil)
+
+	attacher := &cinderDiskAttacher{
+		host: host,
+	}
+
+	//test the path
+	path, err := attacher.GetDeviceMountPath(spec)
+	if err != nil {
+		t.Errorf("Get device mount path error")
+	}
+	expectedPath := rootDir + "plugins/kubernetes.io/cinder/mounts/" + name
+	if path != expectedPath {
+		t.Errorf("Device mount path error: expected %s, got %s ", expectedPath, path)
 	}
 }
 
@@ -219,7 +240,7 @@ func TestAttachDetach(t *testing.T) {
 // newPlugin creates a new gcePersistentDiskPlugin with fake cloud, NewAttacher
 // and NewDetacher won't work.
 func newPlugin() *cinderPlugin {
-	host := volumetest.NewFakeVolumeHost("/tmp", nil, nil, "")
+	host := volumetest.NewFakeVolumeHost("/tmp", nil, nil)
 	plugins := ProbeVolumePlugins()
 	plugin := plugins[0]
 	plugin.Init(host)
@@ -241,9 +262,9 @@ func newDetacher(testcase *testcase) *cinderDiskDetacher {
 
 func createVolSpec(name string, readOnly bool) *volume.Spec {
 	return &volume.Spec{
-		Volume: &api.Volume{
-			VolumeSource: api.VolumeSource{
-				Cinder: &api.CinderVolumeSource{
+		Volume: &v1.Volume{
+			VolumeSource: v1.VolumeSource{
+				Cinder: &v1.CinderVolumeSource{
 					VolumeID: name,
 					ReadOnly: readOnly,
 				},
@@ -254,10 +275,10 @@ func createVolSpec(name string, readOnly bool) *volume.Spec {
 
 func createPVSpec(name string, readOnly bool) *volume.Spec {
 	return &volume.Spec{
-		PersistentVolume: &api.PersistentVolume{
-			Spec: api.PersistentVolumeSpec{
-				PersistentVolumeSource: api.PersistentVolumeSource{
-					Cinder: &api.CinderVolumeSource{
+		PersistentVolume: &v1.PersistentVolume{
+			Spec: v1.PersistentVolumeSpec{
+				PersistentVolumeSource: v1.PersistentVolumeSource{
+					Cinder: &v1.CinderVolumeSource{
 						VolumeID: name,
 						ReadOnly: readOnly,
 					},
@@ -430,8 +451,8 @@ type instances struct {
 	instanceID string
 }
 
-func (instances *instances) NodeAddresses(name types.NodeName) ([]api.NodeAddress, error) {
-	return []api.NodeAddress{}, errors.New("Not implemented")
+func (instances *instances) NodeAddresses(name types.NodeName) ([]v1.NodeAddress, error) {
+	return []v1.NodeAddress{}, errors.New("Not implemented")
 }
 
 func (instances *instances) ExternalID(name types.NodeName) (string, error) {

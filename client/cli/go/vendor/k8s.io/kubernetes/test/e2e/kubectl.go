@@ -18,6 +18,7 @@ package e2e
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -41,22 +42,26 @@ import (
 	"github.com/elazarl/goproxy"
 	"github.com/ghodss/yaml"
 
-	"k8s.io/kubernetes/pkg/api"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	utilnet "k8s.io/apimachinery/pkg/util/net"
+	"k8s.io/apimachinery/pkg/util/uuid"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apiserver/pkg/authentication/serviceaccount"
 	"k8s.io/kubernetes/pkg/api/annotations"
-	apierrs "k8s.io/kubernetes/pkg/api/errors"
-	"k8s.io/kubernetes/pkg/api/resource"
-	"k8s.io/kubernetes/pkg/api/unversioned"
-	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	"k8s.io/kubernetes/pkg/api/v1"
+	rbacv1beta1 "k8s.io/kubernetes/pkg/apis/rbac/v1beta1"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/pkg/controller"
+	genericregistry "k8s.io/kubernetes/pkg/genericapiserver/registry/generic/registry"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"k8s.io/kubernetes/pkg/labels"
-	"k8s.io/kubernetes/pkg/registry/generic/registry"
 	uexec "k8s.io/kubernetes/pkg/util/exec"
-	utilnet "k8s.io/kubernetes/pkg/util/net"
-	"k8s.io/kubernetes/pkg/util/uuid"
-	"k8s.io/kubernetes/pkg/util/wait"
-	"k8s.io/kubernetes/pkg/version"
+	utilversion "k8s.io/kubernetes/pkg/util/version"
 	"k8s.io/kubernetes/test/e2e/framework"
+	"k8s.io/kubernetes/test/e2e/generated"
 	testutils "k8s.io/kubernetes/test/utils"
 
 	. "github.com/onsi/ginkgo"
@@ -87,6 +92,7 @@ const (
 	runJobTimeout            = 5 * time.Minute
 	busyboxImage             = "gcr.io/google_containers/busybox:1.24"
 	nginxImage               = "gcr.io/google_containers/nginx-slim:0.7"
+	newNginxImage            = "gcr.io/google_containers/nginx-slim:0.8"
 	kubeCtlManifestPath      = "test/e2e/testing-manifests/kubectl"
 	redisControllerFilename  = "redis-master-controller.json"
 	redisServiceFilename     = "redis-master-service.json"
@@ -99,39 +105,39 @@ var (
 	// that rely on extended pod logging options to work on clusters before that.
 	//
 	// TODO(ihmccreery): remove once we don't care about v1.0 anymore, (tentatively in v1.3).
-	extendedPodLogFilterVersion = version.MustParse("v1.1.0")
+	extendedPodLogFilterVersion = utilversion.MustParseSemantic("v1.1.0")
 
 	// NodePorts were made optional in #12831 (v1.1.0) so we don't expect tests that used to
 	// require NodePorts but no longer include them to work on clusters before that.
 	//
 	// TODO(ihmccreery): remove once we don't care about v1.0 anymore, (tentatively in v1.3).
-	nodePortsOptionalVersion = version.MustParse("v1.1.0")
+	nodePortsOptionalVersion = utilversion.MustParseSemantic("v1.1.0")
 
 	// Jobs were introduced in v1.1, so we don't expect tests that rely on jobs to work on
 	// clusters before that.
 	//
 	// TODO(ihmccreery): remove once we don't care about v1.0 anymore, (tentatively in v1.3).
-	jobsVersion = version.MustParse("v1.1.0")
+	jobsVersion = utilversion.MustParseSemantic("v1.1.0")
 
 	// Deployments were introduced by default in v1.2, so we don't expect tests that rely on
 	// deployments to work on clusters before that.
 	//
 	// TODO(ihmccreery): remove once we don't care about v1.1 anymore, (tentatively in v1.4).
-	deploymentsVersion = version.MustParse("v1.2.0-alpha.7.726")
+	deploymentsVersion = utilversion.MustParseSemantic("v1.2.0-alpha.7.726")
 
 	// Pod probe parameters were introduced in #15967 (v1.2) so we don't expect tests that use
 	// these probe parameters to work on clusters before that.
 	//
 	// TODO(ihmccreery): remove once we don't care about v1.1 anymore, (tentatively in v1.4).
-	podProbeParametersVersion = version.MustParse("v1.2.0-alpha.4")
+	podProbeParametersVersion = utilversion.MustParseSemantic("v1.2.0-alpha.4")
 
 	// 'kubectl create quota' was introduced in #28351 (v1.4) so we don't expect tests that use
 	// 'kubectl create quota' to work on kubectl clients before that.
-	kubectlCreateQuotaVersion = version.MustParse("v1.4.0-alpha.2")
+	kubectlCreateQuotaVersion = utilversion.MustParseSemantic("v1.4.0-alpha.2")
 
 	// Returning container command exit codes in kubectl run/exec was introduced in #26541 (v1.4)
 	// so we don't expect tests that verifies return code to work on kubectl clients before that.
-	kubectlContainerExitCodeVersion = version.MustParse("v1.4.0-alpha.3")
+	kubectlContainerExitCodeVersion = utilversion.MustParseSemantic("v1.4.0-alpha.3")
 )
 
 // Stops everything from filePath from namespace ns and checks if everything matching selectors from the given namespace is correctly stopped.
@@ -149,15 +155,15 @@ func cleanupKubectlInputs(fileContents string, ns string, selectors ...string) {
 }
 
 func readTestFileOrDie(file string) []byte {
-	return framework.ReadOrDie(path.Join(kubeCtlManifestPath, file))
+	return generated.ReadOrDie(path.Join(kubeCtlManifestPath, file))
 }
 
 func runKubectlRetryOrDie(args ...string) string {
 	var err error
 	var output string
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 5; i++ {
 		output, err = framework.RunKubectl(args...)
-		if err == nil || !strings.Contains(err.Error(), registry.OptimisticLockErrorMsg) {
+		if err == nil || (!strings.Contains(err.Error(), genericregistry.OptimisticLockErrorMsg) && !strings.Contains(err.Error(), "Operation cannot be fulfilled")) {
 			break
 		}
 		time.Sleep(time.Second)
@@ -193,7 +199,7 @@ var _ = framework.KubeDescribe("Kubectl alpha client", func() {
 		})
 
 		AfterEach(func() {
-			framework.RunKubectlOrDie("delete", "scheduledjobs", sjName, nsFlag)
+			framework.RunKubectlOrDie("delete", "cronjobs", sjName, nsFlag)
 		})
 
 		It("should create a ScheduledJob", func() {
@@ -203,7 +209,7 @@ var _ = framework.KubeDescribe("Kubectl alpha client", func() {
 			framework.RunKubectlOrDie("run", sjName, "--restart=OnFailure", "--generator=scheduledjob/v2alpha1",
 				"--schedule="+schedule, "--image="+busyboxImage, nsFlag)
 			By("verifying the ScheduledJob " + sjName + " was created")
-			sj, err := c.Batch().ScheduledJobs(ns).Get(sjName)
+			sj, err := c.BatchV2alpha1().CronJobs(ns).Get(sjName, metav1.GetOptions{})
 			if err != nil {
 				framework.Failf("Failed getting ScheduledJob %s: %v", sjName, err)
 			}
@@ -214,8 +220,45 @@ var _ = framework.KubeDescribe("Kubectl alpha client", func() {
 			if containers == nil || len(containers) != 1 || containers[0].Image != busyboxImage {
 				framework.Failf("Failed creating ScheduledJob %s for 1 pod with expected image %s: %#v", sjName, busyboxImage, containers)
 			}
-			if sj.Spec.JobTemplate.Spec.Template.Spec.RestartPolicy != api.RestartPolicyOnFailure {
+			if sj.Spec.JobTemplate.Spec.Template.Spec.RestartPolicy != v1.RestartPolicyOnFailure {
 				framework.Failf("Failed creating a ScheduledJob with correct restart policy for --restart=OnFailure")
+			}
+		})
+	})
+
+	framework.KubeDescribe("Kubectl run CronJob", func() {
+		var nsFlag string
+		var cjName string
+
+		BeforeEach(func() {
+			nsFlag = fmt.Sprintf("--namespace=%v", ns)
+			cjName = "e2e-test-echo-cronjob"
+		})
+
+		AfterEach(func() {
+			framework.RunKubectlOrDie("delete", "cronjobs", cjName, nsFlag)
+		})
+
+		It("should create a CronJob", func() {
+			framework.SkipIfMissingResource(f.ClientPool, CronJobGroupVersionResource, f.Namespace.Name)
+
+			schedule := "*/5 * * * ?"
+			framework.RunKubectlOrDie("run", cjName, "--restart=OnFailure", "--generator=cronjob/v2alpha1",
+				"--schedule="+schedule, "--image="+busyboxImage, nsFlag)
+			By("verifying the CronJob " + cjName + " was created")
+			sj, err := c.BatchV2alpha1().CronJobs(ns).Get(cjName, metav1.GetOptions{})
+			if err != nil {
+				framework.Failf("Failed getting CronJob %s: %v", cjName, err)
+			}
+			if sj.Spec.Schedule != schedule {
+				framework.Failf("Failed creating a CronJob with correct schedule %s", schedule)
+			}
+			containers := sj.Spec.JobTemplate.Spec.Template.Spec.Containers
+			if containers == nil || len(containers) != 1 || containers[0].Image != busyboxImage {
+				framework.Failf("Failed creating CronJob %s for 1 pod with expected image %s: %#v", cjName, busyboxImage, containers)
+			}
+			if sj.Spec.JobTemplate.Spec.Template.Spec.RestartPolicy != v1.RestartPolicyOnFailure {
+				framework.Failf("Failed creating a CronJob with correct restart policy for --restart=OnFailure")
 			}
 		})
 	})
@@ -228,12 +271,13 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 	// Reustable cluster state function.  This won't be adversly affected by lazy initialization of framework.
 	clusterState := func() *framework.ClusterVerification {
 		return f.NewClusterVerification(
+			f.Namespace,
 			framework.PodStateVerification{
 				Selectors:   map[string]string{"app": "redis"},
-				ValidPhases: []api.PodPhase{api.PodRunning /*api.PodPending*/},
+				ValidPhases: []v1.PodPhase{v1.PodRunning /*v1.PodPending*/},
 			})
 	}
-	forEachPod := func(podFunc func(p api.Pod)) {
+	forEachPod := func(podFunc func(p v1.Pod)) {
 		clusterState().ForEach(podFunc)
 	}
 	var c clientset.Interface
@@ -251,7 +295,7 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 		pods, err := clusterState().WaitFor(atLeast, framework.PodStartTimeout)
 		if err != nil || len(pods) < atLeast {
 			// TODO: Generalize integrating debug info into these tests so we always get debug info when we need it
-			framework.DumpAllNamespaceInfo(c, f.ClientSet_1_5, ns)
+			framework.DumpAllNamespaceInfo(f.ClientSet, ns)
 			framework.Failf("Verified %v of %v pods , error : %v", len(pods), atLeast, err)
 		}
 	}
@@ -260,8 +304,8 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 		var nautilus, kitten []byte
 		BeforeEach(func() {
 			updateDemoRoot := "test/fixtures/doc-yaml/user-guide/update-demo"
-			nautilus = framework.ReadOrDie(filepath.Join(updateDemoRoot, "nautilus-rc.yaml"))
-			kitten = framework.ReadOrDie(filepath.Join(updateDemoRoot, "kitten-rc.yaml"))
+			nautilus = generated.ReadOrDie(filepath.Join(updateDemoRoot, "nautilus-rc.yaml"))
+			kitten = generated.ReadOrDie(filepath.Join(updateDemoRoot, "kitten-rc.yaml"))
 		})
 		It("should create and stop a replication controller [Conformance]", func() {
 			defer cleanupKubectlInputs(string(nautilus), ns, updateDemoSelector)
@@ -306,7 +350,7 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 				"examples/guestbook/redis-slave-deployment.yaml",
 				"examples/guestbook/redis-slave-service.yaml",
 			} {
-				contents := framework.ReadOrDie(gbAppFile)
+				contents := generated.ReadOrDie(gbAppFile)
 				run(string(contents))
 			}
 		}
@@ -332,7 +376,7 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 		var podPath []byte
 
 		BeforeEach(func() {
-			podPath = framework.ReadOrDie(path.Join(kubeCtlManifestPath, "pod-with-readiness-probe.yaml"))
+			podPath = generated.ReadOrDie(path.Join(kubeCtlManifestPath, "pod-with-readiness-probe.yaml"))
 			By(fmt.Sprintf("creating the pod from %v", string(podPath)))
 			framework.RunKubectlOrDieInput(string(podPath[:]), "create", "-f", "-", fmt.Sprintf("--namespace=%v", ns))
 			Expect(framework.CheckPodsRunningReady(c, ns, []string{simplePodName}, framework.PodStartTimeout)).To(BeTrue())
@@ -347,6 +391,14 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 			if e, a := "running in container", strings.TrimSpace(execOutput); e != a {
 				framework.Failf("Unexpected kubectl exec output. Wanted %q, got %q", e, a)
 			}
+
+			By("executing a very long command in the container")
+			veryLongData := make([]rune, 20000)
+			for i := 0; i < len(veryLongData); i++ {
+				veryLongData[i] = 'a'
+			}
+			execOutput = framework.RunKubectlOrDie("exec", fmt.Sprintf("--namespace=%v", ns), simplePodName, "echo", string(veryLongData))
+			Expect(string(veryLongData)).To(Equal(strings.TrimSpace(execOutput)), "Unexpected kubectl exec output")
 
 			By("executing a command in the container with noninteractive stdin")
 			execOutput = framework.NewKubectlCommand("exec", fmt.Sprintf("--namespace=%v", ns), "-i", simplePodName, "cat").
@@ -416,7 +468,7 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 
 			By("execing into a container with a successful command")
 			_, err := framework.NewKubectlCommand(nsFlag, "exec", "nginx", "--", "/bin/sh", "-c", "exit 0").Exec()
-			ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			By("execing into a container with a failing command")
 			_, err = framework.NewKubectlCommand(nsFlag, "exec", "nginx", "--", "/bin/sh", "-c", "exit 42").Exec()
@@ -426,7 +478,7 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 
 			By("running a successful command")
 			_, err = framework.NewKubectlCommand(nsFlag, "run", "-i", "--image="+busyboxImage, "--restart=Never", "success", "--", "/bin/sh", "-c", "exit 0").Exec()
-			ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			By("running a failing command")
 			_, err = framework.NewKubectlCommand(nsFlag, "run", "-i", "--image="+busyboxImage, "--restart=Never", "failure-1", "--", "/bin/sh", "-c", "exit 42").Exec()
@@ -438,20 +490,20 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 			_, err = framework.NewKubectlCommand(nsFlag, "run", "-i", "--image="+busyboxImage, "--restart=OnFailure", "failure-2", "--", "/bin/sh", "-c", "cat && exit 42").
 				WithStdinData("abcd1234").
 				Exec()
-			ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			By("running a failing command without --restart=Never, but with --rm")
 			_, err = framework.NewKubectlCommand(nsFlag, "run", "-i", "--image="+busyboxImage, "--restart=OnFailure", "--rm", "failure-3", "--", "/bin/sh", "-c", "cat && exit 42").
 				WithStdinData("abcd1234").
 				Exec()
-			ExpectNoError(err)
+			framework.ExpectNoError(err)
 			framework.WaitForPodToDisappear(f.ClientSet, ns, "failure-3", labels.Everything(), 2*time.Second, wait.ForeverTestTimeout)
 
 			By("running a failing command with --leave-stdin-open")
 			_, err = framework.NewKubectlCommand(nsFlag, "run", "-i", "--image="+busyboxImage, "--restart=Never", "failure-4", "--leave-stdin-open", "--", "/bin/sh", "-c", "exit 42").
 				WithStdinData("abcd1234").
 				Exec()
-			ExpectNoError(err)
+			framework.ExpectNoError(err)
 		})
 
 		It("should support inline execution and attach", func() {
@@ -481,8 +533,8 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 				WithStdinData("abcd1234\n").
 				ExecOrDie()
 			Expect(runOutput).ToNot(ContainSubstring("stdin closed"))
-			g := func(pods []*api.Pod) sort.Interface { return sort.Reverse(controller.ActivePods(pods)) }
-			runTestPod, _, err := util.GetFirstPod(f.ClientSet.Core(), ns, labels.SelectorFromSet(map[string]string{"run": "run-test-3"}), 1*time.Minute, g)
+			g := func(pods []*v1.Pod) sort.Interface { return sort.Reverse(controller.ActivePods(pods)) }
+			runTestPod, _, err := util.GetFirstPod(f.InternalClientset.Core(), ns, labels.SelectorFromSet(map[string]string{"run": "run-test-3"}), 1*time.Minute, g)
 			if err != nil {
 				os.Exit(1)
 			}
@@ -522,6 +574,56 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 			}
 			if !strings.Contains(body, nginxDefaultOutput) {
 				framework.Failf("Container port output missing expected value. Wanted:'%s', got: %s", nginxDefaultOutput, body)
+			}
+		})
+
+		It("should handle in-cluster config", func() {
+			By("adding rbac permissions")
+			// grant the view permission widely to allow inspection of the `invalid` namespace.
+			framework.BindClusterRole(f.ClientSet.Rbac(), "view", f.Namespace.Name,
+				rbacv1beta1.Subject{Kind: rbacv1beta1.ServiceAccountKind, Namespace: f.Namespace.Name, Name: "default"})
+
+			err := framework.WaitForAuthorizationUpdate(f.ClientSet.Authorization(),
+				serviceaccount.MakeUsername(f.Namespace.Name, "default"),
+				f.Namespace.Name, "list", schema.GroupResource{Resource: "pods"}, true)
+			framework.ExpectNoError(err)
+
+			By("overriding icc with values provided by flags")
+			kubectlPath := framework.TestContext.KubectlPath
+
+			inClusterHost := strings.TrimSpace(framework.RunHostCmdOrDie(ns, simplePodName, "printenv KUBERNETES_SERVICE_HOST"))
+			inClusterPort := strings.TrimSpace(framework.RunHostCmdOrDie(ns, simplePodName, "printenv KUBERNETES_SERVICE_PORT"))
+			framework.RunKubectlOrDie("cp", kubectlPath, ns+"/"+simplePodName+":/")
+
+			By("getting pods with in-cluster configs")
+			execOutput := framework.RunHostCmdOrDie(ns, simplePodName, "/kubectl get pods")
+			if matched, err := regexp.MatchString("nginx +1/1 +Running", execOutput); err != nil || !matched {
+				framework.Failf("Unexpected kubectl exec output: ", execOutput)
+			}
+
+			By("trying to use kubectl with invalid token")
+			_, err = framework.RunHostCmd(ns, simplePodName, "/kubectl get pods --token=invalid --v=7 2>&1")
+			framework.Logf("got err %v", err)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(ContainSubstring("Using in-cluster namespace"))
+			Expect(err).To(ContainSubstring("Using in-cluster configuration"))
+			Expect(err).To(ContainSubstring("Authorization: Bearer invalid"))
+			Expect(err).To(ContainSubstring("Response Status: 401 Unauthorized"))
+
+			By("trying to use kubectl with invalid server")
+			_, err = framework.RunHostCmd(ns, simplePodName, "/kubectl get pods --server=invalid --v=6 2>&1")
+			framework.Logf("got err %v", err)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(ContainSubstring("Unable to connect to the server"))
+			Expect(err).To(ContainSubstring("GET http://invalid/api"))
+
+			By("trying to use kubectl with invalid namespace")
+			output, _ := framework.RunHostCmd(ns, simplePodName, "/kubectl get pods --namespace=invalid --v=6 2>&1")
+			Expect(output).To(ContainSubstring("No resources found"))
+			Expect(output).ToNot(ContainSubstring("Using in-cluster namespace"))
+			Expect(output).To(ContainSubstring("Using in-cluster configuration"))
+			if matched, _ := regexp.MatchString(fmt.Sprintf("GET http[s]?://%s:%s/api/v1/namespaces/invalid/pods", inClusterHost, inClusterPort), output); !matched {
+				framework.Failf("Unexpected kubectl exec output: ", output)
 			}
 		})
 	})
@@ -608,7 +710,7 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 			waitForOrFailWithDebug(1)
 
 			// Pod
-			forEachPod(func(pod api.Pod) {
+			forEachPod(func(pod v1.Pod) {
 				output := framework.RunKubectlOrDie("describe", "pod", pod.Name, nsFlag)
 				requiredStrings := [][]string{
 					{"Name:", "redis-master-"},
@@ -662,7 +764,7 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 
 			// Node
 			// It should be OK to list unschedulable Nodes here.
-			nodes, err := c.Core().Nodes().List(api.ListOptions{})
+			nodes, err := c.Core().Nodes().List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			node := nodes.Items[0]
 			output = framework.RunKubectlOrDie("describe", "node", node.Name)
@@ -710,13 +812,13 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 			// It may take a while for the pods to get registered in some cases, wait to be sure.
 			By("Waiting for Redis master to start.")
 			waitForOrFailWithDebug(1)
-			forEachPod(func(pod api.Pod) {
+			forEachPod(func(pod v1.Pod) {
 				framework.Logf("wait on redis-master startup in %v ", ns)
 				framework.LookForStringInLog(ns, pod.Name, "redis-master", "The server is now ready to accept connections", framework.PodStartTimeout)
 			})
 			validateService := func(name string, servicePort int, timeout time.Duration) {
 				err := wait.Poll(framework.Poll, timeout, func() (bool, error) {
-					endpoints, err := c.Core().Endpoints(ns).Get(name)
+					endpoints, err := c.Core().Endpoints(ns).Get(name, metav1.GetOptions{})
 					if err != nil {
 						// log the real error
 						framework.Logf("Get endpoints failed (interval %v): %v", framework.Poll, err)
@@ -730,7 +832,7 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 						return false, err
 					}
 
-					uidToPort := getContainerPortsByPodUID(endpoints)
+					uidToPort := framework.GetContainerPortsByPodUID(endpoints)
 					if len(uidToPort) == 0 {
 						framework.Logf("No endpoint found, retrying")
 						return false, nil
@@ -747,7 +849,7 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 				})
 				Expect(err).NotTo(HaveOccurred())
 
-				service, err := c.Core().Services(ns).Get(name)
+				service, err := c.Core().Services(ns).Get(name, metav1.GetOptions{})
 				Expect(err).NotTo(HaveOccurred())
 
 				if len(service.Spec.Ports) != 1 {
@@ -835,7 +937,7 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 
 			By("Waiting for Redis master to start.")
 			waitForOrFailWithDebug(1)
-			forEachPod(func(pod api.Pod) {
+			forEachPod(func(pod v1.Pod) {
 				By("checking for a matching strings")
 				_, err := framework.LookForStringInLog(ns, pod.Name, containerName, "The server is now ready to accept connections", framework.PodStartTimeout)
 				Expect(err).NotTo(HaveOccurred())
@@ -885,12 +987,12 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 			By("Waiting for Redis master to start.")
 			waitForOrFailWithDebug(1)
 			By("patching all pods")
-			forEachPod(func(pod api.Pod) {
+			forEachPod(func(pod v1.Pod) {
 				framework.RunKubectlOrDie("patch", "pod", pod.Name, nsFlag, "-p", "{\"metadata\":{\"annotations\":{\"x\":\"y\"}}}")
 			})
 
 			By("checking annotations")
-			forEachPod(func(pod api.Pod) {
+			forEachPod(func(pod v1.Pod) {
 				found := false
 				for key, val := range pod.Annotations {
 					if key == "x" && val == "y" {
@@ -976,7 +1078,7 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 			By("running the image " + nginxImage)
 			framework.RunKubectlOrDie("run", rcName, "--image="+nginxImage, "--generator=run/v1", nsFlag)
 			By("verifying the rc " + rcName + " was created")
-			rc, err := c.Core().ReplicationControllers(ns).Get(rcName)
+			rc, err := c.Core().ReplicationControllers(ns).Get(rcName, metav1.GetOptions{})
 			if err != nil {
 				framework.Failf("Failed getting rc %s: %v", rcName, err)
 			}
@@ -1032,7 +1134,7 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 			By("running the image " + nginxImage)
 			framework.RunKubectlOrDie("run", rcName, "--image="+nginxImage, "--generator=run/v1", nsFlag)
 			By("verifying the rc " + rcName + " was created")
-			rc, err := c.Core().ReplicationControllers(ns).Get(rcName)
+			rc, err := c.Core().ReplicationControllers(ns).Get(rcName, metav1.GetOptions{})
 			if err != nil {
 				framework.Failf("Failed getting rc %s: %v", rcName, err)
 			}
@@ -1044,7 +1146,7 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 
 			By("rolling-update to same image controller")
 
-			runKubectlRetryOrDie("rolling-update", rcName, "--update-period=1s", "--image="+nginxImage, "--image-pull-policy="+string(api.PullIfNotPresent), nsFlag)
+			runKubectlRetryOrDie("rolling-update", rcName, "--update-period=1s", "--image="+nginxImage, "--image-pull-policy="+string(v1.PullIfNotPresent), nsFlag)
 			framework.ValidateController(c, nginxImage, 1, rcName, "run="+rcName, noOpValidatorFn, ns)
 		})
 	})
@@ -1078,7 +1180,7 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 			By("running the image " + nginxImage)
 			framework.RunKubectlOrDie("run", dName, "--image="+nginxImage, "--generator=deployment/v1beta1", nsFlag)
 			By("verifying the deployment " + dName + " was created")
-			d, err := c.Extensions().Deployments(ns).Get(dName)
+			d, err := c.Extensions().Deployments(ns).Get(dName, metav1.GetOptions{})
 			if err != nil {
 				framework.Failf("Failed getting deployment %s: %v", dName, err)
 			}
@@ -1120,7 +1222,7 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 			By("running the image " + nginxImage)
 			framework.RunKubectlOrDie("run", jobName, "--restart=OnFailure", "--generator=job/v1", "--image="+nginxImage, nsFlag)
 			By("verifying the job " + jobName + " was created")
-			job, err := c.Batch().Jobs(ns).Get(jobName)
+			job, err := c.Batch().Jobs(ns).Get(jobName, metav1.GetOptions{})
 			if err != nil {
 				framework.Failf("Failed getting job %s: %v", jobName, err)
 			}
@@ -1128,7 +1230,7 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 			if containers == nil || len(containers) != 1 || containers[0].Image != nginxImage {
 				framework.Failf("Failed creating job %s for 1 pod with expected image %s: %#v", jobName, nginxImage, containers)
 			}
-			if job.Spec.Template.Spec.RestartPolicy != api.RestartPolicyOnFailure {
+			if job.Spec.Template.Spec.RestartPolicy != v1.RestartPolicyOnFailure {
 				framework.Failf("Failed creating a job with correct restart policy for --restart=OnFailure")
 			}
 		})
@@ -1153,7 +1255,7 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 			By("running the image " + nginxImage)
 			framework.RunKubectlOrDie("run", podName, "--restart=Never", "--generator=run-pod/v1", "--image="+nginxImage, nsFlag)
 			By("verifying the pod " + podName + " was created")
-			pod, err := c.Core().Pods(ns).Get(podName)
+			pod, err := c.Core().Pods(ns).Get(podName, metav1.GetOptions{})
 			if err != nil {
 				framework.Failf("Failed getting pod %s: %v", podName, err)
 			}
@@ -1161,7 +1263,7 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 			if containers == nil || len(containers) != 1 || containers[0].Image != nginxImage {
 				framework.Failf("Failed creating pod %s with expected image %s", podName, nginxImage)
 			}
-			if pod.Spec.RestartPolicy != api.RestartPolicyNever {
+			if pod.Spec.RestartPolicy != v1.RestartPolicyNever {
 				framework.Failf("Failed creating a pod with correct restart policy for --restart=Never")
 			}
 		})
@@ -1204,7 +1306,7 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 			framework.RunKubectlOrDieInput(podJson, "replace", "-f", "-", nsFlag)
 
 			By("verifying the pod " + podName + " has the right image " + busyboxImage)
-			pod, err := c.Core().Pods(ns).Get(podName)
+			pod, err := c.Core().Pods(ns).Get(podName, metav1.GetOptions{})
 			if err != nil {
 				framework.Failf("Failed getting deployment %s: %v", podName, err)
 			}
@@ -1236,7 +1338,7 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 			Expect(runOutput).To(ContainSubstring("stdin closed"))
 
 			By("verifying the job " + jobName + " was deleted")
-			_, err := c.Batch().Jobs(ns).Get(jobName)
+			_, err := c.Batch().Jobs(ns).Get(jobName, metav1.GetOptions{})
 			Expect(err).To(HaveOccurred())
 			Expect(apierrs.IsNotFound(err)).To(BeTrue())
 		})
@@ -1295,19 +1397,18 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 
 	framework.KubeDescribe("Kubectl taint", func() {
 		It("should update the taint on a node", func() {
-			testTaint := api.Taint{
-				Key:    fmt.Sprintf("kubernetes.io/e2e-taint-key-%s", string(uuid.NewUUID())),
+			testTaint := v1.Taint{
+				Key:    fmt.Sprintf("kubernetes.io/e2e-taint-key-001-%s", string(uuid.NewUUID())),
 				Value:  "testing-taint-value",
-				Effect: api.TaintEffectNoSchedule,
+				Effect: v1.TaintEffectNoSchedule,
 			}
 
-			nodes, err := c.Core().Nodes().List(api.ListOptions{})
-			Expect(err).NotTo(HaveOccurred())
-			node := nodes.Items[0]
-			nodeName := node.Name
+			nodeName := getNodeThatCanRunPod(f)
 
 			By("adding the taint " + testTaint.ToString() + " to a node")
 			runKubectlRetryOrDie("taint", "nodes", nodeName, testTaint.ToString())
+			defer framework.RemoveTaintOffNode(f.ClientSet, nodeName, testTaint)
+
 			By("verifying the node has the taint " + testTaint.ToString())
 			output := runKubectlRetryOrDie("describe", "node", nodeName)
 			requiredStrings := [][]string{
@@ -1327,19 +1428,18 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 		})
 
 		It("should remove all the taints with the same key off a node", func() {
-			testTaint := api.Taint{
-				Key:    fmt.Sprintf("kubernetes.io/e2e-taint-key-%s", string(uuid.NewUUID())),
+			testTaint := v1.Taint{
+				Key:    fmt.Sprintf("kubernetes.io/e2e-taint-key-002-%s", string(uuid.NewUUID())),
 				Value:  "testing-taint-value",
-				Effect: api.TaintEffectNoSchedule,
+				Effect: v1.TaintEffectNoSchedule,
 			}
 
-			nodes, err := c.Core().Nodes().List(api.ListOptions{})
-			Expect(err).NotTo(HaveOccurred())
-			node := nodes.Items[0]
-			nodeName := node.Name
+			nodeName := getNodeThatCanRunPod(f)
 
 			By("adding the taint " + testTaint.ToString() + " to a node")
 			runKubectlRetryOrDie("taint", "nodes", nodeName, testTaint.ToString())
+			defer framework.RemoveTaintOffNode(f.ClientSet, nodeName, testTaint)
+
 			By("verifying the node has the taint " + testTaint.ToString())
 			output := runKubectlRetryOrDie("describe", "node", nodeName)
 			requiredStrings := [][]string{
@@ -1349,13 +1449,15 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 			}
 			checkOutput(output, requiredStrings)
 
-			newTestTaint := api.Taint{
+			newTestTaint := v1.Taint{
 				Key:    testTaint.Key,
 				Value:  "another-testing-taint-value",
-				Effect: api.TaintEffectPreferNoSchedule,
+				Effect: v1.TaintEffectPreferNoSchedule,
 			}
 			By("adding another taint " + newTestTaint.ToString() + " to the node")
 			runKubectlRetryOrDie("taint", "nodes", nodeName, newTestTaint.ToString())
+			defer framework.RemoveTaintOffNode(f.ClientSet, nodeName, newTestTaint)
+
 			By("verifying the node has the taint " + newTestTaint.ToString())
 			output = runKubectlRetryOrDie("describe", "node", nodeName)
 			requiredStrings = [][]string{
@@ -1385,7 +1487,7 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 			framework.RunKubectlOrDie("create", "quota", quotaName, "--hard=pods=1000000,services=1000000", nsFlag)
 
 			By("verifying that the quota was created")
-			quota, err := c.Core().ResourceQuotas(ns).Get(quotaName)
+			quota, err := c.Core().ResourceQuotas(ns).Get(quotaName, metav1.GetOptions{})
 			if err != nil {
 				framework.Failf("Failed getting quota %s: %v", quotaName, err)
 			}
@@ -1396,11 +1498,11 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 			if len(quota.Spec.Hard) != 2 {
 				framework.Failf("Expected two resources, got %v", quota.Spec.Hard)
 			}
-			r, found := quota.Spec.Hard[api.ResourcePods]
+			r, found := quota.Spec.Hard[v1.ResourcePods]
 			if expected := resource.MustParse("1000000"); !found || (&r).Cmp(expected) != 0 {
 				framework.Failf("Expected pods=1000000, got %v", r)
 			}
-			r, found = quota.Spec.Hard[api.ResourceServices]
+			r, found = quota.Spec.Hard[v1.ResourceServices]
 			if expected := resource.MustParse("1000000"); !found || (&r).Cmp(expected) != 0 {
 				framework.Failf("Expected services=1000000, got %v", r)
 			}
@@ -1415,7 +1517,7 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 			framework.RunKubectlOrDie("create", "quota", quotaName, "--hard=pods=1000000", "--scopes=BestEffort,NotTerminating", nsFlag)
 
 			By("verifying that the quota was created")
-			quota, err := c.Core().ResourceQuotas(ns).Get(quotaName)
+			quota, err := c.Core().ResourceQuotas(ns).Get(quotaName, metav1.GetOptions{})
 			if err != nil {
 				framework.Failf("Failed getting quota %s: %v", quotaName, err)
 			}
@@ -1423,14 +1525,14 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 			if len(quota.Spec.Scopes) != 2 {
 				framework.Failf("Expected two scopes, got %v", quota.Spec.Scopes)
 			}
-			scopes := make(map[api.ResourceQuotaScope]struct{})
+			scopes := make(map[v1.ResourceQuotaScope]struct{})
 			for _, scope := range quota.Spec.Scopes {
 				scopes[scope] = struct{}{}
 			}
-			if _, found := scopes[api.ResourceQuotaScopeBestEffort]; !found {
+			if _, found := scopes[v1.ResourceQuotaScopeBestEffort]; !found {
 				framework.Failf("Expected BestEffort scope, got %v", quota.Spec.Scopes)
 			}
-			if _, found := scopes[api.ResourceQuotaScopeNotTerminating]; !found {
+			if _, found := scopes[v1.ResourceQuotaScopeNotTerminating]; !found {
 				framework.Failf("Expected NotTerminating scope, got %v", quota.Spec.Scopes)
 			}
 		})
@@ -1468,12 +1570,12 @@ func checkOutput(output string, required [][]string) {
 	}
 }
 
-func getAPIVersions(apiEndpoint string) (*unversioned.APIVersions, error) {
+func getAPIVersions(apiEndpoint string) (*metav1.APIVersions, error) {
 	body, err := curl(apiEndpoint)
 	if err != nil {
 		return nil, fmt.Errorf("Failed http.Get of %s: %v", apiEndpoint, err)
 	}
-	var apiVersions unversioned.APIVersions
+	var apiVersions metav1.APIVersions
 	if err := json.Unmarshal([]byte(body), &apiVersions); err != nil {
 		return nil, fmt.Errorf("Failed to parse /api output %s: %v", body, err)
 	}
@@ -1570,7 +1672,12 @@ func makeRequestToGuestbook(c clientset.Interface, cmd, value string, ns string)
 	if errProxy != nil {
 		return "", errProxy
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), framework.SingleCallTimeout)
+	defer cancel()
+
 	result, err := proxyRequest.Namespace(ns).
+		Context(ctx).
 		Name("frontend").
 		Suffix("/guestbook.php").
 		Param("cmd", cmd).
@@ -1602,8 +1709,8 @@ func readBytesFromFile(filename string) []byte {
 	return data
 }
 
-func readReplicationControllerFromString(contents string) *api.ReplicationController {
-	rc := api.ReplicationController{}
+func readReplicationControllerFromString(contents string) *v1.ReplicationController {
+	rc := v1.ReplicationController{}
 	if err := yaml.Unmarshal([]byte(contents), &rc); err != nil {
 		framework.Failf(err.Error())
 	}
@@ -1624,12 +1731,12 @@ func modifyReplicationControllerConfiguration(contents string) io.Reader {
 	return bytes.NewReader(data)
 }
 
-func forEachReplicationController(c clientset.Interface, ns, selectorKey, selectorValue string, fn func(api.ReplicationController)) {
-	var rcs *api.ReplicationControllerList
+func forEachReplicationController(c clientset.Interface, ns, selectorKey, selectorValue string, fn func(v1.ReplicationController)) {
+	var rcs *v1.ReplicationControllerList
 	var err error
 	for t := time.Now(); time.Since(t) < framework.PodListTimeout; time.Sleep(framework.Poll) {
 		label := labels.SelectorFromSet(labels.Set(map[string]string{selectorKey: selectorValue}))
-		options := api.ListOptions{LabelSelector: label}
+		options := metav1.ListOptions{LabelSelector: label.String()}
 		rcs, err = c.Core().ReplicationControllers(ns).List(options)
 		Expect(err).NotTo(HaveOccurred())
 		if len(rcs.Items) > 0 {
@@ -1646,7 +1753,7 @@ func forEachReplicationController(c clientset.Interface, ns, selectorKey, select
 	}
 }
 
-func validateReplicationControllerConfiguration(rc api.ReplicationController) {
+func validateReplicationControllerConfiguration(rc v1.ReplicationController) {
 	if rc.Name == "redis-master" {
 		if _, ok := rc.Annotations[annotations.LastAppliedConfigAnnotation]; !ok {
 			framework.Failf("Annotation not found in modified configuration:\n%v\n", rc)
@@ -1670,6 +1777,10 @@ func getUDData(jpgExpected string, ns string) func(clientset.Interface, string) 
 		if err != nil {
 			return err
 		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), framework.SingleCallTimeout)
+		defer cancel()
+
 		var body []byte
 		if subResourceProxyAvailable {
 			body, err = c.Core().RESTClient().Get().
@@ -1691,6 +1802,9 @@ func getUDData(jpgExpected string, ns string) func(clientset.Interface, string) 
 				Raw()
 		}
 		if err != nil {
+			if ctx.Err() != nil {
+				framework.Failf("Failed to retrieve data from container: %v", err)
+			}
 			return err
 		}
 		framework.Logf("got data: %s", body)

@@ -19,12 +19,12 @@ package e2e
 import (
 	"time"
 
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/resource"
-	"k8s.io/kubernetes/pkg/api/unversioned"
-	"k8s.io/kubernetes/pkg/apis/storage"
-	storageutil "k8s.io/kubernetes/pkg/apis/storage/util"
-	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/kubernetes/pkg/api/v1"
+	storage "k8s.io/kubernetes/pkg/apis/storage/v1beta1"
+	storageutil "k8s.io/kubernetes/pkg/apis/storage/v1beta1/util"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"
@@ -39,31 +39,31 @@ const (
 	expectedSize = "2Gi"
 )
 
-func testDynamicProvisioning(client clientset.Interface, claim *api.PersistentVolumeClaim) {
-	err := framework.WaitForPersistentVolumeClaimPhase(api.ClaimBound, client, claim.Namespace, claim.Name, framework.Poll, framework.ClaimProvisionTimeout)
+func testDynamicProvisioning(client clientset.Interface, claim *v1.PersistentVolumeClaim) {
+	err := framework.WaitForPersistentVolumeClaimPhase(v1.ClaimBound, client, claim.Namespace, claim.Name, framework.Poll, framework.ClaimProvisionTimeout)
 	Expect(err).NotTo(HaveOccurred())
 
 	By("checking the claim")
 	// Get new copy of the claim
-	claim, err = client.Core().PersistentVolumeClaims(claim.Namespace).Get(claim.Name)
+	claim, err = client.Core().PersistentVolumeClaims(claim.Namespace).Get(claim.Name, metav1.GetOptions{})
 	Expect(err).NotTo(HaveOccurred())
 
 	// Get the bound PV
-	pv, err := client.Core().PersistentVolumes().Get(claim.Spec.VolumeName)
+	pv, err := client.Core().PersistentVolumes().Get(claim.Spec.VolumeName, metav1.GetOptions{})
 	Expect(err).NotTo(HaveOccurred())
 
 	// Check sizes
 	expectedCapacity := resource.MustParse(expectedSize)
-	pvCapacity := pv.Spec.Capacity[api.ResourceName(api.ResourceStorage)]
+	pvCapacity := pv.Spec.Capacity[v1.ResourceName(v1.ResourceStorage)]
 	Expect(pvCapacity.Value()).To(Equal(expectedCapacity.Value()))
 
 	requestedCapacity := resource.MustParse(requestedSize)
-	claimCapacity := claim.Spec.Resources.Requests[api.ResourceName(api.ResourceStorage)]
+	claimCapacity := claim.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
 	Expect(claimCapacity.Value()).To(Equal(requestedCapacity.Value()))
 
 	// Check PV properties
-	Expect(pv.Spec.PersistentVolumeReclaimPolicy).To(Equal(api.PersistentVolumeReclaimDelete))
-	expectedAccessModes := []api.PersistentVolumeAccessMode{api.ReadWriteOnce}
+	Expect(pv.Spec.PersistentVolumeReclaimPolicy).To(Equal(v1.PersistentVolumeReclaimDelete))
+	expectedAccessModes := []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce}
 	Expect(pv.Spec.AccessModes).To(Equal(expectedAccessModes))
 	Expect(pv.Spec.ClaimRef.Name).To(Equal(claim.ObjectMeta.Name))
 	Expect(pv.Spec.ClaimRef.Namespace).To(Equal(claim.ObjectMeta.Namespace))
@@ -79,26 +79,13 @@ func testDynamicProvisioning(client clientset.Interface, claim *api.PersistentVo
 	By("checking the created volume is readable and retains data")
 	runInPodWithVolume(client, claim.Namespace, claim.Name, "grep 'hello world' /mnt/test/data")
 
-	// Ugly hack: if we delete the AWS/GCE/OpenStack volume here, it will
-	// probably collide with destruction of the pods above - the pods
-	// still have the volume attached (kubelet is slow...) and deletion
-	// of attached volume is not allowed by AWS/GCE/OpenStack.
-	// Kubernetes *will* retry deletion several times in
-	// pvclaimbinder-sync-period.
-	// So, technically, this sleep is not needed. On the other hand,
-	// the sync perion is 10 minutes and we really don't want to wait
-	// 10 minutes here. There is no way how to see if kubelet is
-	// finished with cleaning volumes. A small sleep here actually
-	// speeds up the test!
-	// Three minutes should be enough to clean up the pods properly.
-	// We've seen GCE PD detach to take more than 1 minute.
-	By("Sleeping to let kubelet destroy all pods")
-	time.Sleep(3 * time.Minute)
-
 	By("deleting the claim")
 	framework.ExpectNoError(client.Core().PersistentVolumeClaims(claim.Namespace).Delete(claim.Name, nil))
 
-	// Wait for the PV to get deleted too.
+	// Wait for the PV to get deleted. Technically, the first few delete
+	// attempts may fail, as the volume is still attached to a node because
+	// kubelet is slowly cleaning up a pod, however it should succeed in a
+	// couple of minutes. Wait 20 minutes to recover from random cloud hiccups.
 	framework.ExpectNoError(framework.WaitForPersistentVolumeDeleted(client, pv.Name, 5*time.Second, 20*time.Minute))
 }
 
@@ -115,7 +102,7 @@ var _ = framework.KubeDescribe("Dynamic provisioning", func() {
 	})
 
 	framework.KubeDescribe("DynamicProvisioner", func() {
-		It("should create and delete persistent volumes [Slow]", func() {
+		It("should create and delete persistent volumes [Slow] [Volume]", func() {
 			framework.SkipUnlessProviderIs("openstack", "gce", "aws", "gke")
 
 			By("creating a StorageClass")
@@ -137,7 +124,7 @@ var _ = framework.KubeDescribe("Dynamic provisioning", func() {
 	})
 
 	framework.KubeDescribe("DynamicProvisioner Alpha", func() {
-		It("should create and delete alpha persistent volumes [Slow]", func() {
+		It("should create and delete alpha persistent volumes [Slow] [Volume]", func() {
 			framework.SkipUnlessProviderIs("openstack", "gce", "aws", "gke")
 
 			By("creating a claim with an alpha dynamic provisioning annotation")
@@ -153,19 +140,19 @@ var _ = framework.KubeDescribe("Dynamic provisioning", func() {
 	})
 })
 
-func newClaim(ns string, alpha bool) *api.PersistentVolumeClaim {
-	claim := api.PersistentVolumeClaim{
-		ObjectMeta: api.ObjectMeta{
+func newClaim(ns string, alpha bool) *v1.PersistentVolumeClaim {
+	claim := v1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: "pvc-",
 			Namespace:    ns,
 		},
-		Spec: api.PersistentVolumeClaimSpec{
-			AccessModes: []api.PersistentVolumeAccessMode{
-				api.ReadWriteOnce,
+		Spec: v1.PersistentVolumeClaimSpec{
+			AccessModes: []v1.PersistentVolumeAccessMode{
+				v1.ReadWriteOnce,
 			},
-			Resources: api.ResourceRequirements{
-				Requests: api.ResourceList{
-					api.ResourceName(api.ResourceStorage): resource.MustParse(requestedSize),
+			Resources: v1.ResourceRequirements{
+				Requests: v1.ResourceList{
+					v1.ResourceName(v1.ResourceStorage): resource.MustParse(requestedSize),
 				},
 			},
 		},
@@ -187,22 +174,22 @@ func newClaim(ns string, alpha bool) *api.PersistentVolumeClaim {
 
 // runInPodWithVolume runs a command in a pod with given claim mounted to /mnt directory.
 func runInPodWithVolume(c clientset.Interface, ns, claimName, command string) {
-	pod := &api.Pod{
-		TypeMeta: unversioned.TypeMeta{
+	pod := &v1.Pod{
+		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
 			APIVersion: "v1",
 		},
-		ObjectMeta: api.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: "pvc-volume-tester-",
 		},
-		Spec: api.PodSpec{
-			Containers: []api.Container{
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
 				{
 					Name:    "volume-tester",
 					Image:   "gcr.io/google_containers/busybox:1.24",
 					Command: []string{"/bin/sh"},
 					Args:    []string{"-c", command},
-					VolumeMounts: []api.VolumeMount{
+					VolumeMounts: []v1.VolumeMount{
 						{
 							Name:      "my-volume",
 							MountPath: "/mnt/test",
@@ -210,12 +197,12 @@ func runInPodWithVolume(c clientset.Interface, ns, claimName, command string) {
 					},
 				},
 			},
-			RestartPolicy: api.RestartPolicyNever,
-			Volumes: []api.Volume{
+			RestartPolicy: v1.RestartPolicyNever,
+			Volumes: []v1.Volume{
 				{
 					Name: "my-volume",
-					VolumeSource: api.VolumeSource{
-						PersistentVolumeClaim: &api.PersistentVolumeClaimVolumeSource{
+					VolumeSource: v1.VolumeSource{
+						PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
 							ClaimName: claimName,
 							ReadOnly:  false,
 						},
@@ -245,10 +232,10 @@ func newStorageClass() *storage.StorageClass {
 	}
 
 	return &storage.StorageClass{
-		TypeMeta: unversioned.TypeMeta{
+		TypeMeta: metav1.TypeMeta{
 			Kind: "StorageClass",
 		},
-		ObjectMeta: api.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: "fast",
 		},
 		Provisioner: pluginName,

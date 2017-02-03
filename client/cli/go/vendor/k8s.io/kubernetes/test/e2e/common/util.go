@@ -17,14 +17,15 @@ limitations under the License.
 package common
 
 import (
-	"k8s.io/kubernetes/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 type Suite string
 
 const (
-	E2E     Suite = "e2e"
-	NodeE2E Suite = "node e2e"
+	E2E           Suite = "e2e"
+	NodeE2E       Suite = "node e2e"
+	FederationE2E Suite = "federation e2e"
 )
 
 var CurrentSuite Suite
@@ -45,4 +46,6 @@ var CommonImageWhiteList = sets.NewString(
 	"gcr.io/google_containers/serve_hostname:v1.4",
 	"gcr.io/google_containers/test-webserver:e2e",
 	"gcr.io/google_containers/hostexec:1.2",
+	"gcr.io/google_containers/volume-nfs:0.8",
+	"gcr.io/google_containers/volume-gluster:0.2",
 )

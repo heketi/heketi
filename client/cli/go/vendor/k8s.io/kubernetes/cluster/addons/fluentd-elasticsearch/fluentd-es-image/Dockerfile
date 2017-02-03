@@ -22,9 +22,7 @@
 # Please see http://docs.fluentd.org/articles/install-by-deb for more
 # information about installing fluentd using deb package.
 
-FROM gcr.io/google_containers/ubuntu-slim:0.4
-MAINTAINER Alex Robinson "arob@google.com"
-MAINTAINER Jimmi Dyson "jimmidyson@gmail.com"
+FROM gcr.io/google_containers/ubuntu-slim:0.6
 
 # Ensure there are enough file descriptors for running Fluentd.
 RUN ulimit -n 65536
@@ -37,6 +35,8 @@ COPY td-agent.conf /etc/td-agent/td-agent.conf
 
 COPY build.sh /tmp/build.sh
 RUN /tmp/build.sh
+
+ENV LD_PRELOAD /opt/td-agent/embedded/lib/libjemalloc.so
 
 # Run the Fluentd service.
 ENTRYPOINT ["td-agent"]

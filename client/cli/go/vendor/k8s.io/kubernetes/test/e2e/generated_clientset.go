@@ -20,15 +20,16 @@ import (
 	"strconv"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/uuid"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apimachinery/pkg/watch"
 	clientv1 "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/apis/batch/v2alpha1"
-	"k8s.io/kubernetes/pkg/labels"
-	"k8s.io/kubernetes/pkg/runtime"
-	"k8s.io/kubernetes/pkg/util/intstr"
-	"k8s.io/kubernetes/pkg/util/uuid"
-	"k8s.io/kubernetes/pkg/util/wait"
-	"k8s.io/kubernetes/pkg/watch"
 	"k8s.io/kubernetes/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"
@@ -37,7 +38,7 @@ import (
 
 func stagingClientPod(name, value string) clientv1.Pod {
 	return clientv1.Pod{
-		ObjectMeta: clientv1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 			Labels: map[string]string{
 				"name": "foo",
@@ -58,7 +59,7 @@ func stagingClientPod(name, value string) clientv1.Pod {
 
 func testingPod(name, value string) v1.Pod {
 	return v1.Pod{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 			Labels: map[string]string{
 				"name": "foo",
@@ -121,7 +122,7 @@ func observeObjectDeletion(w watch.Interface) (obj runtime.Object) {
 var _ = framework.KubeDescribe("Generated release_1_5 clientset", func() {
 	f := framework.NewDefaultFramework("clientset")
 	It("should create pods, delete pods, watch pods", func() {
-		podClient := f.ClientSet_1_5.Core().Pods(f.Namespace.Name)
+		podClient := f.ClientSet.Core().Pods(f.Namespace.Name)
 		By("constructing the pod")
 		name := "pod" + string(uuid.NewUUID())
 		value := strconv.Itoa(time.Now().Nanosecond())
@@ -129,13 +130,13 @@ var _ = framework.KubeDescribe("Generated release_1_5 clientset", func() {
 		pod := &podCopy
 		By("setting up watch")
 		selector := labels.SelectorFromSet(labels.Set(map[string]string{"time": value})).String()
-		options := v1.ListOptions{LabelSelector: selector}
+		options := metav1.ListOptions{LabelSelector: selector}
 		pods, err := podClient.List(options)
 		if err != nil {
 			framework.Failf("Failed to query for pods: %v", err)
 		}
 		Expect(len(pods.Items)).To(Equal(0))
-		options = v1.ListOptions{
+		options = metav1.ListOptions{
 			LabelSelector:   selector,
 			ResourceVersion: pods.ListMeta.ResourceVersion,
 		}
@@ -151,7 +152,7 @@ var _ = framework.KubeDescribe("Generated release_1_5 clientset", func() {
 		}
 
 		By("verifying the pod is in kubernetes")
-		options = v1.ListOptions{
+		options = metav1.ListOptions{
 			LabelSelector:   selector,
 			ResourceVersion: pod.ResourceVersion,
 		}
@@ -169,7 +170,7 @@ var _ = framework.KubeDescribe("Generated release_1_5 clientset", func() {
 		framework.ExpectNoError(f.WaitForPodRunning(pod.Name))
 
 		By("deleting the pod gracefully")
-		if err := podClient.Delete(pod.Name, v1.NewDeleteOptions(30)); err != nil {
+		if err := podClient.Delete(pod.Name, metav1.NewDeleteOptions(30)); err != nil {
 			framework.Failf("Failed to delete pod: %v", err)
 		}
 
@@ -179,7 +180,7 @@ var _ = framework.KubeDescribe("Generated release_1_5 clientset", func() {
 		Expect(lastPod.DeletionTimestamp).ToNot(BeNil())
 		Expect(lastPod.Spec.TerminationGracePeriodSeconds).ToNot(BeZero())
 
-		options = v1.ListOptions{LabelSelector: selector}
+		options = metav1.ListOptions{LabelSelector: selector}
 		pods, err = podClient.List(options)
 		if err != nil {
 			framework.Failf("Failed to list pods to verify deletion: %v", err)
@@ -188,17 +189,17 @@ var _ = framework.KubeDescribe("Generated release_1_5 clientset", func() {
 	})
 })
 
-func newTestingScheduledJob(name string, value string) *v2alpha1.ScheduledJob {
+func newTestingCronJob(name string, value string) *v2alpha1.CronJob {
 	parallelism := int32(1)
 	completions := int32(1)
-	return &v2alpha1.ScheduledJob{
-		ObjectMeta: v1.ObjectMeta{
+	return &v2alpha1.CronJob{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 			Labels: map[string]string{
 				"time": value,
 			},
 		},
-		Spec: v2alpha1.ScheduledJobSpec{
+		Spec: v2alpha1.CronJobSpec{
 			Schedule:          "*/1 * * * ?",
 			ConcurrencyPolicy: v2alpha1.AllowConcurrent,
 			JobTemplate: v2alpha1.JobTemplateSpec{
@@ -238,10 +239,10 @@ func newTestingScheduledJob(name string, value string) *v2alpha1.ScheduledJob {
 
 var _ = framework.KubeDescribe("Generated release_1_5 clientset", func() {
 	f := framework.NewDefaultFramework("clientset")
-	It("should create v2alpha1 scheduleJobs, delete scheduleJobs, watch scheduleJobs", func() {
+	It("should create v2alpha1 cronJobs, delete cronJobs, watch cronJobs", func() {
 		var enabled bool
-		groupList, err := f.ClientSet_1_5.Discovery().ServerGroups()
-		ExpectNoError(err)
+		groupList, err := f.ClientSet.Discovery().ServerGroups()
+		framework.ExpectNoError(err)
 		for _, group := range groupList.Groups {
 			if group.Name == v2alpha1.GroupName {
 				for _, version := range group.Versions {
@@ -256,59 +257,59 @@ var _ = framework.KubeDescribe("Generated release_1_5 clientset", func() {
 			framework.Logf("%s is not enabled, test skipped", v2alpha1.SchemeGroupVersion)
 			return
 		}
-		scheduleJobClient := f.ClientSet_1_5.BatchV2alpha1().ScheduledJobs(f.Namespace.Name)
-		By("constructing the scheduledJob")
-		name := "scheduledjob" + string(uuid.NewUUID())
+		cronJobClient := f.ClientSet.BatchV2alpha1().CronJobs(f.Namespace.Name)
+		By("constructing the cronJob")
+		name := "cronjob" + string(uuid.NewUUID())
 		value := strconv.Itoa(time.Now().Nanosecond())
-		scheduledJob := newTestingScheduledJob(name, value)
+		cronJob := newTestingCronJob(name, value)
 		By("setting up watch")
 		selector := labels.SelectorFromSet(labels.Set(map[string]string{"time": value})).String()
-		options := v1.ListOptions{LabelSelector: selector}
-		scheduleJobs, err := scheduleJobClient.List(options)
+		options := metav1.ListOptions{LabelSelector: selector}
+		cronJobs, err := cronJobClient.List(options)
 		if err != nil {
-			framework.Failf("Failed to query for scheduleJobs: %v", err)
+			framework.Failf("Failed to query for cronJobs: %v", err)
 		}
-		Expect(len(scheduleJobs.Items)).To(Equal(0))
-		options = v1.ListOptions{
+		Expect(len(cronJobs.Items)).To(Equal(0))
+		options = metav1.ListOptions{
 			LabelSelector:   selector,
-			ResourceVersion: scheduleJobs.ListMeta.ResourceVersion,
+			ResourceVersion: cronJobs.ListMeta.ResourceVersion,
 		}
-		w, err := scheduleJobClient.Watch(options)
+		w, err := cronJobClient.Watch(options)
 		if err != nil {
 			framework.Failf("Failed to set up watch: %v", err)
 		}
 
-		By("creating the scheduledJob")
-		scheduledJob, err = scheduleJobClient.Create(scheduledJob)
+		By("creating the cronJob")
+		cronJob, err = cronJobClient.Create(cronJob)
 		if err != nil {
-			framework.Failf("Failed to create scheduledJob: %v", err)
+			framework.Failf("Failed to create cronJob: %v", err)
 		}
 
-		By("verifying the scheduledJob is in kubernetes")
-		options = v1.ListOptions{
+		By("verifying the cronJob is in kubernetes")
+		options = metav1.ListOptions{
 			LabelSelector:   selector,
-			ResourceVersion: scheduledJob.ResourceVersion,
+			ResourceVersion: cronJob.ResourceVersion,
 		}
-		scheduleJobs, err = scheduleJobClient.List(options)
+		cronJobs, err = cronJobClient.List(options)
 		if err != nil {
-			framework.Failf("Failed to query for scheduleJobs: %v", err)
+			framework.Failf("Failed to query for cronJobs: %v", err)
 		}
-		Expect(len(scheduleJobs.Items)).To(Equal(1))
+		Expect(len(cronJobs.Items)).To(Equal(1))
 
-		By("verifying scheduledJob creation was observed")
+		By("verifying cronJob creation was observed")
 		observeCreation(w)
 
-		By("deleting the scheduledJob")
-		if err := scheduleJobClient.Delete(scheduledJob.Name, nil); err != nil {
-			framework.Failf("Failed to delete scheduledJob: %v", err)
+		By("deleting the cronJob")
+		if err := cronJobClient.Delete(cronJob.Name, nil); err != nil {
+			framework.Failf("Failed to delete cronJob: %v", err)
 		}
 
-		options = v1.ListOptions{LabelSelector: selector}
-		scheduleJobs, err = scheduleJobClient.List(options)
+		options = metav1.ListOptions{LabelSelector: selector}
+		cronJobs, err = cronJobClient.List(options)
 		if err != nil {
-			framework.Failf("Failed to list scheduleJobs to verify deletion: %v", err)
+			framework.Failf("Failed to list cronJobs to verify deletion: %v", err)
 		}
-		Expect(len(scheduleJobs.Items)).To(Equal(0))
+		Expect(len(cronJobs.Items)).To(Equal(0))
 	})
 })
 
@@ -322,7 +323,7 @@ var _ = framework.KubeDescribe("Staging client repo client", func() {
 		podCopy := stagingClientPod(name, value)
 		pod := &podCopy
 		By("verifying no pod exists before the test")
-		pods, err := podClient.List(clientv1.ListOptions{})
+		pods, err := podClient.List(metav1.ListOptions{})
 		if err != nil {
 			framework.Failf("Failed to query for pods: %v", err)
 		}
@@ -336,7 +337,7 @@ var _ = framework.KubeDescribe("Staging client repo client", func() {
 		By("verifying the pod is in kubernetes")
 		timeout := 1 * time.Minute
 		if err := wait.PollImmediate(time.Second, timeout, func() (bool, error) {
-			pods, err = podClient.List(clientv1.ListOptions{})
+			pods, err = podClient.List(metav1.ListOptions{})
 			if err != nil {
 				return false, err
 			}
