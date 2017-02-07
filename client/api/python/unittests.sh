@@ -9,7 +9,7 @@ fi
 
 # Start server
 rm -f heketi.db > /dev/null 2>&1
-./heketi-server -config=test/unit/heketi.json > heketi.log 2>&1 &
+./heketi-server --config=test/unit/heketi.json > heketi.log 2>&1 &
 pid=$!
 sleep 2
 
