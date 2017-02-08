@@ -39,7 +39,8 @@ func TestBackupToKubeSecretBackupOnNonGet(t *testing.T) {
 	}).Restore()
 
 	// Backup on Post
-	r := httptest.NewRequest(http.MethodPost, "http://mytest.com/hello", nil)
+	r, err := http.NewRequest(http.MethodPost, "http://mytest.com/hello", nil)
+	tests.Assert(t, err == nil)
 	w := httptest.NewRecorder()
 	app.BackupToKubernetesSecret(w, r, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -47,7 +48,8 @@ func TestBackupToKubeSecretBackupOnNonGet(t *testing.T) {
 	tests.Assert(t, incluster_count == 1)
 
 	// Backup on PUT
-	r = httptest.NewRequest(http.MethodPut, "http://mytest.com/hello", nil)
+	r, err = http.NewRequest(http.MethodPut, "http://mytest.com/hello", nil)
+	tests.Assert(t, err == nil)
 	w = httptest.NewRecorder()
 	app.BackupToKubernetesSecret(w, r, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -55,7 +57,8 @@ func TestBackupToKubeSecretBackupOnNonGet(t *testing.T) {
 	tests.Assert(t, incluster_count == 2)
 
 	// Backup on DELETE
-	r = httptest.NewRequest(http.MethodDelete, "http://mytest.com/hello", nil)
+	r, err = http.NewRequest(http.MethodDelete, "http://mytest.com/hello", nil)
+	tests.Assert(t, err == nil)
 	w = httptest.NewRecorder()
 	app.BackupToKubernetesSecret(w, r, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -78,7 +81,8 @@ func TestBackupToKubeSecretBackupOnGet(t *testing.T) {
 	}).Restore()
 
 	// No backups on GET to non-/queue URLs
-	r := httptest.NewRequest(http.MethodGet, "http://mytest.com/hello", nil)
+	r, err := http.NewRequest(http.MethodGet, "http://mytest.com/hello", nil)
+	tests.Assert(t, err == nil)
 	w := httptest.NewRecorder()
 	app.BackupToKubernetesSecret(w, r, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -87,7 +91,8 @@ func TestBackupToKubeSecretBackupOnGet(t *testing.T) {
 
 	// No backups on GET on /queue URL where the Status is still 200 (OK)
 	// which means that the resource is pending
-	r = httptest.NewRequest(http.MethodGet, "http://mytest.com"+ASYNC_ROUTE, nil)
+	r, err = http.NewRequest(http.MethodGet, "http://mytest.com"+ASYNC_ROUTE, nil)
+	tests.Assert(t, err == nil)
 	w = httptest.NewRecorder()
 	app.BackupToKubernetesSecret(w, r, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -95,7 +100,8 @@ func TestBackupToKubeSecretBackupOnGet(t *testing.T) {
 	tests.Assert(t, incluster_count == 0)
 
 	// No backups on GET on /queue URL where the Status is error
-	r = httptest.NewRequest(http.MethodGet, "http://mytest.com"+ASYNC_ROUTE, nil)
+	r, err = http.NewRequest(http.MethodGet, "http://mytest.com"+ASYNC_ROUTE, nil)
+	tests.Assert(t, err == nil)
 	w = httptest.NewRecorder()
 	app.BackupToKubernetesSecret(w, r, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -103,7 +109,8 @@ func TestBackupToKubeSecretBackupOnGet(t *testing.T) {
 	tests.Assert(t, incluster_count == 0)
 
 	// Backup when a GET on /queue gets a Done
-	r = httptest.NewRequest(http.MethodGet, "http://mytest.com"+ASYNC_ROUTE, nil)
+	r, err = http.NewRequest(http.MethodGet, "http://mytest.com"+ASYNC_ROUTE, nil)
+	tests.Assert(t, err == nil)
 	w = httptest.NewRecorder()
 	app.BackupToKubernetesSecret(w, r, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
@@ -111,7 +118,8 @@ func TestBackupToKubeSecretBackupOnGet(t *testing.T) {
 	tests.Assert(t, incluster_count == 1)
 
 	// Backup when a GET on /queue gets a See Other
-	r = httptest.NewRequest(http.MethodGet, "http://mytest.com"+ASYNC_ROUTE, nil)
+	r, err = http.NewRequest(http.MethodGet, "http://mytest.com"+ASYNC_ROUTE, nil)
+	tests.Assert(t, err == nil)
 	w = httptest.NewRecorder()
 	app.BackupToKubernetesSecret(w, r, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusSeeOther)
