@@ -25,7 +25,7 @@ start_heketi() {
 
     # Start server
     rm -f heketi.db > /dev/null 2>&1
-    $HEKETI_SERVER -config=config/heketi.json &
+    $HEKETI_SERVER --config=config/heketi.json &
     HEKETI_PID=$!
     sleep 2
 }

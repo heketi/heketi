@@ -11,12 +11,12 @@ package main
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/apps"
 	"github.com/heketi/heketi/apps/glusterfs"
 	"github.com/heketi/heketi/middleware"
+	"github.com/spf13/cobra"
 	"github.com/urfave/negroni"
 	"net/http"
 	"os"
@@ -36,13 +36,30 @@ var (
 	showVersion    bool
 )
 
-func init() {
-	flag.StringVar(&configfile, "config", "", "Configuration file")
-	flag.BoolVar(&showVersion, "version", false, "Show version")
+var RootCmd = &cobra.Command{
+	Use:     "heketi",
+	Short:   "Heketi is a restful volume management server",
+	Long:    "Heketi is a restful volume management server",
+	Example: "heketi --config=/config/file/path/",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("Heketi %v\n", HEKETI_VERSION)
+		if !showVersion {
+			// Check configuration file was given
+			if configfile == "" {
+				fmt.Fprintln(os.Stderr, "Please provide configuration file")
+				os.Exit(1)
+			}
+		} else {
+			// Quit here if all we needed to do was show version
+			os.Exit(0)
+		}
+	},
 }
 
-func printVersion() {
-	fmt.Printf("Heketi %v\n", HEKETI_VERSION)
+func init() {
+	RootCmd.Flags().StringVar(&configfile, "config", "", "Configuration file")
+	RootCmd.Flags().BoolVarP(&showVersion, "version", "v", false, "Show version")
+	RootCmd.SilenceUsage = true
 }
 
 func setWithEnvVariables(options *Config) {
@@ -68,18 +85,14 @@ func setWithEnvVariables(options *Config) {
 }
 
 func main() {
-	flag.Parse()
-	printVersion()
-
-	// Quit here if all we needed to do was show version
-	if showVersion {
-		return
+	if err := RootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(-1)
 	}
 
-	// Check configuration file was given
+	// Quit here if all we needed to do was show usage/help
 	if configfile == "" {
-		fmt.Fprintln(os.Stderr, "Please provide configuration file")
-		os.Exit(1)
+		return
 	}
 
 	// Read configuration
