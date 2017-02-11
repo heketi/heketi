@@ -27,7 +27,7 @@ Note, this could take up to one hour.
 ```
 $ rm heketi.db
 $ make
-$ ./heketi -config=tests/functional/large/config/heketi.json 2>&1 | tee log
+$ ./heketi --config=tests/functional/large/config/heketi.json 2>&1 | tee log
 
 ```
 

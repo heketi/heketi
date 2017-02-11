@@ -25,7 +25,7 @@ $ ./up
 ```
 $ rm heketi.db
 $ make
-$ ./heketi -config=tests/functional/TestVolumeSnapshotBehavior/config/heketi.json 2>&1 | tee log
+$ ./heketi --config=tests/functional/TestVolumeSnapshotBehavior/config/heketi.json 2>&1 | tee log
 
 ```
 

@@ -23,7 +23,7 @@ where PROVIDER is virtualbox or libvirt.
 ```
 $ rm heketi.db
 $ make
-$ ./heketi -config=tests/functional/TestSmokeTest/config/heketi.json | tee log
+$ ./heketi --config=tests/functional/TestSmokeTest/config/heketi.json | tee log
 
 ```
 
