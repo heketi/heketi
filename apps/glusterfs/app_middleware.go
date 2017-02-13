@@ -57,9 +57,9 @@ func (a *App) BackupToKubernetesSecret(
 	responsew := negroni.NewResponseWriter(w)
 	next(responsew, r)
 
-	// Only backup for POST and PUT
-	if !a.isAsyncDone(responsew, r) &&
-		r.Method == http.MethodGet {
+	// Backup for everything except GET methods which do not
+	// provide information on asynchronous completion request
+	if !a.isAsyncDone(responsew, r) && r.Method == http.MethodGet {
 		return
 	}
 

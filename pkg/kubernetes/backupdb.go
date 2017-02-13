@@ -12,6 +12,7 @@ package kubernetes
 import (
 	"bytes"
 	"fmt"
+	"os"
 
 	"github.com/boltdb/bolt"
 
@@ -27,9 +28,16 @@ var (
 		return clientset.NewForConfig(c)
 	}
 	getNamespace = GetNamespace
+	dbSecretName = "heketi-db-backup"
 )
 
 func KubeBackupDbToSecret(db *bolt.DB) error {
+
+	// Check if we should use another name for the heketi backup secret
+	env := os.Getenv("HEKETI_KUBE_DB_SECRET_NAME")
+	if len(env) != 0 {
+		dbSecretName = env
+	}
 
 	// Get Kubernetes configuration
 	kubeConfig, err := inClusterConfig()
@@ -68,11 +76,7 @@ func KubeBackupDbToSecret(db *bolt.DB) error {
 		secret.Kind = "Secret"
 		secret.Namespace = ns
 		secret.APIVersion = "v1"
-		secret.ObjectMeta.Name = "heketi-db-backup"
-		secret.ObjectMeta.Labels = map[string]string{
-			"heketi":    "db",
-			"glusterfs": "heketi-db",
-		}
+		secret.ObjectMeta.Name = dbSecretName
 		secret.Data = map[string][]byte{
 			"heketi.db": backup.Bytes(),
 		}

@@ -241,3 +241,84 @@ func TestBackupToKubeSecretVerifyBackup(t *testing.T) {
 	})
 	tests.Assert(t, err == nil)
 }
+
+func TestBackupToKubeSecretVerifyBackupWithName(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create a name in the envrionment
+	secretName := "mysecret"
+	os.Setenv("HEKETI_KUBE_DB_SECRET_NAME", secretName)
+	defer os.Unsetenv("HEKETI_KUBE_DB_SECRET_NAME")
+
+	// Create a db
+	db, err := bolt.Open(tmpfile, 0600, &bolt.Options{Timeout: 3 * time.Second})
+	tests.Assert(t, err == nil)
+
+	incluster_count := 0
+	defer tests.Patch(&inClusterConfig, func() (*restclient.Config, error) {
+		incluster_count++
+		return nil, nil
+	}).Restore()
+
+	config_count := 0
+	fakeclient := fakeclientset.NewSimpleClientset()
+	defer tests.Patch(&newForConfig, func(c *restclient.Config) (clientset.Interface, error) {
+		config_count++
+		return fakeclient, nil
+	}).Restore()
+
+	ns := "default"
+	ns_count := 0
+	defer tests.Patch(&getNamespace, func() (string, error) {
+		ns_count++
+		return ns, nil
+	}).Restore()
+
+	// Add some content to the db
+	err = db.Update(func(tx *bolt.Tx) error {
+		bucket, err := tx.CreateBucketIfNotExists([]byte("bucket"))
+		tests.Assert(t, err == nil)
+
+		err = bucket.Put([]byte("key1"), []byte("value1"))
+		tests.Assert(t, err == nil)
+
+		return nil
+	})
+	tests.Assert(t, err == nil)
+
+	// Save to a secret
+	err = KubeBackupDbToSecret(db)
+	tests.Assert(t, incluster_count == 1)
+	tests.Assert(t, config_count == 1)
+	tests.Assert(t, ns_count == 1)
+	tests.Assert(t, err == nil)
+
+	// Get the secret
+	secret, err := fakeclient.CoreV1().Secrets(ns).Get(secretName)
+	tests.Assert(t, err == nil)
+
+	// Verify
+	newdb := tests.Tempfile()
+	defer os.Remove(newdb)
+	err = ioutil.WriteFile(newdb, secret.Data["heketi.db"], 0644)
+	tests.Assert(t, err == nil)
+
+	// Load new app with backup
+	db.Close()
+	db, err = bolt.Open(tmpfile, 0600, &bolt.Options{Timeout: 3 * time.Second})
+	tests.Assert(t, err == nil)
+	defer db.Close()
+
+	err = db.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte("bucket"))
+		tests.Assert(t, bucket != nil)
+
+		val := bucket.Get([]byte("key1"))
+		tests.Assert(t, val != nil)
+		tests.Assert(t, string(val) == "value1")
+
+		return nil
+	})
+	tests.Assert(t, err == nil)
+}
