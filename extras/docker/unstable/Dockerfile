@@ -19,7 +19,7 @@ RUN mkdir $BUILD_HOME $GOPATH && \
     mkdir -p $GOPATH/src/github.com/heketi && \
     cd $GOPATH/src/github.com/heketi && \
     git clone -b $HEKETI_BRANCH https://github.com/heketi/heketi.git && \
-    go get github.com/tools/godep && \
+    go get -v github.com/Masterminds/glide && \
     cd $GOPATH/src/github.com/heketi/heketi && make && \
     cp heketi /usr/bin/heketi && \
     cp client/cli/go/heketi-cli /usr/bin/heketi-cli && \

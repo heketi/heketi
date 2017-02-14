@@ -1,0 +1,15 @@
+package: github.com/heketi/heketi/client/cli/go
+import:
+- package: github.com/heketi/heketi
+  version: ^3.1.0
+  subpackages:
+  - client/api/go-client
+  - pkg/db
+  - pkg/glusterfs/api
+  - pkg/kubernetes
+- package: github.com/spf13/cobra
+- package: k8s.io/kubernetes
+  version: ^1.6.0-alpha.0
+  subpackages:
+  - pkg/api/v1
+  - pkg/apis/batch/v1

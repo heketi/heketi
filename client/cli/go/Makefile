@@ -3,7 +3,7 @@
 #
 
 .PHONY: version all run dist clean
-	
+
 APP_NAME := heketi-cli
 SHA := $(shell git rev-parse --short HEAD)
 BRANCH := $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
@@ -50,13 +50,13 @@ package:
 	@echo $(PACKAGE)
 
 build:
-	godep go build $(LDFLAGS) -o $(APP_NAME)
+	go build -o glide $(LDFLAGS) -o $(APP_NAME)
 
 run: build
 	./$(APP_NAME)
 
 test: 
-	godep go test ./...
+	go test ./... $(glide novendor)
 
 clean:
 	@echo Cleaning Workspace...
