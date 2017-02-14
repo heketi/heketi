@@ -30,13 +30,12 @@ RUN mkdir $BUILD_HOME $GOPATH && \
 
 # post install config and volume setup
 ADD ./heketi.json /etc/heketi/heketi.json
+ADD ./heketi-start.sh /usr/bin/heketi-start.sh
 VOLUME /etc/heketi
 
 RUN mkdir /var/lib/heketi
 VOLUME /var/lib/heketi
 
 # expose port, set user and set entrypoint with config option
-ENTRYPOINT ["/usr/bin/heketi"]
+ENTRYPOINT ["/usr/bin/heketi-start.sh"]
 EXPOSE 8080
-
-CMD ["--config=/etc/heketi/heketi.json"]
