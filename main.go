@@ -22,6 +22,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"k8s.io/kubernetes/pkg/client/restclient"
 )
 
 type Config struct {
@@ -117,6 +119,11 @@ func main() {
 	// Substitue values using any set environment variables
 	setWithEnvVariables(&options)
 
+	// Use negroni to add middleware.  Here we add two
+	// middlewares: Recovery and Logger, which come with
+	// Negroni
+	n := negroni.New(negroni.NewRecovery(), negroni.NewLogger())
+
 	// Go to the beginning of the file when we pass it
 	// to the application
 	fp.Seek(0, os.SEEK_SET)
@@ -148,11 +155,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Use negroni to add middleware.  Here we add two
-	// middlewares: Recovery and Logger, which come with
-	// Negroni
-	n := negroni.New(negroni.NewRecovery(), negroni.NewLogger())
-
 	// Load authorization JWT middleware
 	if options.AuthEnabled {
 		jwtauth := middleware.NewJwtAuth(&options.JwtConfig)
@@ -168,6 +170,13 @@ func main() {
 		n.UseFunc(app.Auth)
 
 		fmt.Println("Authorization loaded")
+	}
+
+	// Check if running in a Kubernetes environment
+	_, err = restclient.InClusterConfig()
+	if err == nil {
+		// Load middleware to backup database
+		n.UseFunc(glusterfsApp.BackupToKubernetesSecret)
 	}
 
 	// Add all endpoints after the middleware was added
