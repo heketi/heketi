@@ -9,4 +9,4 @@ if [ -f /backupdb/heketi.db ] ; then
     echo "Copied backup db to /var/lib/heketi/heketi.db"
 fi
 
-/usr/bin/heketi -config=/etc/heketi/heketi.json
+/usr/bin/heketi --config=/etc/heketi/heketi.json
