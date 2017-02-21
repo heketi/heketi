@@ -75,6 +75,24 @@ func (s *SshExecutor) DeviceTeardown(host, device, vgid string) error {
 			device, host, vgid)
 	}
 
+	commands = []string{
+		fmt.Sprintf("ls %v/%v", rootMountPoint, s.vgName(vgid)),
+	}
+	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	if err != nil {
+		return nil
+	}
+
+	commands = []string{
+		fmt.Sprintf("rmdir %v/%v", rootMountPoint, s.vgName(vgid)),
+	}
+
+	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	if err != nil {
+		logger.LogError("Error while removing the VG directory")
+		return nil
+	}
+
 	return nil
 }
 
