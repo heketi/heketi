@@ -201,6 +201,42 @@ type VolumeExpandRequest struct {
 	Size int `json:"expand_size"`
 }
 
+// BlockVolume
+
+type BlockVolumeCreateRequest struct {
+	// Size in GB
+	Size     int      `json:"size"`
+	Clusters []string `json:"clusters,omitempty"`
+	Name     string   `json:"name"`
+	Hacount  int      `json:"hacount,omitempty"`
+	Auth     bool     `json:"auth,omitempty"`
+}
+
+type BlockVolumeInfo struct {
+	BlockVolumeCreateRequest
+	Id          string `json:"id"`
+	BlockVolume struct {
+		Hosts    []string `json:"hosts"`
+		Iqn      string   `json:"iqn"`
+		Lun      int      `json:"lun"`
+		Username string   `json:"username"`
+		Password string   `json:"password"`
+		/*
+			Options   map[string]string `json:"options"`  // needed?...
+		*/
+	} `json:"blockvolume"`
+	Cluster            string `json:"cluster,omitempty"`
+	BlockHostingVolume string `json:"blockhostingvolume,omitempty"`
+}
+
+type BlockVolumeInfoResponse struct {
+	BlockVolumeInfo
+}
+
+type BlockVolumeListResponse struct {
+	BlockVolumes []string `json:"blockvolumes"`
+}
+
 // Constructors
 
 func NewVolumeInfoResponse() *VolumeInfoResponse {
@@ -250,6 +286,58 @@ func (v *VolumeInfoResponse) String() string {
 		s += fmt.Sprintf("Snapshot Factor: %.2f\n",
 			v.Snapshot.Factor)
 	}
+
+	/*
+		s += "\nBricks:\n"
+		for _, b := range v.Bricks {
+			s += fmt.Sprintf("Id: %v\n"+
+				"Path: %v\n"+
+				"Size (GiB): %v\n"+
+				"Node: %v\n"+
+				"Device: %v\n\n",
+				b.Id,
+				b.Path,
+				b.Size/(1024*1024),
+				b.NodeId,
+				b.DeviceId)
+		}
+	*/
+
+	return s
+}
+
+func NewBlockVolumeInfoResponse() *BlockVolumeInfoResponse {
+
+	info := &BlockVolumeInfoResponse{}
+	// Nothing to Construct now maybe for future
+
+	return info
+}
+
+// String functions
+func (v *BlockVolumeInfoResponse) String() string {
+	s := fmt.Sprintf("Name: %v\n"+
+		"Size: %v\n"+
+		"Volume Id: %v\n"+
+		"Cluster Id: %v\n"+
+		"Hosts: %v\n"+
+		"IQN: %v\n"+
+		"LUN: %v\n"+
+		"Hacount: %v\n"+
+		"Username: %v\n"+
+		"Password: %v\n"+
+		"Block Hosting Volume: %v\n",
+		v.Name,
+		v.Size,
+		v.Id,
+		v.Cluster,
+		v.BlockVolume.Hosts,
+		v.BlockVolume.Iqn,
+		v.BlockVolume.Lun,
+		v.Hacount,
+		v.BlockVolume.Username,
+		v.BlockVolume.Password,
+		v.BlockHostingVolume)
 
 	/*
 		s += "\nBricks:\n"
