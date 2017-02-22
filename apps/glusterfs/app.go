@@ -414,6 +414,28 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Pattern:     "/volumes",
 			HandlerFunc: a.VolumeList},
 
+		// BlockVolumes
+		rest.Route{
+			Name:        "BlockVolumeCreate",
+			Method:      "POST",
+			Pattern:     "/blockvolumes",
+			HandlerFunc: a.BlockVolumeCreate},
+		rest.Route{
+			Name:        "BlockVolumeInfo",
+			Method:      "GET",
+			Pattern:     "/blockvolumes/{id:[A-Fa-f0-9]+}",
+			HandlerFunc: a.BlockVolumeInfo},
+		rest.Route{
+			Name:        "BlockVolumeDelete",
+			Method:      "DELETE",
+			Pattern:     "/blockvolumes/{id:[A-Fa-f0-9]+}",
+			HandlerFunc: a.BlockVolumeDelete},
+		rest.Route{
+			Name:        "BlockVolumeList",
+			Method:      "GET",
+			Pattern:     "/blockvolumes",
+			HandlerFunc: a.BlockVolumeList},
+
 		// Backup
 		rest.Route{
 			Name:        "Backup",
