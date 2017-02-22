@@ -134,20 +134,26 @@ func (s *SimpleAllocatorRing) Rebalance() {
 	var device *SimpleDevice
 	for i := 0; len(zones) != 0; i++ {
 		zone := i % len(zones)
-		node := i % len(zones[zone])
+		nodes := zones[zone]
+		node := i % len(nodes)
+		devices := nodes[node]
 
 		// pop device
-		device, zones[zone][node] = zones[zone][node][len(zones[zone][node])-1], zones[zone][node][:len(zones[zone][node])-1]
+		device = devices[len(devices)-1]
+		devices = devices[:len(devices)-1]
+		nodes[node] = devices
+
 		list = append(list, *device)
 
-		// delete node
-		if len(zones[zone][node]) == 0 {
-			zones[zone] = append(zones[zone][:node], zones[zone][node+1:]...)
+		if len(devices) == 0 {
+			// delete node
+			nodes = append(nodes[:node], nodes[node+1:]...)
+			zones[zone] = nodes
+		}
 
+		if len(nodes) == 0 {
 			// delete zone
-			if len(zones[zone]) == 0 {
-				zones = append(zones[:zone], zones[zone+1:]...)
-			}
+			zones = append(zones[:zone], zones[zone+1:]...)
 		}
 	}
 
