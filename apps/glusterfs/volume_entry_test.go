@@ -1067,7 +1067,7 @@ func TestVolumeEntryCreateVolumeCreationFailure(t *testing.T) {
 
 	// Cause a brick creation failure
 	mockerror := errors.New("MOCK")
-	app.xo.MockVolumeCreate = func(host string, volume *executors.VolumeRequest) (*executors.VolumeInfo, error) {
+	app.xo.MockVolumeCreate = func(host string, volume *executors.VolumeRequest) (*executors.SingleVolumeInfo, error) {
 		return nil, mockerror
 	}
 
