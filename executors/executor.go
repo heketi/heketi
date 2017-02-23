@@ -21,6 +21,7 @@ type Executor interface {
 	VolumeDestroy(host string, volume string) error
 	VolumeDestroyCheck(host, volume string) error
 	VolumeExpand(host string, volume *VolumeRequest) (*VolumeInfo, error)
+	VolumeReplaceBrick(host string, volume string, oldBrick *BrickInfo, newBrick *BrickInfo) error
 	SetLogLevel(level string)
 }
 

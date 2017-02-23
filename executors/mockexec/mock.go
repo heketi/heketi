@@ -26,6 +26,7 @@ type MockExecutor struct {
 	MockVolumeExpand       func(host string, volume *executors.VolumeRequest) (*executors.VolumeInfo, error)
 	MockVolumeDestroy      func(host string, volume string) error
 	MockVolumeDestroyCheck func(host, volume string) error
+	MockVolumeReplaceBrick func(host string, volume string, oldBrick *executors.BrickInfo, newBrick *executors.BrickInfo) error
 }
 
 func NewMockExecutor() (*MockExecutor, error) {
@@ -81,6 +82,10 @@ func NewMockExecutor() (*MockExecutor, error) {
 		return nil
 	}
 
+	m.MockVolumeReplaceBrick = func(host string, volume string, oldBrick *executors.BrickInfo, newBrick *executors.BrickInfo) error {
+		return nil
+	}
+
 	return m, nil
 }
 
@@ -130,4 +135,8 @@ func (m *MockExecutor) VolumeDestroy(host string, volume string) error {
 
 func (m *MockExecutor) VolumeDestroyCheck(host string, volume string) error {
 	return m.MockVolumeDestroyCheck(host, volume)
+}
+
+func (m *MockExecutor) VolumeReplaceBrick(host string, volume string, oldBrick *executors.BrickInfo, newBrick *executors.BrickInfo) error {
+	return m.MockVolumeReplaceBrick(host, volume, oldBrick, newBrick)
 }
