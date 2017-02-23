@@ -49,8 +49,11 @@ func (s *SshExecutor) VolumeCreate(host string,
 		maxPerSet = 1
 	}
 
-	// There could many, many bricks which could make the command line
-	// too long.  Instead, create the volume first, then add each brick set.
+	// There could many, many bricks, which could render a single command
+	// line that creates the volume with all the bricks too long.
+	// Therefore, we initially create the volume with the first brick set
+	// only, and then add each brick set in one subsequent command.
+
 	for _, brick := range volume.Bricks[:inSet] {
 		cmd += fmt.Sprintf("%v:%v ", brick.Host, brick.Path)
 	}
