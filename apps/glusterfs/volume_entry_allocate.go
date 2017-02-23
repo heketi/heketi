@@ -139,7 +139,7 @@ func (v *VolumeEntry) allocBricks(
 					// Try to allocate a brick on this device
 					brick := device.NewBrickEntry(brick_size,
 						float64(v.Info.Snapshot.Factor),
-						v.gidRequested)
+						v.gidRequested, v.Info.Id)
 
 					// Determine if it was successful
 					if brick != nil {
