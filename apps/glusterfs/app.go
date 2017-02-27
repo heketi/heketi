@@ -285,6 +285,11 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Method:      "POST",
 			Pattern:     "/nodes/{id:[A-Fa-f0-9]+}/state",
 			HandlerFunc: a.NodeSetState},
+		rest.Route{
+			Name:        "NodeRemove",
+			Method:      "POST",
+			Pattern:     "/nodes/{id:[A-Fa-f0-9]+}/remove",
+			HandlerFunc: a.NodeRemove},
 
 		// Devices
 		rest.Route{

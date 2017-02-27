@@ -145,6 +145,11 @@ class HeketiClient(object):
         req = self._make_request('POST', uri, state_request)
         return req.status_code == requests.codes.ok
 
+    def node_remove(self, node_id):
+        uri = '/nodes/' + node_id + "/remove"
+        req = self._make_request('POST', uri)
+        return req.status_code == requests.codes.NO_CONTENT
+
     def device_add(self, device_options={}):
         ''' device_options is a dict with parameters to be passed \
             in the json request: \

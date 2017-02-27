@@ -16,6 +16,7 @@ import (
 	"sort"
 
 	"github.com/boltdb/bolt"
+	"github.com/heketi/heketi/executors"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/lpabon/godbc"
@@ -358,4 +359,55 @@ func (n *NodeEntry) DeviceAdd(id string) {
 
 func (n *NodeEntry) DeviceDelete(id string) {
 	n.Devices = utils.SortedStringsDelete(n.Devices, id)
+}
+
+func (n *NodeEntry) NoReplacementDeviceString() string {
+	return fmt.Sprintf("Unable to delete node [%v] as no device was found to replace it", n.Info.Id)
+}
+
+// Removes all the bricks from the Device for a Node
+func (n *NodeEntry) Remove(db *bolt.DB,
+	executor executors.Executor,
+	allocator Allocator) (e error) {
+	var devices []*DeviceEntry
+	err := db.Update(func(tx *bolt.Tx) error {
+		for _, device := range n.Devices {
+			deviceEntry, err := NewDeviceEntryFromId(tx, device)
+			if err != nil {
+				return err
+			}
+			if deviceEntry.IsDeleteOk() {
+				logger.Debug("Device is clean to remove %v", device)
+				continue
+			}
+			devices = append(devices, deviceEntry)
+		}
+		if devices != nil {
+			err := n.removeAllDisksFromRing(tx, allocator)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	defer func() {
+		db.Update(func(tx *bolt.Tx) error {
+			n.addAllDisksToRing(tx, allocator)
+			return nil
+		})
+	}()
+	for _, device := range devices {
+		logger.Info("remove device %v", device.Info.Id)
+		err = device.Remove(db, executor, allocator)
+		if err != nil {
+			logger.Info("Error Remove Device")
+			return err
+		}
+		logger.Info("Remove Device %v success", device.Info.Id)
+	}
+
+	return nil
 }
