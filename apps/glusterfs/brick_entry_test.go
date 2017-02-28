@@ -29,9 +29,8 @@ func TestNewBrickEntry(t *testing.T) {
 	nodeid := "def"
 	ps := size
 	gid := int64(1)
-	volumeid := "ghi"
 
-	b := NewBrickEntry(size, tpsize, ps, deviceid, nodeid, gid, volumeid)
+	b := NewBrickEntry(size, tpsize, ps, deviceid, nodeid, gid)
 	tests.Assert(t, b.Info.Id != "")
 	tests.Assert(t, b.TpSize == tpsize)
 	tests.Assert(t, b.PoolMetadataSize == ps)
@@ -39,7 +38,6 @@ func TestNewBrickEntry(t *testing.T) {
 	tests.Assert(t, b.Info.NodeId == nodeid)
 	tests.Assert(t, b.Info.Size == size)
 	tests.Assert(t, b.gidRequested == gid)
-	tests.Assert(t, b.Info.VolumeId == volumeid)
 }
 
 func TestBrickEntryMarshal(t *testing.T) {
@@ -49,8 +47,7 @@ func TestBrickEntryMarshal(t *testing.T) {
 	nodeid := "def"
 	ps := size
 	gid := int64(0)
-	volumeid := "ghi"
-	m := NewBrickEntry(size, tpsize, ps, deviceid, nodeid, gid, volumeid)
+	m := NewBrickEntry(size, tpsize, ps, deviceid, nodeid, gid)
 
 	buffer, err := m.Marshal()
 	tests.Assert(t, err == nil)
@@ -90,7 +87,7 @@ func TestNewBrickEntryFromId(t *testing.T) {
 	defer app.Close()
 
 	// Create a brick
-	b := NewBrickEntry(10, 20, 5, "abc", "def", 0, "ghi")
+	b := NewBrickEntry(10, 20, 5, "abc", "def", 0)
 
 	// Save element in database
 	err := app.db.Update(func(tx *bolt.Tx) error {
@@ -118,7 +115,7 @@ func TestNewBrickEntrySaveDelete(t *testing.T) {
 	defer app.Close()
 
 	// Create a brick
-	b := NewBrickEntry(10, 20, 5, "abc", "def", 1000, "ghi")
+	b := NewBrickEntry(10, 20, 5, "abc", "def", 1000)
 
 	// Save element in database
 	err := app.db.Update(func(tx *bolt.Tx) error {
@@ -163,7 +160,7 @@ func TestNewBrickEntryNewInfoResponse(t *testing.T) {
 	defer app.Close()
 
 	// Create a brick
-	b := NewBrickEntry(10, 20, 5, "abc", "def", 1000, "ghi")
+	b := NewBrickEntry(10, 20, 5, "abc", "def", 1000)
 
 	// Save element in database
 	err := app.db.Update(func(tx *bolt.Tx) error {
@@ -194,7 +191,7 @@ func TestBrickEntryDestroyCheck(t *testing.T) {
 	defer app.Close()
 
 	// Create a brick
-	b := NewBrickEntry(10, 20, 5, "abc", "node", 1000, "ghi")
+	b := NewBrickEntry(10, 20, 5, "abc", "node", 1000)
 	n := NewNodeEntry()
 	n.Info.Id = "node"
 	n.Info.Hostnames.Manage = []string{"manage"}
@@ -238,11 +235,10 @@ func TestBrickEntryCreate(t *testing.T) {
 	deviceid := "abc"
 	nodeid := "node"
 	gid := int64(1000)
-	volumeid := "ghi"
 
 	// Create a brick
 	b := NewBrickEntry(size, tpsize, poolMetadataSize,
-		deviceid, nodeid, gid, volumeid)
+		deviceid, nodeid, gid)
 	n := NewNodeEntry()
 	n.Info.Id = nodeid
 	n.Info.Hostnames.Manage = []string{"manage"}

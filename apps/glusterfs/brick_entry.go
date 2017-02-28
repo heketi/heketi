@@ -12,7 +12,6 @@ package glusterfs
 import (
 	"bytes"
 	"encoding/gob"
-
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
@@ -37,7 +36,7 @@ func BrickList(tx *bolt.Tx) ([]string, error) {
 }
 
 func NewBrickEntry(size, tpsize, poolMetadataSize uint64,
-	deviceid, nodeid string, gid int64, volumeid string) *BrickEntry {
+	deviceid, nodeid string, gid int64) *BrickEntry {
 
 	godbc.Require(size > 0)
 	godbc.Require(tpsize > 0)
@@ -52,7 +51,6 @@ func NewBrickEntry(size, tpsize, poolMetadataSize uint64,
 	entry.Info.Size = size
 	entry.Info.NodeId = nodeid
 	entry.Info.DeviceId = deviceid
-	entry.Info.VolumeId = volumeid
 
 	godbc.Ensure(entry.Info.Id != "")
 	godbc.Ensure(entry.TpSize == tpsize)

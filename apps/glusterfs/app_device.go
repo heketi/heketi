@@ -154,56 +154,6 @@ func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (a *App) DeviceRemove(w http.ResponseWriter, r *http.Request) {
-
-	logger.Info("entered deviceremove")
-
-	vars := mux.Vars(r)
-	id := vars["id"]
-
-	// Check request
-	var device *DeviceEntry
-	err := a.db.View(func(tx *bolt.Tx) error {
-		var err error
-		// Access device entry
-		device, err = NewDeviceEntryFromId(tx, id)
-		if err == ErrNotFound {
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return err
-		} else if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return logger.Err(err)
-		}
-		return nil
-	})
-	if err != nil {
-		return
-	}
-	// Check and remove all bricks from device
-	logger.Info("Check and remove all bricks from device %v", device.Info.Id)
-	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
-		var err error
-
-		// Check if we can remove the device
-		if device.IsDeleteOk() {
-			logger.Info("Device is clean to delete or remove")
-			return "", nil
-		}
-
-		err = device.Remove(a.db, a.executor, a.allocator)
-		if err != nil {
-			if err == ErrNoReplacement {
-				http.Error(w, device.NoReplacementDeviceString(), http.StatusInternalServerError)
-				logger.LogError(device.NoReplacementDeviceString())
-			}
-			return "", err
-		}
-		logger.Info("exit async")
-		return "", nil
-
-	})
-}
-
 func (a *App) DeviceInfo(w http.ResponseWriter, r *http.Request) {
 
 	// Get device id from URL

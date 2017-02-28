@@ -16,7 +16,6 @@ import (
 	"sort"
 
 	"github.com/boltdb/bolt"
-	"github.com/heketi/heketi/executors"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/lpabon/godbc"
@@ -157,10 +156,6 @@ func (d *DeviceEntry) IsDeleteOk() bool {
 
 func (d *DeviceEntry) ConflictString() string {
 	return fmt.Sprintf("Unable to delete device [%v] because it contains bricks", d.Info.Id)
-}
-
-func (d *DeviceEntry) NoReplacementDeviceString() string {
-	return fmt.Sprintf("Unable to delete device [%v] as no device was found to replace it", d.Info.Id)
 }
 
 func (d *DeviceEntry) Delete(tx *bolt.Tx) error {
@@ -348,7 +343,7 @@ func (d *DeviceEntry) SetExtentSize(amount uint64) {
 // the storage amount required from the device's used storage, but it will not add
 // the brick id to the brick list.  The caller is responsabile for adding the brick
 // id to the list.
-func (d *DeviceEntry) NewBrickEntry(amount uint64, snapFactor float64, gid int64, volumeid string) *BrickEntry {
+func (d *DeviceEntry) NewBrickEntry(amount uint64, snapFactor float64, gid int64) *BrickEntry {
 
 	// :TODO: This needs unit test
 
@@ -377,7 +372,6 @@ func (d *DeviceEntry) NewBrickEntry(amount uint64, snapFactor float64, gid int64
 		d.Id(),
 		d.Info.Storage.Free, total)
 	if !d.StorageCheck(total) {
-		logger.Info("Failed Storage Check")
 		return nil
 	}
 
@@ -385,7 +379,7 @@ func (d *DeviceEntry) NewBrickEntry(amount uint64, snapFactor float64, gid int64
 	d.StorageAllocate(total)
 
 	// Create brick
-	return NewBrickEntry(amount, tpsize, metadataSize, d.Info.Id, d.NodeId, gid, volumeid)
+	return NewBrickEntry(amount, tpsize, metadataSize, d.Info.Id, d.NodeId, gid)
 }
 
 // Return poolmetadatasize in KB
@@ -398,47 +392,4 @@ func (d *DeviceEntry) poolMetadataSize(tpsize uint64) uint64 {
 	}
 
 	return p
-}
-
-// Removes all the bricks from the Device
-func (d *DeviceEntry) Remove(db *bolt.DB,
-	executor executors.Executor,
-	allocator Allocator) (e error) {
-	type brickToReplace struct {
-		brickId  string
-		volumeId *VolumeEntry
-	}
-	var bricksToReplace []brickToReplace
-	err := db.View(func(tx *bolt.Tx) error {
-		for _, bricks := range d.Bricks {
-			brickEntry, err := NewBrickEntryFromId(tx, bricks)
-			if err != nil {
-				return nil
-			}
-			volumeEntry, err := NewVolumeEntryFromId(tx, brickEntry.Info.VolumeId)
-			if err != nil {
-				return nil
-			}
-			brick := brickToReplace{}
-			brick.brickId = bricks
-			brick.volumeId = volumeEntry
-			bricksToReplace = append(bricksToReplace, brick)
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	for _, brick := range bricksToReplace {
-		logger.Info("replace the brick %v", brick.brickId)
-		volentry := brick.volumeId
-		err = volentry.replaceBrickInVolume(db, executor, allocator, brick.brickId)
-		if err != nil {
-			logger.Info("Error replace brick")
-			return err
-		}
-		logger.Info("Replace brick success")
-	}
-	return nil
 }
