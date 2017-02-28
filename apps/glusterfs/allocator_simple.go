@@ -179,10 +179,6 @@ func (s *SimpleAllocator) GetNodes(clusterId, brickId string) (<-chan string,
 	// Get the list of devices for this brick id
 	devicelist, err := s.getDeviceList(clusterId, brickId)
 
-	for _, tester := range devicelist {
-		logger.Debug("Allocator Device ID: %v, Brick ID: %v", tester.deviceId, brickId)
-	}
-
 	if err != nil {
 		errc <- err
 		close(device)

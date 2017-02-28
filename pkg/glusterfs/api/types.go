@@ -62,7 +62,6 @@ type BrickInfo struct {
 	Path     string `json:"path"`
 	DeviceId string `json:"device"`
 	NodeId   string `json:"node"`
-	VolumeId string `json:"volume"`
 
 	// Size in KB
 	Size uint64 `json:"size"`

@@ -143,13 +143,6 @@ func NewApp(configIo io.Reader) *App {
 				return err
 			}
 
-			// Handle Upgrade Changes
-			err = app.Upgrade(tx)
-			if err != nil {
-				logger.LogError("Unable to Upgrade Changes")
-				return err
-			}
-
 			return nil
 
 		})
@@ -195,16 +188,6 @@ func (a *App) setLogLevel(level string) {
 	case "debug":
 		logger.SetLevel(utils.LEVEL_DEBUG)
 	}
-}
-
-// Upgrade Path to update all the values for new API entries
-func (a *App) Upgrade(tx *bolt.Tx) error {
-	err := AddVolumeIdInBrickEntry(tx)
-	if err != nil {
-		logger.LogError("VolumeId add to BrickEntry failed")
-		return err
-	}
-	return nil
 }
 
 func (a *App) setAdvSettings() {
@@ -307,11 +290,6 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Method:      "POST",
 			Pattern:     "/devices/{id:[A-Fa-f0-9]+}/state",
 			HandlerFunc: a.DeviceSetState},
-		rest.Route{
-			Name:        "DeviceRemove",
-			Method:      "POST",
-			Pattern:     "/devices/{id:[A-Fa-f0-9]+}/remove",
-			HandlerFunc: a.DeviceRemove},
 
 		// Volume
 		rest.Route{
@@ -389,39 +367,4 @@ func (a *App) Backup(w http.ResponseWriter, r *http.Request) {
 func (a *App) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	logger.Warning("Invalid path or request %v", r.URL.Path)
 	http.Error(w, "Invalid path or request", http.StatusNotFound)
-}
-
-func AddVolumeIdInBrickEntry(tx *bolt.Tx) error {
-	clusters, err := ClusterList(tx)
-	if err != nil {
-		return err
-	}
-	for _, cluster := range clusters {
-		clusterEntry, err := NewClusterEntryFromId(tx, cluster)
-		if err != nil {
-			return err
-		}
-		for _, volume := range clusterEntry.Info.Volumes {
-			volumeEntry, err := NewVolumeEntryFromId(tx, volume)
-			if err != nil {
-				return err
-			}
-			for _, brick := range volumeEntry.Bricks {
-				brickEntry, err := NewBrickEntryFromId(tx, brick)
-				if err != nil {
-					return err
-				}
-				if brickEntry.Info.VolumeId == "" {
-					brickEntry.Info.VolumeId = volume
-					err = brickEntry.Save(tx)
-					if err != nil {
-						return err
-					}
-				} else {
-					break
-				}
-			}
-		}
-	}
-	return nil
 }
