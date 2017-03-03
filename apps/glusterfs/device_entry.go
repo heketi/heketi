@@ -159,10 +159,6 @@ func (d *DeviceEntry) ConflictString() string {
 	return fmt.Sprintf("Unable to delete device [%v] because it contains bricks", d.Info.Id)
 }
 
-func (d *DeviceEntry) NoReplacementDeviceString() string {
-	return fmt.Sprintf("Unable to delete device [%v] as no device was found to replace it", d.Info.Id)
-}
-
 func (d *DeviceEntry) Delete(tx *bolt.Tx) error {
 	godbc.Require(tx != nil)
 

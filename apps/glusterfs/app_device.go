@@ -189,8 +189,8 @@ func (a *App) DeviceRemove(w http.ResponseWriter, r *http.Request) {
 		err = device.Remove(a.db, a.executor, a.allocator)
 		if err != nil {
 			if err == ErrNoReplacement {
-				http.Error(w, device.NoReplacementDeviceString(), http.StatusInternalServerError)
-				logger.LogError(device.NoReplacementDeviceString())
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				logger.LogError("Unable to delete device [%v] as no device was found to replace it", device)
 			}
 			return "", err
 		}
