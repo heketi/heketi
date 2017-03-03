@@ -147,3 +147,7 @@ func (c *ClusterEntry) VolumeDelete(id string) {
 func (c *ClusterEntry) NodeDelete(id string) {
 	c.Info.Nodes = utils.SortedStringsDelete(c.Info.Nodes, id)
 }
+
+func ClusterEntryUpgrade(tx *bolt.Tx) error {
+	return nil
+}

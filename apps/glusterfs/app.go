@@ -199,11 +199,37 @@ func (a *App) setLogLevel(level string) {
 
 // Upgrade Path to update all the values for new API entries
 func (a *App) Upgrade(tx *bolt.Tx) error {
-	err := AddVolumeIdInBrickEntry(tx)
+
+	err := ClusterEntryUpgrade(tx)
 	if err != nil {
-		logger.LogError("VolumeId add to BrickEntry failed")
+		logger.LogError("Failed to upgrade db for cluster entries")
 		return err
 	}
+
+	err = NodeEntryUpgrade(tx)
+	if err != nil {
+		logger.LogError("Failed to upgrade db for node entries")
+		return err
+	}
+
+	err = VolumeEntryUpgrade(tx)
+	if err != nil {
+		logger.LogError("Failed to upgrade db for volume entries")
+		return err
+	}
+
+	err = DeviceEntryUpgrade(tx)
+	if err != nil {
+		logger.LogError("Failed to upgrade db for device entries")
+		return err
+	}
+
+	err = BrickEntryUpgrade(tx)
+	if err != nil {
+		logger.LogError("Failed to upgrade db for brick entries")
+		return err
+	}
+
 	return nil
 }
 
@@ -389,39 +415,4 @@ func (a *App) Backup(w http.ResponseWriter, r *http.Request) {
 func (a *App) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	logger.Warning("Invalid path or request %v", r.URL.Path)
 	http.Error(w, "Invalid path or request", http.StatusNotFound)
-}
-
-func AddVolumeIdInBrickEntry(tx *bolt.Tx) error {
-	clusters, err := ClusterList(tx)
-	if err != nil {
-		return err
-	}
-	for _, cluster := range clusters {
-		clusterEntry, err := NewClusterEntryFromId(tx, cluster)
-		if err != nil {
-			return err
-		}
-		for _, volume := range clusterEntry.Info.Volumes {
-			volumeEntry, err := NewVolumeEntryFromId(tx, volume)
-			if err != nil {
-				return err
-			}
-			for _, brick := range volumeEntry.Bricks {
-				brickEntry, err := NewBrickEntryFromId(tx, brick)
-				if err != nil {
-					return err
-				}
-				if brickEntry.Info.VolumeId == "" {
-					brickEntry.Info.VolumeId = volume
-					err = brickEntry.Save(tx)
-					if err != nil {
-						return err
-					}
-				} else {
-					break
-				}
-			}
-		}
-	}
-	return nil
 }

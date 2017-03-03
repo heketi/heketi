@@ -586,3 +586,7 @@ func (v *VolumeEntry) checkBricksCanBeDestroyed(db *bolt.DB,
 	}
 	return err
 }
+
+func VolumeEntryUpgrade(tx *bolt.Tx) error {
+	return nil
+}

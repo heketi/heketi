@@ -359,3 +359,7 @@ func (n *NodeEntry) DeviceAdd(id string) {
 func (n *NodeEntry) DeviceDelete(id string) {
 	n.Devices = utils.SortedStringsDelete(n.Devices, id)
 }
+
+func NodeEntryUpgrade(tx *bolt.Tx) error {
+	return nil
+}
