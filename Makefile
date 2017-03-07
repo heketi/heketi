@@ -37,7 +37,7 @@ GOFILES=$(shell go list ./... | grep -v vendor)
 
 .DEFAULT: all
 
-all: server client
+all: vendor server client
 
 # print the version
 version:
@@ -51,8 +51,11 @@ name:
 package:
 	@echo $(PACKAGE)
 
+vendor:
+	glide install -v
+
 server:
-	godep go build $(LDFLAGS) -o $(APP_NAME)
+	go build $(LDFLAGS) -o $(APP_NAME)
 
 client:
 	@$(MAKE) -C client/cli/go
@@ -61,7 +64,7 @@ run: server
 	./$(APP_NAME)
 
 test:
-	godep go test $(GOFILES)
+	go test $(GOFILES)
 
 clean:
 	@echo Cleaning Workspace...
