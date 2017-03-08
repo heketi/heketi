@@ -1067,7 +1067,7 @@ func TestVolumeEntryCreateVolumeCreationFailure(t *testing.T) {
 
 	// Cause a brick creation failure
 	mockerror := errors.New("MOCK")
-	app.xo.MockVolumeCreate = func(host string, volume *executors.VolumeRequest) (*executors.SingleVolumeInfo, error) {
+	app.xo.MockVolumeCreate = func(host string, volume *executors.VolumeRequest) (*executors.Volume, error) {
 		return nil, mockerror
 	}
 
@@ -1545,7 +1545,7 @@ func TestReplaceBrickInVolume(t *testing.T) {
 		}
 		return nil
 	})
-	app.xo.MockVolumeInfo = func(host string, volume string) (*executors.SingleVolumeInfo, error) {
+	app.xo.MockVolumeInfo = func(host string, volume string) (*executors.Volume, error) {
 		var bricks []executors.Brick
 		brick := executors.Brick{Name: brickNames[0]}
 		bricks = append(bricks, brick)
@@ -1554,7 +1554,7 @@ func TestReplaceBrickInVolume(t *testing.T) {
 		Bricks := executors.Bricks{
 			Bricks: bricks,
 		}
-		b := &executors.SingleVolumeInfo{
+		b := &executors.Volume{
 			Bricks: Bricks,
 		}
 		return b, nil

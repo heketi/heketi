@@ -117,9 +117,9 @@ func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Execu
 		var foundbrickset bool
 		var brick executors.Brick
 		setlist := make([]*BrickEntry, 0)
-		for slicestartindex = 0; slicestartindex <= len(vinfo.Bricks.Bricks)-v.Durability.BricksInSet(); slicestartindex = slicestartindex + v.Durability.BricksInSet() {
+		for slicestartindex = 0; slicestartindex <= len(vinfo.Bricks.BrickList)-v.Durability.BricksInSet(); slicestartindex = slicestartindex + v.Durability.BricksInSet() {
 			setlist = make([]*BrickEntry, 0)
-			for _, brick = range vinfo.Bricks.Bricks[slicestartindex : slicestartindex+v.Durability.BricksInSet()] {
+			for _, brick = range vinfo.Bricks.BrickList[slicestartindex : slicestartindex+v.Durability.BricksInSet()] {
 				brickentry, err := v.getEntryfromBrickName(tx, brick.Name)
 				if err != nil {
 					logger.LogError("Unable to create brick entry using brick name:%v, error: %v", brick.Name, err)

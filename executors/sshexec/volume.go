@@ -18,7 +18,7 @@ import (
 )
 
 func (s *SshExecutor) VolumeCreate(host string,
-	volume *executors.VolumeRequest) (*executors.SingleVolumeInfo, error) {
+	volume *executors.VolumeRequest) (*executors.Volume, error) {
 
 	godbc.Require(volume != nil)
 	godbc.Require(host != "")
@@ -70,11 +70,11 @@ func (s *SshExecutor) VolumeCreate(host string,
 		return nil, err
 	}
 
-	return &executors.SingleVolumeInfo{}, nil
+	return &executors.Volume{}, nil
 }
 
 func (s *SshExecutor) VolumeExpand(host string,
-	volume *executors.VolumeRequest) (*executors.SingleVolumeInfo, error) {
+	volume *executors.VolumeRequest) (*executors.Volume, error) {
 
 	godbc.Require(volume != nil)
 	godbc.Require(host != "")
@@ -112,7 +112,7 @@ func (s *SshExecutor) VolumeExpand(host string,
 		return nil, err
 	}
 
-	return &executors.SingleVolumeInfo{}, nil
+	return &executors.Volume{}, nil
 }
 
 func (s *SshExecutor) VolumeDestroy(host string, volume string) error {
@@ -215,7 +215,7 @@ func (s *SshExecutor) checkForSnapshots(host, volume string) error {
 	return nil
 }
 
-func (s *SshExecutor) VolumeInfo(host string, volume string) (*executors.SingleVolumeInfo, error) {
+func (s *SshExecutor) VolumeInfo(host string, volume string) (*executors.Volume, error) {
 
 	godbc.Require(volume != "")
 	godbc.Require(host != "")
@@ -242,7 +242,7 @@ func (s *SshExecutor) VolumeInfo(host string, volume string) (*executors.SingleV
 		return nil, fmt.Errorf("Unable to determine volume info of volume name: %v", volume)
 	}
 	logger.Debug("%+v\n", volumeInfo)
-	return &volumeInfo.VolInfo.Volumes.Volumes[0], nil
+	return &volumeInfo.VolInfo.Volumes.VolumeList[0], nil
 }
 
 func (s *SshExecutor) VolumeReplaceBrick(host string, volume string, oldBrick *executors.BrickInfo, newBrick *executors.BrickInfo) error {
