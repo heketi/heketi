@@ -145,14 +145,7 @@ func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Execu
 		}
 
 		//Create an Id for new brick
-		var newBrickId string
-		newId := false
-		for !newId {
-			newBrickId = utils.GenUUID()
-			if !utils.SortedStringHas(v.BricksIds(), newBrickId) {
-				newId = true
-			}
-		}
+		newBrickId := utils.GenUUID()
 
 		// Check the ring for devices to place the brick
 		deviceCh, done, errc := allocator.GetNodes(v.Info.Cluster, newBrickId)
