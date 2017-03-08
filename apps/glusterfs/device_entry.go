@@ -405,13 +405,13 @@ func (d *DeviceEntry) Remove(db *bolt.DB,
 	executor executors.Executor,
 	allocator Allocator) (e error) {
 	type brickToReplace struct {
-		brickId  string
-		volumeId *VolumeEntry
+		brickId     string
+		volumeEntry *VolumeEntry
 	}
 	var bricksToReplace []brickToReplace
 	err := db.View(func(tx *bolt.Tx) error {
-		for _, bricks := range d.Bricks {
-			brickEntry, err := NewBrickEntryFromId(tx, bricks)
+		for _, brickId := range d.Bricks {
+			brickEntry, err := NewBrickEntryFromId(tx, brickId)
 			if err != nil {
 				return nil
 			}
@@ -419,10 +419,10 @@ func (d *DeviceEntry) Remove(db *bolt.DB,
 			if err != nil {
 				return nil
 			}
-			brick := brickToReplace{}
-			brick.brickId = bricks
-			brick.volumeId = volumeEntry
-			bricksToReplace = append(bricksToReplace, brick)
+			bricksToReplace = append(bricksToReplace, brickToReplace{
+				brickId:     brickId,
+				volumeEntry: volumeEntry,
+			})
 		}
 		return nil
 	})
@@ -432,7 +432,7 @@ func (d *DeviceEntry) Remove(db *bolt.DB,
 
 	for _, brick := range bricksToReplace {
 		logger.Info("replace the brick %v", brick.brickId)
-		volentry := brick.volumeId
+		volentry := brick.volumeEntry
 		err = volentry.replaceBrickInVolume(db, executor, allocator, brick.brickId)
 		if err != nil {
 			logger.Info("Error replace brick")
