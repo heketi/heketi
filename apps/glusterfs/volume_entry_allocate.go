@@ -93,7 +93,6 @@ func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Execu
 	allocator Allocator,
 	oldBrickId string) (e error) {
 
-	logger.Info("Entered replace brick")
 	// Do the work in the database context so that the cluster
 	// data does not change while determining brick location
 	err := db.Update(func(tx *bolt.Tx) error {
@@ -123,6 +122,7 @@ func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Execu
 			for _, brick = range vinfo.Bricks.Bricks[slicestartindex : slicestartindex+v.Durability.BricksInSet()] {
 				brickentry, err := v.getEntryfromBrickName(tx, brick.Name)
 				if err != nil {
+					logger.LogError("Unable to create brick entry using brick name:%v, error: %v", brick.Name, err)
 					return err
 				}
 				if brickentry.Id() == oldBrickId {
@@ -136,11 +136,12 @@ func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Execu
 			}
 		}
 		if !foundbrickset {
-			return err
+			logger.LogError("Unable to find brick set for brick %v, db is possibly corrupt", oldBrickEntry.Id())
+			return ErrNotFound
 		}
 
 		for _, brickInSet := range setlist {
-			logger.Info("setlist is %v", brickInSet)
+			logger.Debug("setlist is %v", brickInSet)
 		}
 
 		//Create an Id for new brick
@@ -153,7 +154,6 @@ func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Execu
 			}
 		}
 
-		logger.Info("Ask allocator for the list of devices")
 		// Check the ring for devices to place the brick
 		deviceCh, done, errc := allocator.GetNodes(v.Info.Cluster, newBrickId)
 		defer func() {
@@ -182,11 +182,9 @@ func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Execu
 				}
 			}
 
-			logger.Info("Volume entry: Device ID: %v,Node ID: %v", newDeviceEntry.Id, newDeviceEntry.NodeId)
 			if !deviceOk {
 				continue
 			}
-			logger.Info("Got the device with id %v", newDeviceEntry.Id())
 
 			// Try to allocate a brick on this device
 			newBrickEntry := newDeviceEntry.NewBrickEntry(oldBrickEntry.Info.Size,
@@ -197,7 +195,6 @@ func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Execu
 			if newBrickEntry == nil {
 				continue
 			}
-			logger.Info("Got a good BrickEntry now create a brick")
 			newBrickNode, err := NewNodeEntryFromId(tx, newBrickEntry.Info.NodeId)
 			if err != nil {
 				return err
@@ -209,11 +206,9 @@ func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Execu
 			if err != nil {
 				return err
 			}
-			logger.Info("Created Bricks")
 
 			defer func() {
 				if e != nil {
-					logger.Info("Entered Destroy Bricks")
 					DestroyBricks(db, executor, brickEntries)
 				}
 			}()
@@ -248,7 +243,7 @@ func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Execu
 				return err
 			}
 
-			logger.Info("replacing brick %s %s %s with %s %s %s",
+			logger.Info("replaced brick:%v on node:%v at path:%v with brick:%v on node:%v at path:%v",
 				oldBrickEntry.Id(), oldBrickEntry.Info.NodeId, oldBrickEntry.Info.Path,
 				newBrickEntry.Id(), newBrickEntry.Info.NodeId, newBrickEntry.Info.Path)
 

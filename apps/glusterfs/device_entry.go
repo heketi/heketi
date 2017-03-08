@@ -377,7 +377,6 @@ func (d *DeviceEntry) NewBrickEntry(amount uint64, snapFactor float64, gid int64
 		d.Id(),
 		d.Info.Storage.Free, total)
 	if !d.StorageCheck(total) {
-		logger.Info("Failed Storage Check")
 		return nil
 	}
 
@@ -400,7 +399,7 @@ func (d *DeviceEntry) poolMetadataSize(tpsize uint64) uint64 {
 	return p
 }
 
-// Removes all the bricks from the Device
+// Moves all the bricks from the device to one or more other devices
 func (d *DeviceEntry) Remove(db *bolt.DB,
 	executor executors.Executor,
 	allocator Allocator) (e error) {
@@ -409,6 +408,8 @@ func (d *DeviceEntry) Remove(db *bolt.DB,
 		volumeEntry *VolumeEntry
 	}
 	var bricksToReplace []brickToReplace
+
+	// Get brick and volume entries
 	err := db.View(func(tx *bolt.Tx) error {
 		for _, brickId := range d.Bricks {
 			brickEntry, err := NewBrickEntryFromId(tx, brickId)
@@ -429,16 +430,18 @@ func (d *DeviceEntry) Remove(db *bolt.DB,
 	if err != nil {
 		return err
 	}
-
+	// Move bricks now
 	for _, brick := range bricksToReplace {
-		logger.Info("replace the brick %v", brick.brickId)
+		logger.Info("Replacing brick %v on device %v on node %v",
+			brick.brickId, d.Info.Name, d.NodeId)
 		volentry := brick.volumeEntry
 		err = volentry.replaceBrickInVolume(db, executor, allocator, brick.brickId)
 		if err != nil {
-			logger.Info("Error replace brick")
-			return err
+			return logger.LogError("Failed to replace brick %v on ",
+				"device %v on node %v",
+				brick.brickId, d.Info.Name,
+				d.NodeId)
 		}
-		logger.Info("Replace brick success")
 	}
 	return nil
 }

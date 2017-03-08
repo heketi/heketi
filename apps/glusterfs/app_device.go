@@ -156,8 +156,6 @@ func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) DeviceRemove(w http.ResponseWriter, r *http.Request) {
 
-	logger.Info("entered deviceremove")
-
 	vars := mux.Vars(r)
 	id := vars["id"]
 
@@ -180,13 +178,11 @@ func (a *App) DeviceRemove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check and remove all bricks from device
-	logger.Info("Check and remove all bricks from device %v", device.Info.Id)
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
 		var err error
 
 		// Check if we can remove the device
 		if device.IsDeleteOk() {
-			logger.Info("Device is clean to delete or remove")
 			return "", nil
 		}
 
@@ -198,7 +194,6 @@ func (a *App) DeviceRemove(w http.ResponseWriter, r *http.Request) {
 			}
 			return "", err
 		}
-		logger.Info("exit async")
 		return "", nil
 
 	})
