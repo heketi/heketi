@@ -89,172 +89,162 @@ func (v *VolumeEntry) getEntryfromBrickName(tx *bolt.Tx, brickname string) (bric
 	return nil, ErrNotFound
 }
 
-func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Executor,
+func (v *VolumeEntry) replaceBrickInVolume(tx *bolt.Tx, executor executors.Executor,
 	allocator Allocator,
 	oldBrickId string) (e error) {
 
-	// Do the work in the database context so that the cluster
-	// data does not change while determining brick location
-	err := db.Update(func(tx *bolt.Tx) error {
-
-		oldBrickEntry, err := NewBrickEntryFromId(tx, oldBrickId)
-		if err != nil {
-			return err
-		}
-
-		oldDeviceEntry, err := NewDeviceEntryFromId(tx, oldBrickEntry.Info.DeviceId)
-		if err != nil {
-			return err
-		}
-		oldBrickNode, err := NewNodeEntryFromId(tx, oldBrickEntry.Info.NodeId)
-		if err != nil {
-			return err
-		}
-
-		// Determine the setlist by getting data from Gluster
-		vinfo, err := executor.VolumeInfo(oldBrickNode.ManageHostName(), v.Info.Name)
-		var slicestartindex int
-		var foundbrickset bool
-		var brick executors.Brick
-		setlist := make([]*BrickEntry, 0)
-		for slicestartindex = 0; slicestartindex <= len(vinfo.Bricks.BrickList)-v.Durability.BricksInSet(); slicestartindex = slicestartindex + v.Durability.BricksInSet() {
-			setlist = make([]*BrickEntry, 0)
-			for _, brick = range vinfo.Bricks.BrickList[slicestartindex : slicestartindex+v.Durability.BricksInSet()] {
-				brickentry, err := v.getEntryfromBrickName(tx, brick.Name)
-				if err != nil {
-					logger.LogError("Unable to create brick entry using brick name:%v, error: %v", brick.Name, err)
-					return err
-				}
-				if brickentry.Id() == oldBrickId {
-					foundbrickset = true
-				} else {
-					setlist = append(setlist, brickentry)
-				}
-			}
-			if foundbrickset {
-				break
-			}
-		}
-		if !foundbrickset {
-			logger.LogError("Unable to find brick set for brick %v, db is possibly corrupt", oldBrickEntry.Id())
-			return ErrNotFound
-		}
-
-		for _, brickInSet := range setlist {
-			logger.Debug("setlist is %v", brickInSet)
-		}
-
-		//Create an Id for new brick
-		newBrickId := utils.GenUUID()
-
-		// Check the ring for devices to place the brick
-		deviceCh, done, errc := allocator.GetNodes(v.Info.Cluster, newBrickId)
-		defer func() {
-			close(done)
-		}()
-
-		for deviceId := range deviceCh {
-
-			// Get device entry
-			newDeviceEntry, err := NewDeviceEntryFromId(tx, deviceId)
-			if err != nil {
-				return err
-			}
-
-			// Skip same device
-			if oldDeviceEntry.Info.Id == newDeviceEntry.Info.Id {
-				continue
-			}
-
-			// Do not allow a device from the same node to be
-			// in the set
-			deviceOk := true
-			for _, brickInSet := range setlist {
-				if brickInSet.Info.NodeId == newDeviceEntry.NodeId {
-					deviceOk = false
-				}
-			}
-
-			if !deviceOk {
-				continue
-			}
-
-			// Try to allocate a brick on this device
-			newBrickEntry := newDeviceEntry.NewBrickEntry(oldBrickEntry.Info.Size,
-				float64(v.Info.Snapshot.Factor),
-				v.gidRequested, v.Info.Id)
-
-			// Determine if it was successful
-			if newBrickEntry == nil {
-				continue
-			}
-			newBrickNode, err := NewNodeEntryFromId(tx, newBrickEntry.Info.NodeId)
-			if err != nil {
-				return err
-			}
-			newBrickEntry.SetId(newBrickId)
-			var brickEntries []*BrickEntry
-			brickEntries = append(brickEntries, newBrickEntry)
-			err = CreateBricks(db, executor, brickEntries)
-			if err != nil {
-				return err
-			}
-
-			defer func() {
-				if e != nil {
-					DestroyBricks(db, executor, brickEntries)
-				}
-			}()
-
-			var oldBrick executors.BrickInfo
-			var newBrick executors.BrickInfo
-
-			oldBrick.Path = oldBrickEntry.Info.Path
-			oldBrick.Host = oldBrickNode.StorageHostName()
-			newBrick.Path = newBrickEntry.Info.Path
-			newBrick.Host = newBrickNode.StorageHostName()
-
-			err = executor.VolumeReplaceBrick(oldBrickNode.ManageHostName(), v.Info.Name, &oldBrick, &newBrick)
-			if err != nil {
-				return err
-			}
-
-			err = newBrickEntry.Save(tx)
-			if err != nil {
-				return err
-			}
-			newDeviceEntry.BrickAdd(newBrickEntry.Id())
-			err = newDeviceEntry.Save(tx)
-			if err != nil {
-				return err
-			}
-			v.BrickAdd(newBrickEntry.Id())
-			v.removeBrickFromDb(tx, oldBrickEntry)
-			err = v.Save(tx)
-			if err != nil {
-				logger.Err(err)
-				return err
-			}
-
-			logger.Info("replaced brick:%v on node:%v at path:%v with brick:%v on node:%v at path:%v",
-				oldBrickEntry.Id(), oldBrickEntry.Info.NodeId, oldBrickEntry.Info.Path,
-				newBrickEntry.Id(), newBrickEntry.Info.NodeId, newBrickEntry.Info.Path)
-
-			return nil
-		}
-		// Check if allocator returned an error
-		if err := <-errc; err != nil {
-			return err
-		}
-
-		// No device found
-		return ErrNoReplacement
-
-	})
+	oldBrickEntry, err := NewBrickEntryFromId(tx, oldBrickId)
 	if err != nil {
 		return err
 	}
-	return nil
+
+	oldDeviceEntry, err := NewDeviceEntryFromId(tx, oldBrickEntry.Info.DeviceId)
+	if err != nil {
+		return err
+	}
+	oldBrickNode, err := NewNodeEntryFromId(tx, oldBrickEntry.Info.NodeId)
+	if err != nil {
+		return err
+	}
+
+	// Determine the setlist by getting data from Gluster
+	vinfo, err := executor.VolumeInfo(oldBrickNode.ManageHostName(), v.Info.Name)
+	var slicestartindex int
+	var foundbrickset bool
+	var brick executors.Brick
+	setlist := make([]*BrickEntry, 0)
+	for slicestartindex = 0; slicestartindex <= len(vinfo.Bricks.BrickList)-v.Durability.BricksInSet(); slicestartindex = slicestartindex + v.Durability.BricksInSet() {
+		setlist = make([]*BrickEntry, 0)
+		for _, brick = range vinfo.Bricks.BrickList[slicestartindex : slicestartindex+v.Durability.BricksInSet()] {
+			brickentry, err := v.getEntryfromBrickName(tx, brick.Name)
+			if err != nil {
+				logger.LogError("Unable to create brick entry using brick name:%v, error: %v", brick.Name, err)
+				return err
+			}
+			if brickentry.Id() == oldBrickId {
+				foundbrickset = true
+			} else {
+				setlist = append(setlist, brickentry)
+			}
+		}
+		if foundbrickset {
+			break
+		}
+	}
+	if !foundbrickset {
+		logger.LogError("Unable to find brick set for brick %v, db is possibly corrupt", oldBrickEntry.Id())
+		return ErrNotFound
+	}
+
+	for _, brickInSet := range setlist {
+		logger.Debug("setlist is %v", brickInSet)
+	}
+
+	//Create an Id for new brick
+	newBrickId := utils.GenUUID()
+
+	// Check the ring for devices to place the brick
+	deviceCh, done, errc := allocator.GetNodes(v.Info.Cluster, newBrickId)
+	defer func() {
+		close(done)
+	}()
+
+	for deviceId := range deviceCh {
+
+		// Get device entry
+		newDeviceEntry, err := NewDeviceEntryFromId(tx, deviceId)
+		if err != nil {
+			return err
+		}
+
+		// Skip same device
+		if oldDeviceEntry.Info.Id == newDeviceEntry.Info.Id {
+			continue
+		}
+
+		// Do not allow a device from the same node to be
+		// in the set
+		deviceOk := true
+		for _, brickInSet := range setlist {
+			if brickInSet.Info.NodeId == newDeviceEntry.NodeId {
+				deviceOk = false
+			}
+		}
+
+		if !deviceOk {
+			continue
+		}
+
+		// Try to allocate a brick on this device
+		newBrickEntry := newDeviceEntry.NewBrickEntry(oldBrickEntry.Info.Size,
+			float64(v.Info.Snapshot.Factor),
+			v.gidRequested, v.Info.Id)
+
+		// Determine if it was successful
+		if newBrickEntry == nil {
+			continue
+		}
+		newBrickNode, err := NewNodeEntryFromId(tx, newBrickEntry.Info.NodeId)
+		if err != nil {
+			return err
+		}
+		newBrickEntry.SetId(newBrickId)
+		var brickEntries []*BrickEntry
+		brickEntries = append(brickEntries, newBrickEntry)
+		err = CreateBricks(tx, executor, brickEntries)
+		if err != nil {
+			return err
+		}
+
+		defer func() {
+			if e != nil {
+				DestroyBricks(tx, executor, brickEntries)
+			}
+		}()
+
+		var oldBrick executors.BrickInfo
+		var newBrick executors.BrickInfo
+
+		oldBrick.Path = oldBrickEntry.Info.Path
+		oldBrick.Host = oldBrickNode.StorageHostName()
+		newBrick.Path = newBrickEntry.Info.Path
+		newBrick.Host = newBrickNode.StorageHostName()
+
+		err = executor.VolumeReplaceBrick(oldBrickNode.ManageHostName(), v.Info.Name, &oldBrick, &newBrick)
+		if err != nil {
+			return err
+		}
+
+		err = newBrickEntry.Save(tx)
+		if err != nil {
+			return err
+		}
+		newDeviceEntry.BrickAdd(newBrickEntry.Id())
+		err = newDeviceEntry.Save(tx)
+		if err != nil {
+			return err
+		}
+		v.BrickAdd(newBrickEntry.Id())
+		v.removeBrickFromDb(tx, oldBrickEntry)
+		err = v.Save(tx)
+		if err != nil {
+			logger.Err(err)
+			return err
+		}
+
+		logger.Info("replaced brick:%v on node:%v at path:%v with brick:%v on node:%v at path:%v",
+			oldBrickEntry.Id(), oldBrickEntry.Info.NodeId, oldBrickEntry.Info.Path,
+			newBrickEntry.Id(), newBrickEntry.Info.NodeId, newBrickEntry.Info.Path)
+
+		return nil
+	}
+	// Check if allocator returned an error
+	if err := <-errc; err != nil {
+		return err
+	}
+
+	// No device found
+	return ErrNoReplacement
 }
 
 func (v *VolumeEntry) allocBricks(

@@ -639,8 +639,14 @@ func TestDeviceSetStateFailed(t *testing.T) {
 		tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 1)
 		tests.Assert(t, mockAllocator.clustermap[c.Info.Id][0] == d.Info.Id)
 
-		// Set failed
-		err = d.SetState(tx, mockAllocator, api.EntryStateFailed)
+		// Set offline
+		err = d.SetState(tx, app.executor, mockAllocator, api.EntryStateOffline)
+		tests.Assert(t, d.State == api.EntryStateFailed)
+		tests.Assert(t, err != nil)
+		tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 0)
+
+		// Set failed, Note: this requires the current state to be offline
+		err = d.SetState(tx, app.executor, mockAllocator, api.EntryStateFailed)
 		tests.Assert(t, d.State == api.EntryStateFailed)
 		tests.Assert(t, err == nil)
 
@@ -648,18 +654,18 @@ func TestDeviceSetStateFailed(t *testing.T) {
 		tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 0)
 
 		// Set failed again
-		err = d.SetState(tx, mockAllocator, api.EntryStateFailed)
+		err = d.SetState(tx, app.executor, mockAllocator, api.EntryStateFailed)
 		tests.Assert(t, d.State == api.EntryStateFailed)
 		tests.Assert(t, err == nil)
 
 		// Set offline
-		err = d.SetState(tx, mockAllocator, api.EntryStateOffline)
+		err = d.SetState(tx, app.executor, mockAllocator, api.EntryStateOffline)
 		tests.Assert(t, d.State == api.EntryStateFailed)
 		tests.Assert(t, err != nil)
 		tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 0)
 
 		// Set online
-		err = d.SetState(tx, mockAllocator, api.EntryStateOnline)
+		err = d.SetState(tx, app.executor, mockAllocator, api.EntryStateOnline)
 		tests.Assert(t, d.State == api.EntryStateFailed)
 		tests.Assert(t, err != nil)
 		tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 0)
@@ -720,7 +726,7 @@ func TestDeviceSetStateOfflineOnline(t *testing.T) {
 		tests.Assert(t, mockAllocator.clustermap[c.Info.Id][0] == d.Info.Id)
 
 		// Set offline
-		err = d.SetState(tx, mockAllocator, api.EntryStateOffline)
+		err = d.SetState(tx, app.executor, mockAllocator, api.EntryStateOffline)
 		tests.Assert(t, d.State == api.EntryStateOffline)
 		tests.Assert(t, err == nil)
 
@@ -728,12 +734,12 @@ func TestDeviceSetStateOfflineOnline(t *testing.T) {
 		tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 0)
 
 		// Set offline again
-		err = d.SetState(tx, mockAllocator, api.EntryStateOffline)
+		err = d.SetState(tx, app.executor, mockAllocator, api.EntryStateOffline)
 		tests.Assert(t, d.State == api.EntryStateOffline)
 		tests.Assert(t, err == nil)
 
 		// Set online
-		err = d.SetState(tx, mockAllocator, api.EntryStateOnline)
+		err = d.SetState(tx, app.executor, mockAllocator, api.EntryStateOnline)
 		tests.Assert(t, d.State == api.EntryStateOnline)
 		tests.Assert(t, err == nil)
 		tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 1)

@@ -132,9 +132,12 @@ var deviceRemoveCommand = &cobra.Command{
 		heketi := client.NewClient(options.Url, options.User, options.Key)
 
 		//set url
-		err := heketi.DeviceRemove(deviceId)
+		req := &api.StateRequest{
+			State: "failed",
+		}
+		err := heketi.DeviceState(deviceId, req)
 		if err == nil {
-			fmt.Fprintf(stdout, "Device %v Removed\n", deviceId)
+			fmt.Fprintf(stdout, "Device %v is now removed\n", deviceId)
 		}
 
 		return err

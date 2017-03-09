@@ -154,51 +154,6 @@ func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (a *App) DeviceRemove(w http.ResponseWriter, r *http.Request) {
-
-	vars := mux.Vars(r)
-	id := vars["id"]
-
-	// Check request
-	var device *DeviceEntry
-	err := a.db.View(func(tx *bolt.Tx) error {
-		var err error
-		// Access device entry
-		device, err = NewDeviceEntryFromId(tx, id)
-		if err == ErrNotFound {
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return err
-		} else if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return logger.Err(err)
-		}
-		return nil
-	})
-	if err != nil {
-		return
-	}
-	// Check and remove all bricks from device
-	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
-		var err error
-
-		// Check if we can remove the device
-		if device.IsDeleteOk() {
-			return "", nil
-		}
-
-		err = device.Remove(a.db, a.executor, a.allocator)
-		if err != nil {
-			if err == ErrNoReplacement {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				logger.LogError("Unable to delete device [%v] as no device was found to replace it", device)
-			}
-			return "", err
-		}
-		return "", nil
-
-	})
-}
-
 func (a *App) DeviceInfo(w http.ResponseWriter, r *http.Request) {
 
 	// Get device id from URL
@@ -367,35 +322,31 @@ func (a *App) DeviceSetState(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "request unable to be parsed", 422)
 		return
 	}
+	logger.Info("entered set state state is %+v, device is %v", msg, id)
 
 	// Set state
-	err = a.db.Update(func(tx *bolt.Tx) error {
-		device, err := NewDeviceEntryFromId(tx, id)
+	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
+		err = a.db.Update(func(tx *bolt.Tx) error {
+			device, err := NewDeviceEntryFromId(tx, id)
+			if err != nil {
+				logger.LogError("Did not find device requested %v", id)
+				return err
+			}
+
+			// Set state
+			err = device.SetState(tx, a.executor, a.allocator, msg.State)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
 		if err == ErrNotFound {
 			http.Error(w, "Id not found", http.StatusNotFound)
-			return err
+			return "", err
 		} else if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return err
+			return "", err
 		}
-
-		// Set state
-		err = device.SetState(tx, a.allocator, msg.State)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return err
-		}
-
-		// Save new state
-		err = device.Save(tx)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return err
-		}
-
-		return nil
+		return "", nil
 	})
-	if err != nil {
-		return
-	}
 }

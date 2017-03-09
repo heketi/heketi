@@ -1022,7 +1022,7 @@ func TestVolumeEntryCreateBrickCreationFailure(t *testing.T) {
 	// size of 100G * 1.5 = 150GB.
 	v := createSampleVolumeEntry(200)
 	err = v.Create(app.db, app.executor, app.allocator)
-	tests.Assert(t, err == mockerror)
+	tests.Assert(t, err == mockerror, err, mockerror)
 
 	// Check database is still clean. No bricks and No volumes
 	err = app.db.View(func(tx *bolt.Tx) error {
@@ -1552,7 +1552,7 @@ func TestReplaceBrickInVolume(t *testing.T) {
 		brick = executors.Brick{Name: brickNames[1]}
 		bricks = append(bricks, brick)
 		Bricks := executors.Bricks{
-			Bricks: bricks,
+			BrickList: bricks,
 		}
 		b := &executors.Volume{
 			Bricks: Bricks,
@@ -1560,7 +1560,9 @@ func TestReplaceBrickInVolume(t *testing.T) {
 		return b, nil
 	}
 	brickId := be.Id()
-	err = v.replaceBrickInVolume(app.db, app.executor, app.allocator, brickId)
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		return v.replaceBrickInVolume(tx, app.executor, app.allocator, brickId)
+	})
 	tests.Assert(t, err == nil)
 
 	oldNode := be.Info.NodeId
