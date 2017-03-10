@@ -271,8 +271,6 @@ func TestBrickEntryCreate(t *testing.T) {
 
 		return bInfo, nil
 	}
-	err = app.db.Update(func(tx *bolt.Tx) error {
-		return b.Create(tx, app.executor)
-	})
+	err = b.Create(app.db, app.executor)
 	tests.Assert(t, err == nil)
 }

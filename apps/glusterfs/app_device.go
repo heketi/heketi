@@ -325,20 +325,20 @@ func (a *App) DeviceSetState(w http.ResponseWriter, r *http.Request) {
 
 	// Set state
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
-		err = a.db.Update(func(tx *bolt.Tx) error {
-			device, err := NewDeviceEntryFromId(tx, id)
+		var device *DeviceEntry
+		err = a.db.View(func(tx *bolt.Tx) error {
+			device, err = NewDeviceEntryFromId(tx, id)
 			if err != nil {
 				logger.LogError("Did not find device requested %v", id)
 				return err
 			}
-
-			// Set state
-			err = device.SetState(tx, a.executor, a.allocator, msg.State)
-			if err != nil {
-				return err
-			}
 			return nil
 		})
+		if err != nil {
+			return "", err
+		}
+		// Set state
+		err = device.SetState(a.db, a.executor, a.allocator, msg.State)
 		if err != nil {
 			return "", err
 		}

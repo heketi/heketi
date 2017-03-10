@@ -203,7 +203,7 @@ func (d *DeviceEntry) addDeviceToRing(tx *bolt.Tx,
 	return a.AddDevice(cluster, node, d)
 }
 
-func (d *DeviceEntry) SetState(tx *bolt.Tx,
+func (d *DeviceEntry) SetState(db *bolt.DB,
 	e executors.Executor,
 	a Allocator,
 	s api.EntryState) error {
@@ -231,15 +231,21 @@ func (d *DeviceEntry) SetState(tx *bolt.Tx,
 			return nil
 		case api.EntryStateOffline:
 			// Remove disk from Ring
-			err := d.removeDeviceFromRing(tx, a)
-			if err != nil {
-				return err
-			}
+			err := db.Update(func(tx *bolt.Tx) error {
+				err := d.removeDeviceFromRing(tx, a)
+				if err != nil {
+					return err
+				}
 
-			// Save state
-			d.State = s
-			// Save new state
-			err = d.Save(tx)
+				// Save state
+				d.State = s
+				// Save new state
+				err = d.Save(tx)
+				if err != nil {
+					return err
+				}
+				return nil
+			})
 			if err != nil {
 				return err
 			}
@@ -256,18 +262,24 @@ func (d *DeviceEntry) SetState(tx *bolt.Tx,
 			return nil
 		case api.EntryStateOnline:
 			// Add disk back
-			err := d.addDeviceToRing(tx, a)
-			if err != nil {
-				return err
-			}
-			d.State = s
-			err = d.Save(tx)
+			err := db.Update(func(tx *bolt.Tx) error {
+				err := d.addDeviceToRing(tx, a)
+				if err != nil {
+					return err
+				}
+				d.State = s
+				err = d.Save(tx)
+				if err != nil {
+					return err
+				}
+				return nil
+			})
 			if err != nil {
 				return err
 			}
 		case api.EntryStateFailed:
 
-			err := d.Remove(tx, e, a)
+			err := d.Remove(db, e, a)
 			if err != nil {
 				if err == ErrNoReplacement {
 					return logger.LogError("Unable to delete device [%v] as no device was found to replace it", d)
@@ -423,7 +435,7 @@ func (d *DeviceEntry) poolMetadataSize(tpsize uint64) uint64 {
 }
 
 // Moves all the bricks from the device to one or more other devices
-func (d *DeviceEntry) Remove(tx *bolt.Tx,
+func (d *DeviceEntry) Remove(db *bolt.DB,
 	executor executors.Executor,
 	allocator Allocator) (e error) {
 	type brickToReplace struct {
@@ -435,35 +447,47 @@ func (d *DeviceEntry) Remove(tx *bolt.Tx,
 	if d.IsDeleteOk() {
 		d.State = api.EntryStateFailed
 		// Save new state
-		err := d.Save(tx)
+		err := db.Update(func(tx *bolt.Tx) error {
+			err := d.Save(tx)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
 		if err != nil {
 			return err
 		}
-		return nil
 	}
 
 	var bricksToReplace []brickToReplace
 	// Get brick and volume entries
-	for _, brickId := range d.Bricks {
-		brickEntry, err := NewBrickEntryFromId(tx, brickId)
-		if err != nil {
-			return err
+	err := db.View(func(tx *bolt.Tx) error {
+		for _, brickId := range d.Bricks {
+			brickEntry, err := NewBrickEntryFromId(tx, brickId)
+			if err != nil {
+				return err
+			}
+			volumeEntry, err := NewVolumeEntryFromId(tx, brickEntry.Info.VolumeId)
+			if err != nil {
+				return err
+			}
+			bricksToReplace = append(bricksToReplace, brickToReplace{
+				brickId:     brickId,
+				volumeEntry: volumeEntry,
+			})
 		}
-		volumeEntry, err := NewVolumeEntryFromId(tx, brickEntry.Info.VolumeId)
-		if err != nil {
-			return err
-		}
-		bricksToReplace = append(bricksToReplace, brickToReplace{
-			brickId:     brickId,
-			volumeEntry: volumeEntry,
-		})
+		return nil
+	})
+	if err != nil {
+		return err
 	}
+
 	// Move bricks now
 	for _, brick := range bricksToReplace {
 		logger.Info("Replacing brick %v on device %v on node %v",
 			brick.brickId, d.Info.Name, d.NodeId)
 		volentry := brick.volumeEntry
-		err := volentry.replaceBrickInVolume(tx, executor, allocator, brick.brickId)
+		err := volentry.replaceBrickInVolume(db, executor, allocator, brick.brickId)
 		if err != nil {
 			return logger.LogError("Failed to replace brick %v on ",
 				"device %v on node %v",
@@ -474,17 +498,22 @@ func (d *DeviceEntry) Remove(tx *bolt.Tx,
 
 	// Get new entry for the device because db would have changed
 	// replaceBrickInVolume calls functions that change device state in db
-	newDeviceEntry, err := NewDeviceEntryFromId(tx, d.Id())
-	if err != nil {
-		return err
-	}
-	newDeviceEntry.State = api.EntryStateFailed
-	err = newDeviceEntry.Save(tx)
+	err = db.Update(func(tx *bolt.Tx) error {
+		newDeviceEntry, err := NewDeviceEntryFromId(tx, d.Id())
+		if err != nil {
+			return err
+		}
+		newDeviceEntry.State = api.EntryStateFailed
+		err = newDeviceEntry.Save(tx)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
 		return err
 	}
 	return nil
-
 }
 
 func DeviceEntryUpgrade(tx *bolt.Tx) error {

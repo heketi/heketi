@@ -330,13 +330,7 @@ func (v *VolumeEntry) Create(db *bolt.DB,
 	}()
 
 	// Create the bricks on the nodes
-	err = db.Update(func(tx *bolt.Tx) error {
-		err = CreateBricks(tx, executor, brick_entries)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
+	err = CreateBricks(db, executor, brick_entries)
 	if err != nil {
 		return err
 	}
@@ -344,10 +338,7 @@ func (v *VolumeEntry) Create(db *bolt.DB,
 	// Clean up created bricks on failure
 	defer func() {
 		if e != nil {
-			db.Update(func(tx *bolt.Tx) error {
-				DestroyBricks(tx, executor, brick_entries)
-				return nil
-			})
+			DestroyBricks(db, executor, brick_entries)
 		}
 	}()
 
@@ -448,14 +439,11 @@ func (v *VolumeEntry) Destroy(db *bolt.DB, executor executors.Executor) error {
 	}
 
 	// Destroy bricks
-	err = db.Update(func(tx *bolt.Tx) error {
-		err = DestroyBricks(tx, executor, brick_entries)
-		if err != nil {
-			logger.LogError("Unable to delete bricks: %v", err)
-			return err
-		}
-		return nil
-	})
+	err = DestroyBricks(db, executor, brick_entries)
+	if err != nil {
+		logger.LogError("Unable to delete bricks: %v", err)
+		return err
+	}
 
 	// Remove from entries from the db
 	err = db.Update(func(tx *bolt.Tx) error {
@@ -521,14 +509,7 @@ func (v *VolumeEntry) Expand(db *bolt.DB,
 	}()
 
 	// Create bricks
-	err = db.Update(func(tx *bolt.Tx) error {
-		err = CreateBricks(tx, executor, brick_entries)
-		if err != nil {
-			logger.Err(err)
-			return err
-		}
-		return nil
-	})
+	err = CreateBricks(db, executor, brick_entries)
 	if err != nil {
 		return err
 	}
@@ -537,10 +518,7 @@ func (v *VolumeEntry) Expand(db *bolt.DB,
 	defer func() {
 		if e != nil {
 			logger.Debug("Error detected, cleaning up")
-			db.Update(func(tx *bolt.Tx) error {
-				DestroyBricks(tx, executor, brick_entries)
-				return nil
-			})
+			DestroyBricks(db, executor, brick_entries)
 		}
 	}()
 

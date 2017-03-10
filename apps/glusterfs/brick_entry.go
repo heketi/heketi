@@ -123,20 +123,26 @@ func (b *BrickEntry) Unmarshal(buffer []byte) error {
 	return nil
 }
 
-func (b *BrickEntry) Create(tx *bolt.Tx, executor executors.Executor) error {
-	godbc.Require(tx != nil)
+func (b *BrickEntry) Create(db *bolt.DB, executor executors.Executor) error {
+	godbc.Require(db != nil)
 	godbc.Require(b.TpSize > 0)
 	godbc.Require(b.Info.Size > 0)
 
 	// Get node hostname
 	var host string
-	node, err := NewNodeEntryFromId(tx, b.Info.NodeId)
+	err := db.View(func(tx *bolt.Tx) error {
+		node, err := NewNodeEntryFromId(tx, b.Info.NodeId)
+		if err != nil {
+			return err
+		}
+
+		host = node.ManageHostName()
+		godbc.Check(host != "")
+		return nil
+	})
 	if err != nil {
 		return err
 	}
-
-	host = node.ManageHostName()
-	godbc.Check(host != "")
 
 	// Create request
 	req := &executors.BrickRequest{}
@@ -160,21 +166,27 @@ func (b *BrickEntry) Create(tx *bolt.Tx, executor executors.Executor) error {
 	return nil
 }
 
-func (b *BrickEntry) Destroy(tx *bolt.Tx, executor executors.Executor) error {
+func (b *BrickEntry) Destroy(db *bolt.DB, executor executors.Executor) error {
 
-	godbc.Require(tx != nil)
+	godbc.Require(db != nil)
 	godbc.Require(b.TpSize > 0)
 	godbc.Require(b.Info.Size > 0)
 
 	// Get node hostname
 	var host string
-	node, err := NewNodeEntryFromId(tx, b.Info.NodeId)
+	err := db.View(func(tx *bolt.Tx) error {
+		node, err := NewNodeEntryFromId(tx, b.Info.NodeId)
+		if err != nil {
+			return err
+		}
+
+		host = node.ManageHostName()
+		godbc.Check(host != "")
+		return nil
+	})
 	if err != nil {
 		return err
 	}
-
-	host = node.ManageHostName()
-	godbc.Check(host != "")
 
 	// Create request
 	req := &executors.BrickRequest{}

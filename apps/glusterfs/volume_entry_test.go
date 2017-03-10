@@ -1497,7 +1497,8 @@ func TestVolumeEntryNameConflictMultiCluster(t *testing.T) {
 		v := createSampleVolumeEntry(1024)
 		v.Info.Name = "myvol"
 		err = v.Create(app.db, app.executor, app.allocator)
-		tests.Assert(t, err == nil)
+		logger.Info("%v", v.Info.Cluster)
+		tests.Assert(t, err == nil, err)
 	}
 
 	// Create another volume same name
@@ -1560,9 +1561,7 @@ func TestReplaceBrickInVolume(t *testing.T) {
 		return b, nil
 	}
 	brickId := be.Id()
-	err = app.db.Update(func(tx *bolt.Tx) error {
-		return v.replaceBrickInVolume(tx, app.executor, app.allocator, brickId)
-	})
+	err = v.replaceBrickInVolume(app.db, app.executor, app.allocator, brickId)
 	tests.Assert(t, err == nil)
 
 	oldNode := be.Info.NodeId

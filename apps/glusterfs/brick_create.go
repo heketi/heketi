@@ -22,7 +22,7 @@ const (
 	CREATOR_DESTROY
 )
 
-func createDestroyConcurrently(tx *bolt.Tx,
+func createDestroyConcurrently(db *bolt.DB,
 	executor executors.Executor,
 	brick_entries []*BrickEntry,
 	create_type CreateType) error {
@@ -34,13 +34,11 @@ func createDestroyConcurrently(tx *bolt.Tx,
 		sg.Add(1)
 		go func(b *BrickEntry) {
 			defer sg.Done()
-			sg.Lock()
 			if create_type == CREATOR_CREATE {
-				sg.Err(b.Create(tx, executor))
+				sg.Err(b.Create(db, executor))
 			} else {
-				sg.Err(b.Destroy(tx, executor))
+				sg.Err(b.Destroy(db, executor))
 			}
-			sg.Unlock()
 		}(brick)
 	}
 
@@ -52,16 +50,16 @@ func createDestroyConcurrently(tx *bolt.Tx,
 
 		// Destroy all bricks and cleanup
 		if create_type == CREATOR_CREATE {
-			createDestroyConcurrently(tx, executor, brick_entries, CREATOR_DESTROY)
+			createDestroyConcurrently(db, executor, brick_entries, CREATOR_DESTROY)
 		}
 	}
 	return err
 }
 
-func CreateBricks(tx *bolt.Tx, executor executors.Executor, brick_entries []*BrickEntry) error {
-	return createDestroyConcurrently(tx, executor, brick_entries, CREATOR_CREATE)
+func CreateBricks(db *bolt.DB, executor executors.Executor, brick_entries []*BrickEntry) error {
+	return createDestroyConcurrently(db, executor, brick_entries, CREATOR_CREATE)
 }
 
-func DestroyBricks(tx *bolt.Tx, executor executors.Executor, brick_entries []*BrickEntry) error {
-	return createDestroyConcurrently(tx, executor, brick_entries, CREATOR_DESTROY)
+func DestroyBricks(db *bolt.DB, executor executors.Executor, brick_entries []*BrickEntry) error {
+	return createDestroyConcurrently(db, executor, brick_entries, CREATOR_DESTROY)
 }

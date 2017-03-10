@@ -15,7 +15,6 @@ import (
 
 type StatusGroup struct {
 	wg      sync.WaitGroup
-	lock    sync.Mutex
 	results chan error
 	err     error
 }
@@ -36,16 +35,6 @@ func (s *StatusGroup) Add(delta int) {
 // Removes the number of pending goroutines by one
 func (s *StatusGroup) Done() {
 	s.wg.Done()
-}
-
-// Lock a mutex lock within the status group
-func (s *StatusGroup) Lock() {
-	s.lock.Lock()
-}
-
-// Unlock mutex lock within the status group
-func (s *StatusGroup) Unlock() {
-	s.lock.Unlock()
 }
 
 // Goroutine can return an error back to caller
