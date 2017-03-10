@@ -641,16 +641,14 @@ func TestDeviceSetStateFailed(t *testing.T) {
 
 		// Set offline
 		err = d.SetState(tx, app.executor, mockAllocator, api.EntryStateOffline)
-		tests.Assert(t, d.State == api.EntryStateFailed)
-		tests.Assert(t, err != nil)
+		tests.Assert(t, d.State == api.EntryStateOffline)
+		tests.Assert(t, err == nil, err)
 		tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 0)
 
 		// Set failed, Note: this requires the current state to be offline
 		err = d.SetState(tx, app.executor, mockAllocator, api.EntryStateFailed)
 		tests.Assert(t, d.State == api.EntryStateFailed)
 		tests.Assert(t, err == nil)
-
-		// Check it was removed from ring
 		tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 0)
 
 		// Set failed again

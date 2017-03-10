@@ -322,7 +322,6 @@ func (a *App) DeviceSetState(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "request unable to be parsed", 422)
 		return
 	}
-	logger.Info("entered set state state is %+v, device is %v", msg, id)
 
 	// Set state
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
@@ -340,11 +339,7 @@ func (a *App) DeviceSetState(w http.ResponseWriter, r *http.Request) {
 			}
 			return nil
 		})
-		if err == ErrNotFound {
-			http.Error(w, "Id not found", http.StatusNotFound)
-			return "", err
-		} else if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if err != nil {
 			return "", err
 		}
 		return "", nil
