@@ -17,6 +17,9 @@
     }
   },
 
+  "_backup_db_to_kube_secret": "Backup the heketi database to a Kubernetes secret when running in Kubernetes. Default is off.",
+  "backup_db_to_kube_secret": false,
+
   "_glusterfs_comment": "GlusterFS Configuration",
   "glusterfs": {
     "_executor_comment": [
