@@ -438,10 +438,6 @@ func (d *DeviceEntry) poolMetadataSize(tpsize uint64) uint64 {
 func (d *DeviceEntry) Remove(db *bolt.DB,
 	executor executors.Executor,
 	allocator Allocator) (e error) {
-	type brickToReplace struct {
-		brickId     string
-		volumeEntry *VolumeEntry
-	}
 
 	// If the device has no bricks, just change the state and we are done
 	if d.IsDeleteOk() {
@@ -459,35 +455,26 @@ func (d *DeviceEntry) Remove(db *bolt.DB,
 		}
 	}
 
-	var bricksToReplace []brickToReplace
-	// Get brick and volume entries
-	err := db.View(func(tx *bolt.Tx) error {
-		for _, brickId := range d.Bricks {
-			brickEntry, err := NewBrickEntryFromId(tx, brickId)
+	for _, brickId := range d.Bricks {
+		var brickEntry *BrickEntry
+		var volumeEntry *VolumeEntry
+		err := db.View(func(tx *bolt.Tx) error {
+			var err error
+			brickEntry, err = NewBrickEntryFromId(tx, brickId)
 			if err != nil {
 				return err
 			}
-			volumeEntry, err := NewVolumeEntryFromId(tx, brickEntry.Info.VolumeId)
+			volumeEntry, err = NewVolumeEntryFromId(tx, brickEntry.Info.VolumeId)
 			if err != nil {
 				return err
 			}
-			bricksToReplace = append(bricksToReplace, brickToReplace{
-				brickId:     brickId,
-				volumeEntry: volumeEntry,
-			})
+			return nil
+		})
+		if err != nil {
+			return err
 		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	// Move bricks now
-	for _, brick := range bricksToReplace {
-		logger.Info("Replacing brick %v on device %v on node %v",
-			brick.brickId, d.Info.Name, d.NodeId)
-		volentry := brick.volumeEntry
-		err := volentry.replaceBrickInVolume(db, executor, allocator, brick.brickId)
+		logger.Info("Replacing brick %v on device %v on node %v", brickEntry.Id(), d.Id(), d.NodeId)
+		err = volumeEntry.replaceBrickInVolume(db, executor, allocator, brickEntry.Id())
 		if err != nil {
 			return logger.Err(err)
 		}
@@ -495,7 +482,7 @@ func (d *DeviceEntry) Remove(db *bolt.DB,
 
 	// Get new entry for the device because db would have changed
 	// replaceBrickInVolume calls functions that change device state in db
-	err = db.Update(func(tx *bolt.Tx) error {
+	err := db.Update(func(tx *bolt.Tx) error {
 		newDeviceEntry, err := NewDeviceEntryFromId(tx, d.Id())
 		if err != nil {
 			return err
