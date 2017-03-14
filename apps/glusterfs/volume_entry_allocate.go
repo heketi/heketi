@@ -132,6 +132,9 @@ func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Execu
 	var foundbrickset bool
 	var brick executors.Brick
 	setlist := make([]*BrickEntry, 0)
+	// BrickList in volume info is a slice of all bricks in volume
+	// We loop over the slice in steps of BricksInSet()
+	// If brick to be replaced is found in an iteration, other bricks in that slice form the setlist
 	for slicestartindex = 0; slicestartindex <= len(vinfo.Bricks.BrickList)-v.Durability.BricksInSet(); slicestartindex = slicestartindex + v.Durability.BricksInSet() {
 		setlist = make([]*BrickEntry, 0)
 		for _, brick = range vinfo.Bricks.BrickList[slicestartindex : slicestartindex+v.Durability.BricksInSet()] {
