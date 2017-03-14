@@ -155,10 +155,6 @@ func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Execu
 		return ErrNotFound
 	}
 
-	for _, brickInSet := range setlist {
-		logger.Debug("setlist is %v", brickInSet)
-	}
-
 	//Create an Id for new brick
 	newBrickId := utils.GenUUID()
 
