@@ -142,6 +142,25 @@ func (s *SshExecutor) VolumeDestroy(host string, volume string) error {
 	return nil
 }
 
+func (s *SshExecutor) VolumeStatusDetail(host string, volume string) (string, error) {
+	godbc.Require(host != "")
+	godbc.Require(volume != "")
+
+	commands := []string{
+		fmt.Sprintf("gluster --mode=script volume status %v detail --xml", volume),
+	}
+
+	res, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
+	if err != nil {
+		return "", logger.Err(fmt.Errorf("Unable to delete volume %v: %v", volume, err))
+	}
+	if len(res) > 0 {
+		return res[0], nil
+	}
+	
+	return "", nil
+}
+
 func (s *SshExecutor) VolumeDestroyCheck(host, volume string) error {
 	godbc.Require(host != "")
 	godbc.Require(volume != "")

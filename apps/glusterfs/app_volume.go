@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strings"
 	"net/http"
 
 	"github.com/boltdb/bolt"
@@ -20,6 +21,7 @@ import (
 	"github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
+	xj "github.com/basgys/goxml2json"
 )
 
 const (
@@ -328,4 +330,45 @@ func (a *App) VolumeExpand(w http.ResponseWriter, r *http.Request) {
 		return "/volumes/" + volume.Info.Id, nil
 	})
 
+}
+
+func (a *App) VolumeStatusDetail(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+	logger.Info("%s", id)
+	var volume *VolumeEntry
+	err := a.db.View(func(tx *bolt.Tx) error {
+		var err error
+		volume, err = NewVolumeEntryFromId(tx, id)
+		if err == ErrNotFound {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return err
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return
+	}
+
+	if len(volume.Info.Mount.GlusterFS.Hosts) > 0 {
+		detail, err := a.executor.VolumeStatusDetail(volume.Info.Mount.GlusterFS.Hosts[0], volume.Info.Name)
+		if err != nil || detail =="" {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		xml := strings.NewReader(detail)
+		json, err := xj.Convert(xml)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.Write(json.Bytes())
+		return
+	}
+	http.Error(w, "Cannot find the glusterfs host", http.StatusNotFound)
 }
