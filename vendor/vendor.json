@@ -1,0 +1,13 @@
+{
+	"comment": "",
+	"ignore": "",
+	"package": [
+		{
+			"checksumSHA1": "ibJEBMA41IdaUJqVTZayGpEiNhI=",
+			"path": "github.com/basgys/goxml2json",
+			"revision": "35ec5cd0c4d994b5e3d64b60365c644e9f137f9e",
+			"revisionTime": "2017-01-15T12:29:26Z"
+		}
+	],
+	"rootPath": "github.com/heketi/heketi"
+}

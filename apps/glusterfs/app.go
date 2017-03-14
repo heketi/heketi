@@ -317,6 +317,11 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Method:      "GET",
 			Pattern:     "/volumes",
 			HandlerFunc: a.VolumeList},
+		rest.Route{
+			Name:        "VolumeStatusDetail",
+			Method:      "GET",
+			Pattern:     "/volumes/{id:[A-Fa-f0-9]+}/detail",
+			HandlerFunc: a.VolumeStatusDetail},
 
 		// Backup
 		rest.Route{
