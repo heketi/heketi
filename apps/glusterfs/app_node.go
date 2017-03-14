@@ -361,3 +361,53 @@ func (a *App) NodeSetState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+func (a *App) NodeRemove(w http.ResponseWriter, r *http.Request) {
+
+	logger.Info("entered noderemove")
+
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	// Check request
+	var node *NodeEntry
+	err := a.db.View(func(tx *bolt.Tx) error {
+		var err error
+		// Access device entry
+		node, err = NewNodeEntryFromId(tx, id)
+		if err == ErrNotFound {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return err
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return logger.Err(err)
+		}
+		return nil
+	})
+	if err != nil {
+		return
+	}
+	// Check and remove all bricks from device
+	logger.Info("Check and remove all devices from node %v", node.Info.Id)
+	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
+		var err error
+
+		// Check if we can remove the device
+		if node.IsDeleteOk() {
+			logger.Info("Node is clean to delete or remove")
+			return "", nil
+		}
+
+		err = node.Remove(a.db, a.executor, a.allocator)
+		if err != nil {
+			if err == ErrNoReplacement {
+				http.Error(w, node.NoReplacementDeviceString(), http.StatusInternalServerError)
+				logger.LogError(node.NoReplacementDeviceString())
+			}
+			return "", err
+		}
+		logger.Info("exit async")
+		return "", nil
+
+	})
+}
