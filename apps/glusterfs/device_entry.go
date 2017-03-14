@@ -489,10 +489,8 @@ func (d *DeviceEntry) Remove(db *bolt.DB,
 		volentry := brick.volumeEntry
 		err := volentry.replaceBrickInVolume(db, executor, allocator, brick.brickId)
 		if err != nil {
-			return logger.LogError("Failed to replace brick %v on ",
-				"device %v on node %v",
-				brick.brickId, d.Info.Name,
-				d.NodeId)
+			return logger.LogError("Failed to replace brick %v on device %v on node %v",
+				brick.brickId, d.Id(), d.NodeId)
 		}
 	}
 
