@@ -88,7 +88,20 @@ func NewMockExecutor() (*MockExecutor, error) {
 	}
 
 	m.MockVolumeInfo = func(host string, volume string) (*executors.Volume, error) {
-		return &executors.Volume{}, nil
+		var bricks []executors.Brick
+		brick := executors.Brick{Name: host + ":/mockpath"}
+		bricks = append(bricks, brick)
+		brick = executors.Brick{Name: host + ":/mockpath"}
+		bricks = append(bricks, brick)
+		brick = executors.Brick{Name: host + ":/mockpath"}
+		bricks = append(bricks, brick)
+		Bricks := executors.Bricks{
+			BrickList: bricks,
+		}
+		vinfo := &executors.Volume{
+			Bricks: Bricks,
+		}
+		return vinfo, nil
 	}
 
 	return m, nil
