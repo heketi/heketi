@@ -62,15 +62,20 @@ var (
 	}
 )
 
-func setupCluster(t *testing.T) {
+func setupCluster(t *testing.T, numNodes int, numDisks int) {
 	tests.Assert(t, heketi != nil)
 
 	// Create a cluster
 	cluster, err := heketi.ClusterCreate()
 	tests.Assert(t, err == nil)
 
+	// hardcoded limits from the lists above
+	// possible TODO: generalize
+	tests.Assert(t, numNodes <= 4)
+	tests.Assert(t, numDisks <= 8)
+
 	// Add nodes
-	for index, hostname := range storagevms {
+	for index, hostname := range storagevms[:numNodes] {
 		nodeReq := &api.NodeAddRequest{}
 		nodeReq.ClusterId = cluster.Id
 		nodeReq.Hostnames.Manage = []string{hostname}
@@ -82,7 +87,7 @@ func setupCluster(t *testing.T) {
 
 		// Add devices
 		sg := utils.NewStatusGroup()
-		for _, disk := range disks {
+		for _, disk := range disks[:numDisks] {
 			sg.Add(1)
 			go func(d string) {
 				defer sg.Done()
@@ -103,7 +108,7 @@ func setupCluster(t *testing.T) {
 
 func teardownCluster(t *testing.T) {
 	clusters, err := heketi.ClusterList()
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, err)
 
 	for _, cluster := range clusters.Clusters {
 
@@ -159,7 +164,7 @@ func TestHeketiSmokeTest(t *testing.T) {
 
 	// Setup the VM storage topology
 	teardownCluster(t)
-	setupCluster(t)
+	setupCluster(t, 4, 8)
 	defer teardownCluster(t)
 
 	// Create a volume and delete a few time to test garbage collection
@@ -246,7 +251,7 @@ func TestHeketiSmokeTest(t *testing.T) {
 func TestHeketiCreateVolumeWithGid(t *testing.T) {
 	// Setup the VM storage topology
 	teardownCluster(t)
-	setupCluster(t)
+	setupCluster(t, 4, 8)
 	defer teardownCluster(t)
 
 	// Create a volume
@@ -299,4 +304,95 @@ func TestHeketiCreateVolumeWithGid(t *testing.T) {
 	_, err = writer2exec.ConnectAndExec("192.168.10.100:22", cmd, 10, false)
 	tests.Assert(t, err == nil, err)
 
+}
+
+func TestRemoveDevice(t *testing.T) {
+
+	// Setup the VM storage topology
+	teardownCluster(t)
+	setupCluster(t, 3, 2)
+	defer teardownCluster(t)
+
+	// We have 2 disks of 500GB on every node
+	// Total space per node is 1TB
+	// We have 3 Nodes, so total space is 3TB
+
+	// vol1: 300 ==> 1 replica set
+	// vol2: 600 ==> 4 replica sets of 150 each
+	//               on each node:
+	//               1 brick on the already used disk
+	//               3 bricks on the previously unused disk
+	//
+	//             n1d1   n2d1   n3d1
+	//       -------------------------
+	//       r1: [ r1b1 , r1b2, r1b3 ]
+	//
+	//             n1d2   n2d2   n3d2
+	//       -------------------------
+	//       r2  [ r2b1,  r2b2,  r2b3 ]
+	//       r3  [ r3b1,  r3b2   r3b4 ]
+	//       r4  [ r4b1   r4b2   r4b3 ]
+
+	volReq := &api.VolumeCreateRequest{}
+	volReq.Size = 300
+	volReq.Durability.Type = api.DurabilityReplicate
+	volReq.Durability.Replicate.Replica = 3
+	vol1, err := heketi.VolumeCreate(volReq)
+	tests.Assert(t, err == nil)
+
+	// Check there is only one
+	volumes, err := heketi.VolumeList()
+	tests.Assert(t, err == nil)
+	tests.Assert(t, len(volumes.Volumes) == 1)
+
+	volReq = &api.VolumeCreateRequest{}
+	volReq.Size = 600
+	volReq.Durability.Type = api.DurabilityReplicate
+	volReq.Durability.Replicate.Replica = 3
+	vol2, err := heketi.VolumeCreate(volReq)
+	tests.Assert(t, err == nil)
+
+	deviceOccurence := make(map[string]int)
+	maxBricksPerDevice := 0
+	var deviceToRemove string
+	var diskNode string
+	for _, brick := range vol2.Bricks {
+		deviceOccurence[brick.DeviceId]++
+		if deviceOccurence[brick.DeviceId] > maxBricksPerDevice {
+			maxBricksPerDevice = deviceOccurence[brick.DeviceId]
+			deviceToRemove = brick.DeviceId
+			diskNode = brick.NodeId
+		}
+	}
+
+	for device, _ := range deviceOccurence {
+		logger.Info("Key: %v , Value: %v", device, deviceOccurence[device])
+	}
+
+	// if this fails, it's a problem with the test ...
+	tests.Assert(t, maxBricksPerDevice > 1, "Problem: failed to produce a disk with multiple bricks from one volume!")
+
+	// Add a replacement disk
+	driveReq := &api.DeviceAddRequest{}
+	driveReq.Name = disks[2]
+	driveReq.NodeId = diskNode
+	err = heketi.DeviceAdd(driveReq)
+	tests.Assert(t, err == nil, err)
+
+	stateReq := &api.StateRequest{}
+	stateReq.State = api.EntryStateOffline
+	err = heketi.DeviceState(deviceToRemove, stateReq)
+	tests.Assert(t, err == nil)
+
+	stateReq = &api.StateRequest{}
+	stateReq.State = api.EntryStateFailed
+	err = heketi.DeviceState(deviceToRemove, stateReq)
+	tests.Assert(t, err == nil)
+
+	logger.Info("%v %v", vol1, vol2)
+	// Delete volumes
+	err = heketi.VolumeDelete(vol1.Id)
+	tests.Assert(t, err == nil)
+	err = heketi.VolumeDelete(vol2.Id)
+	tests.Assert(t, err == nil)
 }
