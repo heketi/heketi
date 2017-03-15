@@ -246,6 +246,11 @@ func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Execu
 			return err
 		}
 
+		err = oldBrickEntry.Destroy(db, executor)
+		if err != nil {
+			return err
+		}
+
 		err = db.Update(func(tx *bolt.Tx) error {
 			err = newBrickEntry.Save(tx)
 			if err != nil {
