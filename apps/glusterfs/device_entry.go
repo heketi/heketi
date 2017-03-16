@@ -480,6 +480,7 @@ func (d *DeviceEntry) Remove(db *bolt.DB,
 		}
 	}
 
+	// Set device state to failed
 	// Get new entry for the device because db would have changed
 	// replaceBrickInVolume calls functions that change device state in db
 	err := db.Update(func(tx *bolt.Tx) error {

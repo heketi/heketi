@@ -314,6 +314,7 @@ func (a *App) DeviceSetState(w http.ResponseWriter, r *http.Request) {
 	// Get the id from the URL
 	vars := mux.Vars(r)
 	id := vars["id"]
+	var device *DeviceEntry
 
 	// Unmarshal JSON
 	var msg api.StateRequest
@@ -323,21 +324,25 @@ func (a *App) DeviceSetState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check for valid id, return immediately if not valid
+	err = a.db.View(func(tx *bolt.Tx) error {
+		device, err = NewDeviceEntryFromId(tx, id)
+		if err == ErrNotFound {
+			http.Error(w, "Id not found", http.StatusNotFound)
+			return err
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return
+	}
+
 	// Set state
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
-		var device *DeviceEntry
-		err = a.db.View(func(tx *bolt.Tx) error {
-			device, err = NewDeviceEntryFromId(tx, id)
-			if err != nil {
-				logger.LogError("Did not find device requested %v", id)
-				return err
-			}
-			return nil
-		})
-		if err != nil {
-			return "", err
-		}
-		// Set state
 		err = device.SetState(a.db, a.executor, a.allocator, msg.State)
 		if err != nil {
 			return "", err
