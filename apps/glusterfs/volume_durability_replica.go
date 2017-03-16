@@ -63,6 +63,10 @@ func (r *VolumeReplicaDurability) BricksInSet() int {
 	return r.Replica
 }
 
+func (r *VolumeReplicaDurability) QuorumBrickCount() int {
+	return r.BricksInSet()/2 + 1
+}
+
 func (r *VolumeReplicaDurability) SetExecutorVolumeRequest(v *executors.VolumeRequest) {
 	v.Type = executors.DurabilityReplica
 	v.Replica = r.Replica
