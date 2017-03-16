@@ -71,6 +71,10 @@ func (d *VolumeDisperseDurability) BricksInSet() int {
 	return d.Data + d.Redundancy
 }
 
+func (d *VolumeDisperseDurability) QuorumBrickCount() int {
+	return d.Data
+}
+
 func (d *VolumeDisperseDurability) SetExecutorVolumeRequest(v *executors.VolumeRequest) {
 	v.Type = executors.DurabilityDispersion
 	v.Data = d.Data

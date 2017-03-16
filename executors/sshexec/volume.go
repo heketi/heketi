@@ -280,3 +280,32 @@ func (s *SshExecutor) VolumeReplaceBrick(host string, volume string, oldBrick *e
 	return nil
 
 }
+
+func (s *SshExecutor) HealInfo(host string, volume string) (*executors.HealInfo, error) {
+
+	godbc.Require(volume != "")
+	godbc.Require(host != "")
+
+	type CliOutput struct {
+		OpRet    int                `xml:"opRet"`
+		OpErrno  int                `xml:"opErrno"`
+		OpErrStr string             `xml:"opErrstr"`
+		HealInfo executors.HealInfo `xml:"healInfo"`
+	}
+
+	command := []string{
+		fmt.Sprintf("gluster --mode=script volume heal %v info --xml", volume),
+	}
+
+	output, err := s.RemoteExecutor.RemoteCommandExecute(host, command, 10)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to get heal info of volume : %v", volume)
+	}
+	var healInfo CliOutput
+	err = xml.Unmarshal([]byte(output[0]), &healInfo)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to determine heal info of volume : %v", volume)
+	}
+	logger.Debug("%+v\n", healInfo)
+	return &healInfo.HealInfo, nil
+}

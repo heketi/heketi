@@ -32,6 +32,10 @@ func (n *NoneDurability) BricksInSet() int {
 	return 1
 }
 
+func (n *NoneDurability) QuorumBrickCount() int {
+	return n.BricksInSet()
+}
+
 func (n *NoneDurability) SetExecutorVolumeRequest(v *executors.VolumeRequest) {
 	v.Type = executors.DurabilityNone
 	v.Replica = n.Replica
