@@ -14,6 +14,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 )
 
@@ -104,6 +105,10 @@ func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Execu
 	var newDeviceEntry *DeviceEntry
 	var oldBrickNodeEntry *NodeEntry
 	var newBrickNodeEntry *NodeEntry
+
+	if api.DurabilityDistributeOnly == v.Info.Durability.Type {
+		return fmt.Errorf("replace brick is not supported for volume durability type %v", v.Info.Durability.Type)
+	}
 
 	err := db.View(func(tx *bolt.Tx) error {
 		var err error

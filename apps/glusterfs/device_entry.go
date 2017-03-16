@@ -476,7 +476,7 @@ func (d *DeviceEntry) Remove(db *bolt.DB,
 		logger.Info("Replacing brick %v on device %v on node %v", brickEntry.Id(), d.Id(), d.NodeId)
 		err = volumeEntry.replaceBrickInVolume(db, executor, allocator, brickEntry.Id())
 		if err != nil {
-			return logger.Err(err)
+			return logger.Err(fmt.Errorf("Failed to remove device, error: %v", err))
 		}
 	}
 
