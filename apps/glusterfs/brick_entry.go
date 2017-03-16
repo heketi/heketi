@@ -12,6 +12,7 @@ package glusterfs
 import (
 	"bytes"
 	"encoding/gob"
+
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
@@ -36,7 +37,7 @@ func BrickList(tx *bolt.Tx) ([]string, error) {
 }
 
 func NewBrickEntry(size, tpsize, poolMetadataSize uint64,
-	deviceid, nodeid string, gid int64) *BrickEntry {
+	deviceid, nodeid string, gid int64, volumeid string) *BrickEntry {
 
 	godbc.Require(size > 0)
 	godbc.Require(tpsize > 0)
@@ -51,6 +52,7 @@ func NewBrickEntry(size, tpsize, poolMetadataSize uint64,
 	entry.Info.Size = size
 	entry.Info.NodeId = nodeid
 	entry.Info.DeviceId = deviceid
+	entry.Info.VolumeId = volumeid
 
 	godbc.Ensure(entry.Info.Id != "")
 	godbc.Ensure(entry.TpSize == tpsize)
@@ -238,4 +240,47 @@ func (b *BrickEntry) DestroyCheck(db *bolt.DB, executor executors.Executor) erro
 // Size consumed on device
 func (b *BrickEntry) TotalSize() uint64 {
 	return b.TpSize + b.PoolMetadataSize
+}
+
+func BrickEntryUpgrade(tx *bolt.Tx) error {
+	err := addVolumeIdInBrickEntry(tx)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func addVolumeIdInBrickEntry(tx *bolt.Tx) error {
+	clusters, err := ClusterList(tx)
+	if err != nil {
+		return err
+	}
+	for _, cluster := range clusters {
+		clusterEntry, err := NewClusterEntryFromId(tx, cluster)
+		if err != nil {
+			return err
+		}
+		for _, volume := range clusterEntry.Info.Volumes {
+			volumeEntry, err := NewVolumeEntryFromId(tx, volume)
+			if err != nil {
+				return err
+			}
+			for _, brick := range volumeEntry.Bricks {
+				brickEntry, err := NewBrickEntryFromId(tx, brick)
+				if err != nil {
+					return err
+				}
+				if brickEntry.Info.VolumeId == "" {
+					brickEntry.Info.VolumeId = volume
+					err = brickEntry.Save(tx)
+					if err != nil {
+						return err
+					}
+				} else {
+					break
+				}
+			}
+		}
+	}
+	return nil
 }

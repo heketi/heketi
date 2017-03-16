@@ -22,4 +22,5 @@ var (
 	ErrDbAccess         = errors.New("Unable to access db")
 	ErrAccessList       = errors.New("Unable to access list")
 	ErrKeyExists        = errors.New("Key already exists in the database")
+	ErrNoReplacement    = errors.New("No Replacement was found for resource requested to be removed")
 )

@@ -27,6 +27,7 @@ func init() {
 	RootCmd.AddCommand(deviceCommand)
 	deviceCommand.AddCommand(deviceAddCommand)
 	deviceCommand.AddCommand(deviceDeleteCommand)
+	deviceCommand.AddCommand(deviceRemoveCommand)
 	deviceCommand.AddCommand(deviceInfoCommand)
 	deviceCommand.AddCommand(deviceEnableCommand)
 	deviceCommand.AddCommand(deviceDisableCommand)
@@ -36,6 +37,7 @@ func init() {
 		"Id of the node which has this device")
 	deviceAddCommand.SilenceUsage = true
 	deviceDeleteCommand.SilenceUsage = true
+	deviceRemoveCommand.SilenceUsage = true
 	deviceInfoCommand.SilenceUsage = true
 }
 
@@ -104,6 +106,38 @@ var deviceDeleteCommand = &cobra.Command{
 		err := heketi.DeviceDelete(deviceId)
 		if err == nil {
 			fmt.Fprintf(stdout, "Device %v deleted\n", deviceId)
+		}
+
+		return err
+	},
+}
+
+var deviceRemoveCommand = &cobra.Command{
+	Use:     "remove [device_id]",
+	Short:   "Removes a device from Heketi node",
+	Long:    "Removes a device from Heketi node",
+	Example: "  $ heketi-cli device remove 886a86a868711bef83001",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		s := cmd.Flags().Args()
+
+		//ensure proper number of args
+		if len(s) < 1 {
+			return errors.New("Device id missing")
+		}
+
+		//set clusterId
+		deviceId := cmd.Flags().Arg(0)
+
+		// Create a client
+		heketi := client.NewClient(options.Url, options.User, options.Key)
+
+		//set url
+		req := &api.StateRequest{
+			State: "failed",
+		}
+		err := heketi.DeviceState(deviceId, req)
+		if err == nil {
+			fmt.Fprintf(stdout, "Device %v is now removed\n", deviceId)
 		}
 
 		return err

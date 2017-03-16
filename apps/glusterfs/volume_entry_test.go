@@ -1022,7 +1022,7 @@ func TestVolumeEntryCreateBrickCreationFailure(t *testing.T) {
 	// size of 100G * 1.5 = 150GB.
 	v := createSampleVolumeEntry(200)
 	err = v.Create(app.db, app.executor, app.allocator)
-	tests.Assert(t, err == mockerror)
+	tests.Assert(t, err == mockerror, err, mockerror)
 
 	// Check database is still clean. No bricks and No volumes
 	err = app.db.View(func(tx *bolt.Tx) error {
@@ -1067,7 +1067,7 @@ func TestVolumeEntryCreateVolumeCreationFailure(t *testing.T) {
 
 	// Cause a brick creation failure
 	mockerror := errors.New("MOCK")
-	app.xo.MockVolumeCreate = func(host string, volume *executors.VolumeRequest) (*executors.VolumeInfo, error) {
+	app.xo.MockVolumeCreate = func(host string, volume *executors.VolumeRequest) (*executors.Volume, error) {
 		return nil, mockerror
 	}
 
@@ -1497,7 +1497,8 @@ func TestVolumeEntryNameConflictMultiCluster(t *testing.T) {
 		v := createSampleVolumeEntry(1024)
 		v.Info.Name = "myvol"
 		err = v.Create(app.db, app.executor, app.allocator)
-		tests.Assert(t, err == nil)
+		logger.Info("%v", v.Info.Cluster)
+		tests.Assert(t, err == nil, err)
 	}
 
 	// Create another volume same name
@@ -1505,4 +1506,89 @@ func TestVolumeEntryNameConflictMultiCluster(t *testing.T) {
 	v.Info.Name = "myvol"
 	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err != nil, err)
+}
+
+func TestReplaceBrickInVolume(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	// Create a cluster in the database
+	err := setupSampleDbWithTopology(app,
+		1,      // clusters
+		3,      // nodes_per_cluster
+		1,      // devices_per_node,
+		500*GB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	v := createSampleVolumeEntry(100)
+
+	err = v.Create(app.db, app.executor, app.allocator)
+	tests.Assert(t, err == nil, err)
+	var brickNames []string
+	var be *BrickEntry
+	err = app.db.View(func(tx *bolt.Tx) error {
+
+		for _, brick := range v.Bricks {
+			be, err = NewBrickEntryFromId(tx, brick)
+			if err != nil {
+				return err
+			}
+			ne, err := NewNodeEntryFromId(tx, be.Info.NodeId)
+			if err != nil {
+				return err
+			}
+			brickName := fmt.Sprintf("%v:%v", ne.Info.Hostnames.Storage[0], be.Info.Path)
+			brickNames = append(brickNames, brickName)
+		}
+		return nil
+	})
+	app.xo.MockVolumeInfo = func(host string, volume string) (*executors.Volume, error) {
+		var bricks []executors.Brick
+		brick := executors.Brick{Name: brickNames[0]}
+		bricks = append(bricks, brick)
+		brick = executors.Brick{Name: brickNames[1]}
+		bricks = append(bricks, brick)
+		Bricks := executors.Bricks{
+			BrickList: bricks,
+		}
+		b := &executors.Volume{
+			Bricks: Bricks,
+		}
+		return b, nil
+	}
+	brickId := be.Id()
+	err = v.replaceBrickInVolume(app.db, app.executor, app.allocator, brickId)
+	tests.Assert(t, err == nil)
+
+	oldNode := be.Info.NodeId
+	brickOnOldNode := false
+	oldBrickIdExists := false
+
+	err = app.db.View(func(tx *bolt.Tx) error {
+
+		for _, brick := range v.Bricks {
+			be, err = NewBrickEntryFromId(tx, brick)
+			if err != nil {
+				return err
+			}
+			ne, err := NewNodeEntryFromId(tx, be.Info.NodeId)
+			if err != nil {
+				return err
+			}
+			if ne.Info.Id == oldNode {
+				brickOnOldNode = true
+			}
+			if be.Info.Id == brickId {
+				oldBrickIdExists = true
+			}
+		}
+		return nil
+	})
+
+	tests.Assert(t, !brickOnOldNode, "brick found on oldNode")
+	tests.Assert(t, !oldBrickIdExists, "old Brick not deleted")
 }

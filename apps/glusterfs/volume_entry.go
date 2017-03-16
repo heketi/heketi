@@ -511,7 +511,6 @@ func (v *VolumeEntry) Expand(db *bolt.DB,
 	// Create bricks
 	err = CreateBricks(db, executor, brick_entries)
 	if err != nil {
-		logger.Err(err)
 		return err
 	}
 
@@ -585,4 +584,8 @@ func (v *VolumeEntry) checkBricksCanBeDestroyed(db *bolt.DB,
 		logger.Err(err)
 	}
 	return err
+}
+
+func VolumeEntryUpgrade(tx *bolt.Tx) error {
+	return nil
 }

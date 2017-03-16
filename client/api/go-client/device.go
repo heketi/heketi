@@ -15,10 +15,11 @@ package client
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/heketi/pkg/utils"
 	"net/http"
 	"time"
+
+	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/utils"
 )
 
 func (c *Client) DeviceAdd(request *api.DeviceAddRequest) error {
@@ -160,8 +161,18 @@ func (c *Client) DeviceState(id string,
 	if err != nil {
 		return err
 	}
-	if r.StatusCode != http.StatusOK {
+	if r.StatusCode != http.StatusAccepted {
 		return utils.GetErrorFromResponse(r)
 	}
+
+	// Wait for response
+	r, err = c.waitForResponseWithTimer(r, time.Second)
+	if err != nil {
+		return err
+	}
+	if r.StatusCode != http.StatusNoContent {
+		return utils.GetErrorFromResponse(r)
+	}
+
 	return nil
 }

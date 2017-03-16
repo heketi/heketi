@@ -605,8 +605,23 @@ func TestDeviceState(t *testing.T) {
 	r, err := http.Post(ts.URL+"/devices/"+device.Id+"/state",
 		"application/json", bytes.NewBuffer(request))
 	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusOK)
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
 
+	location, err := r.Location()
+	tests.Assert(t, err == nil)
+
+	// Query queue until finished
+	for {
+		r, err = http.Get(location.String())
+		tests.Assert(t, err == nil)
+		if r.Header.Get("X-Pending") == "true" {
+			tests.Assert(t, r.StatusCode == http.StatusOK)
+			time.Sleep(time.Millisecond * 10)
+		} else {
+			tests.Assert(t, r.StatusCode == http.StatusNoContent)
+			break
+		}
+	}
 	// Check it was removed from the ring
 	tests.Assert(t, len(mockAllocator.clustermap[cluster.Id]) == 0)
 
@@ -632,7 +647,22 @@ func TestDeviceState(t *testing.T) {
 	r, err = http.Post(ts.URL+"/devices/"+device.Id+"/state",
 		"application/json", bytes.NewBuffer(request))
 	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusOK)
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	location, err = r.Location()
+	tests.Assert(t, err == nil)
+
+	// Query queue until finished
+	for {
+		r, err = http.Get(location.String())
+		tests.Assert(t, err == nil)
+		if r.Header.Get("X-Pending") == "true" {
+			tests.Assert(t, r.StatusCode == http.StatusOK)
+			time.Sleep(time.Millisecond * 10)
+		} else {
+			tests.Assert(t, r.StatusCode == http.StatusNoContent)
+			break
+		}
+	}
 
 	// Check that the device is in the ring
 	tests.Assert(t, len(mockAllocator.clustermap[cluster.Id]) == 1)
@@ -655,11 +685,26 @@ func TestDeviceState(t *testing.T) {
 	// Set to unknown state
 	request = []byte(`{
 				"state" : "blah"
-				}`)
+			}`)
 	r, err = http.Post(ts.URL+"/devices/"+device.Id+"/state",
 		"application/json", bytes.NewBuffer(request))
 	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusBadRequest)
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	location, err = r.Location()
+	tests.Assert(t, err == nil)
+
+	// Query queue until finished
+	for {
+		r, err = http.Get(location.String())
+		tests.Assert(t, err == nil)
+		if r.Header.Get("X-Pending") == "true" {
+			tests.Assert(t, r.StatusCode == http.StatusOK)
+			time.Sleep(time.Millisecond * 10)
+		} else {
+			tests.Assert(t, r.StatusCode == http.StatusInternalServerError)
+			break
+		}
+	}
 
 	// Check that the device is still in the ring
 	tests.Assert(t, len(mockAllocator.clustermap[cluster.Id]) == 1)
