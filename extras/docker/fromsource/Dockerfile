@@ -31,6 +31,9 @@ RUN mkdir $BUILD_HOME $GOPATH && \
 # post install config and volume setup
 ADD ./heketi.json /etc/heketi/heketi.json
 ADD ./heketi-start.sh /usr/bin/heketi-start.sh
+ADD ./adhoc-setup.sh /usr/bin/adhoc-setup.sh
+
+RUN /usr/bin/adhoc-setup.sh
 VOLUME /etc/heketi
 
 RUN mkdir /var/lib/heketi

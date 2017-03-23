@@ -8,5 +8,10 @@ if [ -f /backupdb/heketi.db ] ; then
     fi
     echo "Copied backup db to /var/lib/heketi/heketi.db"
 fi
+#ssh dirtyhack
 
+if [ "$HEKETI_EXECUTOR" == "ssh" ]; then
+    /usr/sbin/sshd -D &
+    chmod 600 /etc/heketi/heketi_key*
+fi
 /usr/bin/heketi --config=/etc/heketi/heketi.json
