@@ -396,3 +396,87 @@ func TestRemoveDevice(t *testing.T) {
 	err = heketi.VolumeDelete(vol2.Id)
 	tests.Assert(t, err == nil)
 }
+
+func TestRemoveDeviceVsVolumeCreate(t *testing.T) {
+
+	// Setup the VM storage topology
+	teardownCluster(t)
+	setupCluster(t, 4, 1)
+	defer teardownCluster(t)
+
+	var newDevice string
+	var deviceToRemove string
+
+	volReq := &api.VolumeCreateRequest{}
+	volReq.Size = 300
+	volReq.Durability.Type = api.DurabilityReplicate
+	volReq.Durability.Replicate.Replica = 3
+	_, err := heketi.VolumeCreate(volReq)
+	tests.Assert(t, err == nil)
+	// Check there is only one
+	volumes, err := heketi.VolumeList()
+	tests.Assert(t, err == nil)
+	tests.Assert(t, len(volumes.Volumes) == 1)
+
+	clusters, err := heketi.ClusterList()
+	tests.Assert(t, err == nil, err)
+	for _, cluster := range clusters.Clusters {
+		clusterInfo, err := heketi.ClusterInfo(cluster)
+		tests.Assert(t, err == nil)
+
+		for _, node := range clusterInfo.Nodes {
+
+			// Get node information
+			nodeInfo, err := heketi.NodeInfo(node)
+			tests.Assert(t, err == nil)
+			for _, device := range nodeInfo.DevicesInfo {
+				if len(device.Bricks) == 0 {
+					newDevice = device.Id
+				} else {
+					deviceToRemove = device.Id
+				}
+			}
+		}
+	}
+
+
+	stateReq := &api.StateRequest{}
+	stateReq.State = api.EntryStateOffline
+	err = heketi.DeviceState(deviceToRemove, stateReq)
+	tests.Assert(t, err == nil)
+
+
+	sgDeviceRemove := utils.NewStatusGroup()
+	sgDeviceRemove.Add(1)
+	go func() {
+		defer sgDeviceRemove.Done()
+		stateReq = &api.StateRequest{}
+		stateReq.State = api.EntryStateFailed
+		err = heketi.DeviceState(deviceToRemove, stateReq)
+		sgDeviceRemove.Err(err)
+	}()
+
+	sgVolumeCreate := utils.NewStatusGroup()
+	for i := 0; i < 15; i++ {
+		sgVolumeCreate.Add(1)
+		go func() {
+			defer sgVolumeCreate.Done()
+			volReq = &api.VolumeCreateRequest{}
+			volReq.Size = 10
+			volReq.Durability.Type = api.DurabilityReplicate
+			volReq.Durability.Replicate.Replica = 3
+			_, err := heketi.VolumeCreate(volReq)
+			sgVolumeCreate.Err(err)
+		}()
+	}
+
+	err = sgVolumeCreate.Result()
+	tests.Assert(t, err == nil)
+	err = sgDeviceRemove.Result()
+	tests.Assert(t, err == nil)
+	// At this point, we should have one brick moved to new device as a result of remove device
+	// and 15 bricks created on new device as a result of 15 volume creates
+	newDeviceResponse, err := heketi.DeviceInfo(newDevice)
+	tests.Assert(t, len(newDeviceResponse.Bricks) == 16, "device entry not consistent")
+
+}
