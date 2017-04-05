@@ -16,6 +16,7 @@ import (
 	"sort"
 
 	"github.com/boltdb/bolt"
+	"github.com/heketi/heketi/executors"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/lpabon/godbc"
@@ -66,6 +67,53 @@ func (n *NodeEntry) registerManageKey(host string) string {
 
 func (n *NodeEntry) registerStorageKey(host string) string {
 	return "STORAGE" + host
+}
+
+// Verify gluster process in the node and return the manage hostname of a node in the cluster
+func GetVerifiedManageHostname(db *bolt.DB, e executors.Executor, clusterId string) (string, error) {
+	godbc.Require(clusterId != "")
+	var cluster *ClusterEntry
+	var node *NodeEntry
+	var err error
+	err = db.View(func(tx *bolt.Tx) error {
+		var err error
+		cluster, err = NewClusterEntryFromId(tx, clusterId)
+		return err
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	for _, n := range cluster.Info.Nodes {
+		var newNode *NodeEntry
+		err = db.View(func(tx *bolt.Tx) error {
+			var err error
+			newNode, err = NewNodeEntryFromId(tx, n)
+			return err
+		})
+
+		if err != nil {
+			//pass on to next node
+			continue
+		}
+
+		// Ignore if the node is not online
+		if !newNode.isOnline() {
+			continue
+		}
+		err = e.GlusterdCheck(newNode.ManageHostName())
+		if err != nil {
+			logger.Info("Glusterd not running in %v", newNode.ManageHostName())
+			continue
+		}
+		node = newNode
+		break
+	}
+	if node != nil {
+		return node.ManageHostName(), nil
+	}
+	return "", ErrNotFound
 }
 
 func (n *NodeEntry) Register(tx *bolt.Tx) error {

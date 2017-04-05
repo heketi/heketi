@@ -15,6 +15,7 @@ import (
 
 type MockExecutor struct {
 	// These functions can be overwritten for testing
+	MockGlusterdCheck      func(host string) error
 	MockPeerProbe          func(exec_host, newnode string) error
 	MockPeerDetach         func(exec_host, newnode string) error
 	MockDeviceSetup        func(host, device, vgid string) (*executors.DeviceInfo, error)
@@ -32,6 +33,10 @@ type MockExecutor struct {
 
 func NewMockExecutor() (*MockExecutor, error) {
 	m := &MockExecutor{}
+
+	m.MockGlusterdCheck = func(host string) error {
+		return nil
+	}
 
 	m.MockPeerProbe = func(exec_host, newnode string) error {
 		return nil
@@ -109,6 +114,10 @@ func NewMockExecutor() (*MockExecutor, error) {
 
 func (m *MockExecutor) SetLogLevel(level string) {
 
+}
+
+func (m *MockExecutor) GlusterdCheck(host string) error {
+	return m.MockGlusterdCheck(host)
 }
 
 func (m *MockExecutor) PeerProbe(exec_host, newnode string) error {
