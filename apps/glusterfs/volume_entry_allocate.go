@@ -105,6 +105,7 @@ func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Execu
 	var newDeviceEntry *DeviceEntry
 	var oldBrickNodeEntry *NodeEntry
 	var newBrickNodeEntry *NodeEntry
+	var newBrickEntry *BrickEntry
 
 	if api.DurabilityDistributeOnly == v.Info.Durability.Type {
 		return fmt.Errorf("replace brick is not supported for volume durability type %v", v.Info.Durability.Type)
@@ -205,14 +206,46 @@ func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Execu
 		}
 
 		// Try to allocate a brick on this device
-		newBrickEntry := newDeviceEntry.NewBrickEntry(oldBrickEntry.Info.Size,
-			float64(v.Info.Snapshot.Factor),
-			v.gidRequested, v.Info.Id)
+		// NewBrickEntry would deduct storage from device entry
+		// which we will save to disk, hence reload the latest device
+		// entry to get latest storage state of device
+		err = db.Update(func(tx *bolt.Tx) error {
+			newDeviceEntry, err := NewDeviceEntryFromId(tx, deviceId)
+			if err != nil {
+				return err
+			}
+			newBrickEntry = newDeviceEntry.NewBrickEntry(oldBrickEntry.Info.Size,
+				float64(v.Info.Snapshot.Factor),
+				v.gidRequested, v.Info.Id)
+			err = newDeviceEntry.Save(tx)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
 
 		// Determine if it was successful
 		if newBrickEntry == nil {
 			continue
 		}
+
+		defer func() {
+			if e != nil {
+				db.Update(func(tx *bolt.Tx) error {
+					newDeviceEntry, err = NewDeviceEntryFromId(tx, newBrickEntry.Info.DeviceId)
+					if err != nil {
+						return err
+					}
+					newDeviceEntry.StorageFree(newBrickEntry.TotalSize())
+					newDeviceEntry.Save(tx)
+					return nil
+				})
+			}
+		}()
+
 		err = db.View(func(tx *bolt.Tx) error {
 			newBrickNodeEntry, err = NewNodeEntryFromId(tx, newBrickEntry.Info.NodeId)
 			if err != nil {
@@ -251,30 +284,47 @@ func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Execu
 			return err
 		}
 
-		err = oldBrickEntry.Destroy(db, executor)
-		if err != nil {
-			return err
-		}
+		// After this point we should not call any defer func()
+		// We don't have a *revert* of replace brick operation
+
+		_ = oldBrickEntry.Destroy(db, executor)
+
+		// We must read entries from db again as state on disk might
+		// have changed
 
 		err = db.Update(func(tx *bolt.Tx) error {
 			err = newBrickEntry.Save(tx)
 			if err != nil {
 				return err
 			}
-			newDeviceEntry.BrickAdd(newBrickEntry.Id())
-			err = newDeviceEntry.Save(tx)
+			reReadNewDeviceEntry, err := NewDeviceEntryFromId(tx, newBrickEntry.Info.DeviceId)
 			if err != nil {
 				return err
 			}
-			v.BrickAdd(newBrickEntry.Id())
-			v.removeBrickFromDb(tx, oldBrickEntry)
-			err = v.Save(tx)
+			reReadNewDeviceEntry.BrickAdd(newBrickEntry.Id())
+			err = reReadNewDeviceEntry.Save(tx)
 			if err != nil {
-				logger.Err(err)
+				return err
+			}
+
+			reReadVolEntry, err := NewVolumeEntryFromId(tx, newBrickEntry.Info.VolumeId)
+			if err != nil {
+				return err
+			}
+			reReadVolEntry.BrickAdd(newBrickEntry.Id())
+			err = reReadVolEntry.removeBrickFromDb(tx, oldBrickEntry)
+			if err != nil {
+				return err
+			}
+			err = reReadVolEntry.Save(tx)
+			if err != nil {
 				return err
 			}
 			return nil
 		})
+		if err != nil {
+			logger.Err(err)
+		}
 
 		logger.Info("replaced brick:%v on node:%v at path:%v with brick:%v on node:%v at path:%v",
 			oldBrickEntry.Id(), oldBrickEntry.Info.NodeId, oldBrickEntry.Info.Path,
