@@ -101,8 +101,8 @@ func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Execu
 	oldBrickId string) (e error) {
 
 	var oldBrickEntry *BrickEntry
+	var newBrickEntry *BrickEntry
 	var oldDeviceEntry *DeviceEntry
-	var newDeviceEntry *DeviceEntry
 	var oldBrickNodeEntry *NodeEntry
 	var newBrickNodeEntry *NodeEntry
 
@@ -163,132 +163,171 @@ func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Execu
 		return ErrNotFound
 	}
 
-	//Create an Id for new brick
-	newBrickId := utils.GenUUID()
+	newBrickEntries, err := v.allocBrickSet(db, allocator, v.Info.Cluster, 1, setlist, oldBrickEntry.Info.Size)
+	if err != nil {
+		return err
+	}
+	// We requested for a brick set of 1, hence there can be only one brickEntry
+	newBrickEntry = newBrickEntries[0]
+	err = db.Update(func(tx *bolt.Tx) error {
+		newBrickNodeEntry, err = NewNodeEntryFromId(tx, newBrickEntry.Info.NodeId)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
 
-	// Check the ring for devices to place the brick
-	deviceCh, done, errc := allocator.GetNodes(v.Info.Cluster, newBrickId)
+	err = CreateBricks(db, executor, newBrickEntries)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if e != nil {
+			DestroyBricks(db, executor, newBrickEntries)
+		}
+	}()
+
+	var oldBrick executors.BrickInfo
+	var newBrick executors.BrickInfo
+
+	oldBrick.Path = oldBrickEntry.Info.Path
+	oldBrick.Host = oldBrickNodeEntry.StorageHostName()
+	newBrick.Path = newBrickEntry.Info.Path
+	newBrick.Host = newBrickNodeEntry.StorageHostName()
+
+	err = executor.VolumeReplaceBrick(oldBrickNodeEntry.ManageHostName(), v.Info.Name, &oldBrick, &newBrick)
+	if err != nil {
+		return err
+	}
+
+	err = oldBrickEntry.Destroy(db, executor)
+	if err != nil {
+		return err
+	}
+
+	err = db.Update(func(tx *bolt.Tx) error {
+		volEntry, err := NewVolumeEntryFromId(tx, oldBrickEntry.Info.VolumeId)
+		volEntry.removeBrickFromDb(tx, oldBrickEntry)
+		err = volEntry.Save(tx)
+		if err != nil {
+			logger.Err(err)
+			return err
+		}
+		return nil
+	})
+
+	logger.Info("replaced brick:%v on node:%v at path:%v with brick:%v on node:%v at path:%v",
+		oldBrickEntry.Id(), oldBrickEntry.Info.NodeId, oldBrickEntry.Info.Path,
+		newBrickEntry.Id(), newBrickEntry.Info.NodeId, newBrickEntry.Info.Path)
+
+	return nil
+}
+
+func (v *VolumeEntry) allocBrickSet(
+	db *bolt.DB,
+	allocator Allocator,
+	cluster string,
+	bricksInSet int,
+	setlist []*BrickEntry,
+	brick_size uint64) (brick_entries []*BrickEntry, e error) {
+
+	// Generate an id for the brick
+	brickId := utils.GenUUID()
+
+	// Get allocator generator
+	// The same generator should be used for the brick and its replicas
+	deviceCh, done, errc := allocator.GetNodes(cluster, brickId)
 	defer func() {
 		close(done)
 	}()
 
-	for deviceId := range deviceCh {
+	// Check location has space for each brick and its replicas
+	for i := 0; i < bricksInSet; i++ {
+		logger.Debug("%v / %v", i, bricksInSet)
 
-		// Get device entry
-		err = db.View(func(tx *bolt.Tx) error {
-			newDeviceEntry, err = NewDeviceEntryFromId(tx, deviceId)
-			if err != nil {
+		// Do the work in the database context so that the cluster
+		// data does not change while determining brick location
+		err := db.Update(func(tx *bolt.Tx) error {
+
+			// Check the ring for devices to place the brick
+			for deviceId := range deviceCh {
+
+				// Get device entry
+				device, err := NewDeviceEntryFromId(tx, deviceId)
+				if err != nil {
+					return err
+				}
+
+				// Do not allow a device from the same node to be
+				// in the set
+				deviceOk := true
+				for _, brickInSet := range setlist {
+					if brickInSet.Info.NodeId == device.NodeId {
+						deviceOk = false
+					}
+				}
+
+				if !deviceOk {
+					continue
+				}
+
+				// Try to allocate a brick on this device
+				brick := device.NewBrickEntry(brick_size,
+					float64(v.Info.Snapshot.Factor),
+					v.gidRequested, v.Info.Id)
+
+				// Determine if it was successful
+				if brick != nil {
+
+					// If the first in the set, the reset the id
+					if i == 0 {
+						brick.SetId(brickId)
+					}
+
+					// Save the brick entry to create later
+					brick_entries = append(brick_entries, brick)
+
+					// Add to set list
+					setlist = append(setlist, brick)
+
+					// Add brick to device
+					device.BrickAdd(brick.Id())
+
+					// Add brick to volume
+					v.BrickAdd(brick.Id())
+
+					// Save values
+					err := brick.Save(tx)
+					if err != nil {
+						return err
+					}
+
+					err = device.Save(tx)
+					if err != nil {
+						return err
+					}
+
+					return nil
+				}
+			}
+
+			// Check if allocator returned an error
+			if err := <-errc; err != nil {
 				return err
 			}
-			return nil
+
+			// No devices found
+			return ErrNoSpace
+
 		})
 		if err != nil {
-			return err
+			return brick_entries, err
 		}
-
-		// Skip same device
-		if oldDeviceEntry.Info.Id == newDeviceEntry.Info.Id {
-			continue
-		}
-
-		// Do not allow a device from the same node to be
-		// in the set
-		deviceOk := true
-		for _, brickInSet := range setlist {
-			if brickInSet.Info.NodeId == newDeviceEntry.NodeId {
-				deviceOk = false
-			}
-		}
-
-		if !deviceOk {
-			continue
-		}
-
-		// Try to allocate a brick on this device
-		newBrickEntry := newDeviceEntry.NewBrickEntry(oldBrickEntry.Info.Size,
-			float64(v.Info.Snapshot.Factor),
-			v.gidRequested, v.Info.Id)
-
-		// Determine if it was successful
-		if newBrickEntry == nil {
-			continue
-		}
-		err = db.View(func(tx *bolt.Tx) error {
-			newBrickNodeEntry, err = NewNodeEntryFromId(tx, newBrickEntry.Info.NodeId)
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-
-		newBrickEntry.SetId(newBrickId)
-		var brickEntries []*BrickEntry
-		brickEntries = append(brickEntries, newBrickEntry)
-		err = CreateBricks(db, executor, brickEntries)
-		if err != nil {
-			return err
-		}
-
-		defer func() {
-			if e != nil {
-				DestroyBricks(db, executor, brickEntries)
-			}
-		}()
-
-		var oldBrick executors.BrickInfo
-		var newBrick executors.BrickInfo
-
-		oldBrick.Path = oldBrickEntry.Info.Path
-		oldBrick.Host = oldBrickNodeEntry.StorageHostName()
-		newBrick.Path = newBrickEntry.Info.Path
-		newBrick.Host = newBrickNodeEntry.StorageHostName()
-
-		err = executor.VolumeReplaceBrick(oldBrickNodeEntry.ManageHostName(), v.Info.Name, &oldBrick, &newBrick)
-		if err != nil {
-			return err
-		}
-
-		err = oldBrickEntry.Destroy(db, executor)
-		if err != nil {
-			return err
-		}
-
-		err = db.Update(func(tx *bolt.Tx) error {
-			err = newBrickEntry.Save(tx)
-			if err != nil {
-				return err
-			}
-			newDeviceEntry.BrickAdd(newBrickEntry.Id())
-			err = newDeviceEntry.Save(tx)
-			if err != nil {
-				return err
-			}
-			v.BrickAdd(newBrickEntry.Id())
-			v.removeBrickFromDb(tx, oldBrickEntry)
-			err = v.Save(tx)
-			if err != nil {
-				logger.Err(err)
-				return err
-			}
-			return nil
-		})
-
-		logger.Info("replaced brick:%v on node:%v at path:%v with brick:%v on node:%v at path:%v",
-			oldBrickEntry.Id(), oldBrickEntry.Info.NodeId, oldBrickEntry.Info.Path,
-			newBrickEntry.Id(), newBrickEntry.Info.NodeId, newBrickEntry.Info.Path)
-
-		return nil
 	}
-	// Check if allocator returned an error
-	if err := <-errc; err != nil {
-		return err
-	}
-
-	// No device found
-	return ErrNoReplacement
+	return brick_entries, nil
 }
 
 func (v *VolumeEntry) allocBricks(
@@ -324,99 +363,15 @@ func (v *VolumeEntry) allocBricks(
 		// proposed bricks and devices are acceptable
 		setlist := make([]*BrickEntry, 0)
 
-		// Generate an id for the brick
-		brickId := utils.GenUUID()
-
-		// Get allocator generator
-		// The same generator should be used for the brick and its replicas
-		deviceCh, done, errc := allocator.GetNodes(cluster, brickId)
-		defer func() {
-			close(done)
-		}()
-
-		// Check location has space for each brick and its replicas
-		for i := 0; i < v.Durability.BricksInSet(); i++ {
-			logger.Debug("%v / %v", i, v.Durability.BricksInSet())
-
-			// Do the work in the database context so that the cluster
-			// data does not change while determining brick location
-			err := db.Update(func(tx *bolt.Tx) error {
-
-				// Check the ring for devices to place the brick
-				for deviceId := range deviceCh {
-
-					// Get device entry
-					device, err := NewDeviceEntryFromId(tx, deviceId)
-					if err != nil {
-						return err
-					}
-
-					// Do not allow a device from the same node to be
-					// in the set
-					deviceOk := true
-					for _, brickInSet := range setlist {
-						if brickInSet.Info.NodeId == device.NodeId {
-							deviceOk = false
-						}
-					}
-
-					if !deviceOk {
-						continue
-					}
-
-					// Try to allocate a brick on this device
-					brick := device.NewBrickEntry(brick_size,
-						float64(v.Info.Snapshot.Factor),
-						v.gidRequested, v.Info.Id)
-
-					// Determine if it was successful
-					if brick != nil {
-
-						// If the first in the set, the reset the id
-						if i == 0 {
-							brick.SetId(brickId)
-						}
-
-						// Save the brick entry to create later
-						brick_entries = append(brick_entries, brick)
-
-						// Add to set list
-						setlist = append(setlist, brick)
-
-						// Add brick to device
-						device.BrickAdd(brick.Id())
-
-						// Add brick to volume
-						v.BrickAdd(brick.Id())
-
-						// Save values
-						err := brick.Save(tx)
-						if err != nil {
-							return err
-						}
-
-						err = device.Save(tx)
-						if err != nil {
-							return err
-						}
-
-						return nil
-					}
-				}
-
-				// Check if allocator returned an error
-				if err := <-errc; err != nil {
-					return err
-				}
-
-				// No devices found
-				return ErrNoSpace
-
-			})
-			if err != nil {
-				return brick_entries, err
-			}
+		// Make sure that append happens before check for err below
+		// This is because the defer func needs the partial brickSetEntries
+		// that might have come in case of a err
+		brickSetEntries, err := v.allocBrickSet(db, allocator, cluster, v.Durability.BricksInSet(), setlist, brick_size)
+		brick_entries = append(brick_entries, brickSetEntries...)
+		if err != nil {
+			return brick_entries, err
 		}
+
 	}
 
 	return brick_entries, nil
