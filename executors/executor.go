@@ -12,6 +12,7 @@ package executors
 import "encoding/xml"
 
 type Executor interface {
+	GlusterdCheck(host string) error
 	PeerProbe(exec_host, newnode string) error
 	PeerDetach(exec_host, detachnode string) error
 	DeviceSetup(host, device, vgid string) (*DeviceInfo, error)

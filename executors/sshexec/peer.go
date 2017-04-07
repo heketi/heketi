@@ -11,6 +11,7 @@ package sshexec
 
 import (
 	"fmt"
+
 	"github.com/lpabon/godbc"
 )
 
@@ -58,6 +59,22 @@ func (s *SshExecutor) PeerDetach(host, detachnode string) error {
 	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
 	if err != nil {
 		logger.Err(err)
+	}
+
+	return nil
+}
+
+func (s *SshExecutor) GlusterdCheck(host string) error {
+	godbc.Require(host != "")
+
+	logger.Info("Check Glusterd service status in node %v", host)
+	commands := []string{
+		fmt.Sprintf("systemctl status glusterd"),
+	}
+	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
+	if err != nil {
+		logger.Err(err)
+		return err
 	}
 
 	return nil

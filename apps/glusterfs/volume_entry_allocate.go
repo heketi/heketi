@@ -132,8 +132,17 @@ func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Execu
 		return err
 	}
 
+	node := oldBrickNodeEntry.ManageHostName()
+	err = executor.GlusterdCheck(node)
+	if err != nil {
+		node, err = GetVerifiedManageHostname(db, executor, oldBrickNodeEntry.Info.ClusterId)
+		if err != nil {
+			return err
+		}
+	}
+
 	// Determine the setlist by getting data from Gluster
-	vinfo, err := executor.VolumeInfo(oldBrickNodeEntry.ManageHostName(), v.Info.Name)
+	vinfo, err := executor.VolumeInfo(node, v.Info.Name)
 	var slicestartindex int
 	var foundbrickset bool
 	var brick executors.Brick
@@ -279,7 +288,7 @@ func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Execu
 		newBrick.Path = newBrickEntry.Info.Path
 		newBrick.Host = newBrickNodeEntry.StorageHostName()
 
-		err = executor.VolumeReplaceBrick(oldBrickNodeEntry.ManageHostName(), v.Info.Name, &oldBrick, &newBrick)
+		err = executor.VolumeReplaceBrick(node, v.Info.Name, &oldBrick, &newBrick)
 		if err != nil {
 			return err
 		}

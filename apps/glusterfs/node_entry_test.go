@@ -635,3 +635,61 @@ func TestNodeSetStateOfflineOnline(t *testing.T) {
 
 	})
 }
+
+func TestGetVerifiedManageHostname(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	// Create cluster entry
+	c := NewClusterEntry()
+	c.Info.Id = "cluster"
+
+	// Create a node
+	req := &api.NodeAddRequest{
+		ClusterId: "cluster",
+		Hostnames: api.HostAddresses{
+			Manage:  []string{"manage"},
+			Storage: []string{"storage"},
+		},
+		Zone: 99,
+	}
+
+	n := NewNodeEntryFromRequest(req)
+	c.NodeAdd(n.Info.Id)
+
+	// Save in db
+	app.db.Update(func(tx *bolt.Tx) error {
+		err := c.Save(tx)
+		tests.Assert(t, err == nil)
+
+		err = n.Save(tx)
+		tests.Assert(t, err == nil)
+
+		return nil
+	})
+
+	hostname, err := GetVerifiedManageHostname(app.db, app.executor, "cluster")
+	tests.Assert(t, hostname == "manage")
+	tests.Assert(t, err == nil)
+	tests.Assert(t, n.State == api.EntryStateOnline)
+
+	app.db.Update(func(tx *bolt.Tx) error {
+		// Set offline
+		n.State = api.EntryStateOffline
+		tests.Assert(t, n.State == api.EntryStateOffline)
+
+		err := n.Save(tx)
+		tests.Assert(t, err == nil)
+
+		return nil
+
+	})
+
+	hostname, err = GetVerifiedManageHostname(app.db, app.executor, "cluster")
+	tests.Assert(t, hostname != "manage")
+	tests.Assert(t, err != nil)
+}
