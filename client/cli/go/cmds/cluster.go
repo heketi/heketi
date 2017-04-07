@@ -157,8 +157,10 @@ var clusterListCommand = &cobra.Command{
 			}
 			fmt.Fprintf(stdout, string(data))
 		} else {
-			output := strings.Join(list.Clusters, "\n")
-			fmt.Fprintf(stdout, "Clusters:\n%v\n", output)
+			fmt.Fprintf(stdout, "Clusters:\n")
+			for _, clusterid := range list.Clusters {
+				fmt.Fprintf(stdout, "Id:%v\n", clusterid)
+			}
 		}
 
 		return nil
