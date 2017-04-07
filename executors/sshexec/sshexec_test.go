@@ -10,6 +10,7 @@
 package sshexec
 
 import (
+	"os"
 	"testing"
 
 	"github.com/heketi/heketi/pkg/utils"
@@ -149,4 +150,56 @@ func TestNewSshExecBadPrivateKeyLocation(t *testing.T) {
 	s, err := NewSshExecutor(config)
 	tests.Assert(t, s == nil)
 	tests.Assert(t, err != nil)
+}
+
+func TestSshExecutorEnvVariables(t *testing.T) {
+
+	f := NewFakeSsh()
+	defer tests.Patch(&sshNew,
+		func(logger *utils.Logger, user string, file string) (Ssher, error) {
+			return f, nil
+		}).Restore()
+
+	// set environment
+	err := os.Setenv("HEKETI_SNAPSHOT_LIMIT", "999")
+	tests.Assert(t, err == nil)
+	defer os.Unsetenv("HEKETI_SNAPSHOT_LIMIT")
+
+	err = os.Setenv("HEKETI_FSTAB", "anotherfstab")
+	tests.Assert(t, err == nil)
+	defer os.Unsetenv("HEKETI_FSTAB")
+
+	err = os.Setenv("HEKETI_SSH_KEYFILE", "ykeyfile")
+	tests.Assert(t, err == nil)
+	defer os.Unsetenv("HEKETI_SSH_KEYFILE")
+
+	err = os.Setenv("HEKETI_SSH_USER", "yuser")
+	tests.Assert(t, err == nil)
+	defer os.Unsetenv("HEKETI_SSH_USER")
+
+	err = os.Setenv("HEKETI_SSH_PORT", "33")
+	tests.Assert(t, err == nil)
+	defer os.Unsetenv("HEKETI_SSH_PORT")
+
+	config := &SshConfig{
+		PrivateKeyFile: "xkeyfile",
+		User:           "xuser",
+		Port:           "100",
+		CLICommandConfig: CLICommandConfig{
+			Fstab: "xfstab",
+		},
+	}
+
+	s, err := NewSshExecutor(config)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, s != nil)
+	tests.Assert(t, s.Throttlemap != nil)
+	tests.Assert(t, s.config != nil)
+	tests.Assert(t, s.Fstab == "anotherfstab")
+	tests.Assert(t, s.SnapShotLimit() == 999)
+	tests.Assert(t, s.private_keyfile == "ykeyfile")
+	tests.Assert(t, s.user == "yuser")
+	tests.Assert(t, s.port == "33")
+	tests.Assert(t, s.exec != nil)
+
 }

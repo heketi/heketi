@@ -12,6 +12,8 @@ package sshexec
 import (
 	"errors"
 	"fmt"
+	"os"
+	"strconv"
 	"sync"
 
 	"github.com/heketi/heketi/pkg/utils"
@@ -56,8 +58,42 @@ var (
 	}
 )
 
+func setWithEnvVariables(config *SshConfig) {
+	var env string
+
+	env = os.Getenv("HEKETI_SSH_KEYFILE")
+	if "" != env {
+		config.PrivateKeyFile = env
+	}
+
+	env = os.Getenv("HEKETI_SSH_USER")
+	if "" != env {
+		config.User = env
+	}
+
+	env = os.Getenv("HEKETI_SSH_PORT")
+	if "" != env {
+		config.Port = env
+	}
+
+	env = os.Getenv("HEKETI_FSTAB")
+	if "" != env {
+		config.Fstab = env
+	}
+
+	env = os.Getenv("HEKETI_SNAPSHOT_LIMIT")
+	if "" != env {
+		i, err := strconv.Atoi(env)
+		if err == nil {
+			config.SnapShotLimit = i
+		}
+	}
+
+}
+
 func NewSshExecutor(config *SshConfig) (*SshExecutor, error) {
-	godbc.Require(config != nil)
+	// Override configuration
+	setWithEnvVariables(config)
 
 	s := &SshExecutor{}
 	s.RemoteExecutor = s
