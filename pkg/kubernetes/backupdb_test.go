@@ -10,6 +10,8 @@
 package kubernetes
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -217,15 +219,22 @@ func TestBackupToKubeSecretVerifyBackup(t *testing.T) {
 	secret, err := fakeclient.CoreV1().Secrets(ns).Get("heketi-db-backup")
 	tests.Assert(t, err == nil)
 
+	// Gunzip
+	b := bytes.NewReader(secret.Data["heketi.db.gz"])
+	gzr, err := gzip.NewReader(b)
+	tests.Assert(t, err == nil)
+	newdbData, err := ioutil.ReadAll(gzr)
+	tests.Assert(t, err == nil)
+
 	// Verify
 	newdb := tests.Tempfile()
 	defer os.Remove(newdb)
-	err = ioutil.WriteFile(newdb, secret.Data["heketi.db"], 0644)
+	err = ioutil.WriteFile(newdb, newdbData, 0644)
 	tests.Assert(t, err == nil)
 
 	// Load new app with backup
 	db.Close()
-	db, err = bolt.Open(tmpfile, 0600, &bolt.Options{Timeout: 3 * time.Second})
+	db, err = bolt.Open(newdb, 0600, &bolt.Options{Timeout: 3 * time.Second})
 	tests.Assert(t, err == nil)
 	defer db.Close()
 
@@ -298,15 +307,22 @@ func TestBackupToKubeSecretVerifyBackupWithName(t *testing.T) {
 	secret, err := fakeclient.CoreV1().Secrets(ns).Get(secretName)
 	tests.Assert(t, err == nil)
 
+	// Gunzip
+	b := bytes.NewReader(secret.Data["heketi.db.gz"])
+	gzr, err := gzip.NewReader(b)
+	tests.Assert(t, err == nil)
+	newdbData, err := ioutil.ReadAll(gzr)
+	tests.Assert(t, err == nil)
+
 	// Verify
 	newdb := tests.Tempfile()
 	defer os.Remove(newdb)
-	err = ioutil.WriteFile(newdb, secret.Data["heketi.db"], 0644)
+	err = ioutil.WriteFile(newdb, newdbData, 0644)
 	tests.Assert(t, err == nil)
 
 	// Load new app with backup
 	db.Close()
-	db, err = bolt.Open(tmpfile, 0600, &bolt.Options{Timeout: 3 * time.Second})
+	db, err = bolt.Open(newdb, 0600, &bolt.Options{Timeout: 3 * time.Second})
 	tests.Assert(t, err == nil)
 	defer db.Close()
 
