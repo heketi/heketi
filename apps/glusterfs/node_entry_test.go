@@ -527,38 +527,43 @@ func TestNodeSetStateFailed(t *testing.T) {
 		err = d.Save(tx)
 		tests.Assert(t, err == nil)
 
-		// Check ring
-		tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 1)
-		tests.Assert(t, mockAllocator.clustermap[c.Info.Id][0] == d.Info.Id)
-
-		// Set failed
-		err = n.SetState(tx, mockAllocator, api.EntryStateFailed)
-		tests.Assert(t, n.State == api.EntryStateFailed)
-		tests.Assert(t, err == nil)
-
-		// Check it was removed from ring
-		tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 0)
-
-		// Set failed again
-		err = n.SetState(tx, mockAllocator, api.EntryStateFailed)
-		tests.Assert(t, n.State == api.EntryStateFailed)
-		tests.Assert(t, err == nil)
-
-		// Set offline
-		err = n.SetState(tx, mockAllocator, api.EntryStateOffline)
-		tests.Assert(t, n.State == api.EntryStateFailed)
-		tests.Assert(t, err != nil)
-		tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 0)
-
-		// Set online
-		err = n.SetState(tx, mockAllocator, api.EntryStateOnline)
-		tests.Assert(t, n.State == api.EntryStateFailed)
-		tests.Assert(t, err != nil)
-		tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 0)
-
 		return nil
-
 	})
+
+	// Check ring
+	tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 1)
+	tests.Assert(t, mockAllocator.clustermap[c.Info.Id][0] == d.Info.Id)
+
+	// Set failed
+	err := n.SetState(app.db, app.executor, mockAllocator, api.EntryStateFailed)
+	tests.Assert(t, n.State == api.EntryStateOnline)
+	tests.Assert(t, err != nil)
+
+	// Set offline
+	err = n.SetState(app.db, app.executor, mockAllocator, api.EntryStateOffline)
+	tests.Assert(t, n.State == api.EntryStateOffline)
+	tests.Assert(t, err == nil)
+
+	// Check it was removed from ring
+	tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 0)
+
+	// Set failed
+	err = n.SetState(app.db, app.executor, mockAllocator, api.EntryStateFailed)
+	tests.Assert(t, n.State == api.EntryStateFailed)
+	tests.Assert(t, err == nil)
+
+	// Set offline
+	err = n.SetState(app.db, app.executor, mockAllocator, api.EntryStateOffline)
+	tests.Assert(t, n.State == api.EntryStateFailed)
+	tests.Assert(t, err != nil)
+	tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 0)
+
+	// Set online
+	err = n.SetState(app.db, app.executor, mockAllocator, api.EntryStateOnline)
+	tests.Assert(t, n.State == api.EntryStateFailed)
+	tests.Assert(t, err != nil)
+	tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 0)
+
 }
 
 func TestNodeSetStateOfflineOnline(t *testing.T) {
@@ -606,34 +611,32 @@ func TestNodeSetStateOfflineOnline(t *testing.T) {
 
 		err = d.Save(tx)
 		tests.Assert(t, err == nil)
-
-		// Check ring
-		tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 1)
-		tests.Assert(t, mockAllocator.clustermap[c.Info.Id][0] == d.Info.Id)
-
-		// Set offline
-		err = n.SetState(tx, mockAllocator, api.EntryStateOffline)
-		tests.Assert(t, n.State == api.EntryStateOffline)
-		tests.Assert(t, err == nil)
-
-		// Check it was removed from ring
-		tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 0)
-
-		// Set offline again
-		err = n.SetState(tx, mockAllocator, api.EntryStateOffline)
-		tests.Assert(t, n.State == api.EntryStateOffline)
-		tests.Assert(t, err == nil)
-
-		// Set online
-		err = n.SetState(tx, mockAllocator, api.EntryStateOnline)
-		tests.Assert(t, n.State == api.EntryStateOnline)
-		tests.Assert(t, err == nil)
-		tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 1)
-		tests.Assert(t, mockAllocator.clustermap[c.Info.Id][0] == d.Info.Id)
-
 		return nil
-
 	})
+
+	// Check ring
+	tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 1)
+	tests.Assert(t, mockAllocator.clustermap[c.Info.Id][0] == d.Info.Id)
+
+	// Set offline
+	err := n.SetState(app.db, app.executor, mockAllocator, api.EntryStateOffline)
+	tests.Assert(t, n.State == api.EntryStateOffline)
+	tests.Assert(t, err == nil)
+
+	// Check it was removed from ring
+	tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 0)
+
+	// Set offline again
+	err = n.SetState(app.db, app.executor, mockAllocator, api.EntryStateOffline)
+	tests.Assert(t, n.State == api.EntryStateOffline)
+	tests.Assert(t, err == nil)
+
+	// Set online
+	err = n.SetState(app.db, app.executor, mockAllocator, api.EntryStateOnline)
+	tests.Assert(t, n.State == api.EntryStateOnline)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 1)
+	tests.Assert(t, mockAllocator.clustermap[c.Info.Id][0] == d.Info.Id)
 }
 
 func TestGetVerifiedManageHostname(t *testing.T) {
