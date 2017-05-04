@@ -18,7 +18,7 @@ import (
 
 func (c *Client) TopologyInfo() (*api.TopologyInfoResponse, error) {
 	topo := &api.TopologyInfoResponse{
-		ClusterList: make([]api.Cluster, 0),
+		ClusterList: make([]api.ClusterInfo, 0),
 	}
 	clusterlist, err := c.ClusterList()
 	if err != nil {
@@ -29,7 +29,7 @@ func (c *Client) TopologyInfo() (*api.TopologyInfoResponse, error) {
 		if err != nil {
 			return nil, err
 		}
-		cluster := api.Cluster{
+		cluster := api.ClusterInfo{
 			Id:      clusteri.Id,
 			Volumes: make([]api.VolumeInfoResponse, 0),
 			Nodes:   make([]api.NodeInfoResponse, 0),

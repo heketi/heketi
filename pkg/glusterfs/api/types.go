@@ -105,18 +105,14 @@ type NodeInfo struct {
 type NodeInfoResponse struct {
 	NodeInfo
 	State       EntryState           `json:"state"`
-	DevicesInfo []DeviceInfoResponse `json:"devices"`
+	DevicesInfo []DeviceInfoResponse `json:"deviceInfo"`
 }
 
 // Cluster
-type Cluster struct {
+type ClusterInfo struct {
 	Volumes []VolumeInfoResponse `json:"volumes"`
 	Nodes   []NodeInfoResponse   `json:"nodes"`
 	Id      string               `json:"id"`
-}
-
-type TopologyInfoResponse struct {
-	ClusterList []Cluster `json:"clusters"`
 }
 
 type ClusterInfoResponse struct {
@@ -183,6 +179,10 @@ type VolumeListResponse struct {
 
 type VolumeExpandRequest struct {
 	Size int `json:"expand_size"`
+}
+
+type TopologyInfoResponse struct {
+	ClusterList []ClusterInfo `json:"clusters"`
 }
 
 // Constructors
