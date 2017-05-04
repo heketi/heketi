@@ -102,6 +102,16 @@ type NodeInfo struct {
 	Id string `json:"id"`
 }
 
+type NodeName struct {
+	Hostnames HostAddresses `json:"hostnames"`
+	Zone      int           `json:"zone"`
+}
+
+type Node struct {
+	NodeName NodeName `json:"node"`
+	Devices  []string `json:"devices"`
+}
+
 type NodeInfoResponse struct {
 	NodeInfo
 	State       EntryState           `json:"state"`
@@ -113,6 +123,10 @@ type ClusterInfo struct {
 	Volumes []VolumeInfoResponse `json:"volumes"`
 	Nodes   []NodeInfoResponse   `json:"nodes"`
 	Id      string               `json:"id"`
+}
+
+type Cluster struct {
+	Nodes []Node `json:"nodes"`
 }
 
 type ClusterInfoResponse struct {
@@ -183,6 +197,10 @@ type VolumeExpandRequest struct {
 
 type TopologyInfoResponse struct {
 	ClusterList []ClusterInfo `json:"clusters"`
+}
+
+type TopologyDumpResponse struct {
+	Clusters []Cluster `json:"clusters"`
 }
 
 // Constructors

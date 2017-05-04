@@ -44,10 +44,12 @@ func init() {
 	RootCmd.AddCommand(topologyCommand)
 	topologyCommand.AddCommand(topologyLoadCommand)
 	topologyCommand.AddCommand(topologyInfoCommand)
+	topologyCommand.AddCommand(topologyDumpCommand)
 	topologyLoadCommand.Flags().StringVarP(&jsonConfigFile, "json", "j", "",
 		"\n\tConfiguration containing devices, nodes, and clusters, in"+
 			"\n\tJSON format.")
 	topologyLoadCommand.SilenceUsage = true
+	topologyDumpCommand.SilenceUsage = true
 	topologyInfoCommand.SilenceUsage = true
 }
 
@@ -337,6 +339,32 @@ var topologyInfoCommand = &cobra.Command{
 
 		}
 
+		return nil
+	},
+}
+
+var topologyDumpCommand = &cobra.Command{
+	Use:   "dump",
+	Short: "Prints a JSON for current Topology",
+	Long:  "Prints a JSON for current Topology",
+
+	Example: " $ heketi-cli topology dump",
+	RunE: func(cmd *cobra.Command, args []string) error {
+
+		// Create a client to talk to Heketi
+		heketi := client.NewClient(options.Url, options.User, options.Key)
+
+		// Create Topology
+		topodump, err := heketi.TopologyDump()
+		if err != nil {
+			return err
+		}
+
+		data, err := json.MarshalIndent(topodump, "", "    ")
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(stdout, string(data))
 		return nil
 	},
 }
