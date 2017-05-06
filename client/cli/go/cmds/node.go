@@ -34,6 +34,7 @@ func init() {
 	nodeCommand.AddCommand(nodeEnableCommand)
 	nodeCommand.AddCommand(nodeDisableCommand)
 	nodeCommand.AddCommand(nodeListCommand)
+	nodeCommand.AddCommand(nodeRemoveCommand)
 	nodeAddCommand.Flags().IntVar(&zone, "zone", -1, "The zone in which the node should reside")
 	nodeAddCommand.Flags().StringVar(&clusterId, "cluster", "", "The cluster in which the node should reside")
 	nodeAddCommand.Flags().StringVar(&managmentHostNames, "management-host-name", "", "Management host name")
@@ -42,6 +43,7 @@ func init() {
 	nodeDeleteCommand.SilenceUsage = true
 	nodeInfoCommand.SilenceUsage = true
 	nodeListCommand.SilenceUsage = true
+	nodeRemoveCommand.SilenceUsage = true
 }
 
 var nodeCommand = &cobra.Command{
@@ -300,5 +302,37 @@ var nodeInfoCommand = &cobra.Command{
 			}
 		}
 		return nil
+	},
+}
+
+var nodeRemoveCommand = &cobra.Command{
+	Use:     "remove [node_id]",
+	Short:   "Removes a node and all its associated devices from Heketi",
+	Long:    "Removes a node and all its associated devices from Heketi",
+	Example: "  $ heketi-cli node remove 886a86a868711bef83001",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		s := cmd.Flags().Args()
+
+		//ensure proper number of args
+		if len(s) < 1 {
+			return errors.New("Node id missing")
+		}
+
+		//set clusterId
+		nodeId := cmd.Flags().Arg(0)
+
+		// Create a client
+		heketi := client.NewClient(options.Url, options.User, options.Key)
+
+		//set url
+		req := &api.StateRequest{
+			State: "failed",
+		}
+		err := heketi.NodeState(nodeId, req)
+		if err == nil {
+			fmt.Fprintf(stdout, "Node %v is now removed\n", nodeId)
+		}
+
+		return err
 	},
 }

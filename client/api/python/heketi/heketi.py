@@ -143,7 +143,11 @@ class HeketiClient(object):
     def node_state(self, node_id, state_request={}):
         uri = '/nodes/' + node_id + '/state'
         req = self._make_request('POST', uri, state_request)
+        return req.status_code == requests.codes.NO_CONTENT
+        '''if req.status_code == requests.codes.ok:
+            return req.json()
         return req.status_code == requests.codes.ok
+        '''
 
     def device_add(self, device_options={}):
         ''' device_options is a dict with parameters to be passed \

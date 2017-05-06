@@ -321,6 +321,7 @@ func (a *App) NodeSetState(w http.ResponseWriter, r *http.Request) {
 	// Get the id from the URL
 	vars := mux.Vars(r)
 	id := vars["id"]
+	var node *NodeEntry
 
 	// Unmarshal JSON
 	var msg api.StateRequest
@@ -331,8 +332,8 @@ func (a *App) NodeSetState(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check state is supported
-	err = a.db.Update(func(tx *bolt.Tx) error {
-		node, err := NewNodeEntryFromId(tx, id)
+	err = a.db.View(func(tx *bolt.Tx) error {
+		node, err = NewNodeEntryFromId(tx, id)
 		if err == ErrNotFound {
 			http.Error(w, "Id not found", http.StatusNotFound)
 			return err
@@ -341,23 +342,17 @@ func (a *App) NodeSetState(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		// Set state
-		err = node.SetState(tx, a.allocator, msg.State)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return err
-		}
-
-		// Save new state
-		err = node.Save(tx)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return err
-		}
-
 		return nil
 	})
-	if err != nil {
-		return
-	}
+
+	// Set state
+	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
+		err = node.SetState(a.db, a.executor, a.allocator, msg.State)
+		if err != nil {
+			return "", err
+		}
+		return "", nil
+
+	})
+
 }
