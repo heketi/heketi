@@ -1,7 +1,7 @@
 # Overview
 Kubernetes templates for Heketi and Gluster. The following documentation is setup
 to deploy the containers in Kubernetes.  It is not a full setup.  For full
-documentation, please visit the Heketi wiki page.
+documentation, please visit the Heketi wiki page. Some of the kubernetes artifacts have been moved to https://github.com/gluster/gluster-kubernetes.
 
 # Usage
 
