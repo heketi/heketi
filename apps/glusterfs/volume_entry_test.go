@@ -555,7 +555,7 @@ func TestVolumeEntryCreateTwoBricks(t *testing.T) {
 	v := createSampleVolumeEntry(250)
 
 	// Set a GID
-	v.gidRequested = gid
+	v.Info.Gid = gid
 
 	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil, err)

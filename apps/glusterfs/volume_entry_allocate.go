@@ -225,7 +225,7 @@ func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Execu
 			}
 			newBrickEntry = newDeviceEntry.NewBrickEntry(oldBrickEntry.Info.Size,
 				float64(v.Info.Snapshot.Factor),
-				v.gidRequested, v.Info.Id)
+				v.Info.Gid, v.Info.Id)
 			err = newDeviceEntry.Save(tx)
 			if err != nil {
 				return err
@@ -426,7 +426,7 @@ func (v *VolumeEntry) allocBricks(
 					// Try to allocate a brick on this device
 					brick := device.NewBrickEntry(brick_size,
 						float64(v.Info.Snapshot.Factor),
-						v.gidRequested, v.Info.Id)
+						v.Info.Gid, v.Info.Id)
 
 					// Determine if it was successful
 					if brick != nil {
