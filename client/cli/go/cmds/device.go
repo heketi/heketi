@@ -106,9 +106,11 @@ var deviceDeleteCommand = &cobra.Command{
 		err := heketi.DeviceDelete(deviceId)
 		if err == nil {
 			fmt.Fprintf(stdout, "Device %v deleted\n", deviceId)
+		} else if err != nil {
+			fmt.Fprintf(stdout, "Unable to delete device %v because it contains bricks\n", deviceId)
 		}
 
-		return err
+		return nil
 	},
 }
 

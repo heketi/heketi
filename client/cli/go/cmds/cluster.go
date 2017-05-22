@@ -89,9 +89,11 @@ var clusterDeleteCommand = &cobra.Command{
 		err := heketi.ClusterDelete(clusterId)
 		if err == nil {
 			fmt.Fprintf(stdout, "Cluster %v deleted\n", clusterId)
+		} else if err != nil {
+			fmt.Fprintf(stdout, "Unable to delete cluster %v because it contains volumes and/or nodes\n", clusterId)
 		}
 
-		return err
+		return nil
 	},
 }
 
