@@ -10,6 +10,9 @@
 package glusterfs
 
 import (
+	"bytes"
+	"compress/gzip"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -22,6 +25,69 @@ import (
 
 func init() {
 	logger.SetLevel(utils.LEVEL_NOLOG)
+}
+
+func TestBackupToKubeSecretMaxSize(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+
+	// Create a Max cluster size when using Secrets
+	// Max secret size is 1024M in Kubernetes
+	// Max = 12000 Drives
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		120,  // nodes_per_cluster
+		100,  // devices_per_node,
+		5*TB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+	app.Close()
+
+	// Gzip database
+	var b bytes.Buffer
+	gz := gzip.NewWriter(&b)
+	dbData, err := ioutil.ReadFile(tmpfile)
+	tests.Assert(t, err == nil)
+	_, err = gz.Write(dbData)
+	tests.Assert(t, err == nil)
+	err = gz.Close()
+	tests.Assert(t, err == nil)
+	tests.Assert(t, b.Len() < 1024*MB)
+}
+
+func TestBackupToKubeSecretMaxSizeFailure(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+
+	// Create a Max cluster size when using Secrets
+	// Max secret size is 1024M in Kubernetes
+	// Max = 12000 Drives
+	// So here pick 24000 Drives in two clusters
+	err := setupSampleDbWithTopology(app,
+		2,    // clusters
+		120,  // nodes_per_cluster
+		100,  // devices_per_node,
+		5*TB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+	app.Close()
+
+	// Gzip database
+	var b bytes.Buffer
+	gz := gzip.NewWriter(&b)
+	dbData, err := ioutil.ReadFile(tmpfile)
+	tests.Assert(t, err == nil)
+	_, err = gz.Write(dbData)
+	tests.Assert(t, err == nil)
+	err = gz.Close()
+	tests.Assert(t, err == nil)
+	tests.Assert(t, b.Len() > 1024*MB)
 }
 
 func TestBackupToKubeSecretBackupOnNonGet(t *testing.T) {

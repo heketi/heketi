@@ -11,6 +11,7 @@ package kubernetes
 
 import (
 	"bytes"
+	"compress/gzip"
 	"fmt"
 	"os"
 
@@ -66,9 +67,14 @@ func KubeBackupDbToSecret(db *bolt.DB) error {
 	// Get a backup
 	err = db.View(func(tx *bolt.Tx) error {
 		var backup bytes.Buffer
-		_, err := tx.WriteTo(&backup)
+
+		gz := gzip.NewWriter(&backup)
+		_, err := tx.WriteTo(gz)
 		if err != nil {
 			return fmt.Errorf("Unable to access database: %v", err)
+		}
+		if err := gz.Close(); err != nil {
+			return fmt.Errorf("Unable to close gzipped database: %v", err)
 		}
 
 		// Create a secret with backup
@@ -78,7 +84,7 @@ func KubeBackupDbToSecret(db *bolt.DB) error {
 		secret.APIVersion = "v1"
 		secret.ObjectMeta.Name = dbSecretName
 		secret.Data = map[string][]byte{
-			"heketi.db": backup.Bytes(),
+			"heketi.db.gz": backup.Bytes(),
 		}
 
 		// Submit secret
