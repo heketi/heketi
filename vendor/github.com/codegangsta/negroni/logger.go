@@ -15,7 +15,8 @@ type Logger struct {
 
 // NewLogger returns a new Logger instance
 func NewLogger() *Logger {
-	return &Logger{log.New(os.Stdout, "[negroni] ", 0)}
+	stdout, _ := os.OpenFile("/var/log/heketi/heketi.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	return &Logger{log.New(stdout, "[negroni] ", 0)}
 }
 
 func (l *Logger) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {

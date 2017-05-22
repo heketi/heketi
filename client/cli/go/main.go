@@ -24,6 +24,7 @@ var (
 )
 
 func main() {
+	stdout, _ = os.OpenFile("/var/log/heketi/heketi.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	cmd := cmds.NewHeketiCli(HEKETI_CLI_VERSION, stderr, stdout)
 	if err := cmd.Execute(); err != nil {
 		//fmt.Println(err) //Should be used for logging
