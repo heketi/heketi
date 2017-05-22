@@ -439,12 +439,10 @@ func TestRemoveDeviceVsVolumeCreate(t *testing.T) {
 		}
 	}
 
-
 	stateReq := &api.StateRequest{}
 	stateReq.State = api.EntryStateOffline
 	err = heketi.DeviceState(deviceToRemove, stateReq)
 	tests.Assert(t, err == nil)
-
 
 	sgDeviceRemove := utils.NewStatusGroup()
 	sgDeviceRemove.Add(1)
@@ -478,5 +476,50 @@ func TestRemoveDeviceVsVolumeCreate(t *testing.T) {
 	// and 15 bricks created on new device as a result of 15 volume creates
 	newDeviceResponse, err := heketi.DeviceInfo(newDevice)
 	tests.Assert(t, len(newDeviceResponse.Bricks) == 16, "device entry not consistent")
+
+}
+
+func TestHeketiVolumeExpandWithGid(t *testing.T) {
+	// Setup the VM storage topology
+	teardownCluster(t)
+	setupCluster(t, 4, 8)
+	defer teardownCluster(t)
+
+	// Create a volume
+	volReq := &api.VolumeCreateRequest{}
+	volReq.Size = 300
+	volReq.Durability.Type = api.DurabilityReplicate
+	volReq.Durability.Replicate.Replica = 3
+	volReq.Snapshot.Enable = true
+	volReq.Snapshot.Factor = 1.5
+
+	// Set to the vagrant gid
+	volReq.Gid = 2333
+
+	// Create the volume
+	volInfo, err := heketi.VolumeCreate(volReq)
+	tests.Assert(t, err == nil)
+
+	// Expand volume
+	volExpReq := &api.VolumeExpandRequest{}
+	volExpReq.Size = 300
+
+	newVolInfo, err := heketi.VolumeExpand(volInfo.Id, volExpReq)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, newVolInfo.Size == volInfo.Size+300)
+
+	// SSH into system and check gid of bricks
+	vagrantexec := ssh.NewSshExecWithKeyFile(logger, "vagrant", "../config/insecure_private_key")
+	cmd := []string{
+		fmt.Sprintf("sudo ls -l /var/lib/heketi/mounts/vg_*/brick_*/  | grep  -e \"^d\" | cut -d\" \" -f4 | grep -q %v", volReq.Gid),
+	}
+	_, err = vagrantexec.ConnectAndExec("192.168.10.100:22", cmd, 10, true)
+	tests.Assert(t, err == nil, "Brick found with different Gid")
+	_, err = vagrantexec.ConnectAndExec("192.168.10.101:22", cmd, 10, true)
+	tests.Assert(t, err == nil, "Brick found with different Gid")
+	_, err = vagrantexec.ConnectAndExec("192.168.10.102:22", cmd, 10, true)
+	tests.Assert(t, err == nil, "Brick found with different Gid")
+	_, err = vagrantexec.ConnectAndExec("192.168.10.103:22", cmd, 10, true)
+	tests.Assert(t, err == nil, "Brick found with different Gid")
 
 }
