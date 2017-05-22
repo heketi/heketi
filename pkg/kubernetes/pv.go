@@ -14,7 +14,7 @@ import (
 
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 
-	"k8s.io/kubernetes/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/api/resource"
 	kubeapi "k8s.io/kubernetes/pkg/api/v1"
 )
 

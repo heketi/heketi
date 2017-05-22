@@ -52,7 +52,7 @@ package:
 	@echo $(PACKAGE)
 
 server:
-	godep go build $(LDFLAGS) -o $(APP_NAME)
+	go build $(LDFLAGS) -o $(APP_NAME)
 
 client:
 	@$(MAKE) -C client/cli/go
@@ -61,7 +61,7 @@ run: server
 	./$(APP_NAME)
 
 test:
-	godep go test $(GOFILES)
+	go test $(GOFILES)
 
 clean:
 	@echo Cleaning Workspace...
