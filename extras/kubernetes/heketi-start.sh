@@ -8,7 +8,7 @@ if [ -f /backupdb/heketi.db.gz ] ; then
     fi
     echo "Copied backup db to /var/lib/heketi/heketi.db"
 elif [ -f /backupdb/heketi.db ] ; then
-    cp /backupdb/heketi.db > /var/lib/heketi/heketi.db
+    cp /backupdb/heketi.db /var/lib/heketi/heketi.db
     if [ $? -ne 0 ] ; then
         echo "Unable to copy database"
         exit 1
