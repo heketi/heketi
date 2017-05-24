@@ -38,9 +38,9 @@ const (
 )
 
 type VolumeEntry struct {
-	Info       api.VolumeInfo   `json:"volumeinfo`
-	Bricks     sort.StringSlice `json:"bricks"`
-	Durability VolumeDurability `json:"durability"`
+	Info       api.VolumeInfo
+	Bricks     sort.StringSlice
+	Durability VolumeDurability
 }
 
 func VolumeList(tx *bolt.Tx) ([]string, error) {
