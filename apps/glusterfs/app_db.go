@@ -10,14 +10,17 @@
 package glusterfs
 
 import (
+	"encoding/gob"
 	"encoding/json"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/boltdb/bolt"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 )
 
-type DbDump struct {
+type Db struct {
 	Clusters []ClusterEntry `json:"clusterentries"`
 	Volumes  []VolumeEntry  `json:"volumeentries"`
 	Bricks   []BrickEntry   `json:"brickentries"`
@@ -25,9 +28,130 @@ type DbDump struct {
 	Devices  []DeviceEntry  `json:"deviceentries"`
 }
 
+// DbCreate ... Creates a bolt db file based on JSON input
+func (a *App) DbCreate(w http.ResponseWriter, r *http.Request) {
+	var dump Db
+	//vars := mux.Vars(r)
+	//jsonFile := vars["jsonFile"]
+	// Check arguments
+	//if jsonFile == "" {
+	//	logger.Info("rtalurlogs, jsonFile value is %v", jsonFile)
+	//	http.Error(w, ErrNotFound.Error(), http.StatusInternalServerError)
+	//	return
+	//}
+
+	// Load config file
+	fp, err := os.Open("./inputfile")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer fp.Close()
+	logger.Info("rtalurlogs, opened json file")
+
+	dbParser := json.NewDecoder(fp)
+	if err = dbParser.Decode(&dump); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	//this registration should ideally be done during initialization, but it is existing bug
+	//work around it
+	gob.Register(&NoneDurability{})
+	gob.Register(&VolumeReplicaDurability{})
+	gob.Register(&VolumeDisperseDurability{})
+
+	err = a.db.Update(func(tx *bolt.Tx) error {
+		for _, cluster := range dump.Clusters {
+			logger.Info("rtalurlogs: adding cluster entry %v", cluster.Info.Id)
+			err := cluster.Save(tx)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return err
+			}
+		}
+		for _, volume := range dump.Volumes {
+			logger.Info("rtalurlogs: adding volume entry %v", volume.Info.Id)
+			// Set default durability values
+			durability := volume.Info.Durability.Type
+			switch {
+
+			case durability == api.DurabilityReplicate:
+				volume.Durability = NewVolumeReplicaDurability(&volume.Info.Durability.Replicate)
+
+			case durability == api.DurabilityEC:
+				volume.Durability = NewVolumeDisperseDurability(&volume.Info.Durability.Disperse)
+
+			case durability == api.DurabilityDistributeOnly || durability == "":
+				volume.Durability = NewNoneDurability()
+
+			default:
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return err
+			}
+
+			// Set the default values accordingly
+			volume.Durability.SetDurability()
+			err := volume.Save(tx)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return err
+			}
+		}
+		for _, brick := range dump.Bricks {
+			logger.Info("rtalurlogs: adding brick entry %v", brick.Info.Id)
+			err := brick.Save(tx)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return err
+			}
+		}
+		for _, node := range dump.Nodes {
+			logger.Info("rtalurlogs: adding node entry %v", node.Info.Id)
+			err := node.Save(tx)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return err
+			}
+			logger.Info("rtalurlogs: registering node entry %v", node.Info.Id)
+			err = node.Register(tx)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return err
+			}
+		}
+		for _, device := range dump.Devices {
+			logger.Info("rtalurlogs: adding device entry %v", device.Info.Id)
+			err := device.Save(tx)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return err
+			}
+			logger.Info("rtalurlogs: registering device entry %v", device.Info.Id)
+			err = device.Register(tx)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return
+	}
+
+	// Send back we created it (as long as we did not fail)
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(dump); err != nil {
+		panic(err)
+	}
+	return
+}
+
 // DbDump ... Creates a JSON output representing the state of DB
 func (a *App) DbDump(w http.ResponseWriter, r *http.Request) {
-	var dump DbDump
+	var dump Db
 	clusterEntryList := make([]ClusterEntry, 0)
 	volEntryList := make([]VolumeEntry, 0)
 	brickEntryList := make([]BrickEntry, 0)
