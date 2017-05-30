@@ -38,9 +38,10 @@ const (
 )
 
 type VolumeEntry struct {
-	Info       api.VolumeInfo
-	Bricks     sort.StringSlice
-	Durability VolumeDurability
+	Info                 api.VolumeInfo
+	Bricks               sort.StringSlice
+	Durability           VolumeDurability
+	GlusterVolumeOptions []string
 }
 
 func VolumeList(tx *bolt.Tx) ([]string, error) {
@@ -114,6 +115,9 @@ func NewVolumeEntryFromRequest(req *api.VolumeCreateRequest) *VolumeEntry {
 	} else if !vol.Info.Snapshot.Enable {
 		vol.Info.Snapshot.Factor = 1
 	}
+
+	// If it is zero, then no volume options are set.
+	vol.GlusterVolumeOptions = req.GlusterVolumeOptions
 
 	// If it is zero, then it will be assigned during volume creation
 	vol.Info.Clusters = req.Clusters

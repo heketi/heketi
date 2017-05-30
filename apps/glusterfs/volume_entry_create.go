@@ -97,6 +97,7 @@ func (v *VolumeEntry) createVolumeRequest(db *bolt.DB,
 	// Setup volume information in the request
 	vr.Name = v.Info.Name
 	v.Durability.SetExecutorVolumeRequest(vr)
+	vr.GlusterVolumeOptions = v.GlusterVolumeOptions
 
 	return vr, sshhost, nil
 }

@@ -62,6 +62,8 @@ func (s *SshExecutor) VolumeCreate(host string,
 
 	commands = append(commands, s.createAddBrickCommands(volume, inSet, inSet, maxPerSet)...)
 
+	commands = append(commands, s.createVolumeOptionsCommand(volume)...)
+
 	commands = append(commands, fmt.Sprintf("gluster --mode=script volume start %v", volume.Name))
 
 	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
@@ -153,6 +155,23 @@ func (s *SshExecutor) VolumeDestroyCheck(host, volume string) error {
 	}
 
 	return nil
+}
+
+func (s *SshExecutor) createVolumeOptionsCommand(volume *executors.VolumeRequest) []string {
+	godbc.Require(len(volume.GlusterVolumeOptions) > 0)
+
+	commands := []string{}
+	var cmd string
+
+	// Go through all the Options and create volume set command
+	for _, volOption := range volume.GlusterVolumeOptions {
+		if volOption != "" {
+			cmd = fmt.Sprintf("gluster --mode=script volume set %v %v", volume.Name, volOption)
+			commands = append(commands, cmd)
+		}
+
+	}
+	return commands
 }
 
 func (s *SshExecutor) createAddBrickCommands(volume *executors.VolumeRequest,
