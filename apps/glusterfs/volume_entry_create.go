@@ -11,11 +11,12 @@ package glusterfs
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/lpabon/godbc"
-	"strings"
 )
 
 func (v *VolumeEntry) createVolume(db *bolt.DB,
