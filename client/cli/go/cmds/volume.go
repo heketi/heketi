@@ -146,21 +146,18 @@ var volumeCreateCommand = &cobra.Command{
 			return fmt.Errorf("Missing endpoint")
 		}
 
-		// Check clusters
-		var clusters_ []string
-		if clusters != "" {
-			clusters_ = strings.Split(clusters, ",")
-		}
-
 		// Create request blob
 		req := &api.VolumeCreateRequest{}
 		req.Size = size
-		req.Clusters = clusters_
 		req.Durability.Type = api.DurabilityType(durability)
 		req.Durability.Replicate.Replica = replica
 		req.Durability.Disperse.Data = disperseData
 		req.Durability.Disperse.Redundancy = redundancy
 
+		// Check clusters
+		if clusters != "" {
+			req.Clusters = strings.Split(clusters, ",")
+		}
 
 		// Check volume options
 		if glusterVolumeOptions != "" {
