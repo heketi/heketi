@@ -425,7 +425,7 @@ func (n *NodeEntry) NewInfoReponse(tx *bolt.Tx) (*api.NodeInfoResponse, error) {
 			return nil, err
 		}
 
-		driveinfo, err := device.NewInfoResponse(tx)
+		driveinfo, err := device.NewInfoResponseNode(tx)
 		if err != nil {
 			return nil, err
 		}

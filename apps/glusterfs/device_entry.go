@@ -322,6 +322,20 @@ func (d *DeviceEntry) NewInfoResponse(tx *bolt.Tx) (*api.DeviceInfoResponse, err
 	return info, nil
 }
 
+func (d *DeviceEntry) NewInfoResponseNode(tx *bolt.Tx) (*api.DeviceInfoResponse, error) {
+
+	godbc.Require(tx != nil)
+
+	info := &api.DeviceInfoResponse{}
+	info.Id = d.Info.Id
+	info.Name = d.Info.Name
+	info.Storage = d.Info.Storage
+	info.State = d.State
+	info.Bricks = make([]api.BrickInfo, 0)
+
+	return info, nil
+}
+
 func (d *DeviceEntry) Marshal() ([]byte, error) {
 	var buffer bytes.Buffer
 	enc := gob.NewEncoder(&buffer)
