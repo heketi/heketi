@@ -660,13 +660,12 @@ func TestVolumeEntryCreateBrickDivision(t *testing.T) {
 	)
 	tests.Assert(t, err == nil)
 
-	// Create a volume who will be broken down to
-	// Shouldn't be able to break it down enough to allocate volume
+	// Create a volume which is so big that it does
+	// not fit into a single replica set
 	v := createSampleVolumeEntry(2000)
 	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil)
 
-	// Check database volume does not exist
 	var info *api.VolumeInfoResponse
 	var nodelist sort.StringSlice
 	err = app.db.View(func(tx *bolt.Tx) error {
