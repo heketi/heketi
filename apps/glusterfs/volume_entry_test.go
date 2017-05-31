@@ -702,7 +702,7 @@ func TestVolumeEntryCreateBrickDivision(t *testing.T) {
 	// Will need 3 splits for a total of 8 bricks + replicas
 	tests.Assert(t, len(info.Bricks) == 16)
 	for b := 1; b < 16; b++ {
-		tests.Assert(t, info.Bricks[0].Size == info.Bricks[b].Size, b)
+		tests.Assert(t, 250*GB == info.Bricks[b].Size, b)
 	}
 	tests.Assert(t, info.Cluster == v.Info.Cluster)
 
