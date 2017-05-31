@@ -117,15 +117,13 @@ func TestNewVolumeEntryFromRequestOnlySize(t *testing.T) {
 	tests.Assert(t, v.Info.Cluster == "")
 	tests.Assert(t, len(v.Info.Id) != 0)
 	tests.Assert(t, len(v.Bricks) == 0)
-
+	tests.Assert(t, v.Info.Durability.Type == "")
 }
 
-func TestNewVolumeEntryFromRequestReplica(t *testing.T) {
-
-	// :TODO: add tests for each durability
-
+func TestNewVolumeEntryFromRequestReplicaDefault(t *testing.T) {
 	req := &api.VolumeCreateRequest{}
 	req.Size = 1024
+	req.Durability.Type = api.DurabilityReplicate
 
 	v := NewVolumeEntryFromRequest(req)
 	tests.Assert(t, v.Info.Name == "vol_"+v.Info.Id)
@@ -136,7 +134,84 @@ func TestNewVolumeEntryFromRequestReplica(t *testing.T) {
 	tests.Assert(t, v.Info.Cluster == "")
 	tests.Assert(t, len(v.Info.Id) != 0)
 	tests.Assert(t, len(v.Bricks) == 0)
+	tests.Assert(t, v.Info.Durability.Type == api.DurabilityReplicate)
+	tests.Assert(t, v.Info.Durability.Replicate.Replica == 0)
+}
 
+func TestNewVolumeEntryFromRequestReplica5(t *testing.T) {
+	req := &api.VolumeCreateRequest{}
+	req.Size = 1024
+	req.Durability.Type = api.DurabilityReplicate
+	req.Durability.Replicate.Replica = 5
+
+	v := NewVolumeEntryFromRequest(req)
+	tests.Assert(t, v.Info.Name == "vol_"+v.Info.Id)
+	tests.Assert(t, len(v.Info.Clusters) == 0)
+	tests.Assert(t, v.Info.Snapshot.Enable == false)
+	tests.Assert(t, v.Info.Snapshot.Factor == 1)
+	tests.Assert(t, v.Info.Size == 1024)
+	tests.Assert(t, v.Info.Cluster == "")
+	tests.Assert(t, len(v.Info.Id) != 0)
+	tests.Assert(t, len(v.Bricks) == 0)
+	tests.Assert(t, v.Info.Durability.Type == api.DurabilityReplicate)
+	tests.Assert(t, v.Info.Durability.Replicate.Replica == 5)
+}
+
+func TestNewVolumeEntryFromRequestDistribute(t *testing.T) {
+	req := &api.VolumeCreateRequest{}
+	req.Size = 1024
+	req.Durability.Type = api.DurabilityDistributeOnly
+
+	v := NewVolumeEntryFromRequest(req)
+	tests.Assert(t, v.Info.Name == "vol_"+v.Info.Id)
+	tests.Assert(t, len(v.Info.Clusters) == 0)
+	tests.Assert(t, v.Info.Snapshot.Enable == false)
+	tests.Assert(t, v.Info.Snapshot.Factor == 1)
+	tests.Assert(t, v.Info.Size == 1024)
+	tests.Assert(t, v.Info.Cluster == "")
+	tests.Assert(t, len(v.Info.Id) != 0)
+	tests.Assert(t, len(v.Bricks) == 0)
+	tests.Assert(t, v.Info.Durability.Type == api.DurabilityDistributeOnly)
+}
+
+func TestNewVolumeEntryFromRequestDisperseDefault(t *testing.T) {
+	req := &api.VolumeCreateRequest{}
+	req.Size = 1024
+	req.Durability.Type = api.DurabilityEC
+
+	v := NewVolumeEntryFromRequest(req)
+	tests.Assert(t, v.Info.Name == "vol_"+v.Info.Id)
+	tests.Assert(t, len(v.Info.Clusters) == 0)
+	tests.Assert(t, v.Info.Snapshot.Enable == false)
+	tests.Assert(t, v.Info.Snapshot.Factor == 1)
+	tests.Assert(t, v.Info.Size == 1024)
+	tests.Assert(t, v.Info.Cluster == "")
+	tests.Assert(t, len(v.Info.Id) != 0)
+	tests.Assert(t, len(v.Bricks) == 0)
+	tests.Assert(t, v.Info.Durability.Type == api.DurabilityEC)
+	tests.Assert(t, v.Info.Durability.Disperse.Data == 0)
+	tests.Assert(t, v.Info.Durability.Disperse.Redundancy == 0)
+}
+
+func TestNewVolumeEntryFromRequestDisperseDefault48(t *testing.T) {
+	req := &api.VolumeCreateRequest{}
+	req.Size = 1024
+	req.Durability.Type = api.DurabilityEC
+	req.Durability.Disperse.Data = 8
+	req.Durability.Disperse.Redundancy = 4
+
+	v := NewVolumeEntryFromRequest(req)
+	tests.Assert(t, v.Info.Name == "vol_"+v.Info.Id)
+	tests.Assert(t, len(v.Info.Clusters) == 0)
+	tests.Assert(t, v.Info.Snapshot.Enable == false)
+	tests.Assert(t, v.Info.Snapshot.Factor == 1)
+	tests.Assert(t, v.Info.Size == 1024)
+	tests.Assert(t, v.Info.Cluster == "")
+	tests.Assert(t, len(v.Info.Id) != 0)
+	tests.Assert(t, len(v.Bricks) == 0)
+	tests.Assert(t, v.Info.Durability.Type == api.DurabilityEC)
+	tests.Assert(t, v.Info.Durability.Disperse.Data == 8)
+	tests.Assert(t, v.Info.Durability.Disperse.Redundancy == 4)
 }
 
 func TestNewVolumeEntryFromRequestClusters(t *testing.T) {
