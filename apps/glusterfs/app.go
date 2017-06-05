@@ -52,6 +52,22 @@ type App struct {
 	xo *mockexec.MockExecutor
 }
 
+func checkBoltDbWrite(app *App) (err error) {
+		err = app.db.Update(func(tx *bolt.Tx) error {
+			// Create Cluster Bucket
+			_, err := tx.CreateBucketIfNotExists([]byte("dummy"))
+			if err != nil {
+				logger.LogError("Unable to create dummy cluster bucket in DB")
+				return err
+			}
+
+			return nil
+		})
+
+		return  err
+}
+
+
 // Use for tests only
 func NewApp(configIo io.Reader) *App {
 	app := &App{}
@@ -98,7 +114,20 @@ func NewApp(configIo io.Reader) *App {
 		logger.Warning("Unable to open database.  Retrying using read only mode")
 
 		// Try opening as read-only
-		app.db, err = bolt.Open(dbfilename, 0666, &bolt.Options{
+		app.db, err = bolt.Open(dbfilename, 0600, &bolt.Options{
+			ReadOnly: true,
+		})
+		if err != nil {
+			logger.LogError("Unable to open database: %v", err)
+			return nil
+		}
+		app.dbReadOnly = true
+	} else if nil != checkBoltDbWrite(app) {
+		logger.Warning("write failed. Retrying using read only mode")
+                app.db.Close()
+
+		// Try opening as read-only
+		app.db, err = bolt.Open(dbfilename, 0600, &bolt.Options{
 			ReadOnly: true,
 		})
 		if err != nil {
