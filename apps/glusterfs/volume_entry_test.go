@@ -735,13 +735,12 @@ func TestVolumeEntryCreateBrickDivision(t *testing.T) {
 	)
 	tests.Assert(t, err == nil)
 
-	// Create a volume who will be broken down to
-	// Shouldn't be able to break it down enough to allocate volume
+	// Create a volume which is so big that it does
+	// not fit into a single replica set
 	v := createSampleVolumeEntry(2000)
 	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil)
 
-	// Check database volume does not exist
 	var info *api.VolumeInfoResponse
 	var nodelist sort.StringSlice
 	err = app.db.View(func(tx *bolt.Tx) error {
@@ -776,9 +775,18 @@ func TestVolumeEntryCreateBrickDivision(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Will need 3 splits for a total of 8 bricks + replicas
+	//
+	// NOTE: Why 8 bricksets of 250GB instead of 4 bricksets
+	// of 500GB each? Because the disk needed for hosting
+	// a brick if size X is a little larger than X, because
+	// we additionally allocate at least some space for metadata.
+	// Hence we will end up using 250GB bricks, and no two bricks
+	// will be on the same disk. Requesting slightly less than
+	// 2000GB, e.g. 1940GB yields a four 485GB bricksets.
+	//
 	tests.Assert(t, len(info.Bricks) == 16)
 	for b := 1; b < 16; b++ {
-		tests.Assert(t, info.Bricks[0].Size == info.Bricks[b].Size, b)
+		tests.Assert(t, 250*GB == info.Bricks[b].Size, b)
 	}
 	tests.Assert(t, info.Cluster == v.Info.Cluster)
 
