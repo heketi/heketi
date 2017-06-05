@@ -36,6 +36,7 @@ const (
 
 var (
 	logger     = utils.NewLogger("[heketi]", utils.LEVEL_INFO)
+	journal    = utils.NewJournal("/tmp/journal")
 	dbfilename = "heketi.db"
 )
 
@@ -173,6 +174,12 @@ func NewApp(configIo io.Reader) *App {
 		return nil
 	}
 	logger.Info("Loaded %v allocator", app.conf.Allocator)
+
+	// Journal File is checked
+	check, err := journal.JournalCheck()
+	if check == false {
+		logger.Critical("Journal not clean", err)
+	}
 
 	// Show application has loaded
 	logger.Info("GlusterFS Application Loaded")

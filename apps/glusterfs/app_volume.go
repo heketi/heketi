@@ -34,6 +34,12 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "request unable to be parsed", 422)
 		return
 	}
+	content := fmt.Sprintf("START volume create size %v Cluster %v Durability %v", msg.Size, msg.Clusters, msg.Durability)
+	err = journal.WriteJ(content)
+	if err != nil {
+		http.Error(w, "Journal volume create writer failed", 422)
+		return
+	}
 
 	switch {
 	case msg.Gid < 0:
@@ -155,6 +161,8 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 		return "/volumes/" + vol.Info.Id, nil
 	})
 
+	content = fmt.Sprintf("END volume create size %v Cluster %v Durability %v", msg.Size, msg.Clusters, msg.Durability)
+	journal.WriteJ(content)
 }
 
 func (a *App) VolumeList(w http.ResponseWriter, r *http.Request) {
