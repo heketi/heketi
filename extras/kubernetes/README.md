@@ -16,7 +16,7 @@ $ kubectl get nodes
 * Deploy the GlusterFS DaemonSet
 
 ```
-$ kubectl create -f gluster-daemonset.json
+$ kubectl create -f glusterfs-daemonset.json
 ```
 
 * Deploy gluster container onto specified node by setting the label
@@ -33,7 +33,7 @@ Repeat as needed.
 First you will need to deploy the bootstrap Heketi container:
 
 ```
-$ kubectl create -f deploy-heketi-deployment.json
+$ kubectl create -f heketi-deployment.json
 ```
 
 This will deploy the a Heketi container used to bootstrap the Heketi
