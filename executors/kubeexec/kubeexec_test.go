@@ -13,7 +13,7 @@ import (
 	"os"
 	"testing"
 
-	"k8s.io/kubernetes/pkg/client/restclient"
+	restclient "k8s.io/client-go/rest"
 
 	"github.com/heketi/heketi/executors/sshexec"
 	"github.com/heketi/heketi/pkg/utils"

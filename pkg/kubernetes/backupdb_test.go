@@ -21,9 +21,10 @@ import (
 	"github.com/boltdb/bolt"
 
 	"github.com/heketi/tests"
-	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/release_1_5"
-	fakeclientset "k8s.io/kubernetes/pkg/client/clientset_generated/release_1_5/fake"
-	"k8s.io/kubernetes/pkg/client/restclient"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	restclient "k8s.io/client-go/rest"
+	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
+	fakeclientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset/fake"
 )
 
 func TestBackupToKubeSecretFailedClusterConfig(t *testing.T) {
@@ -216,7 +217,7 @@ func TestBackupToKubeSecretVerifyBackup(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Get the secret
-	secret, err := fakeclient.CoreV1().Secrets(ns).Get("heketi-db-backup")
+	secret, err := fakeclient.CoreV1().Secrets(ns).Get("heketi-db-backup", v1.GetOptions{})
 	tests.Assert(t, err == nil)
 
 	// Gunzip
@@ -304,7 +305,7 @@ func TestBackupToKubeSecretVerifyBackupWithName(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Get the secret
-	secret, err := fakeclient.CoreV1().Secrets(ns).Get(secretName)
+	secret, err := fakeclient.CoreV1().Secrets(ns).Get(secretName, v1.GetOptions{})
 	tests.Assert(t, err == nil)
 
 	// Gunzip

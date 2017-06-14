@@ -16,11 +16,11 @@ import (
 	"strconv"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	restclient "k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/v1"
-	client "k8s.io/kubernetes/pkg/client/clientset_generated/release_1_5"
-	coreclient "k8s.io/kubernetes/pkg/client/clientset_generated/release_1_5/typed/core/v1"
-	"k8s.io/kubernetes/pkg/client/restclient"
+	client "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
+	coreclient "k8s.io/kubernetes/pkg/client/clientset_generated/clientset/typed/core/v1"
 	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
 	kubeletcmd "k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
 
@@ -197,7 +197,7 @@ func (k *KubeExecutor) ConnectAndExec(host, resource string,
 	}
 
 	// Get container name
-	podSpec, err := k.kube.Core().Pods(k.namespace).Get(podName)
+	podSpec, err := k.kube.Core().Pods(k.namespace).Get(podName, v1.GetOptions{})
 	if err != nil {
 		return nil, logger.LogError("Unable to get pod spec for %v: %v",
 			podName, err)

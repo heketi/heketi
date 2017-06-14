@@ -23,7 +23,7 @@ $ mkdir go
 $ cd go
 $ export GOPATH=$PWD
 $ export PATH=$PATH:$GOPATH/bin
-$ go get github.com/tools/godep
+$ curl https://glide.sh/get | sh
 $ mkdir -p src/github.com/heketi
 $ cd src/github.com/heketi
 $ git clone https://github.com/heketi/heketi.git

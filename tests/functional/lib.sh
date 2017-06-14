@@ -44,7 +44,7 @@ teardown_vagrant() {
 
 run_tests() {
     cd tests
-    godep go test -timeout=1h -tags functional
+    go test -timeout=1h -tags functional
     gotest_result=$?
     cd ..
 }

@@ -50,13 +50,13 @@ package:
 	@echo $(PACKAGE)
 
 build:
-	godep go build $(LDFLAGS) -o $(APP_NAME)
+	go build $(LDFLAGS) -o $(APP_NAME)
 
 run: build
 	./$(APP_NAME)
 
 test: 
-	godep go test ./...
+	go test ./...
 
 clean:
 	@echo Cleaning Workspace...
