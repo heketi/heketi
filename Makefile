@@ -135,3 +135,12 @@ release: darwin_amd64_dist linux_arm64_dist linux_arm_dist linux_amd64_dist
 
 .PHONY: server client test clean name run version release \
         darwin_amd64_dist linux_arm_dist linux_amd64_dist linux_arm64_dist
+
+custombuild:
+	@cp heketi ./extras/docker/ci/ 
+	@cp ./extras/docker/fromsource/heketi-start.sh ./extras/docker/ci/ 
+	@cp ./extras/docker/fromsource/heketi.json ./extras/docker/ci/ 
+	@cp ./extras/docker/fromsource/adhoc-setup.sh ./extras/docker/ci/ 
+	cd ./extras/docker/ci ;\
+	docker build --rm --tag mangirdas/heketi:dev . ;\
+	docker push mangirdas/heketi:dev
