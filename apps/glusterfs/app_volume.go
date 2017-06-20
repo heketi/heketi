@@ -83,6 +83,7 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 		d := msg.Durability.Disperse
 		// Place here correct combinations
 		switch {
+		case d.Data == 2 && d.Redundancy == 1:
 		case d.Data == 4 && d.Redundancy == 2:
 		case d.Data == 8 && d.Redundancy == 3:
 		case d.Data == 8 && d.Redundancy == 4:
