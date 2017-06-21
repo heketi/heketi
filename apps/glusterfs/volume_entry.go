@@ -237,7 +237,6 @@ func (v *VolumeEntry) Create(db *bolt.DB,
 			var err error
 			possibleClusters, err = ClusterList(tx)
 			return err
-
 		})
 		if err != nil {
 			return err
