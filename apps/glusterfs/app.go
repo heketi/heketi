@@ -26,12 +26,13 @@ import (
 )
 
 const (
-	ASYNC_ROUTE           = "/queue"
-	BOLTDB_BUCKET_CLUSTER = "CLUSTER"
-	BOLTDB_BUCKET_NODE    = "NODE"
-	BOLTDB_BUCKET_VOLUME  = "VOLUME"
-	BOLTDB_BUCKET_DEVICE  = "DEVICE"
-	BOLTDB_BUCKET_BRICK   = "BRICK"
+	ASYNC_ROUTE               = "/queue"
+	BOLTDB_BUCKET_CLUSTER     = "CLUSTER"
+	BOLTDB_BUCKET_NODE        = "NODE"
+	BOLTDB_BUCKET_VOLUME      = "VOLUME"
+	BOLTDB_BUCKET_DEVICE      = "DEVICE"
+	BOLTDB_BUCKET_BRICK       = "BRICK"
+	BOLTDB_BUCKET_BLOCKVOLUME = "BLOCKVOLUME"
 )
 
 var (
@@ -140,6 +141,12 @@ func NewApp(configIo io.Reader) *App {
 			_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_BRICK))
 			if err != nil {
 				logger.LogError("Unable to create brick bucket in DB")
+				return err
+			}
+
+			_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_BLOCKVOLUME))
+			if err != nil {
+				logger.LogError("Unable to create blockvolume bucket in DB")
 				return err
 			}
 
