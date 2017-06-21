@@ -99,6 +99,7 @@ func TestTopology(t *testing.T) {
 	tests.Assert(t, cluster.Id != "")
 	tests.Assert(t, len(cluster.Nodes) == 0)
 	tests.Assert(t, len(cluster.Volumes) == 0)
+	tests.Assert(t, len(cluster.BlockVolumes) == 0)
 
 	// Get information about the client
 	clusterinfo, err := c.ClusterInfo(cluster.Id)
