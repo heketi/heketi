@@ -95,6 +95,9 @@ func init() {
 		"\n\tAmount in GB to add to the volume")
 	volumeExpandCommand.Flags().StringVar(&id, "volume", "",
 		"\n\tId of volume to expand")
+	volumeCreateCommand.Flags().BoolVar(&block, "block", false,
+		"\n\tOptional: Create a block-hosting volume. Intended to host"+
+			"\n\tloopback files to be exported as block devices.")
 	volumeCreateCommand.SilenceUsage = true
 	volumeDeleteCommand.SilenceUsage = true
 	volumeExpandCommand.SilenceUsage = true
@@ -154,6 +157,7 @@ var volumeCreateCommand = &cobra.Command{
 		req.Durability.Replicate.Replica = replica
 		req.Durability.Disperse.Data = disperseData
 		req.Durability.Disperse.Redundancy = redundancy
+		req.Block = block
 
 		// Check clusters
 		if clusters != "" {
