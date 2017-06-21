@@ -21,7 +21,7 @@ type DbEntry interface {
 }
 
 // Checks if the key already exists in the database.  If it does not exist,
-// then it will save the key value pair in the datababucket se
+// then it will save the key value pair in the database bucket.
 func EntryRegister(tx *bolt.Tx, entry DbEntry, key string, value []byte) ([]byte, error) {
 	godbc.Require(tx != nil)
 	godbc.Require(len(key) > 0)
