@@ -12,6 +12,7 @@ package glusterfs
 import (
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -166,8 +167,14 @@ func NewApp(configIo io.Reader) *App {
 		}
 	}
 
+	// Set values mentioned in environmental variable
+	app.setFromEnvironmentalVariable()
+
 	// Set advanced settings
 	app.setAdvSettings()
+
+	// Set block settings
+	app.setBlockSettings()
 
 	// Setup allocator
 	switch {
@@ -240,6 +247,25 @@ func (a *App) Upgrade(tx *bolt.Tx) error {
 	return nil
 }
 
+func (a *App) setFromEnvironmentalVariable() {
+	var err error
+	env := os.Getenv("HEKETI_AUTO_CREATE_BLOCK_HOSTING_VOLUME")
+	if "" != env {
+		a.conf.CreateBlockHostingVolumes, err = strconv.ParseBool(env)
+		if err != nil {
+			logger.LogError("Error: Parse bool in Create Block Hosting Volumes: %v", err)
+		}
+	}
+
+	env = os.Getenv("HEKETI_BLOCK_HOSTING_VOLUME_SIZE")
+	if "" != env {
+		a.conf.BlockHostingVolumeSize, err = strconv.Atoi(env)
+		if err != nil {
+			logger.LogError("Error: Atoi in Block Hosting Volume Size: %v", err)
+		}
+	}
+}
+
 func (a *App) setAdvSettings() {
 	if a.conf.BrickMaxNum != 0 {
 		logger.Info("Adv: Max bricks per volume set to %v", a.conf.BrickMaxNum)
@@ -260,6 +286,21 @@ func (a *App) setAdvSettings() {
 		// From volume_entry.go
 		// Convert to KB
 		BrickMinSize = uint64(a.conf.BrickMinSize) * 1024 * 1024
+	}
+}
+
+func (a *App) setBlockSettings() {
+	if a.conf.CreateBlockHostingVolumes != false {
+		logger.Info("Block: Auto Create Block Hosting Volume set to %v", a.conf.CreateBlockHostingVolumes)
+
+		// switch to auto creation of block hosting volumes
+		CreateBlockHostingVolumes = a.conf.CreateBlockHostingVolumes
+	}
+	if a.conf.BlockHostingVolumeSize > 0 {
+		logger.Info("Block: New Block Hosting Volume size %v GB", a.conf.BlockHostingVolumeSize)
+
+		// Should be in GB as this is input for block hosting volume create
+		BlockHostingVolumeSize = a.conf.BlockHostingVolumeSize
 	}
 }
 
