@@ -169,6 +169,9 @@ func NewApp(configIo io.Reader) *App {
 	// Set advanced settings
 	app.setAdvSettings()
 
+	// Set block settings
+	app.setBlockSettings()
+
 	// Setup allocator
 	switch {
 	case app.conf.Allocator == "mock":
@@ -260,6 +263,21 @@ func (a *App) setAdvSettings() {
 		// From volume_entry.go
 		// Convert to KB
 		BrickMinSize = uint64(a.conf.BrickMinSize) * 1024 * 1024
+	}
+}
+
+func (a *App) setBlockSettings() {
+	if a.conf.CreateBlockHostingVolumes != false {
+		logger.Info("Block: Auto Create Block Hosting Volume set to %v", a.conf.CreateBlockHostingVolumes)
+
+		// switch to auto creation of block hosting volumes
+		CreateBlockHostingVolumes = a.conf.CreateBlockHostingVolumes
+	}
+	if a.conf.NewBlockHostingVolumeSize != 0 {
+		logger.Info("Block: New Block Hosting Volume size %v GB", a.conf.NewBlockHostingVolumeSize)
+
+		// Should be in GB as this is input for block hosting volume create
+		NewBlockHostingVolumeSize = a.conf.NewBlockHostingVolumeSize
 	}
 }
 

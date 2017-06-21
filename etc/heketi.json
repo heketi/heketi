@@ -60,6 +60,12 @@
       "  none, critical, error, warning, info, debug",
       "Default is warning"
     ],
-    "loglevel" : "debug"
+    "loglevel" : "debug",
+
+    "_auto_create_block_hosting_volume": "Creates Block Hosting volumes automatically if not found or exsisting volume exhausted",
+    "auto_create_block_hosting_volume": true,
+
+    "_new_block_hosting_volume_size": "New block hosting volume will be created in size mentioned, This is considered only if auto-create is enabled.",
+    "new_block_hosting_volume_size": 500
   }
 }
