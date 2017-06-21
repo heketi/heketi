@@ -154,6 +154,15 @@ func (c *ClusterEntry) VolumeDelete(id string) {
 	c.Info.Volumes = utils.SortedStringsDelete(c.Info.Volumes, id)
 }
 
+func (c *ClusterEntry) BlockVolumeAdd(id string) {
+	c.Info.BlockVolumes = append(c.Info.BlockVolumes, id)
+	c.Info.BlockVolumes.Sort()
+}
+
+func (c *ClusterEntry) BlockVolumeDelete(id string) {
+	c.Info.BlockVolumes = utils.SortedStringsDelete(c.Info.BlockVolumes, id)
+}
+
 func (c *ClusterEntry) NodeDelete(id string) {
 	c.Info.Nodes = utils.SortedStringsDelete(c.Info.Nodes, id)
 }
