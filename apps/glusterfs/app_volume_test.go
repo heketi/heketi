@@ -1211,3 +1211,71 @@ func TestVolumeCreateVsTopologyInfo(t *testing.T) {
 	err = sg.Result()
 	tests.Assert(t, err == nil, err)
 }
+func TestVolumeCreateWithOptions(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Setup database
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		10,   // nodes_per_cluster
+		10,   // devices_per_node,
+		5*TB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	// VolumeCreate using a test option called "test-option"
+	request := []byte(`{
+        "size" : 100,
+		"glustervolumeoptions" : [
+			"test-option"
+			]
+    }`)
+
+	// Send request
+	r, err := http.Post(ts.URL+"/volumes", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	location, err := r.Location()
+	tests.Assert(t, err == nil)
+
+	// Query queue until finished
+	var info api.VolumeInfoResponse
+	for {
+		r, err = http.Get(location.String())
+		tests.Assert(t, err == nil)
+		tests.Assert(t, r.StatusCode == http.StatusOK)
+		if r.ContentLength <= 0 {
+			time.Sleep(time.Millisecond * 10)
+			continue
+		} else {
+			// Should have node information here
+			tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
+			err = utils.GetJsonFromResponse(r, &info)
+			tests.Assert(t, err == nil)
+			break
+		}
+	}
+
+	tests.Assert(t, info.Id != "")
+	tests.Assert(t, info.Cluster != "")
+	tests.Assert(t, len(info.Bricks) == 1) // Only one 100GB brick needed
+	tests.Assert(t, info.Bricks[0].Size == 100*GB)
+	tests.Assert(t, info.Name == "vol_"+info.Id)
+	tests.Assert(t, info.Snapshot.Enable == false)
+	tests.Assert(t, info.Snapshot.Factor == 1)
+	tests.Assert(t, info.Durability.Type == api.DurabilityDistributeOnly)
+	// GlusterVolumeOption should have the "test-option"
+	tests.Assert(t, info.GlusterVolumeOptions[0] == "test-option")
+
+}
