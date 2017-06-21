@@ -246,8 +246,22 @@ func (a *App) VolumeDelete(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		return nil
+		if !volume.Info.Block {
+			// further checks only needed for block-hosting volumes
+			return nil
+		}
 
+		if volume.Info.BlockInfo.BlockVolumes == nil {
+			return nil
+		}
+
+		if len(volume.Info.BlockInfo.BlockVolumes) == 0 {
+			return nil
+		}
+
+		err = fmt.Errorf("Cannot delete a block hosting volume containing block volumes")
+		http.Error(w, err.Error(), http.StatusConflict)
+		return err
 	})
 	if err != nil {
 		return
