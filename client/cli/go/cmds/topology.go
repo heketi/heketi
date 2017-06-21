@@ -147,7 +147,8 @@ var topologyLoadCommand = &cobra.Command{
 					// See if we need to create a cluster
 					if clusterInfo == nil {
 						fmt.Fprintf(stdout, "Creating cluster ... ")
-						clusterInfo, err = heketi.ClusterCreate()
+						req := &api.ClusterCreateRequest{}
+						clusterInfo, err = heketi.ClusterCreate(req)
 						if err != nil {
 							return err
 						}

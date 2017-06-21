@@ -21,7 +21,11 @@ import (
 )
 
 func createSampleClusterEntry() *ClusterEntry {
-	return NewClusterEntryFromRequest()
+	cluster_req := &api.ClusterCreateRequest{
+		Block: true,
+		File:  true,
+	}
+	return NewClusterEntryFromRequest(cluster_req)
 }
 
 func TestNewClusterEntry(t *testing.T) {
@@ -35,7 +39,12 @@ func TestNewClusterEntry(t *testing.T) {
 
 func TestNewClusterEntryFromRequest(t *testing.T) {
 
-	c := NewClusterEntryFromRequest()
+	cluster_req := &api.ClusterCreateRequest{
+		Block: true,
+		File:  true,
+	}
+
+	c := NewClusterEntryFromRequest(cluster_req)
 	tests.Assert(t, c != nil)
 	tests.Assert(t, len(c.Info.Id) > 0)
 	tests.Assert(t, c.Info.Id != "")
@@ -43,6 +52,8 @@ func TestNewClusterEntryFromRequest(t *testing.T) {
 	tests.Assert(t, c.Info.Nodes != nil)
 	tests.Assert(t, len(c.Info.Volumes) == 0)
 	tests.Assert(t, len(c.Info.Nodes) == 0)
+	tests.Assert(t, c.Info.Block == true)
+	tests.Assert(t, c.Info.File == true)
 
 }
 
@@ -154,7 +165,11 @@ func TestNewClusterEntryFromId(t *testing.T) {
 	defer app.Close()
 
 	// Create a cluster
-	c := NewClusterEntryFromRequest()
+	cluster_req := &api.ClusterCreateRequest{
+		Block: true,
+		File:  true,
+	}
+	c := NewClusterEntryFromRequest(cluster_req)
 	c.NodeAdd("node_abc")
 	c.NodeAdd("node_def")
 	c.VolumeAdd("vol_abc")
@@ -195,7 +210,11 @@ func TestNewClusterEntrySaveDelete(t *testing.T) {
 	defer app.Close()
 
 	// Create a cluster
-	c := NewClusterEntryFromRequest()
+	cluster_req := &api.ClusterCreateRequest{
+		Block: true,
+		File:  true,
+	}
+	c := NewClusterEntryFromRequest(cluster_req)
 	c.NodeAdd("node_abc")
 	c.NodeAdd("node_def")
 	c.VolumeAdd("vol_abc")
@@ -323,7 +342,11 @@ func TestNewClusterEntryNewInfoResponse(t *testing.T) {
 	defer app.Close()
 
 	// Create a cluster
-	c := NewClusterEntryFromRequest()
+	cluster_req := &api.ClusterCreateRequest{
+		Block: true,
+		File:  true,
+	}
+	c := NewClusterEntryFromRequest(cluster_req)
 	c.NodeAdd("node_abc")
 	c.NodeAdd("node_def")
 	c.VolumeAdd("vol_abc")

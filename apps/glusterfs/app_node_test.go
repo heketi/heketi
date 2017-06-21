@@ -1048,7 +1048,11 @@ func TestNodeState(t *testing.T) {
 	tests.Assert(t, c != nil)
 
 	// Create Cluster
-	cluster, err := c.ClusterCreate()
+	cluster_req := &api.ClusterCreateRequest{
+		Block: true,
+		File:  true,
+	}
+	cluster, err := c.ClusterCreate(cluster_req)
 	tests.Assert(t, err == nil)
 
 	// Create Node

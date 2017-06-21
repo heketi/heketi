@@ -113,16 +113,25 @@ type Cluster struct {
 	Volumes []VolumeInfoResponse `json:"volumes"`
 	Nodes   []NodeInfoResponse   `json:"nodes"`
 	Id      string               `json:"id"`
+	Block   bool                 `json:"block"`
+	File    bool                 `json:"file"`
 }
 
 type TopologyInfoResponse struct {
 	ClusterList []Cluster `json:"clusters"`
 }
 
+type ClusterCreateRequest struct {
+	Block bool `json:"block"`
+	File  bool `json:"file"`
+}
+
 type ClusterInfoResponse struct {
 	Id      string           `json:"id"`
 	Nodes   sort.StringSlice `json:"nodes"`
 	Volumes sort.StringSlice `json:"volumes"`
+	Block   bool             `json:"block"`
+	File    bool             `json:"file"`
 }
 
 type ClusterListResponse struct {

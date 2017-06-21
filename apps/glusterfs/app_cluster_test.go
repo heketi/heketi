@@ -177,6 +177,8 @@ func TestClusterInfo(t *testing.T) {
 	// Create a new ClusterInfo
 	entry := NewClusterEntry()
 	entry.Info.Id = "123"
+	entry.Info.Block = true
+	entry.Info.File = true
 	for _, node := range []string{"a1", "a2", "a3"} {
 		entry.NodeAdd(node)
 	}
