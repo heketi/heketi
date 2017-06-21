@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/heketi/heketi/client/api/go-client"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/spf13/cobra"
 )
 
@@ -43,10 +44,12 @@ var clusterCreateCommand = &cobra.Command{
 	Long:    "Create a cluster",
 	Example: "  $ heketi-cli cluster create",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		req := &api.ClusterCreateRequest{}
+
 		// Create a client to talk to Heketi
 		heketi := client.NewClient(options.Url, options.User, options.Key)
 		// Create cluster
-		cluster, err := heketi.ClusterCreate()
+		cluster, err := heketi.ClusterCreate(req)
 		if err != nil {
 			return err
 		}

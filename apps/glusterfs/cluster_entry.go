@@ -38,13 +38,19 @@ func NewClusterEntry() *ClusterEntry {
 	entry := &ClusterEntry{}
 	entry.Info.Nodes = make(sort.StringSlice, 0)
 	entry.Info.Volumes = make(sort.StringSlice, 0)
+	entry.Info.Block = false
+	entry.Info.File = false
 
 	return entry
 }
 
-func NewClusterEntryFromRequest() *ClusterEntry {
+func NewClusterEntryFromRequest(req *api.ClusterCreateRequest) *ClusterEntry {
+	godbc.Require(req != nil)
+
 	entry := NewClusterEntry()
 	entry.Info.Id = utils.GenUUID()
+	entry.Info.Block = req.Block
+	entry.Info.File = req.File
 
 	return entry
 }
