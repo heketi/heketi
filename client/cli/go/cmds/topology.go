@@ -35,6 +35,8 @@ type ConfigFileNode struct {
 }
 type ConfigFileCluster struct {
 	Nodes []ConfigFileNode `json:"nodes"`
+	Block *bool            `json:"block,omitempty"`
+	File  *bool            `json:"file,omitempty"`
 }
 type ConfigFile struct {
 	Clusters []ConfigFileCluster `json:"clusters"`
@@ -148,11 +150,31 @@ var topologyLoadCommand = &cobra.Command{
 					if clusterInfo == nil {
 						fmt.Fprintf(stdout, "Creating cluster ... ")
 						req := &api.ClusterCreateRequest{}
+
+						if cluster.File == nil {
+							req.File = true
+						} else {
+							req.File = *cluster.File
+						}
+
+						if cluster.Block == nil {
+							req.Block = true
+						} else {
+							req.Block = *cluster.Block
+						}
+
 						clusterInfo, err = heketi.ClusterCreate(req)
 						if err != nil {
 							return err
 						}
 						fmt.Fprintf(stdout, "ID: %v\n", clusterInfo.Id)
+
+						if req.File {
+							fmt.Fprintf(stdout, "\tAllowing file volumes on cluster.\n")
+						}
+						if req.Block {
+							fmt.Fprintf(stdout, "\tAllowing block volumes on cluster.\n")
+						}
 
 						// Create a cleanup function in case no
 						// nodes or devices are created
