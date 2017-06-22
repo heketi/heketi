@@ -221,3 +221,33 @@ func TestAppPathNotFound(t *testing.T) {
 	_, err = c.VolumeInfo("xxx")
 	tests.Assert(t, strings.Contains(err.Error(), "Invalid path or request"))
 }
+
+func TestAppBlockSettings(t *testing.T) {
+
+	dbfile := tests.Tempfile()
+	defer os.Remove(dbfile)
+	os.Setenv("HEKETI_EXECUTOR", "mock")
+	defer os.Unsetenv("HEKETI_EXECUTOR")
+
+	data := []byte(`{
+		"glusterfs" : {
+			"executor" : "crazyexec",
+			"allocator" : "simple",
+			"db" : "` + dbfile + `",
+			"auto_create_block_hosting_volume" : true,
+			"new_block_hosting_volume_size" : 500
+		}
+	}`)
+
+	blockauto, blocksize := CreateBlockHostingVolumes, NewBlockHostingVolumeSize
+	defer func() {
+		CreateBlockHostingVolumes, NewBlockHostingVolumeSize = blockauto, blocksize
+	}()
+
+	app := NewApp(bytes.NewReader(data))
+	defer app.Close()
+	tests.Assert(t, app != nil)
+	tests.Assert(t, app.conf.Executor == "mock")
+	tests.Assert(t, CreateBlockHostingVolumes == true)
+	tests.Assert(t, NewBlockHostingVolumeSize == 500)
+}
