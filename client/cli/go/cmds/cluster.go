@@ -20,12 +20,29 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	cl_block bool
+	cl_file  bool
+)
+
 func init() {
 	RootCmd.AddCommand(clusterCommand)
 	clusterCommand.AddCommand(clusterCreateCommand)
 	clusterCommand.AddCommand(clusterDeleteCommand)
 	clusterCommand.AddCommand(clusterListCommand)
 	clusterCommand.AddCommand(clusterInfoCommand)
+
+	clusterCreateCommand.Flags().BoolVar(&cl_block, "block", true,
+		"\n\tOptional: Control the possibility of creating block volumes"+
+			"\n\ton the cluster to be created. This is enabled by default."+
+			"\n\tUse '--block=false' to disable creation of block volumes"+
+			"\n\ton this cluster.")
+	clusterCreateCommand.Flags().BoolVar(&cl_file, "file", true,
+		"\n\tOptional: Control the possibility of creating regular file"+
+			"\n\tvolumes on the cluster to be created. This is enabled by"+
+			"\n\tdefault. Use '--file=false' to disable creation of file"+
+			"\n\tvolumes on this cluster.")
+
 	clusterCreateCommand.SilenceUsage = true
 	clusterDeleteCommand.SilenceUsage = true
 	clusterInfoCommand.SilenceUsage = true
@@ -39,12 +56,22 @@ var clusterCommand = &cobra.Command{
 }
 
 var clusterCreateCommand = &cobra.Command{
-	Use:     "create",
-	Short:   "Create a cluster",
-	Long:    "Create a cluster",
-	Example: "  $ heketi-cli cluster create",
+	Use:   "create",
+	Short: "Create a cluster",
+	Long:  "Create a cluster",
+	Example: `  * Create a normal cluster
+      $ heketi-cli cluster create
+
+  * Create a cluster only for file volumes:
+      $ heketi-cli cluster create --block=false
+
+  * Create a cluster only for block columes:
+      $ heketi-cli cluster create --file=false
+`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		req := &api.ClusterCreateRequest{}
+		req.File = cl_file
+		req.Block = cl_block
 
 		// Create a client to talk to Heketi
 		heketi := client.NewClient(options.Url, options.User, options.Key)
