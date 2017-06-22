@@ -523,3 +523,36 @@ func TestHeketiVolumeExpandWithGid(t *testing.T) {
 	tests.Assert(t, err == nil, "Brick found with different Gid")
 
 }
+
+func TestHeketiVolumeCreateWithOptions(t *testing.T) {
+	// Setup the VM storage topology
+	teardownCluster(t)
+	setupCluster(t, 2, 2)
+	defer teardownCluster(t)
+
+	// Create a volume
+	volReq := &api.VolumeCreateRequest{}
+	volReq.Size = 10
+	volReq.Durability.Type = api.DurabilityReplicate
+	volReq.Durability.Replicate.Replica = 2
+	volReq.Snapshot.Enable = true
+	volReq.Snapshot.Factor = 1.5
+	volReq.GlusterVolumeOptions = []string{"performance.rda-cache-limit 10MB","performance.nl-cache-positive-entry no"}
+
+	// Set to the vagrant gid
+	volReq.Gid = 2333
+
+	// Create the volume
+	volInfo, err := heketi.VolumeCreate(volReq)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, len(volInfo.GlusterVolumeOptions) > 0)
+
+	// SSH into system and check volume options.
+	vagrantexec := ssh.NewSshExecWithKeyFile(logger, "vagrant", "../config/insecure_private_key")
+	cmd := []string{
+		fmt.Sprintf("sudo gluster v info %v | grep performance.rda-cache-limit | grep 10MB", volInfo.Name),
+		fmt.Sprintf("sudo gluster v info %v | grep performance.nl-cache-positive-entry | grep no", volInfo.Name),
+	}
+	_, err = vagrantexec.ConnectAndExec("192.168.10.100:22", cmd, 10, true)
+	tests.Assert(t, err == nil, "Volume Created with specified options")
+}

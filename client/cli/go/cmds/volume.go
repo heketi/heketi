@@ -23,20 +23,21 @@ import (
 )
 
 var (
-	size           int
-	volname        string
-	durability     string
-	replica        int
-	disperseData   int
-	redundancy     int
-	gid            int64
-	snapshotFactor float64
-	clusters       string
-	expandSize     int
-	id             string
-	kubePvFile     string
-	kubePvEndpoint string
-	kubePv         bool
+	size                 int
+	volname              string
+	durability           string
+	replica              int
+	disperseData         int
+	redundancy           int
+	gid                  int64
+	snapshotFactor       float64
+	clusters             string
+	expandSize           int
+	id                   string
+	kubePvFile           string
+	kubePvEndpoint       string
+	kubePv               bool
+	glusterVolumeOptions string
 )
 
 func init() {
@@ -78,6 +79,9 @@ func init() {
 			"\n\ton any of the configured clusters which have the available space."+
 			"\n\tProviding a set of clusters will ensure Heketi allocates storage"+
 			"\n\tfor this volume only in the clusters specified.")
+	volumeCreateCommand.Flags().StringVar(&glusterVolumeOptions, "gluster-volume-options", "",
+		"\n\tOptional: Comma separated list of volume options which can be set on the volume."+
+			"\n\tIf omitted, Heketi will set no volume option for the volume.")
 	volumeCreateCommand.Flags().BoolVar(&kubePv, "persistent-volume", false,
 		"\n\tOptional: Output to standard out a persistent volume JSON file for OpenShift or"+
 			"\n\tKubernetes with the name provided.")
@@ -126,6 +130,9 @@ var volumeCreateCommand = &cobra.Command{
   * Create a 100GB erasure coded 8+3 volume with 25GB snapshot storage:
       $ heketi-cli volume create --size=100 --durability=disperse --snapshot-factor=1.25 \
         --disperse-data=8 --redundancy=3
+
+  * Create a 100GB distributed volume which supports performance related volume options.
+      $ heketi-cli volume create --size=100 --durability=none --gluster-volume-options="performance.rda-cache-limit 10MB","performance.nl-cache-positive-entry no"
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Check volume size
@@ -139,20 +146,23 @@ var volumeCreateCommand = &cobra.Command{
 			return fmt.Errorf("Missing endpoint")
 		}
 
-		// Check clusters
-		var clusters_ []string
-		if clusters != "" {
-			clusters_ = strings.Split(clusters, ",")
-		}
-
 		// Create request blob
 		req := &api.VolumeCreateRequest{}
 		req.Size = size
-		req.Clusters = clusters_
 		req.Durability.Type = api.DurabilityType(durability)
 		req.Durability.Replicate.Replica = replica
 		req.Durability.Disperse.Data = disperseData
 		req.Durability.Disperse.Redundancy = redundancy
+
+		// Check clusters
+		if clusters != "" {
+			req.Clusters = strings.Split(clusters, ",")
+		}
+
+		// Check volume options
+		if glusterVolumeOptions != "" {
+			req.GlusterVolumeOptions = strings.Split(glusterVolumeOptions, ",")
+		}
 
 		// Set group id if specified
 		if gid != 0 {

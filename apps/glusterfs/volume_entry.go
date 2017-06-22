@@ -38,9 +38,10 @@ const (
 )
 
 type VolumeEntry struct {
-	Info       api.VolumeInfo
-	Bricks     sort.StringSlice
-	Durability VolumeDurability
+	Info                 api.VolumeInfo
+	Bricks               sort.StringSlice
+	Durability           VolumeDurability
+	GlusterVolumeOptions []string
 }
 
 func VolumeList(tx *bolt.Tx) ([]string, error) {
@@ -115,6 +116,9 @@ func NewVolumeEntryFromRequest(req *api.VolumeCreateRequest) *VolumeEntry {
 		vol.Info.Snapshot.Factor = 1
 	}
 
+	// If it is zero, then no volume options are set.
+	vol.GlusterVolumeOptions = req.GlusterVolumeOptions
+
 	// If it is zero, then it will be assigned during volume creation
 	vol.Info.Clusters = req.Clusters
 
@@ -159,6 +163,7 @@ func (v *VolumeEntry) NewInfoResponse(tx *bolt.Tx) (*api.VolumeInfoResponse, err
 	info.Size = v.Info.Size
 	info.Durability = v.Info.Durability
 	info.Name = v.Info.Name
+	info.GlusterVolumeOptions = v.GlusterVolumeOptions
 
 	for _, brickid := range v.BricksIds() {
 		brick, err := NewBrickEntryFromId(tx, brickid)
