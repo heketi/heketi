@@ -132,6 +132,8 @@ var clusterInfoCommand = &cobra.Command{
 			fmt.Fprintf(stdout, "Cluster id: %v\n", info.Id)
 			fmt.Fprintf(stdout, "Nodes:\n%v", strings.Join(info.Nodes, "\n"))
 			fmt.Fprintf(stdout, "\nVolumes:\n%v", strings.Join(info.Volumes, "\n"))
+			fmt.Fprintf(stdout, "\nBlock: %v\n", info.Block)
+			fmt.Fprintf(stdout, "\nFile: %v\n", info.File)
 		}
 
 		return nil
@@ -162,7 +164,23 @@ var clusterListCommand = &cobra.Command{
 		} else {
 			fmt.Fprintf(stdout, "Clusters:\n")
 			for _, clusterid := range list.Clusters {
-				fmt.Fprintf(stdout, "Id:%v\n", clusterid)
+				cluster, err := heketi.ClusterInfo(clusterid)
+				if err != nil {
+					return err
+				}
+
+				usagestr := ""
+				if cluster.File {
+					usagestr = "[file]"
+				}
+				if cluster.Block {
+					usagestr = usagestr + "[block]"
+				}
+				if usagestr == "" {
+					usagestr = "[]"
+				}
+
+				fmt.Fprintf(stdout, "Id:%v %v\n", clusterid, usagestr)
 			}
 		}
 
