@@ -31,6 +31,8 @@ class test_heketi(unittest.TestCase):
         self.assertEqual(True, cluster['id'] != "")
         self.assertEqual(True, len(cluster['nodes']) == 0)
         self.assertEqual(True, len(cluster['volumes']) == 0)
+        self.assertEqual(True, cluster['block'])
+        self.assertEqual(True, cluster['file'])
 
         # Request bad id
         with self.assertRaises(requests.exceptions.HTTPError):
