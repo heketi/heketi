@@ -236,6 +236,8 @@ var topologyInfoCommand = &cobra.Command{
 			// Get the cluster list and iterate over
 			for i, _ := range topoinfo.ClusterList {
 				fmt.Fprintf(stdout, "\nCluster Id: %v\n", topoinfo.ClusterList[i].Id)
+				fmt.Fprintf(stdout, "\n    File:  %v\n", topoinfo.ClusterList[i].File)
+				fmt.Fprintf(stdout, "    Block: %v\n", topoinfo.ClusterList[i].Block)
 				fmt.Fprintf(stdout, "\n    %s\n", "Volumes:")
 				for k, _ := range topoinfo.ClusterList[i].Volumes {
 
