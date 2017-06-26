@@ -25,6 +25,10 @@ var (
 	version            bool
 )
 
+const (
+	defaultCliServer = "http://localhost:8080"
+)
+
 // Main arguments
 type Options struct {
 	Url, Key, User string
@@ -68,10 +72,8 @@ func initConfig() {
 	// Check server
 	if options.Url == "" {
 		options.Url = os.Getenv("HEKETI_CLI_SERVER")
-		args := os.Args[1:]
-		if options.Url == "" && !version && len(args) > 0 {
-			fmt.Fprintf(stderr, "Server must be provided\n")
-			os.Exit(3)
+		if options.Url == "" {
+			options.Url = defaultCliServer
 		}
 	}
 
