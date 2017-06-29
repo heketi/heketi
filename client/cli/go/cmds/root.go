@@ -36,11 +36,10 @@ type Options struct {
 }
 
 var RootCmd = &cobra.Command{
-	Use:   "heketi-cli",
-	Short: "Command line program for Heketi",
-	Long:  "Command line program for Heketi",
-	Example: `  $ export HEKETI_CLI_SERVER=http://localhost:8080
-  $ heketi-cli volume list`,
+	Use:     "heketi-cli",
+	Short:   "Command line program for Heketi",
+	Long:    "Command line program for Heketi",
+	Example: `  $ heketi-cli volume list`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if version {
 			fmt.Printf("heketi-cli %v\n", HEKETI_CLI_VERSION)
@@ -54,7 +53,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 	RootCmd.PersistentFlags().StringVarP(&options.Url, "server", "s", "",
 		"\n\tHeketi server. Can also be set using the"+
-			"\n\tenvironment variable HEKETI_CLI_SERVER")
+			"\n\tenvironment variable HEKETI_CLI_SERVER (the default one is http://localhost:8080)")
 	RootCmd.PersistentFlags().StringVar(&options.Key, "secret", "",
 		"\n\tSecret key for specified user.  Can also be"+
 			"\n\tset using the environment variable HEKETI_CLI_KEY")
