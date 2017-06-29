@@ -158,8 +158,6 @@ func (s *SshExecutor) VolumeDestroyCheck(host, volume string) error {
 }
 
 func (s *SshExecutor) createVolumeOptionsCommand(volume *executors.VolumeRequest) []string {
-	godbc.Require(len(volume.GlusterVolumeOptions) > 0)
-
 	commands := []string{}
 	var cmd string
 

@@ -45,3 +45,8 @@ tags
 log
 *.sw?
 *~
+
+.coverage
+.tox
+*.log
+
