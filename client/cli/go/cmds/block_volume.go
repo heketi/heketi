@@ -83,7 +83,7 @@ var blockVolumeCreateCommand = &cobra.Command{
 		req.Size = bv_size
 		req.Auth = bv_auth
 		if bv_clusters != "" {
-			req.Clusters = strings.Split(clusters, ",")
+			req.Clusters = strings.Split(bv_clusters, ",")
 		}
 
 		if bv_volname != "" {
