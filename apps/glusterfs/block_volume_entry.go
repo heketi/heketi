@@ -405,6 +405,7 @@ func (v *BlockVolumeEntry) Destroy(db *bolt.DB, executor executors.Executor) err
 			logger.Err(err)
 			// Do not return here.. keep going
 		}
+		blockHostingVolume.Info.BlockInfo.FreeSize = blockHostingVolume.Info.BlockInfo.FreeSize + v.Info.Size
 		blockHostingVolume.Save(tx)
 
 		if err != nil {
