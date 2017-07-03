@@ -35,6 +35,8 @@ func TestNewClusterEntry(t *testing.T) {
 	tests.Assert(t, c.Info.Nodes != nil)
 	tests.Assert(t, len(c.Info.Volumes) == 0)
 	tests.Assert(t, len(c.Info.Nodes) == 0)
+	tests.Assert(t, c.Info.Block == false)
+	tests.Assert(t, c.Info.File == false)
 }
 
 func TestNewClusterEntryFromRequest(t *testing.T) {

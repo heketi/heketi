@@ -186,6 +186,7 @@ func (v *BlockVolumeEntry) Create(db *bolt.DB,
 	var blockClusters []string
 	for _, clusterId := range possibleClusters {
 		err := db.View(func(tx *bolt.Tx) error {
+			var err error
 			c, err := NewClusterEntryFromId(tx, clusterId)
 			if err != nil {
 				return err
@@ -260,6 +261,9 @@ func (v *BlockVolumeEntry) Create(db *bolt.DB,
 	var blockHostingVolume string
 	if len(volumes) == 0 {
 		logger.Info("No block hosting volumes found in the cluster list")
+		if !CreateBlockHostingVolumes {
+			return fmt.Errorf("Block Hosting Volume Creation is Disabled. Create a Block hosting volume and try again.")
+		}
 		bhvol, err := CreateBlockHostingVolume(db, executor, allocator, v.Info.Clusters)
 		if err != nil {
 			return err
