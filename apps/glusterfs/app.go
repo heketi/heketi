@@ -12,6 +12,7 @@ package glusterfs
 import (
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -166,6 +167,9 @@ func NewApp(configIo io.Reader) *App {
 		}
 	}
 
+	// Set values mentioned in environmental variable
+	app.setFromEnvironmentalVariable()
+
 	// Set advanced settings
 	app.setAdvSettings()
 
@@ -241,6 +245,18 @@ func (a *App) Upgrade(tx *bolt.Tx) error {
 	}
 
 	return nil
+}
+
+func (a *App) setFromEnvironmentalVariable() {
+	env := os.Getenv("HEKETI_AUTO_CREATE_BLOCK_HOSTING_VOLUME")
+	if "" != env {
+		a.conf.CreateBlockHostingVolumes = env
+	}
+
+	env := os.Getenv("HEKETI_NEW_BLOCK_HOSTING_VOLUME_SIZE")
+	if "" != env {
+		a.conf.NewBlockHostingVolumeSize = env
+	}
 }
 
 func (a *App) setAdvSettings() {
