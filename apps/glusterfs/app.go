@@ -248,14 +248,21 @@ func (a *App) Upgrade(tx *bolt.Tx) error {
 }
 
 func (a *App) setFromEnvironmentalVariable() {
+	var err error
 	env := os.Getenv("HEKETI_AUTO_CREATE_BLOCK_HOSTING_VOLUME")
 	if "" != env {
-		a.conf.CreateBlockHostingVolumes = env
+		a.conf.CreateBlockHostingVolumes, err = strconv.ParseBool(env)
+		if err != nil {
+			logger.LogError("Error: Parse bool in Create Block Hosting Volumes: %v", err)
+		}
 	}
 
-	env := os.Getenv("HEKETI_NEW_BLOCK_HOSTING_VOLUME_SIZE")
+	env = os.Getenv("HEKETI_NEW_BLOCK_HOSTING_VOLUME_SIZE")
 	if "" != env {
-		a.conf.NewBlockHostingVolumeSize = env
+		a.conf.NewBlockHostingVolumeSize, err = strconv.Atoi(env)
+		if err != nil {
+			logger.LogError("Error: Atoi in Block Hosting Volume Size: %v", err)
+		}
 	}
 }
 
