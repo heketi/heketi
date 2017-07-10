@@ -12,9 +12,10 @@ package sshexec
 import (
 	"errors"
 	"fmt"
-	"github.com/heketi/heketi/executors"
 	"strconv"
 	"strings"
+
+	"github.com/heketi/heketi/executors"
 )
 
 const (
@@ -50,13 +51,16 @@ func (s *SshExecutor) DeviceSetup(host, device, vgid string) (d *executors.Devic
 		}
 	}()
 
+	return s.GetDeviceInfo(host, device, vgid)
+}
+
+func (s *SshExecutor) GetDeviceInfo(host, device, vgid string) (d *executors.DeviceInfo, e error) {
 	// Vg info
 	d = &executors.DeviceInfo{}
-	err = s.getVgSizeFromNode(d, host, device, vgid)
+	err := s.getVgSizeFromNode(d, host, device, vgid)
 	if err != nil {
 		return nil, err
 	}
-
 	return d, nil
 }
 

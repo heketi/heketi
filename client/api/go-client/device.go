@@ -176,3 +176,38 @@ func (c *Client) DeviceState(id string,
 
 	return nil
 }
+
+func (c *Client) DeviceResync(id string) error {
+
+	// Create a request
+	req, err := http.NewRequest("GET", c.host+"/devices/"+id+"/resync", nil)
+	if err != nil {
+		return err
+	}
+
+	// Set token
+	err = c.setToken(req)
+	if err != nil {
+		return err
+	}
+
+	// Send request
+	r, err := c.do(req)
+	if err != nil {
+		return err
+	}
+	if r.StatusCode != http.StatusAccepted {
+		return utils.GetErrorFromResponse(r)
+	}
+
+	// Wait for response
+	r, err = c.waitForResponseWithTimer(r, time.Millisecond*250)
+	if err != nil {
+		return err
+	}
+	if r.StatusCode != http.StatusNoContent {
+		return utils.GetErrorFromResponse(r)
+	}
+
+	return nil
+}
