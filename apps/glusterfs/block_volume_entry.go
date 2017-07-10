@@ -237,6 +237,9 @@ func (v *BlockVolumeEntry) Create(db *bolt.DB,
 	for _, vol := range possibleVolumes {
 		err := db.View(func(tx *bolt.Tx) error {
 			volEntry, err := NewVolumeEntryFromId(tx, vol)
+			if err != nil {
+				return err
+			}
 			if volEntry.Info.BlockInfo.FreeSize >= v.Info.Size {
 				for _, blockvol := range volEntry.Info.BlockInfo.BlockVolumes {
 					bv, err := NewBlockVolumeEntryFromId(tx, blockvol)
@@ -248,13 +251,14 @@ func (v *BlockVolumeEntry) Create(db *bolt.DB,
 							v.Info.Name, volEntry.Info.Name)
 					}
 				}
+				volumes = append(volumes, vol)
+			} else {
+				return fmt.Errorf("Free size is lesser than the block volume requested")
 			}
-			return err
+			return nil
 		})
 		if err != nil {
 			logger.Warning("%v", err.Error())
-		} else {
-			volumes = append(volumes, vol)
 		}
 	}
 
