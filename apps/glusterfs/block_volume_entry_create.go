@@ -56,9 +56,16 @@ func (v *BlockVolumeEntry) createBlockVolumeRequest(db *bolt.DB,
 			return err
 		}
 
-		v.Info.BlockVolume.Hosts = bhvol.Info.Mount.GlusterFS.Hosts
-		v.Info.Hacount = len(v.Info.BlockVolume.Hosts)
+		if v.Info.Hacount > 0 {
+			for i := 0; i < v.Info.Hacount; i++ {
+				v.Info.BlockVolume.Hosts = append(v.Info.BlockVolume.Hosts, bhvol.Info.Mount.GlusterFS.Hosts[i])
+			}
 
+		} else {
+
+			v.Info.BlockVolume.Hosts = bhvol.Info.Mount.GlusterFS.Hosts
+			v.Info.Hacount = len(v.Info.BlockVolume.Hosts)
+		}
 		v.Info.Cluster = bhvol.Info.Cluster
 		blockHostingVolumeName = bhvol.Info.Name
 

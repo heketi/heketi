@@ -26,6 +26,7 @@ var (
 	bv_volname  string
 	bv_auth     bool
 	bv_clusters string
+	bv_ha       int
 )
 
 func init() {
@@ -37,6 +38,8 @@ func init() {
 
 	blockVolumeCreateCommand.Flags().IntVar(&bv_size, "size", -1,
 		"\n\tSize of volume in GB")
+	blockVolumeCreateCommand.Flags().IntVar(&bv_ha, "ha", 0,
+		"\n\tHA count for block volume")
 	blockVolumeCreateCommand.Flags().BoolVar(&bv_auth, "auth", false,
 		"\n\tOptional: Enable Authentication for block volume access")
 	blockVolumeCreateCommand.Flags().StringVar(&bv_volname, "name", "",
@@ -70,6 +73,10 @@ var blockVolumeCreateCommand = &cobra.Command{
       $ heketi-cli blockvolume create --size=100 \
         --clusters=0995098e1284ddccb46c7752d142c832,60d46d518074b13a04ce1022c8c7193c
 
+  * Create a 100GB block volume requesting ha count to be 2.
+    (Otherwise HA count is all the nodes on which block hosting volume reside.):
+	  $ heketi-cli blockvolume create --size=100 --ha=2
+
   * Create a 100GB block volume specifying two specific clusters auth enabled:
       $ heketi-cli blockvolume create --size=100 --auth \
         --clusters=0995098e1284ddccb46c7752d142c832,60d46d518074b13a04ce1022c8c7193c
@@ -88,6 +95,12 @@ var blockVolumeCreateCommand = &cobra.Command{
 
 		if bv_volname != "" {
 			req.Name = bv_volname
+		}
+
+		if bv_ha >= 0 {
+			req.Hacount = bv_ha
+		} else {
+			return errors.New("Invalid HA count")
 		}
 
 		heketi := client.NewClient(options.Url, options.User, options.Key)
