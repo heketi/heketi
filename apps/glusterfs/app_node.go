@@ -57,9 +57,9 @@ func (a *App) NodeAdd(w http.ResponseWriter, r *http.Request) {
 	// Create a node entry
 	node := NewNodeEntryFromRequest(&msg)
 
-	// Get cluster and peer node
+	// Get cluster and peer node hostname
 	var cluster *ClusterEntry
-	var peer_node *NodeEntry
+	var peer_node_hostname string
 	err = a.db.Update(func(tx *bolt.Tx) error {
 		var err error
 		cluster, err = NewClusterEntryFromId(tx, msg.ClusterId)
@@ -77,21 +77,30 @@ func (a *App) NodeAdd(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusConflict)
 			return err
 		}
-
-		// Get a node in the cluster to execute the Gluster peer command
-		// only if there is more than one node
-		if len(cluster.Info.Nodes) > 0 {
-			peer_node, err = cluster.NodeEntryFromClusterIndex(tx, 0)
-			if err != nil {
-				logger.Err(err)
-				return err
-			}
-		}
-
 		return nil
 	})
 	if err != nil {
 		return
+	}
+
+	// Get a node's hostname in the cluster to execute the Gluster peer command
+	// only if there is more than one node
+	if len(cluster.Info.Nodes) > 0 {
+		peer_node_hostname, err = GetVerifiedManageHostname(a.db, a.executor, cluster.Info.Id)
+		if err != nil {
+			logger.Err(err)
+			err := logger.LogError("None of the nodes in cluster has glusterd running")
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	} else {
+		err := a.executor.GlusterdCheck(node.ManageHostName())
+		if err != nil {
+			logger.Err(err)
+			err := logger.LogError("New Node doesn't have glusterd running")
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 	}
 
 	// Add node
@@ -110,8 +119,9 @@ func (a *App) NodeAdd(w http.ResponseWriter, r *http.Request) {
 
 		// Peer probe if there is at least one other node
 		// TODO: What happens if the peer_node is not responding.. we need to choose another.
-		if peer_node != nil {
-			err := a.executor.PeerProbe(peer_node.ManageHostName(), node.StorageHostName())
+		// It will only choose the working one now. Hence done.
+		if peer_node_hostname != "" {
+			err := a.executor.PeerProbe(peer_node_hostname, node.StorageHostName())
 			if err != nil {
 				return "", err
 			}
