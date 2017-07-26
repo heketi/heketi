@@ -132,6 +132,10 @@ func (m *MockExecutor) DeviceSetup(host, device, vgid string) (*executors.Device
 	return m.MockDeviceSetup(host, device, vgid)
 }
 
+func (m *MockExecutor) GetDeviceInfo(host, device, vgid string) (*executors.DeviceInfo, error) {
+	return m.MockDeviceSetup(host, device, vgid)
+}
+
 func (m *MockExecutor) DeviceTeardown(host, device, vgid string) error {
 	return m.MockDeviceTeardown(host, device, vgid)
 }

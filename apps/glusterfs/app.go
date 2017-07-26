@@ -333,6 +333,11 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Method:      "POST",
 			Pattern:     "/devices/{id:[A-Fa-f0-9]+}/state",
 			HandlerFunc: a.DeviceSetState},
+		rest.Route{
+			Name:        "DeviceResync",
+			Method:      "GET",
+			Pattern:     "/devices/{id:[A-Fa-f0-9]+}/resync",
+			HandlerFunc: a.DeviceResync},
 
 		// Volume
 		rest.Route{

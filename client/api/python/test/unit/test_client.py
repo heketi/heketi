@@ -180,6 +180,10 @@ class test_heketi(unittest.TestCase):
         info = c.device_info(device_id)
         self.assertEqual(info['state'], 'online')
 
+        # Resync device
+        device_resync = c.device_resync(device_id)
+        self.assertEqual(True, device_resync)
+
         # Try to delete node, and will not until we delete the device
         with self.assertRaises(requests.exceptions.HTTPError):
             c.node_delete(node['id'])

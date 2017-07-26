@@ -434,6 +434,15 @@ func TestClientDevice(t *testing.T) {
 	tests.Assert(t, err == nil)
 	tests.Assert(t, deviceInfo.State == api.EntryStateOnline)
 
+	// Resync
+	err = c.DeviceResync(deviceId)
+	tests.Assert(t, err == nil)
+	deviceInfo, err = c.DeviceInfo(deviceId)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, deviceInfo.Storage.Total == 500*1024*1024)
+	tests.Assert(t, deviceInfo.Storage.Free == 500*1024*1024)
+	tests.Assert(t, deviceInfo.Storage.Used == 0)
+
 	// Try to delete node, and will not until we delete the device
 	err = c.NodeDelete(node.Id)
 	tests.Assert(t, err != nil)

@@ -350,3 +350,97 @@ func (a *App) DeviceSetState(w http.ResponseWriter, r *http.Request) {
 		return "", nil
 	})
 }
+
+func (a *App) DeviceResync(w http.ResponseWriter, r *http.Request) {
+
+	vars := mux.Vars(r)
+	deviceId := vars["id"]
+
+	var (
+		device *DeviceEntry
+		node   *NodeEntry
+	)
+
+	// Get device info from DB
+	err := a.db.View(func(tx *bolt.Tx) error {
+		var err error
+		device, err = NewDeviceEntryFromId(tx, deviceId)
+		if err != nil {
+			return err
+		}
+		node, err = NewNodeEntryFromId(tx, device.NodeId)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err == ErrNotFound {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logger.Err(err)
+		return
+	}
+
+	logger.Info("Checking for device %v changes", deviceId)
+
+	// Check and update device in background
+	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (seeOtherUrl string, e error) {
+
+		// Get actual device info from manage host
+		info, err := a.executor.GetDeviceInfo(node.ManageHostName(), device.Info.Name, device.Info.Id)
+		if err != nil {
+			return "", err
+		}
+
+		// Note that method GetDeviceInfo returns the free disk space available for allocation.
+		// The free disk space is equal to the total disk space only if we haven't already
+		// allocated space, because every allocation decreases the free disk space returned
+		// by method GetDeviceInfo. In order to calculate a new total space we need to sum
+		// the free disk space and the space used by heketi.
+		if device.Info.Storage.Total == info.Size+device.Info.Storage.Used {
+			logger.Info("Device %v is up to date", device.Info.Id)
+			return "", nil
+		}
+
+		logger.Debug("Free space of '%v' (%v) has changed %v -> %v", device.Info.Name, device.Info.Id,
+			device.Info.Storage.Free, info.Size)
+
+		// Update device
+		err = a.db.Update(func(tx *bolt.Tx) error {
+
+			// Reload device in current transaction
+			device, err := NewDeviceEntryFromId(tx, deviceId)
+			if err != nil {
+				logger.Err(err)
+				return err
+			}
+
+			newFreeSize := info.Size
+			newTotalSize := newFreeSize + device.Info.Storage.Used
+
+			logger.Info("Updating device %v, total: %v -> %v, free: %v -> %v", device.Info.Name,
+				device.Info.Storage.Total, newTotalSize, device.Info.Storage.Free, newFreeSize)
+
+			device.Info.Storage.Total = newTotalSize
+			device.Info.Storage.Free = newFreeSize
+
+			// Save updated device
+			err = device.Save(tx)
+			if err != nil {
+				logger.Err(err)
+				return err
+			}
+
+			return nil
+		})
+		if err != nil {
+			return "", err
+		}
+
+		logger.Info("Updated device %v", deviceId)
+
+		return "", err
+	})
+}
