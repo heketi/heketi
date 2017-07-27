@@ -281,7 +281,7 @@ func TestPeerProbeFirstNodeDown(t *testing.T) {
 	err = utils.GetJsonFromResponse(r, &clusterinfo)
 	tests.Assert(t, err == nil)
 
-	// Override the glusterd down
+	// Override to return glusterd down
 	app.xo.MockGlusterdCheck = func(host string) error {
 		return logger.LogError("Glusterd is down")
 	}
@@ -304,6 +304,7 @@ func TestPeerProbeFirstNodeDown(t *testing.T) {
 	tests.Assert(t, err != nil)
 
 }
+
 func TestPeerProbeNewNodeDown(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
@@ -366,7 +367,7 @@ func TestPeerProbeNewNodeDown(t *testing.T) {
 		}
 	}
 
-	// Now add another and check that probe was called
+	// Now add another and fail on existing node doesn't have glusterd running
 	request = []byte(`{
 		"cluster" : "` + clusterinfo.Id + `",
 		"hostnames" : {
@@ -376,7 +377,7 @@ func TestPeerProbeNewNodeDown(t *testing.T) {
 		"zone" : 1
     }`)
 
-	// Override the glusterd down
+	// Override to return glusterd down
 	app.xo.MockGlusterdCheck = func(host string) error {
 		return logger.LogError("Glusterd is down")
 	}
@@ -389,6 +390,7 @@ func TestPeerProbeNewNodeDown(t *testing.T) {
 	tests.Assert(t, err != nil)
 
 }
+
 func TestNodeAddDelete(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
