@@ -28,7 +28,7 @@ const (
 	EntryStateUnknown EntryState = ""
 	EntryStateOnline  EntryState = "online"
 	EntryStateOffline EntryState = "offline"
-	EntryStateFailed  EntryState = "failed"
+	EntryStateFailed  EntryState = "removed"
 )
 
 type DurabilityType string
