@@ -11,7 +11,6 @@ package glusterfs
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/boltdb/bolt"
@@ -36,8 +35,8 @@ func (a *App) BlockVolumeCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if msg.Size > NewBlockHostingVolumeSize {
-		http.Error(w, "Default Block Hosting Volume size is less than block volume requested.", http.StatusBadRequest)
-		logger.LogError("Default Block Hosting Volume size is less than block volume requested.")
+		err := logger.LogError("Default Block Hosting Volume size is less than block volume requested.")
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -52,8 +51,8 @@ func (a *App) BlockVolumeCreate(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		if len(clusters) == 0 {
-			http.Error(w, fmt.Sprintf("No clusters configured"), http.StatusBadRequest)
-			logger.LogError("No clusters configured")
+			err := logger.LogError("No clusters configured")
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return ErrNotFound
 		}
 
@@ -61,8 +60,8 @@ func (a *App) BlockVolumeCreate(w http.ResponseWriter, r *http.Request) {
 		for _, clusterid := range msg.Clusters {
 			_, err := NewClusterEntryFromId(tx, clusterid)
 			if err != nil {
-				http.Error(w, fmt.Sprintf("Cluster id %v not found", clusterid), http.StatusBadRequest)
-				logger.LogError(fmt.Sprintf("Cluster id %v not found", clusterid))
+				err := logger.LogError("Cluster id %v not found", clusterid)
+				http.Error(w, err.Error(), http.StatusBadRequest)
 				return err
 			}
 		}

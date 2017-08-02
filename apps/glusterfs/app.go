@@ -296,7 +296,7 @@ func (a *App) setBlockSettings() {
 		// switch to auto creation of block hosting volumes
 		CreateBlockHostingVolumes = a.conf.CreateBlockHostingVolumes
 	}
-	if a.conf.NewBlockHostingVolumeSize != 0 {
+	if a.conf.NewBlockHostingVolumeSize > 0 {
 		logger.Info("Block: New Block Hosting Volume size %v GB", a.conf.NewBlockHostingVolumeSize)
 
 		// Should be in GB as this is input for block hosting volume create

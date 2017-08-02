@@ -259,7 +259,7 @@ func (a *App) VolumeDelete(w http.ResponseWriter, r *http.Request) {
 			return nil
 		}
 
-		err = fmt.Errorf("Cannot delete a block hosting volume containing block volumes")
+		err = logger.LogError("Cannot delete a block hosting volume containing block volumes")
 		http.Error(w, err.Error(), http.StatusConflict)
 		return err
 	})
