@@ -31,6 +31,8 @@ func (s *SshExecutor) BlockVolumeCreate(host string,
 		Password string   `json:"PASSWORD"`
 		Portal   []string `json:"PORTAL(S)"`
 		Result   string   `json:"RESULT"`
+		ErrCode  int      `json:"errCode"`
+		ErrMsg   string   `json:"errMsg"`
 	}
 
 	var auth_set string
@@ -57,6 +59,12 @@ func (s *SshExecutor) BlockVolumeCreate(host string,
 	err = json.Unmarshal([]byte(output[0]), &blockVolumeCreate)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to get the block volume create info for block volume %v", volume.Name)
+	}
+
+	if blockVolumeCreate.Result == "FAIL" {
+		s.BlockVolumeDestroy(host, volume.GlusterVolumeName, volume.Name)
+		logger.LogError("%v", blockVolumeCreate.ErrMsg)
+		return nil, fmt.Errorf("%v", blockVolumeCreate.ErrMsg)
 	}
 
 	var blockVolumeInfo executors.BlockVolumeInfo
