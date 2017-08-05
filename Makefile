@@ -52,7 +52,7 @@ name:
 package:
 	@echo $(PACKAGE)
 
-heketi: glide.lock vendor
+heketi: vendor glide.lock
 	go build $(LDFLAGS) -o $(APP_NAME)
 
 server: heketi
@@ -74,14 +74,16 @@ endif
 glide.lock: glide.yaml
 	echo "Glide.yaml has changed, updating glide.lock"
 	glide update -v
+	echo "Building dependencies to make builds faster"
+	go install github.com/heketi/heketi
 
-client: glide.lock vendor
+client: vendor glide.lock
 	@$(MAKE) -C client/cli/go
 
 run: server
 	./$(APP_NAME)
 
-test: glide.lock vendor
+test: vendor glide.lock
 	go test $(GOFILES)
 
 clean:
