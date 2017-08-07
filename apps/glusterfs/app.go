@@ -259,7 +259,7 @@ func (a *App) setFromEnvironmentalVariable() {
 
 	env = os.Getenv("HEKETI_NEW_BLOCK_HOSTING_VOLUME_SIZE")
 	if "" != env {
-		a.conf.NewBlockHostingVolumeSize, err = strconv.Atoi(env)
+		a.conf.BlockHostingVolumeSize, err = strconv.Atoi(env)
 		if err != nil {
 			logger.LogError("Error: Atoi in Block Hosting Volume Size: %v", err)
 		}
@@ -296,11 +296,11 @@ func (a *App) setBlockSettings() {
 		// switch to auto creation of block hosting volumes
 		CreateBlockHostingVolumes = a.conf.CreateBlockHostingVolumes
 	}
-	if a.conf.NewBlockHostingVolumeSize > 0 {
-		logger.Info("Block: New Block Hosting Volume size %v GB", a.conf.NewBlockHostingVolumeSize)
+	if a.conf.BlockHostingVolumeSize > 0 {
+		logger.Info("Block: New Block Hosting Volume size %v GB", a.conf.BlockHostingVolumeSize)
 
 		// Should be in GB as this is input for block hosting volume create
-		NewBlockHostingVolumeSize = a.conf.NewBlockHostingVolumeSize
+		BlockHostingVolumeSize = a.conf.BlockHostingVolumeSize
 	}
 }
 

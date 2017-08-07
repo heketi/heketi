@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015 The heketi Authors
+// Copyright (c) 2017 The heketi Authors
 //
 // This file is licensed to you under your choice of the GNU Lesser
 // General Public License, version 3 or any later version (LGPLv3 or
@@ -34,7 +34,7 @@ func (a *App) BlockVolumeCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if msg.Size > NewBlockHostingVolumeSize {
+	if msg.Size > BlockHostingVolumeSize {
 		err := logger.LogError("Default Block Hosting Volume size is less than block volume requested.")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -72,21 +72,21 @@ func (a *App) BlockVolumeCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	blockvol := NewBlockVolumeEntryFromRequest(&msg)
+	blockVolume := NewBlockVolumeEntryFromRequest(&msg)
 
 	// Add device in an asynchronous function
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
 
-		logger.Info("Creating block volume %v", blockvol.Info.Id)
-		err := blockvol.Create(a.db, a.executor, a.allocator)
+		logger.Info("Creating block volume %v", blockVolume.Info.Id)
+		err := blockVolume.Create(a.db, a.executor, a.allocator)
 		if err != nil {
 			logger.LogError("Failed to create block volume: %v", err)
 			return "", err
 		}
 
-		logger.Info("Created block volume %v", blockvol.Info.Id)
+		logger.Info("Created block volume %v", blockVolume.Info.Id)
 
-		return "/blockvolumes/" + blockvol.Info.Id, nil
+		return "/blockvolumes/" + blockVolume.Info.Id, nil
 	})
 }
 
@@ -160,10 +160,10 @@ func (a *App) BlockVolumeDelete(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	var volume *BlockVolumeEntry
+	var blockVolume *BlockVolumeEntry
 	err := a.db.View(func(tx *bolt.Tx) error {
 		var err error
-		volume, err = NewBlockVolumeEntryFromId(tx, id)
+		blockVolume, err = NewBlockVolumeEntryFromId(tx, id)
 		if err == ErrNotFound {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return err
@@ -180,13 +180,13 @@ func (a *App) BlockVolumeDelete(w http.ResponseWriter, r *http.Request) {
 
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
 
-		err := volume.Destroy(a.db, a.executor)
+		err := blockVolume.Destroy(a.db, a.executor)
 
 		// TODO: If it fails for some reason, we will need to add to the DB again
 		// or hold state on the entry "DELETING"
 
 		if err != nil {
-			logger.LogError("Failed to delete volume %v: %v", volume.Info.Id, err)
+			logger.LogError("Failed to delete volume %v: %v", blockVolume.Info.Id, err)
 			return "", err
 		}
 

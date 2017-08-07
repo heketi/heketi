@@ -239,9 +239,9 @@ func TestAppBlockSettings(t *testing.T) {
 		}
 	}`)
 
-	blockauto, blocksize := CreateBlockHostingVolumes, NewBlockHostingVolumeSize
+	blockauto, blocksize := CreateBlockHostingVolumes, BlockHostingVolumeSize
 	defer func() {
-		CreateBlockHostingVolumes, NewBlockHostingVolumeSize = blockauto, blocksize
+		CreateBlockHostingVolumes, BlockHostingVolumeSize = blockauto, blocksize
 	}()
 
 	app := NewApp(bytes.NewReader(data))
@@ -249,5 +249,5 @@ func TestAppBlockSettings(t *testing.T) {
 	tests.Assert(t, app != nil)
 	tests.Assert(t, app.conf.Executor == "mock")
 	tests.Assert(t, CreateBlockHostingVolumes == true)
-	tests.Assert(t, NewBlockHostingVolumeSize == 500)
+	tests.Assert(t, BlockHostingVolumeSize == 500)
 }

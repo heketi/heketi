@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015 The heketi Authors
+// Copyright (c) 2017 The heketi Authors
 //
 // This file is licensed to you under your choice of the GNU Lesser
 // General Public License, version 3 or any later version (LGPLv3 or
@@ -33,13 +33,14 @@ func BlockVolumeList(tx *bolt.Tx) ([]string, error) {
 	return list, nil
 }
 
+// Creates a File volume to host block volumes
 func CreateBlockHostingVolume(db *bolt.DB, executor executors.Executor, allocator Allocator, clusters []string) (*VolumeEntry, error) {
 	var msg api.VolumeCreateRequest
 	var err error
 
 	msg.Clusters = clusters
 	msg.Durability.Type = api.DurabilityReplicate
-	msg.Size = NewBlockHostingVolumeSize
+	msg.Size = BlockHostingVolumeSize
 	msg.Durability.Replicate.Replica = 3
 	msg.Block = true
 
@@ -268,6 +269,7 @@ func (v *BlockVolumeEntry) Create(db *bolt.DB,
 		if !CreateBlockHostingVolumes {
 			return fmt.Errorf("Block Hosting Volume Creation is Disabled. Create a Block hosting volume and try again.")
 		}
+		// Create block hosting volume to host block volumes
 		bhvol, err := CreateBlockHostingVolume(db, executor, allocator, v.Info.Clusters)
 		if err != nil {
 			return err
@@ -287,7 +289,7 @@ func (v *BlockVolumeEntry) Create(db *bolt.DB,
 			})
 		}
 	}()
-
+	// Create the block volume on the block hosting volume specified
 	err := v.createBlockVolume(db, executor, blockHostingVolume)
 	if err != nil {
 		return err

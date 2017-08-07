@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015 The heketi Authors
+// Copyright (c) 2017 The heketi Authors
 //
 // This file is licensed to you under your choice of the GNU Lesser
 // General Public License, version 3 or any later version (LGPLv3 or
@@ -13,5 +13,5 @@ var (
 	// Default block settings
 	CreateBlockHostingVolumes = false
 	// Default 1 TB
-	NewBlockHostingVolumeSize = 1024
+	BlockHostingVolumeSize = 1024
 )
