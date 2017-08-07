@@ -7,9 +7,6 @@ FUNCTIONAL_DIR=${CURRENT_DIR}/..
 
 source ${FUNCTIONAL_DIR}/lib.sh
 
-
-if [ -x /usr/local/bin/minikube ] ; then
-    minikube stop
-    minikube delete
+if [ -d kubeup/.git ] ; then
+    ( cd kubeup && ./down.sh )
 fi
-rm -rf $RESOURCES_DIR > /dev/null
