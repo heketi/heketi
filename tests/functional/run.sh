@@ -1,20 +1,22 @@
 #!/bin/sh
 
-TESTS="TestSmokeTest"
-TESTS="TestVolumeNotDeletedWhenNodeIsDown $TESTS"
-TESTS="TestVolumeSnapshotBehavior $TESTS"
-TESTS="TestManyBricksVolume $TESTS"
-
-# install glide
-if ! command -v glide ; then
-    curl https://glide.sh/get | sh
-fi
+#TESTS="TestSmokeTest"
+#TESTS="TestVolumeNotDeletedWhenNodeIsDown $TESTS"
+#TESTS="TestVolumeSnapshotBehavior $TESTS"
+#TESTS="TestManyBricksVolume $TESTS"
+TESTS="TestKubeSmokeTest $TESTS"
 
 # Download golang 1.8.3
-curl -O https://storage.googleapis.com/golang/go1.8.3.linux-amd64.tar.gz
-tar xzvf go1.8.3.linux-amd64.tar.gz
-export GOROOT=$(pwd)/go
-export PATH=$GOROOT/bin:$PATH
+install_go() {
+    current_dir=$(pwd)
+    cd $HOME
+    curl -O https://storage.googleapis.com/golang/go1.8.3.linux-amd64.tar.gz || fail "Unable to get Go binary"
+    tar xzf go1.8.3.linux-amd64.tar.gz || fail "Unable to untar go"
+    export GOROOT=$(pwd)/go
+    export PATH=$GOROOT/bin:$PATH
+
+    cd $current_dir
+}
 
 source ./lib.sh
 
@@ -37,6 +39,20 @@ _sudo setenforce 0
 
 starttime=`date`
 export PATH=$PATH:.
+
+# install glide
+if ! command -v glide ; then
+    curl https://glide.sh/get | sh
+fi
+
+# install packages needed
+if grep "CentOS" /etc/redhat-release > /dev/null 2>&1 ; then
+    _sudo yum -y install jq
+elif grep "Fedora" /etc/redhat-release > /dev/null 2>&1 ; then
+    _sudo dnf -y install jq
+fi
+
+install_go
 
 # Check go can build
 if [ -z $GOPATH ] ; then

@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: registry
+  namespace: kube-system
+spec:
+  replicas: 1
+  template:
+    metadata:
+      name: registry
+      labels:
+        k8s-app: kube-registry-upstream
+        version: v0
+        kubernetes.io/cluster-service: "true"
+    spec:
+      nodeName: node1.example.com
+      hostNetwork: true
+      containers:
+      - name: registry
+        image: registry:2
+        env:
+        - name: REGISTRY_HTTP_ADDR
+          value: :5000
+        - name: REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY
+          value: /var/lib/registry
+        volumeMounts:
+        - name: image-store
+          mountPath: /var/lib/registry
+      volumes:
+      - name: image-store
+
+---
+
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: kube-registry-proxy
+  namespace: kube-system
+  labels:
+    k8s-app: kube-registry-proxy
+    kubernetes.io/cluster-service: "true"
+    version: v0.4
+spec:
+  template:
+    metadata:
+      labels:
+        k8s-app: kube-registry-proxy
+        kubernetes.io/name: "kube-registry-proxy"
+        kubernetes.io/cluster-service: "true"
+        version: v0.4
+    spec:
+      hostNetwork: true
+      containers:
+      - name: kube-registry-proxy
+        image: quay.io/deisci/registry-proxy:git-4cc19e2
+        resources:
+          limits:
+            cpu: 100m
+            memory: 50Mi
+        env:
+        - name: REGISTRY_HOST
+          value: node1.example.com
+        - name: REGISTRY_PORT
+          value: "5000"
+        - name: BIND_ADDR
+          value: "5000"
+
