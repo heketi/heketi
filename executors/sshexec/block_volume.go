@@ -91,9 +91,27 @@ func (s *SshExecutor) BlockVolumeDestroy(host string, blockHostingVolumeName str
 		fmt.Sprintf("gluster-block delete %v/%v", blockHostingVolumeName, blockVolumeName),
 	}
 
-	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
+	type CliOutput struct {
+		Result  string `json:"RESULT"`
+		ErrCode int    `json:"errCode"`
+		ErrMsg  string `json:"errMsg"`
+	}
+	output, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
 	if err != nil {
 		logger.LogError("Unable to delete volume %v: %v", blockVolumeName, err)
+		return err
+	}
+
+	var blockVolumeDelete CliOutput
+	err = json.Unmarshal([]byte(output[0]), &blockVolumeDelete)
+	if err != nil {
+		err := logger.LogError("Unable to get the block volume delete info for block volume %v", blockVolumeName)
+		return err
+	}
+
+	if blockVolumeDelete.Result == "FAIL" {
+		err := logger.LogError("%v", blockVolumeDelete.ErrMsg)
+		return err
 	}
 
 	return nil
