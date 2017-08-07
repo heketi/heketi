@@ -265,6 +265,10 @@ var nodeInfoCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		var entryStateRemoved api.EntryState = "removed"
+		if info.State == api.EntryStateFailed {
+			info.State = entryStateRemoved
+		}
 
 		if options.Json {
 			data, err := json.Marshal(info)
