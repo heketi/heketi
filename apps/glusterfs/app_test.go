@@ -235,7 +235,7 @@ func TestAppBlockSettings(t *testing.T) {
 			"allocator" : "simple",
 			"db" : "` + dbfile + `",
 			"auto_create_block_hosting_volume" : true,
-			"new_block_hosting_volume_size" : 500
+			"block_hosting_volume_size" : 500
 		}
 	}`)
 

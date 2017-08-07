@@ -33,7 +33,7 @@ type GlusterFSConfig struct {
 
 	//block settings
 	CreateBlockHostingVolumes bool `json:"auto_create_block_hosting_volume"`
-	BlockHostingVolumeSize int  `json:"new_block_hosting_volume_size"`
+	BlockHostingVolumeSize    int  `json:"block_hosting_volume_size"`
 }
 
 type ConfigFile struct {
@@ -55,6 +55,5 @@ func loadConfiguration(configIo io.Reader) *GlusterFSConfig {
 	if env != "" {
 		config.GlusterFS.Executor = env
 	}
-
 	return &config.GlusterFS
 }

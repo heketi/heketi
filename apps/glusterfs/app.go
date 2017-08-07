@@ -257,7 +257,7 @@ func (a *App) setFromEnvironmentalVariable() {
 		}
 	}
 
-	env = os.Getenv("HEKETI_NEW_BLOCK_HOSTING_VOLUME_SIZE")
+	env = os.Getenv("HEKETI_BLOCK_HOSTING_VOLUME_SIZE")
 	if "" != env {
 		a.conf.BlockHostingVolumeSize, err = strconv.Atoi(env)
 		if err != nil {
