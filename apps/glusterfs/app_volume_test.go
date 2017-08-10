@@ -720,7 +720,7 @@ func TestVolumeList(t *testing.T) {
 	err := app.db.Update(func(tx *bolt.Tx) error {
 
 		for i := 0; i < numvolumes; i++ {
-			v := createSampleVolumeEntry(100)
+			v := createSampleReplicaVolumeEntry(100, 2)
 			err := v.Save(tx)
 			if err != nil {
 				return err
@@ -771,7 +771,7 @@ func TestVolumeListReadOnlyDb(t *testing.T) {
 	err := app.db.Update(func(tx *bolt.Tx) error {
 
 		for i := 0; i < numvolumes; i++ {
-			v := createSampleVolumeEntry(100)
+			v := createSampleReplicaVolumeEntry(100, 2)
 			err := v.Save(tx)
 			if err != nil {
 				return err
@@ -875,7 +875,7 @@ func TestVolumeDelete(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Create a volume
-	v := createSampleVolumeEntry(100)
+	v := createSampleReplicaVolumeEntry(100, 2)
 	tests.Assert(t, v != nil)
 	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil)
@@ -1020,7 +1020,7 @@ func TestVolumeExpand(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Create a volume
-	v := createSampleVolumeEntry(100)
+	v := createSampleReplicaVolumeEntry(100, 2)
 	tests.Assert(t, v != nil)
 	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil)
@@ -1087,13 +1087,13 @@ func TestVolumeClusterResizeByAddingDevices(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Create a volume which uses the entire storage
-	v := createSampleVolumeEntry(495)
+	v := createSampleReplicaVolumeEntry(495, 2)
 	tests.Assert(t, v != nil)
 	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil)
 
 	// Try to create another volume, but this should fail
-	v = createSampleVolumeEntry(495)
+	v = createSampleReplicaVolumeEntry(495, 2)
 	tests.Assert(t, v != nil)
 	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == ErrNoSpace)
@@ -1121,13 +1121,13 @@ func TestVolumeClusterResizeByAddingDevices(t *testing.T) {
 	}
 
 	// Now add a volume, and it should work
-	v = createSampleVolumeEntry(495)
+	v = createSampleReplicaVolumeEntry(495, 2)
 	tests.Assert(t, v != nil)
 	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == nil)
 
 	// Try to create another volume, but this should fail
-	v = createSampleVolumeEntry(495)
+	v = createSampleReplicaVolumeEntry(495, 2)
 	tests.Assert(t, v != nil)
 	err = v.Create(app.db, app.executor, app.allocator)
 	tests.Assert(t, err == ErrNoSpace)

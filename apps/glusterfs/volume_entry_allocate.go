@@ -147,6 +147,7 @@ func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Execu
 	var foundbrickset bool
 	var brick executors.Brick
 	setlist := make([]*BrickEntry, 0)
+	var onlinePeerBrickCount = 0
 	// BrickList in volume info is a slice of all bricks in volume
 	// We loop over the slice in steps of BricksInSet()
 	// If brick to be replaced is found in an iteration, other bricks in that slice form the setlist
@@ -171,6 +172,43 @@ func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Execu
 	if !foundbrickset {
 		logger.LogError("Unable to find brick set for brick %v, db is possibly corrupt", oldBrickEntry.Id())
 		return ErrNotFound
+	}
+
+	// Get self heal status for this brick's volume
+	healinfo, err := executor.HealInfo(node, v.Info.Name)
+	if err != nil {
+		return err
+	}
+	for _, brickHealStatus := range healinfo.Bricks.BrickList {
+		// Gluster has a bug that it does not send Name for bricks that are down.
+		// Skip such bricks; it is safe because it is not source if it is down
+		if brickHealStatus.Name == "information not available" {
+			continue
+		}
+		iBrickEntry, err := v.getBrickEntryfromBrickName(db, brickHealStatus.Name)
+		if err != nil {
+			return fmt.Errorf("Unable to determine heal status of brick")
+		}
+		if iBrickEntry.Id() == oldBrickEntry.Id() {
+			// If we are here, it means the brick to be replaced is
+			// up and running. We need to ensure that it is not a
+			// source for any files.
+			if brickHealStatus.NumberOfEntries != "-" &&
+				brickHealStatus.NumberOfEntries != "0" {
+				return fmt.Errorf("Cannot replace brick %v as it is source brick for data to be healed", iBrickEntry.Id())
+			}
+		}
+		for _, brickInSet := range setlist {
+			if brickInSet.Id() == iBrickEntry.Id() {
+				onlinePeerBrickCount++
+			}
+		}
+	}
+	if onlinePeerBrickCount < v.Durability.QuorumBrickCount() {
+		return fmt.Errorf("Cannot replace brick %v as only %v of %v "+
+			"required peer bricks are online",
+			oldBrickEntry.Id(), onlinePeerBrickCount,
+			v.Durability.QuorumBrickCount())
 	}
 
 	//Create an Id for new brick

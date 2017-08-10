@@ -27,6 +27,7 @@ type Executor interface {
 	VolumeExpand(host string, volume *VolumeRequest) (*Volume, error)
 	VolumeReplaceBrick(host string, volume string, oldBrick *BrickInfo, newBrick *BrickInfo) error
 	VolumeInfo(host string, volume string) (*Volume, error)
+	HealInfo(host string, volume string) (*HealInfo, error)
 	SetLogLevel(level string)
 }
 
@@ -88,6 +89,13 @@ type Bricks struct {
 	BrickList []Brick  `xml:"brick"`
 }
 
+type BrickHealStatus struct {
+	HostUUID        string `xml:"hostUuid,attr"`
+	Name            string `xml:"name"`
+	Status          string `xml:"status"`
+	NumberOfEntries string `xml:"numberOfEntries"`
+}
+
 type Option struct {
 	Name  string `xml:"name"`
 	Value string `xml:"value"`
@@ -128,4 +136,13 @@ type Volumes struct {
 type VolInfo struct {
 	XMLName xml.Name `xml:"volInfo"`
 	Volumes Volumes  `xml:"volumes"`
+}
+
+type HealInfoBricks struct {
+	BrickList []BrickHealStatus `xml:"brick"`
+}
+
+type HealInfo struct {
+	XMLName xml.Name       `xml:"healInfo"`
+	Bricks  HealInfoBricks `xml:"bricks"`
 }
