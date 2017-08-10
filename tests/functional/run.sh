@@ -10,6 +10,10 @@ TESTS="TestKubeSmokeTest $TESTS"
 install_go() {
     current_dir=$(pwd)
     cd $HOME
+    if [ ! -d golang ] ; then
+        mkdir golang
+    fi
+    cd golang
     curl -O https://storage.googleapis.com/golang/go1.8.3.linux-amd64.tar.gz || fail "Unable to get Go binary"
     tar xzf go1.8.3.linux-amd64.tar.gz || fail "Unable to untar go"
     export GOROOT=$(pwd)/go

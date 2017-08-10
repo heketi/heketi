@@ -119,7 +119,7 @@ test_setup() {
 
 tests() {
     ### TESTS ###
-    for kubetest in test*Mock.sh ; do
+    for kubetest in test*.sh ; do
         test_setup
         println "TEST $kubetest"
         bash $kubetest; result=$?

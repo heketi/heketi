@@ -14,7 +14,7 @@ setup_heketi() {
 	# Start Heketi
 	echo "Start Heketi container"
 	kubectl run heketi --image=localhost:5000/heketi --port=8080 || fail "Unable to start heketi container"
-	wait_for_pod_ready "default" "heketi"
+	wait_for_pod_ready "default" "heketi" 1
 
 	# This blocks until ready
 	kubectl expose deployment heketi --type=NodePort || fail "Unable to expose heketi service"
