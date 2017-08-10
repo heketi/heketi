@@ -78,7 +78,7 @@ deploy_quartermaster() {
 }
 
 wait_quartermaster() {
-    wait_for_pod_ready "kube-system" "quartermaster"
+    wait_for_pod_ready "kube-system" "quartermaster" 1
     println "quartermaster Ready"
 }
 
@@ -90,7 +90,7 @@ deploy_registry() {
 }
 
 wait_registry() {
-    wait_for_pod_ready "kube-system" "registry"
+    wait_for_pod_ready "kube-system" "registry" 3
     println "registry Ready"
 }
 
@@ -102,9 +102,6 @@ setup_kubernetes() {
 }
 
 setup() {
-    if [ ! -d $RESOURCES_DIR ] ; then
-        mkdir $RESOURCES_DIR
-    fi
     start_kubernetes
     setup_kubernetes
     display_information
@@ -140,7 +137,6 @@ tests() {
 teardown
 setup
 tests
-teardown
 
 exit $result
 

@@ -84,10 +84,11 @@ get_node_port_from_service() {
 
 # $1 namespace
 # $2 name
+# $3 number of expected running pods
 wait_for_pod_ready() {
     # Wait until all pods are in Running state
     n=0
-    until `kubectl -n "$1" get pods 2>/dev/null | grep "$2" | grep Running > /dev/null 2>&1` ; do
+    until [ `kubectl -n "$1" get pods 2>/dev/null | grep "$2" | grep Running | wc -l` -eq $3 ] ; do
         n=$[$n+1]
         if [ $n -gt 600 ] ; then
             fail "Timed out waiting for $2 to start"

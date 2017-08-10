@@ -11,4 +11,3 @@ source ${FUNCTIONAL_DIR}/lib.sh
 if [ -d kubeup/.git ] ; then
     ( cd kubeup && ./down.sh )
 fi
-rm -rf $RESOURCES_DIR > /dev/null

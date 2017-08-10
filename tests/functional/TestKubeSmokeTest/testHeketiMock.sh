@@ -48,7 +48,7 @@ test_create() {
 	echo "Submit PVC for 100GiB"
 	kubectl create -f pvc.json || fail "Unable to submit PVC"
 
-	# Wait until pvc unbound
+	# Wait until pvc bound
 	n=0
     until `kubectl get pvc 2>/dev/null | grep claim1 | grep Bound > /dev/null 2>&1` ; do
         n=$[$n+1]
@@ -56,7 +56,7 @@ test_create() {
             fail "Timed out waiting for pvc to be deleted"
         fi
         sleep 1
-    done	
+    done
 	echo "PVC Bound"
 
 	echo "Assert only one volume created in Heketi"
@@ -83,7 +83,7 @@ test_delete() {
             fail "Timed out waiting for pvc to be deleted"
         fi
         sleep 1
-    done	
+    done
 
 	echo "Assert no volumes available"
 	if heketi-cli volume list | grep Id ; then

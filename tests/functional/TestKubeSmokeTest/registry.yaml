@@ -34,24 +34,24 @@ spec:
 apiVersion: extensions/v1beta1
 kind: DaemonSet
 metadata:
-  name: kube-registry-proxy
+  name: registry-proxy
   namespace: kube-system
   labels:
-    k8s-app: kube-registry-proxy
+    k8s-app: registry-proxy
     kubernetes.io/cluster-service: "true"
     version: v0.4
 spec:
   template:
     metadata:
       labels:
-        k8s-app: kube-registry-proxy
-        kubernetes.io/name: "kube-registry-proxy"
+        k8s-app: registry-proxy
+        kubernetes.io/name: "registry-proxy"
         kubernetes.io/cluster-service: "true"
         version: v0.4
     spec:
       hostNetwork: true
       containers:
-      - name: kube-registry-proxy
+      - name: registry-proxy
         image: quay.io/deisci/registry-proxy:git-4cc19e2
         resources:
           limits:
