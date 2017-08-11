@@ -112,3 +112,6 @@ setup() {
 ### MAIN ###
 setup
 ./testMock.sh && ./testKubernetes.sh
+result=$?
+teardown
+exit $?
