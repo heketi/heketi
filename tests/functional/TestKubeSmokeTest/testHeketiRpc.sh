@@ -60,7 +60,33 @@ teardown() {
     kubectl delete secret heketi-db-backup
 }
 
-setup
-teardown
+tests() {
+    ### TESTS ###
+    for testDir in Test* ; do
+        if [ -x $testDir/run.sh ] ; then
+            println "START KUBETEST $testDir"
+            cd $testDir
+
+            ./run.sh ; result=$?
+
+            if [ $result -ne 0 ] ; then
+                println "FAILED KUBETEST $testDir"
+                if [ -x teardown.sh ] ; then
+                    println "TEARDOWN KUBETEST $testDir"
+                    ./teardown.sh
+                fi
+                results=1
+            else
+                println "PASSED $testDir"
+            fi
+
+            cd ..
+        fi
+    done
+}
+
+result=0
+tests
+exit $result
 
 # Ok now start test

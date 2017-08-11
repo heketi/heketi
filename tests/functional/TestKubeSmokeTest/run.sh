@@ -109,34 +109,9 @@ setup() {
     build_docker_file
 }
 
-test_teardown() {
-    echo "test_teardown()"
-}
-
-test_setup() {
-    echo "test setup()"
-}
-
-tests() {
-    ### TESTS ###
-    for kubetest in test*.sh ; do
-        test_setup
-        println "TEST $kubetest"
-        bash $kubetest; result=$?
-
-        if [ $result -ne 0 ] ; then
-            println "FAILED $kubetest"
-        else
-            println "PASSED $kubetest"
-        fi
-        test_teardown
-    done
-}
-
 ### MAIN ###
-teardown
 setup
 tests
 
-exit $result
+./testMock.sh && ./testKubernetes.sh
 
