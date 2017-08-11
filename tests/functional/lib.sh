@@ -96,3 +96,30 @@ wait_for_pod_ready() {
         sleep 1
     done
 }
+
+# $1 namespace
+# $2 name
+wait_for_pvc_bound() {
+	n=0
+    until `kubectl -n "$1" get pvc 2>/dev/null | grep "$2" | grep Bound > /dev/null 2>&1` ; do
+        n=$[$n+1]
+        if [ $n -gt 600 ] ; then
+            fail "Timed out waiting for pvc to be deleted"
+        fi
+        sleep 1
+    done
+}
+
+# $1 namespace
+# $2 name
+wait_for_pvc_deleted() {
+	n=0
+    while `kubectl -n "$1" get pvc 2>/dev/null | grep "$2" > /dev/null 2>&1` ; do
+        n=$[$n+1]
+        if [ $n -gt 600 ] ; then
+            fail "Timed out waiting for pvc to be deleted"
+        fi
+        sleep 1
+    done
+    sleep 10
+}

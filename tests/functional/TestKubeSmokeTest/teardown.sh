@@ -7,7 +7,6 @@ FUNCTIONAL_DIR=${CURRENT_DIR}/..
 
 source ${FUNCTIONAL_DIR}/lib.sh
 
-
 if [ -d kubeup/.git ] ; then
     ( cd kubeup && ./down.sh )
 fi

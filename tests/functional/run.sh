@@ -1,28 +1,28 @@
 #!/bin/sh
 
-#TESTS="TestSmokeTest"
-#TESTS="TestVolumeNotDeletedWhenNodeIsDown $TESTS"
-#TESTS="TestVolumeSnapshotBehavior $TESTS"
-#TESTS="TestManyBricksVolume $TESTS"
+TESTS="TestSmokeTest"
+TESTS="TestVolumeNotDeletedWhenNodeIsDown $TESTS"
+TESTS="TestVolumeSnapshotBehavior $TESTS"
+TESTS="TestManyBricksVolume $TESTS"
 TESTS="TestKubeSmokeTest $TESTS"
 
-# Download golang 1.8.3
+source ./lib.sh
+
 install_go() {
+    # Download golang 1.8.3
+    GOLANGDIR=$HOME/.golang
     current_dir=$(pwd)
-    cd $HOME
-    if [ ! -d golang ] ; then
-        mkdir golang
+    if [ ! -d $GOLANGDIR ] ; then
+        mkdir $GOLANGDIR
     fi
-    cd golang
+    cd $GOLANGDIR
     curl -O https://storage.googleapis.com/golang/go1.8.3.linux-amd64.tar.gz || fail "Unable to get Go binary"
     tar xzf go1.8.3.linux-amd64.tar.gz || fail "Unable to untar go"
-    export GOROOT=$(pwd)/go
+    export GOROOT=$GOLANGDIR/go
     export PATH=$GOROOT/bin:$PATH
 
     cd $current_dir
 }
-
-source ./lib.sh
 
 teardown_all() {
     results=0

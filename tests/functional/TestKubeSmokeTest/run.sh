@@ -111,7 +111,4 @@ setup() {
 
 ### MAIN ###
 setup
-tests
-
 ./testMock.sh && ./testKubernetes.sh
-
