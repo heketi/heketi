@@ -1,0 +1,9 @@
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1alpha1
+metadata:
+  name: heketi-service-account
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/exec", "pods/attach", "pods/proxy", "pods/portforward", "secrets"]
+    verbs: ["get", "put", "patch", "update", "list", "post", "watch", "create", "delete", "deletecollection"]
+    nonResourceURLs: []
