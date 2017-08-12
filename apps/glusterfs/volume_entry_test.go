@@ -1719,3 +1719,44 @@ func TestNewVolumeEntryWithVolumeOptions(t *testing.T) {
 	tests.Assert(t, entry.GlusterVolumeOptions[0] == "test-option")
 
 }
+func TestNewVolumeEntryWithTSPForMountHosts(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	// Create a cluster in the database
+	err := setupSampleDbWithTopology(app,
+		1,      // clusters
+		5,      // nodes_per_cluster
+		1,      // devices_per_node,
+		500*GB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+	req := &api.VolumeCreateRequest{}
+	req.Size = 100
+
+	v := NewVolumeEntryFromRequest(req)
+	tests.Assert(t, v.Info.Name == "vol_"+v.Info.Id)
+	tests.Assert(t, v.Info.Snapshot.Enable == false)
+	tests.Assert(t, v.Info.Snapshot.Factor == 1)
+	tests.Assert(t, v.Info.Size == 100)
+	tests.Assert(t, len(v.Info.Id) != 0)
+	tests.Assert(t, len(v.Bricks) == 0)
+
+	err = v.Create(app.db, app.executor, app.allocator)
+	logger.Info("%v", v.Info.Cluster)
+	tests.Assert(t, err == nil, err)
+
+	// Check that the data on the database is recorded correctly
+	var entry VolumeEntry
+	err = app.db.View(func(tx *bolt.Tx) error {
+		return entry.Unmarshal(
+			tx.Bucket([]byte(BOLTDB_BUCKET_VOLUME)).
+				Get([]byte(v.Info.Id)))
+	})
+	tests.Assert(t, err == nil)
+	tests.Assert(t, len(entry.Info.Mount.GlusterFS.Hosts) == 5)
+
+}
