@@ -1,10 +1,6 @@
 #!/bin/sh
 
-TOP=../../..
 CURRENT_DIR=`pwd`
-FUNCTIONAL_DIR=${CURRENT_DIR}/..
-RESOURCES_DIR=$CURRENT_DIR/resources
-PATH=$PATH:$RESOURCES_DIR
 
 source ${FUNCTIONAL_DIR}/lib.sh
 

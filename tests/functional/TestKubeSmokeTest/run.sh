@@ -1,11 +1,11 @@
 #!/bin/sh
 
-TOP=../../..
 CURRENT_DIR=`pwd`
-RESOURCES_DIR=$CURRENT_DIR/resources
-FUNCTIONAL_DIR=${CURRENT_DIR}/..
-DOCKERDIR=$TOP/extras/docker
-CLIENTDIR=$TOP/client/cli/go
+export TOP=$(realpath ../../..)
+export RESOURCES_DIR=$CURRENT_DIR/resources
+export FUNCTIONAL_DIR=$(realpath ${CURRENT_DIR}/..)
+export DOCKERDIR=$TOP/extras/docker
+export CLIENTDIR=$TOP/client/cli/go
 export PATH=$(pwd)/kubeup/bin:$CLIENTDIR:$PATH
 export KUBECONFIG=$(pwd)/kubeup/matchbox/assets/auth/kubeconfig
 
@@ -27,7 +27,7 @@ display_information() {
 
 build_docker_file(){
     println "Start registry proxy"
-    REGID=$(docker run -e REGISTRY_HOST=172.17.0.21 -e REGISTRY_PORT=5000 -p 5000:80 -d quay.io/deisci/registry-proxy:git-4cc19e2)
+    REGID=$(docker run -e REGISTRY_HOST=172.17.0.21 -e REGISTRY_PORT=5000 -p 5000:80 -d quay.io/deisci/registry-proxy:git-4cc19e2) || fail "Unable to start registry-proxy on host"
 
     println "Create Heketi Docker image"
     cd $DOCKERDIR/ci
