@@ -273,8 +273,8 @@ func SkipHeketiCreateVolumeWithGid(t *testing.T) {
 	vagrantexec := ssh.NewSshExecWithKeyFile(logger, "vagrant", "../config/insecure_private_key")
 	cmd := []string{
 		"sudo groupadd writegroup",
-		"sudo useradd writer1 -G writegroup -p$6$WBG5yf03$3DvyE41cicXEZDW.HDeJg3S4oEoELqKWoS/n6l28vorNxhIlcBe2SLQFDhqq6.Pq",
-		"sudo useradd writer2 -G writegroup -p$6$WBG5yf03$3DvyE41cicXEZDW.HDeJg3S4oEoELqKWoS/n6l28vorNxhIlcBe2SLQFDhqq6.Pq",
+		"sudo useradd writer1 -G writegroup -p'$6$WBG5yf03$3DvyE41cicXEZDW.HDeJg3S4oEoELqKWoS/n6l28vorNxhIlcBe2SLQFDhqq6.Pq'",
+		"sudo useradd writer2 -G writegroup -p'$6$WBG5yf03$3DvyE41cicXEZDW.HDeJg3S4oEoELqKWoS/n6l28vorNxhIlcBe2SLQFDhqq6.Pq'",
 		fmt.Sprintf("sudo mount -t glusterfs %v /mnt", volInfo.Mount.GlusterFS.MountPoint),
 	}
 	_, err = vagrantexec.ConnectAndExec("192.168.10.100:22", cmd, 10, true)
