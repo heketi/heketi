@@ -248,7 +248,7 @@ func TestHeketiSmokeTest(t *testing.T) {
 	tests.Assert(t, err == nil)
 }
 
-func SkipHeketiCreateVolumeWithGid(t *testing.T) {
+func HeketiCreateVolumeWithGid(t *testing.T) {
 	// Setup the VM storage topology
 	teardownCluster(t)
 	setupCluster(t, 4, 8)
