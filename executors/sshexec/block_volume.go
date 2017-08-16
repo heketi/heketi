@@ -92,9 +92,10 @@ func (s *SshExecutor) BlockVolumeDestroy(host string, blockHostingVolumeName str
 	}
 
 	type CliOutput struct {
-		Result  string `json:"RESULT"`
-		ErrCode int    `json:"errCode"`
-		ErrMsg  string `json:"errMsg"`
+		Result       string `json:"RESULT"`
+		ResultOnHost string `json:"Result"`
+		ErrCode      int    `json:"errCode"`
+		ErrMsg       string `json:"errMsg"`
 	}
 	output, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
 	if err != nil {
