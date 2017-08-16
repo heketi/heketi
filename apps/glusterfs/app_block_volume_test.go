@@ -240,7 +240,7 @@ func TestBlockVolumeCreate(t *testing.T) {
 	tests.Assert(t, info.Id != "")
 	tests.Assert(t, info.Cluster != "")
 	tests.Assert(t, info.BlockHostingVolume != "")
-	tests.Assert(t, len(info.BlockVolume.Hosts) == 3)
+	tests.Assert(t, len(info.BlockVolume.Hosts) == 10)
 	tests.Assert(t, info.BlockVolume.Iqn != "")
 	tests.Assert(t, info.BlockVolume.Password == "")
 	tests.Assert(t, info.BlockVolume.Username == "")
@@ -320,7 +320,7 @@ func TestBlockVolumeInfo(t *testing.T) {
 	tests.Assert(t, msg.Name == v.Info.Name)
 	tests.Assert(t, msg.Size == v.Info.Size)
 	tests.Assert(t, msg.BlockHostingVolume != "")
-	tests.Assert(t, len(msg.BlockVolume.Hosts) == 3)
+	tests.Assert(t, len(msg.BlockVolume.Hosts) == 10)
 	tests.Assert(t, msg.BlockVolume.Iqn != "")
 	tests.Assert(t, msg.Name == "blockvol_"+v.Info.Id)
 	// These tests are for auth enabled
