@@ -129,6 +129,7 @@ func NewKubeExecutor(config *KubeConfig) (*KubeExecutor, error) {
 
 	// Create a Kube client configuration
 	k.kubeConfig, err = inClusterConfig()
+	k.kubeConfig.Timeout = 10
 	if err != nil {
 		return nil, logger.LogError("Unable to create configuration for Kubernetes: %v", err)
 	}
