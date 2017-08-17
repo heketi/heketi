@@ -66,7 +66,12 @@ func setupCluster(t *testing.T, numNodes int, numDisks int) {
 	tests.Assert(t, heketi != nil)
 
 	// Create a cluster
-	cluster, err := heketi.ClusterCreate()
+	cluster_req := &api.ClusterCreateRequest{
+		Block: true,
+		File:  true,
+	}
+
+	cluster, err := heketi.ClusterCreate(cluster_req)
 	tests.Assert(t, err == nil)
 
 	// hardcoded limits from the lists above
