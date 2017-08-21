@@ -148,8 +148,8 @@ var deviceRemoveCommand = &cobra.Command{
 
 var deviceInfoCommand = &cobra.Command{
 	Use:     "info [device_id]",
-	Short:   "Retreives information about the device",
-	Long:    "Retreives information about the device",
+	Short:   "Retrieves information about the device",
+	Long:    "Retrieves information about the device",
 	Example: "  $ heketi-cli node info 886a86a868711bef83001",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		//ensure proper number of args
