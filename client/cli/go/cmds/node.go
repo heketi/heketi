@@ -244,8 +244,8 @@ var nodeListCommand = &cobra.Command{
 
 var nodeInfoCommand = &cobra.Command{
 	Use:     "info [node_id]",
-	Short:   "Retreives information about the node",
-	Long:    "Retreives information about the node",
+	Short:   "Retrieves information about the node",
+	Long:    "Retrieves information about the node",
 	Example: "  $ heketi-cli node info 886a86a868711bef83001",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		//ensure proper number of args
