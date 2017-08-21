@@ -209,8 +209,8 @@ var topologyLoadCommand = &cobra.Command{
 
 var topologyInfoCommand = &cobra.Command{
 	Use:     "info",
-	Short:   "Retreives information about the current Topology",
-	Long:    "Retreives information about the current Topology",
+	Short:   "Retrieves information about the current Topology",
+	Long:    "Retrieves information about the current Topology",
 	Example: " $ heketi-cli topology info",
 	RunE: func(cmd *cobra.Command, args []string) error {
 
