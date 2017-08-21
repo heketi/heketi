@@ -354,6 +354,9 @@ func (a *App) NodeSetState(w http.ResponseWriter, r *http.Request) {
 
 		return nil
 	})
+	if err != nil {
+		return
+	}
 
 	// Set state
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
