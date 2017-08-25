@@ -9,7 +9,9 @@
 
 package executors
 
-import "encoding/xml"
+import (
+	"encoding/xml"
+)
 
 type Executor interface {
 	GlusterdCheck(host string) error
@@ -27,8 +29,59 @@ type Executor interface {
 	VolumeExpand(host string, volume *VolumeRequest) (*Volume, error)
 	VolumeReplaceBrick(host string, volume string, oldBrick *BrickInfo, newBrick *BrickInfo) error
 	VolumeInfo(host string, volume string) (*Volume, error)
+	GeoReplicationCreate(host, volume string, geoRep *GeoReplicationRequest) error
+	GeoReplicationConfig(host, volume string, geoRep *GeoReplicationRequest) error
+	GeoReplicationAction(host, volume, action string, geoRep *GeoReplicationRequest) error
+	GeoReplicationVolumeStatus(host, volume string) (*GeoReplicationStatus, error)
+	GeoReplicationStatus(host string) (*GeoReplicationStatus, error)
 	HealInfo(host string, volume string) (*HealInfo, error)
 	SetLogLevel(level string)
+}
+
+type GeoReplicationStatus struct {
+	XMLName xml.Name               `xml:"geoRep"`
+	Volume  []GeoReplicationVolume `xml:"volume"`
+}
+type GeoReplicationVolume struct {
+	XMLName    xml.Name               `xml:"volume"`
+	VolumeName string                 `xml:"name"`
+	Sessions   GeoReplicationSessions `xml:"sessions"`
+}
+
+type GeoReplicationSessions struct {
+	XMLName     xml.Name                `xml:"sessions"`
+	SessionList []GeoReplicationSession `xml:"session"`
+}
+
+type GeoReplicationSession struct {
+	XMLName      xml.Name             `xml:"session"`
+	SessionSlave string               `xml:"session_slave"`
+	Pairs        []GeoReplicationPair `xml:"pair"`
+}
+type GeoReplicationPair struct {
+	MasterNode               string `xml:"master_node"`
+	MasterBrick              string `xml:"master_brick"`
+	SlaveUser                string `xml:"slave_user"`
+	Slave                    string `xml:"slave"`
+	SlaveNode                string `xml:"slave_node"`
+	Status                   string `xml:"status"`
+	CrawlStatus              string `xml:"crawl_status"`
+	Entry                    string `xml:"entry"`
+	Data                     string `xml:"data"`
+	Meta                     string `xml:"meta"`
+	Failures                 string `xml:"failures"`
+	CheckpointCompleted      string `xml:"checkpoint_completed"`
+	MasterNodeUUID           string `xml:"master_node_uuid"`
+	LastSynced               string `xml:"last_string"`
+	CheckpointTime           string `xml:"checkpoint_time"`
+	CheckpointCompletionTime string `xml:"checkpoint_completion_time"`
+}
+
+type GeoReplicationRequest struct {
+	ActionParams map[string]string
+	SlaveHost    string
+	SlaveVolume  string
+	SlaveSSHPort int
 }
 
 // Enumerate durability types
