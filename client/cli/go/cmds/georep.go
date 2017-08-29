@@ -209,7 +209,7 @@ var geoReplicationConfigCommand = &cobra.Command{
 	Use:     "config",
 	Short:   "Configure session",
 	Long:    "Configure geo-replication session",
-	Example: "  $ heketi-cli volume georep --slave-host=blah --slave-volume=23423423 config sync-jobs 1 886a86a868711bef83001",
+	Example: "  $ heketi-cli volume georep --slave-host=blah --slave-volume=23423423 config --ssh-port 2222 --sync-jobs 1 886a86a868711bef83001",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		//ensure proper number of args
 		if len(cmd.Flags().Args()) < 1 {
@@ -266,7 +266,7 @@ var geoReplicationVolumeStatusCommand = &cobra.Command{
 	Use:     "status",
 	Short:   "Status of geo-replication session",
 	Long:    "Get the status of the geo-replication session for a specific volume",
-	Example: "  $ heketi-cli volume status 886a86a868711bef83001 886a86a868711bef83001",
+	Example: "  $ heketi-cli volume georep status 886a86a868711bef83001",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		//ensure proper number of args
 		if len(cmd.Flags().Args()) < 1 {
