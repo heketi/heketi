@@ -77,6 +77,8 @@ func NewVolumeEntryFromRequest(req *api.VolumeCreateRequest) *VolumeEntry {
 
 	if vol.Info.Block {
 		vol.Info.BlockInfo.FreeSize = req.Size
+		vol.GlusterVolumeOptions = []string{"group gluster-block"}
+
 	}
 
 	// Set default durability values

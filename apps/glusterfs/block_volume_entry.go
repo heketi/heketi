@@ -43,6 +43,7 @@ func CreateBlockHostingVolume(db *bolt.DB, executor executors.Executor, allocato
 	msg.Size = BlockHostingVolumeSize
 	msg.Durability.Replicate.Replica = 3
 	msg.Block = true
+	msg.GlusterVolumeOptions = []string{"group gluster-block"}
 
 	vol := NewVolumeEntryFromRequest(&msg)
 
