@@ -113,28 +113,28 @@ var volumeCreateCommand = &cobra.Command{
 	Short: "Create a GlusterFS volume",
 	Long:  "Create a GlusterFS volume",
 	Example: `  * Create a 100GB replica 3 volume:
-	$ heketi-cli volume create --size=100
-	
-	* Create a 100GB replica 3 volume specifying two specific clusters:
-	$ heketi-cli volume create --size=100 \
-	--clusters=0995098e1284ddccb46c7752d142c832,60d46d518074b13a04ce1022c8c7193c
-	
-	* Create a 100GB replica 2 volume with 50GB of snapshot storage:
-	$ heketi-cli volume create --size=100 --snapshot-factor=1.5 --replica=2
-	
-	* Create a 100GB distributed volume
-	$ heketi-cli volume create --size=100 --durability=none
-	
-	* Create a 100GB erasure coded 4+2 volume with 25GB snapshot storage:
-	$ heketi-cli volume create --size=100 --durability=disperse --snapshot-factor=1.25
-	
-	* Create a 100GB erasure coded 8+3 volume with 25GB snapshot storage:
-	$ heketi-cli volume create --size=100 --durability=disperse --snapshot-factor=1.25 \
-	--disperse-data=8 --redundancy=3
-	
-	* Create a 100GB distributed volume which supports performance related volume options.
-	$ heketi-cli volume create --size=100 --durability=none --gluster-volume-options="performance.rda-cache-limit 10MB","performance.nl-cache-positive-entry no"
-	`,
+      $ heketi-cli volume create --size=100
+
+  * Create a 100GB replica 3 volume specifying two specific clusters:
+      $ heketi-cli volume create --size=100 \
+        --clusters=0995098e1284ddccb46c7752d142c832,60d46d518074b13a04ce1022c8c7193c
+
+  * Create a 100GB replica 2 volume with 50GB of snapshot storage:
+      $ heketi-cli volume create --size=100 --snapshot-factor=1.5 --replica=2
+
+  * Create a 100GB distributed volume
+      $ heketi-cli volume create --size=100 --durability=none
+
+  * Create a 100GB erasure coded 4+2 volume with 25GB snapshot storage:
+      $ heketi-cli volume create --size=100 --durability=disperse --snapshot-factor=1.25
+
+  * Create a 100GB erasure coded 8+3 volume with 25GB snapshot storage:
+      $ heketi-cli volume create --size=100 --durability=disperse --snapshot-factor=1.25 \
+        --disperse-data=8 --redundancy=3
+
+  * Create a 100GB distributed volume which supports performance related volume options.
+      $ heketi-cli volume create --size=100 --durability=none --gluster-volume-options="performance.rda-cache-limit 10MB","performance.nl-cache-positive-entry no"
+`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Check volume size
 		if size == -1 {
@@ -264,7 +264,7 @@ var volumeExpandCommand = &cobra.Command{
 	Long:  "Expand a volume",
 	Example: `  * Add 10GB to a volume
     $ heketi-cli volume expand --volume=60d46d518074b13a04ce1022c8c7193c --expand-size=10
-	`,
+`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Check volume size
 		if expandSize == -1 {

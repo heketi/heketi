@@ -9,9 +9,7 @@
 
 package executors
 
-import (
-	"encoding/xml"
-)
+import "encoding/xml"
 
 type Executor interface {
 	GlusterdCheck(host string) error
