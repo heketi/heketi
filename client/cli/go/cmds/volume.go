@@ -302,8 +302,8 @@ var volumeExpandCommand = &cobra.Command{
 
 var volumeInfoCommand = &cobra.Command{
 	Use:     "info",
-	Short:   "Retreives information about the volume",
-	Long:    "Retreives information about the volume",
+	Short:   "Retrieves information about the volume",
+	Long:    "Retrieves information about the volume",
 	Example: "  $ heketi-cli volume info 886a86a868711bef83001",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		//ensure proper number of args
