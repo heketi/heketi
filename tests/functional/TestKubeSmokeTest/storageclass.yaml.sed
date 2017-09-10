@@ -4,5 +4,4 @@ metadata:
   name: slow
 provisioner: kubernetes.io/glusterfs
 parameters:
-  endpoint: "glusterfs-cluster"
   resturl: "%%URL%%"

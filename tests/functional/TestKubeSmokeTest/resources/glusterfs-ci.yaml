@@ -1,0 +1,33 @@
+apiVersion: storage.coreos.com/v1alpha1
+kind: StorageCluster
+metadata:
+    name: gluster
+spec:
+    type: glusterfs
+    glusterfs:
+        heketiImage: localhost:5000/heketi
+    storageNodes:
+        - nodeName: node1.example.com
+          storageNetwork:
+            ips:
+                - 172.17.0.21
+          devices:
+              - /dev/sdb
+          glusterfs:
+              zone: 1
+        - nodeName: node2.example.com
+          storageNetwork:
+            ips:
+                - 172.17.0.22
+          devices:
+              - /dev/sdb
+          glusterfs:
+              zone: 2
+        - nodeName: node3.example.com
+          storageNetwork:
+            ips:
+                - 172.17.0.23
+          devices:
+              - /dev/sdb
+          glusterfs:
+              zone: 3

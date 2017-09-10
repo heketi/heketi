@@ -1,0 +1,13 @@
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1alpha1
+metadata:
+  name: heketi-secret-writer
+subjects:
+  - kind: ServiceAccount
+    name: default
+  - kind: ServiceAccount
+    name: heketi-service-account
+roleRef:
+  kind: Role
+  name: heketi-service-account
+  apiGroup: rbac.authorization.k8s.io
