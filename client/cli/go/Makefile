@@ -50,7 +50,7 @@ package:
 	@echo $(PACKAGE)
 
 build:
-	go build $(LDFLAGS) -o $(APP_NAME)
+	go build -i $(LDFLAGS) -o $(APP_NAME)
 
 run: build
 	./$(APP_NAME)
