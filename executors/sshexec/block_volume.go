@@ -88,7 +88,7 @@ func (s *SshExecutor) BlockVolumeDestroy(host string, blockHostingVolumeName str
 	godbc.Require(blockVolumeName != "")
 
 	commands := []string{
-		fmt.Sprintf("gluster-block delete %v/%v", blockHostingVolumeName, blockVolumeName),
+		fmt.Sprintf("gluster-block delete %v/%v --json", blockHostingVolumeName, blockVolumeName),
 	}
 
 	type CliOutput struct {
