@@ -7,7 +7,9 @@ TESTS="TestManyBricksVolume $TESTS"
 
 # install glide
 if ! command -v glide ; then
-    curl https://glide.sh/get | sh
+	echo glide is not installed, please install it to continue
+	echo 'get it from your package manager, or unsafely via: "curl https://glide.sh/get | sh"'
+	exit 1
 fi
 
 # Download golang 1.8.3
