@@ -117,15 +117,3 @@ func (s *SshExecutor) BlockVolumeDestroy(host string, blockHostingVolumeName str
 
 	return nil
 }
-
-/*
-func (s *SshExecutor) BlockVolumeDestroyCheck(host, volume string) error {
-	godbc.Require(host != "")
-	godbc.Require(volume != "")
-
-	// TODO: do we need checks?
-	// Nope nothing to check
-
-	return nil
-}
-*/

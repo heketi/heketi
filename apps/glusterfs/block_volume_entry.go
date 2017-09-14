@@ -372,17 +372,6 @@ func (v *BlockVolumeEntry) Destroy(db *bolt.DB, executor executors.Executor) err
 
 	logger.Debug("Using executor host [%v]", executorhost)
 
-	// Determine if we can destroy the volume
-	// [ashiq] we can skip this part for now as there is nothing to verify as we dont have snapshotting yet
-	/*
-		err := executor.BlockVolumeDestroyCheck(executorhost, v.Info.Name)
-		if err != nil {
-			logger.Err(err)
-			return err
-		}
-	*/
-	// :TODO: What if the host is no longer available, we may need to try others
-	// (here we call gluster_block destroy)
 	err = executor.BlockVolumeDestroy(executorhost, blockHostingVolumeName, v.Info.Name)
 	if err != nil {
 		logger.LogError("Unable to delete volume: %v", err)
