@@ -10,6 +10,8 @@
 package glusterfs
 
 import (
+	"fmt"
+
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
 	"github.com/lpabon/godbc"
@@ -60,8 +62,14 @@ func (v *BlockVolumeEntry) createBlockVolumeRequest(db *bolt.DB,
 		}
 
 		if v.Info.Hacount > 0 && v.Info.Hacount <= len(bhvol.Info.Mount.GlusterFS.Hosts) {
-			for i := 0; i < v.Info.Hacount; i++ {
-				v.Info.BlockVolume.Hosts = append(v.Info.BlockVolume.Hosts, bhvol.Info.Mount.GlusterFS.Hosts[i])
+			for i := 0; i <= v.Info.Hacount && i < len(bhvol.Info.Mount.GlusterFS.Hosts); i++ {
+				e := executor.GlusterdCheck(bhvol.Info.Mount.GlusterFS.Hosts[i])
+				if e == nil {
+					v.Info.BlockVolume.Hosts = append(v.Info.BlockVolume.Hosts, bhvol.Info.Mount.GlusterFS.Hosts[i])
+				}
+			}
+			if len(v.Info.BlockVolume.Hosts) < v.Info.Hacount {
+				return fmt.Errorf("insufficient block hosts online")
 			}
 		} else {
 			v.Info.BlockVolume.Hosts = bhvol.Info.Mount.GlusterFS.Hosts
