@@ -17,6 +17,9 @@ type Allocator interface {
 	// Inform the brick allocator to not use the specified device
 	RemoveDevice(c *ClusterEntry, n *NodeEntry, d *DeviceEntry) error
 
+	// Add cluster information from allocator.
+	AddCluster(clusterId string) error
+
 	// Remove cluster information from allocator
 	RemoveCluster(clusterId string) error
 
