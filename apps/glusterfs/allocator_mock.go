@@ -86,6 +86,17 @@ func (d *MockAllocator) RemoveDevice(cluster *ClusterEntry,
 	return nil
 }
 
+// AddCluster adds a cluster entry to our "clustermap".
+func (d *MockAllocator) AddCluster(clusterId string) error {
+	// Save in the object
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
+	d.clustermap[clusterId] = []string{}
+
+	return nil
+}
+
 func (d *MockAllocator) RemoveCluster(clusterId string) error {
 	// Save in the object
 	d.lock.Lock()
