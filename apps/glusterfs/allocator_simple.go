@@ -132,6 +132,24 @@ func (s *SimpleAllocator) RemoveDevice(cluster *ClusterEntry,
 	return nil
 }
 
+// AddCluster adds an entry to the rings map. Must be called before AddDevice so
+// that the entry exists.
+func (s *SimpleAllocator) AddCluster(clusterId string) error {
+
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	if _, ok := s.rings[clusterId]; ok {
+		logger.LogError("cluster id %s already exists", clusterId)
+		return ErrFound
+	}
+
+	// Add cluster to map
+	s.rings[clusterId] = NewSimpleAllocatorRing()
+
+	return nil
+}
+
 func (s *SimpleAllocator) RemoveCluster(clusterId string) error {
 
 	s.lock.Lock()
