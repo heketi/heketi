@@ -51,4 +51,4 @@ debug
 .coverage
 .tox
 *.log
-
+.envrc
