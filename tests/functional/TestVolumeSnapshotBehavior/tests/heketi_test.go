@@ -116,13 +116,13 @@ func setupCluster(t *testing.T) {
 
 	// Wait here for results
 	err := sg.Result()
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, err)
 
 }
 
 func teardownCluster(t *testing.T) {
 	clusters, err := heketi.ClusterList()
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, err)
 
 	sg := utils.NewStatusGroup()
 	for _, cluster := range clusters.Clusters {
@@ -206,12 +206,12 @@ func teardownCluster(t *testing.T) {
 	}
 
 	err = sg.Result()
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, err)
 }
 
 func TestConnection(t *testing.T) {
 	err := heketi.Hello()
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, err)
 }
 
 func TestHeketiVolumeSnapshotBehavior(t *testing.T) {
@@ -230,7 +230,7 @@ func TestHeketiVolumeSnapshotBehavior(t *testing.T) {
 	volReq.Snapshot.Factor = 1.5
 
 	volInfo, err := heketi.VolumeCreate(volReq)
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, err)
 
 	// SSH into system and execute gluster command to create a snapshot
 	exec := ssh.NewSshExecWithKeyFile(logger, "vagrant", "../config/insecure_private_key")
