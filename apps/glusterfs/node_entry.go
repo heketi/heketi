@@ -116,6 +116,42 @@ func GetVerifiedManageHostname(db *bolt.DB, e executors.Executor, clusterId stri
 	return "", ErrNotFound
 }
 
+// Returns Manage Hostname, given a Storage Hostname
+func GetManageHostnameFromStorageHostname(tx *bolt.Tx, shostname string) (string, error) {
+	godbc.Require(shostname != "")
+	var cluster *ClusterEntry
+	var node *NodeEntry
+	var clusterlist []string
+	var err error
+
+	clusterlist, err = ClusterList(tx)
+	if err != nil {
+		return "", err
+	}
+	for _, c := range clusterlist {
+		cluster, err = NewClusterEntryFromId(tx, c)
+		if err != nil {
+			return "", err
+		}
+		for _, n := range cluster.Info.Nodes {
+			var newNode *NodeEntry
+			newNode, err = NewNodeEntryFromId(tx, n)
+			if err != nil {
+				return "", err
+			}
+			if newNode.StorageHostName() == shostname {
+				node = newNode
+				break
+			}
+		}
+	}
+
+	if node != nil {
+		return node.ManageHostName(), nil
+	}
+	return "", ErrNotFound
+}
+
 func (n *NodeEntry) Register(tx *bolt.Tx) error {
 
 	// Save manage hostnames
