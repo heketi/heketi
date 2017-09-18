@@ -97,8 +97,11 @@ class HeketiClient(object):
                 else:
                     return q
 
-    def cluster_create(self):
-        req = self._make_request('POST', '/clusters')
+    def cluster_create(self, cluster_options={}):
+        ''' cluster_options is a dict with cluster creation options:
+            https://github.com/heketi/heketi/wiki/API#cluster_create
+        '''
+        req = self._make_request('POST', '/clusters', cluster_options)
         if req.status_code == requests.codes.created:
             return req.json()
 

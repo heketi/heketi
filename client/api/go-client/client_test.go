@@ -68,8 +68,12 @@ func TestTopology(t *testing.T) {
 
 	//Create multiple clusters
 	clusteridlist := make([]api.ClusterInfoResponse, 0)
+	cluster_req := &api.ClusterCreateRequest{
+		Block: true,
+		File:  true,
+	}
 	for m := 0; m < 4; m++ {
-		cluster, err := c.ClusterCreate()
+		cluster, err := c.ClusterCreate(cluster_req)
 		tests.Assert(t, err == nil)
 		tests.Assert(t, cluster.Id != "")
 		clusteridlist = append(clusteridlist, *cluster)
@@ -86,11 +90,16 @@ func TestTopology(t *testing.T) {
 	}
 
 	//Create a cluster and add multiple nodes,devices and volumes
-	cluster, err := c.ClusterCreate()
+	cluster_req = &api.ClusterCreateRequest{
+		Block: true,
+		File:  true,
+	}
+	cluster, err := c.ClusterCreate(cluster_req)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, cluster.Id != "")
 	tests.Assert(t, len(cluster.Nodes) == 0)
 	tests.Assert(t, len(cluster.Volumes) == 0)
+	tests.Assert(t, len(cluster.BlockVolumes) == 0)
 
 	// Get information about the client
 	clusterinfo, err := c.ClusterInfo(cluster.Id)
@@ -228,21 +237,25 @@ func TestClientCluster(t *testing.T) {
 	// Create cluster with unknown user
 	c := NewClient(ts.URL, "asdf", "")
 	tests.Assert(t, c != nil)
-	cluster, err := c.ClusterCreate()
+	cluster_req := &api.ClusterCreateRequest{
+		Block: true,
+		File:  true,
+	}
+	cluster, err := c.ClusterCreate(cluster_req)
 	tests.Assert(t, err != nil)
 	tests.Assert(t, cluster == nil)
 
 	// Create cluster with bad password
 	c = NewClient(ts.URL, "admin", "badpassword")
 	tests.Assert(t, c != nil)
-	cluster, err = c.ClusterCreate()
+	cluster, err = c.ClusterCreate(cluster_req)
 	tests.Assert(t, err != nil)
 	tests.Assert(t, cluster == nil)
 
 	// Create cluster correctly
 	c = NewClient(ts.URL, "admin", TEST_ADMIN_KEY)
 	tests.Assert(t, c != nil)
-	cluster, err = c.ClusterCreate()
+	cluster, err = c.ClusterCreate(cluster_req)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, cluster.Id != "")
 	tests.Assert(t, len(cluster.Nodes) == 0)
@@ -288,7 +301,11 @@ func TestClientNode(t *testing.T) {
 	// Create cluster
 	c := NewClient(ts.URL, "admin", TEST_ADMIN_KEY)
 	tests.Assert(t, c != nil)
-	cluster, err := c.ClusterCreate()
+	cluster_req := &api.ClusterCreateRequest{
+		Block: true,
+		File:  true,
+	}
+	cluster, err := c.ClusterCreate(cluster_req)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, cluster.Id != "")
 	tests.Assert(t, len(cluster.Nodes) == 0)
@@ -374,7 +391,11 @@ func TestClientDevice(t *testing.T) {
 	// Create cluster
 	c := NewClient(ts.URL, "admin", TEST_ADMIN_KEY)
 	tests.Assert(t, c != nil)
-	cluster, err := c.ClusterCreate()
+	cluster_req := &api.ClusterCreateRequest{
+		Block: true,
+		File:  true,
+	}
+	cluster, err := c.ClusterCreate(cluster_req)
 	tests.Assert(t, err == nil)
 
 	// Create node request packet
@@ -480,7 +501,11 @@ func TestClientVolume(t *testing.T) {
 	// Create cluster
 	c := NewClient(ts.URL, "admin", TEST_ADMIN_KEY)
 	tests.Assert(t, c != nil)
-	cluster, err := c.ClusterCreate()
+	cluster_req := &api.ClusterCreateRequest{
+		Block: true,
+		File:  true,
+	}
+	cluster, err := c.ClusterCreate(cluster_req)
 	tests.Assert(t, err == nil)
 
 	// Create node request packet

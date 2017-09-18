@@ -69,7 +69,11 @@ func setupCluster(t *testing.T) {
 		go func(nodes_in_cluster []string) {
 			defer sg.Done()
 			// Create a cluster
-			cluster, err := heketi.ClusterCreate()
+			cluster_req := &api.ClusterCreateRequest{
+				Block: true,
+				File:  true,
+			}
+			cluster, err := heketi.ClusterCreate(cluster_req)
 			if err != nil {
 				logger.Err(err)
 				sg.Err(err)

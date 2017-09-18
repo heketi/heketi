@@ -35,6 +35,8 @@ type ConfigFileNode struct {
 }
 type ConfigFileCluster struct {
 	Nodes []ConfigFileNode `json:"nodes"`
+	Block *bool            `json:"block,omitempty"`
+	File  *bool            `json:"file,omitempty"`
 }
 type ConfigFile struct {
 	Clusters []ConfigFileCluster `json:"clusters"`
@@ -147,11 +149,32 @@ var topologyLoadCommand = &cobra.Command{
 					// See if we need to create a cluster
 					if clusterInfo == nil {
 						fmt.Fprintf(stdout, "Creating cluster ... ")
-						clusterInfo, err = heketi.ClusterCreate()
+						req := &api.ClusterCreateRequest{}
+
+						if cluster.File == nil {
+							req.File = true
+						} else {
+							req.File = *cluster.File
+						}
+
+						if cluster.Block == nil {
+							req.Block = true
+						} else {
+							req.Block = *cluster.Block
+						}
+
+						clusterInfo, err = heketi.ClusterCreate(req)
 						if err != nil {
 							return err
 						}
 						fmt.Fprintf(stdout, "ID: %v\n", clusterInfo.Id)
+
+						if req.File {
+							fmt.Fprintf(stdout, "\tAllowing file volumes on cluster.\n")
+						}
+						if req.Block {
+							fmt.Fprintf(stdout, "\tAllowing block volumes on cluster.\n")
+						}
 
 						// Create a cleanup function in case no
 						// nodes or devices are created
@@ -235,6 +258,8 @@ var topologyInfoCommand = &cobra.Command{
 			// Get the cluster list and iterate over
 			for i, _ := range topoinfo.ClusterList {
 				fmt.Fprintf(stdout, "\nCluster Id: %v\n", topoinfo.ClusterList[i].Id)
+				fmt.Fprintf(stdout, "\n    File:  %v\n", topoinfo.ClusterList[i].File)
+				fmt.Fprintf(stdout, "    Block: %v\n", topoinfo.ClusterList[i].Block)
 				fmt.Fprintf(stdout, "\n    %s\n", "Volumes:")
 				for k, _ := range topoinfo.ClusterList[i].Volumes {
 
