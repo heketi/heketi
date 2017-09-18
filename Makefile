@@ -68,12 +68,9 @@ endif
 	echo "Installing vendor directory"
 	glide install -v
 
-	echo "Building dependencies to make builds faster"
-
 glide.lock: glide.yaml
 	echo "Glide.yaml has changed, updating glide.lock"
 	glide update -v
-	echo "Building dependencies to make builds faster"
 
 client: vendor glide.lock
 	@$(MAKE) -C client/cli/go
