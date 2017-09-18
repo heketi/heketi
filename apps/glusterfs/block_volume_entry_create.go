@@ -63,7 +63,11 @@ func (v *BlockVolumeEntry) createBlockVolumeRequest(db *bolt.DB,
 
 		if v.Info.Hacount > 0 && v.Info.Hacount <= len(bhvol.Info.Mount.GlusterFS.Hosts) {
 			for i := 0; i <= v.Info.Hacount && i < len(bhvol.Info.Mount.GlusterFS.Hosts); i++ {
-				e := executor.GlusterdCheck(bhvol.Info.Mount.GlusterFS.Hosts[i])
+				managehostname, e := GetManageHostnameFromStorageHostname(tx, bhvol.Info.Mount.GlusterFS.Hosts[i])
+				if e != nil {
+					return fmt.Errorf("Could not find managehostname for %v", bhvol.Info.Mount.GlusterFS.Hosts[i])
+				}
+				e = executor.GlusterdCheck(managehostname)
 				if e == nil {
 					v.Info.BlockVolume.Hosts = append(v.Info.BlockVolume.Hosts, bhvol.Info.Mount.GlusterFS.Hosts[i])
 				}
