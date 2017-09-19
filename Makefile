@@ -125,7 +125,7 @@ $(DEPS_TARBALL): clean clean_vendor vendor glide.lock
 	@mkdir -p $(DIR)/dist/
 	tar -czf $@ -C vendor .
 
-dist: $(PACKAGE) $(CLIENT_PACKAGE)
+dist: $(DEPS_TARBALL) $(PACKAGE) $(CLIENT_PACKAGE)
 
 linux_amd64_dist:
 	GOOS=linux GOARCH=amd64 $(MAKE) dist
