@@ -8,7 +8,7 @@ APP_NAME := heketi
 CLIENT_PKG_NAME := heketi-client
 SHA := $(shell git rev-parse --short HEAD)
 BRANCH := $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
-VER := $(shell git describe)
+VER := $(shell git describe --match='v[0-9].[0-9].[0-9]')
 ARCH := $(shell go env GOARCH)
 GOOS := $(shell go env GOOS)
 GLIDEPATH := $(shell command -v glide 2> /dev/null)
