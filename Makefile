@@ -8,7 +8,8 @@ APP_NAME := heketi
 CLIENT_PKG_NAME := heketi-client
 SHA := $(shell git rev-parse --short HEAD)
 BRANCH := $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
-VER := $(shell git describe)
+VER := $(shell git describe --match='v[0-9].[0-9].[0-9]')
+TAG := $(shell git tag --points-at HEAD --sort=creatordate 'v[0-9].[0-9].[0-9]' | tail -n1)
 ARCH := $(shell go env GOARCH)
 GOOS := $(shell go env GOOS)
 GLIDEPATH := $(shell command -v glide 2> /dev/null)
@@ -20,7 +21,11 @@ else
 ifeq (master,$(BRANCH))
   VERSION = $(VER)
 else
+ifeq ($(VER),$(TAG))
+  VERSION = $(VER)
+else
   VERSION = $(VER)-$(BRANCH)
+endif
 endif
 endif
 
@@ -34,6 +39,7 @@ LDFLAGS :=-ldflags "-X main.HEKETI_VERSION=$(VERSION) -extldflags '-z relro -z n
 # Package target
 PACKAGE :=$(DIR)/dist/$(APP_NAME)-$(VERSION).$(GOOS).$(ARCH).tar.gz
 CLIENT_PACKAGE :=$(DIR)/dist/$(APP_NAME)-client-$(VERSION).$(GOOS).$(ARCH).tar.gz
+DEPS_TARBALL :=$(DIR)/dist/$(APP_NAME)-deps-$(VERSION).tar.gz
 GOFILES=$(shell go list ./... | grep -v vendor)
 
 .DEFAULT: all
@@ -87,6 +93,9 @@ clean:
 	rm -rf dist
 	@$(MAKE) -C client/cli/go clean
 
+clean_vendor:
+	rm -rf vendor
+
 $(PACKAGE): all
 	@echo Packaging Binaries...
 	@mkdir -p tmp/$(APP_NAME)
@@ -114,7 +123,14 @@ $(CLIENT_PACKAGE): all
 	@echo
 	@echo Package $@ saved in dist directory
 
-dist: $(PACKAGE) $(CLIENT_PACKAGE)
+deps_tarball: $(DEPS_TARBALL)
+
+$(DEPS_TARBALL): clean clean_vendor vendor glide.lock
+	@echo Creating dependency tarball...
+	@mkdir -p $(DIR)/dist/
+	tar -czf $@ -C vendor .
+
+dist: $(DEPS_TARBALL) $(PACKAGE) $(CLIENT_PACKAGE)
 
 linux_amd64_dist:
 	GOOS=linux GOARCH=amd64 $(MAKE) dist
@@ -132,4 +148,4 @@ release: darwin_amd64_dist linux_arm64_dist linux_arm_dist linux_amd64_dist
 
 .PHONY: server client test clean name run version release \
         darwin_amd64_dist linux_arm_dist linux_amd64_dist linux_arm64_dist \
-        heketi
+        heketi clean_vendor deps_tarball
