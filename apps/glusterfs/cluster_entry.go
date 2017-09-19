@@ -38,13 +38,20 @@ func NewClusterEntry() *ClusterEntry {
 	entry := &ClusterEntry{}
 	entry.Info.Nodes = make(sort.StringSlice, 0)
 	entry.Info.Volumes = make(sort.StringSlice, 0)
+	entry.Info.BlockVolumes = make(sort.StringSlice, 0)
+	entry.Info.Block = false
+	entry.Info.File = false
 
 	return entry
 }
 
-func NewClusterEntryFromRequest() *ClusterEntry {
+func NewClusterEntryFromRequest(req *api.ClusterCreateRequest) *ClusterEntry {
+	godbc.Require(req != nil)
+
 	entry := NewClusterEntry()
 	entry.Info.Id = utils.GenUUID()
+	entry.Info.Block = req.Block
+	entry.Info.File = req.File
 
 	return entry
 }
@@ -117,6 +124,9 @@ func (c *ClusterEntry) Unmarshal(buffer []byte) error {
 	if c.Info.Volumes == nil {
 		c.Info.Volumes = make(sort.StringSlice, 0)
 	}
+	if c.Info.BlockVolumes == nil {
+		c.Info.BlockVolumes = make(sort.StringSlice, 0)
+	}
 
 	return nil
 }
@@ -142,6 +152,15 @@ func (c *ClusterEntry) VolumeAdd(id string) {
 
 func (c *ClusterEntry) VolumeDelete(id string) {
 	c.Info.Volumes = utils.SortedStringsDelete(c.Info.Volumes, id)
+}
+
+func (c *ClusterEntry) BlockVolumeAdd(id string) {
+	c.Info.BlockVolumes = append(c.Info.BlockVolumes, id)
+	c.Info.BlockVolumes.Sort()
+}
+
+func (c *ClusterEntry) BlockVolumeDelete(id string) {
+	c.Info.BlockVolumes = utils.SortedStringsDelete(c.Info.BlockVolumes, id)
 }
 
 func (c *ClusterEntry) NodeDelete(id string) {

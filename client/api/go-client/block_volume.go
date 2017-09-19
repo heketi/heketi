@@ -16,67 +16,71 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 )
 
-func (c *Client) ClusterCreate(request *api.ClusterCreateRequest) (*api.ClusterInfoResponse, error) {
+func (c *Client) BlockVolumeCreate(request *api.BlockVolumeCreateRequest) (
+	*api.BlockVolumeInfoResponse, error) {
 
 	buffer, err := json.Marshal(request)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create a request
-	req, err := http.NewRequest("POST", c.host+"/clusters",
+	req, err := http.NewRequest("POST",
+		c.host+"/blockvolumes",
 		bytes.NewBuffer(buffer))
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	// Set token
 	err = c.setToken(req)
 	if err != nil {
 		return nil, err
 	}
 
-	// Send request
 	r, err := c.do(req)
 	if err != nil {
 		return nil, err
 	}
-	if r.StatusCode != http.StatusCreated {
+	if r.StatusCode != http.StatusAccepted {
 		return nil, utils.GetErrorFromResponse(r)
 	}
 
-	// Read JSON response
-	var cluster api.ClusterInfoResponse
-	err = utils.GetJsonFromResponse(r, &cluster)
+	r, err = c.waitForResponseWithTimer(r, time.Second)
+	if err != nil {
+		return nil, err
+	}
+	if r.StatusCode != http.StatusOK {
+		return nil, utils.GetErrorFromResponse(r)
+	}
+
+	var blockvolume api.BlockVolumeInfoResponse
+	err = utils.GetJsonFromResponse(r, &blockvolume)
 	r.Body.Close()
 	if err != nil {
 		return nil, err
 	}
 
-	return &cluster, nil
+	return &blockvolume, nil
+
 }
 
-func (c *Client) ClusterInfo(id string) (*api.ClusterInfoResponse, error) {
-
-	// Create request
-	req, err := http.NewRequest("GET", c.host+"/clusters/"+id, nil)
+func (c *Client) BlockVolumeList() (*api.BlockVolumeListResponse, error) {
+	req, err := http.NewRequest("GET", c.host+"/blockvolumes", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	// Set token
 	err = c.setToken(req)
 	if err != nil {
 		return nil, err
 	}
 
-	// Get info
 	r, err := c.do(req)
 	if err != nil {
 		return nil, err
@@ -85,70 +89,68 @@ func (c *Client) ClusterInfo(id string) (*api.ClusterInfoResponse, error) {
 		return nil, utils.GetErrorFromResponse(r)
 	}
 
-	// Read JSON response
-	var cluster api.ClusterInfoResponse
-	err = utils.GetJsonFromResponse(r, &cluster)
+	var blockvolumes api.BlockVolumeListResponse
+	err = utils.GetJsonFromResponse(r, &blockvolumes)
+	if err != nil {
+		return nil, err
+	}
+
+	return &blockvolumes, nil
+}
+
+func (c *Client) BlockVolumeInfo(id string) (*api.BlockVolumeInfoResponse, error) {
+	req, err := http.NewRequest("GET", c.host+"/blockvolumes/"+id, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.setToken(req)
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := c.do(req)
+	if err != nil {
+		return nil, err
+	}
+	if r.StatusCode != http.StatusOK {
+		return nil, utils.GetErrorFromResponse(r)
+	}
+
+	var blockvolume api.BlockVolumeInfoResponse
+	err = utils.GetJsonFromResponse(r, &blockvolume)
 	r.Body.Close()
 	if err != nil {
 		return nil, err
 	}
 
-	return &cluster, nil
+	return &blockvolume, nil
 }
 
-func (c *Client) ClusterList() (*api.ClusterListResponse, error) {
-
-	// Create request
-	req, err := http.NewRequest("GET", c.host+"/clusters", nil)
-	if err != nil {
-		return nil, err
-	}
-
-	// Set token
-	err = c.setToken(req)
-	if err != nil {
-		return nil, err
-	}
-
-	// Get info
-	r, err := c.do(req)
-	if err != nil {
-		return nil, err
-	}
-	if r.StatusCode != http.StatusOK {
-		return nil, utils.GetErrorFromResponse(r)
-	}
-
-	// Read JSON response
-	var clusters api.ClusterListResponse
-	err = utils.GetJsonFromResponse(r, &clusters)
-	if err != nil {
-		return nil, err
-	}
-
-	return &clusters, nil
-}
-
-func (c *Client) ClusterDelete(id string) error {
-
-	// Create DELETE request
-	req, err := http.NewRequest("DELETE", c.host+"/clusters/"+id, nil)
+func (c *Client) BlockVolumeDelete(id string) error {
+	req, err := http.NewRequest("DELETE", c.host+"/blockvolumes/"+id, nil)
 	if err != nil {
 		return err
 	}
 
-	// Set token
 	err = c.setToken(req)
 	if err != nil {
 		return err
 	}
 
-	// Send request
 	r, err := c.do(req)
 	if err != nil {
 		return err
 	}
-	if r.StatusCode != http.StatusOK {
+	if r.StatusCode != http.StatusAccepted {
+		return utils.GetErrorFromResponse(r)
+	}
+
+	r, err = c.waitForResponseWithTimer(r, time.Second)
+	if err != nil {
+		return err
+	}
+	if r.StatusCode != http.StatusNoContent {
 		return utils.GetErrorFromResponse(r)
 	}
 

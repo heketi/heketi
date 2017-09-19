@@ -177,6 +177,8 @@ func TestClusterInfo(t *testing.T) {
 	// Create a new ClusterInfo
 	entry := NewClusterEntry()
 	entry.Info.Id = "123"
+	entry.Info.Block = true
+	entry.Info.File = true
 	for _, node := range []string{"a1", "a2", "a3"} {
 		entry.NodeAdd(node)
 	}
@@ -220,6 +222,8 @@ func TestClusterInfo(t *testing.T) {
 
 	// Check values are equal
 	tests.Assert(t, entry.Info.Id == msg.Id)
+	tests.Assert(t, entry.Info.Block == msg.Block)
+	tests.Assert(t, entry.Info.File == msg.File)
 	tests.Assert(t, entry.Info.Volumes[0] == msg.Volumes[0])
 	tests.Assert(t, entry.Info.Volumes[1] == msg.Volumes[1])
 	tests.Assert(t, entry.Info.Volumes[2] == msg.Volumes[2])

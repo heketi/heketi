@@ -11,6 +11,7 @@ package glusterfs
 
 import (
 	"bytes"
+
 	"github.com/lpabon/godbc"
 )
 
@@ -21,7 +22,8 @@ func NewTestApp(dbfile string) *App {
 		"glusterfs" : {
 			"executor" : "mock",
 			"allocator" : "simple",
-			"db" : "` + dbfile + `"
+			"db" : "` + dbfile + `",
+			"auto_create_block_hosting_volume" : true
 		}
 	}`))
 	app := NewApp(appConfig)
