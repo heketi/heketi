@@ -87,6 +87,9 @@ clean:
 	rm -rf dist
 	@$(MAKE) -C client/cli/go clean
 
+clean_vendor:
+	rm -rf vendor
+
 $(PACKAGE): all
 	@echo Packaging Binaries...
 	@mkdir -p tmp/$(APP_NAME)
@@ -132,4 +135,4 @@ release: darwin_amd64_dist linux_arm64_dist linux_arm_dist linux_amd64_dist
 
 .PHONY: server client test clean name run version release \
         darwin_amd64_dist linux_arm_dist linux_amd64_dist linux_arm64_dist \
-        heketi
+        heketi clean_vendor
