@@ -130,7 +130,7 @@ $(DEPS_TARBALL): clean clean_vendor vendor glide.lock
 	@mkdir -p $(DIR)/dist/
 	tar -czf $@ -C vendor .
 
-dist: $(DEPS_TARBALL) $(PACKAGE) $(CLIENT_PACKAGE)
+dist: $(PACKAGE) $(CLIENT_PACKAGE)
 
 linux_amd64_dist:
 	GOOS=linux GOARCH=amd64 $(MAKE) dist
@@ -144,7 +144,7 @@ linux_arm64_dist:
 darwin_amd64_dist:
 	GOOS=darwin GOARCH=amd64 $(MAKE) dist
 
-release: darwin_amd64_dist linux_arm64_dist linux_arm_dist linux_amd64_dist
+release: deps_tarball darwin_amd64_dist linux_arm64_dist linux_arm_dist linux_amd64_dist
 
 .PHONY: server client test clean name run version release \
         darwin_amd64_dist linux_arm_dist linux_amd64_dist linux_arm64_dist \
