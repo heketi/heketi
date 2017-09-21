@@ -93,7 +93,8 @@ run: server
 	./$(APP_NAME)
 
 test: vendor glide.lock
-	go test $(GOFILES)
+	go test $(GOFILES)	# TODO: move this into a sub-test inside test/*.sh
+	./test.sh
 
 clean:
 	@echo Cleaning Workspace...
