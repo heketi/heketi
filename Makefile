@@ -10,8 +10,16 @@ SHA := $(shell git rev-parse --short HEAD)
 BRANCH := $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
 VER := $(shell git describe --match='v[0-9].[0-9].[0-9]')
 TAG := $(shell git tag --points-at HEAD --sort=creatordate 'v[0-9].[0-9].[0-9]' | tail -n1)
-ARCH := $(shell go env GOARCH)
+GOARCH := $(shell go env GOARCH)
 GOOS := $(shell go env GOOS)
+GOHOSTARCH := $(shell go env GOHOSTARCH)
+GOHOSTOS := $(shell go env GOHOSTOS)
+GOBUILDFLAGS :=
+ifeq ($(GOOS),$(GOHOSTOS))
+ifeq ($(GOARCH),$(GOHOSTARCH))
+  GOBUILDFLAGS :=-i
+endif
+endif
 GLIDEPATH := $(shell command -v glide 2> /dev/null)
 DIR=.
 
@@ -37,8 +45,8 @@ EXECUTABLES :=$(APP_NAME)
 # Build Binaries setting main.version and main.build vars
 LDFLAGS :=-ldflags "-X main.HEKETI_VERSION=$(VERSION) -extldflags '-z relro -z now'"
 # Package target
-PACKAGE :=$(DIR)/dist/$(APP_NAME)-$(VERSION).$(GOOS).$(ARCH).tar.gz
-CLIENT_PACKAGE :=$(DIR)/dist/$(APP_NAME)-client-$(VERSION).$(GOOS).$(ARCH).tar.gz
+PACKAGE :=$(DIR)/dist/$(APP_NAME)-$(VERSION).$(GOOS).$(GOARCH).tar.gz
+CLIENT_PACKAGE :=$(DIR)/dist/$(APP_NAME)-client-$(VERSION).$(GOOS).$(GOARCH).tar.gz
 DEPS_TARBALL :=$(DIR)/dist/$(APP_NAME)-deps-$(VERSION).tar.gz
 GOFILES=$(shell go list ./... | grep -v vendor)
 
@@ -59,7 +67,7 @@ package:
 	@echo $(PACKAGE)
 
 heketi: vendor glide.lock
-	go build -i $(LDFLAGS) -o $(APP_NAME)
+	go build $(GOBUILDFLAGS) $(LDFLAGS) -o $(APP_NAME)
 
 server: heketi
 

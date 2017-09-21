@@ -24,6 +24,7 @@ script:
 - make
 - if [[ -z "$COVERAGE" ]]; then make test ; fi
 - if [[ -n "$COVERAGE" ]]; then bash .travis-coverage; fi
+- make release
 - cd client/api/python
 - ./unittests.sh
 - tox -e pep8
