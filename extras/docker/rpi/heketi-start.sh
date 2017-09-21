@@ -1,6 +1,7 @@
 #!/bin/sh
 
 : ${HEKETI_PATH:=/var/lib/heketi}
+: ${BACKUPDB_PATH:=/backupdb}
 
 echo "Setting up heketi database"
 
@@ -45,20 +46,22 @@ else
     fi
 fi
 
-if [ -f /backupdb/heketi.db.gz ] ; then
-    gunzip -c /backupdb/heketi.db.gz > /var/lib/heketi/heketi.db
-    if [ $? -ne 0 ] ; then
-        echo "Unable to copy database"
-        exit 1
+if [[ -d "${BACKUPDB_PATH}" ]]; then
+    if [[ -f "${BACKUPDB_PATH}/heketi.db.gz" ]] ; then
+        gunzip -c "${BACKUPDB_PATH}/heketi.db.gz" > "${BACKUPDB_PATH}/heketi.db"
+        if [[ $? -ne 0 ]]; then
+            echo "Unable to extract backup database" | tee -a "${HEKETI_PATH}/container.log"
+            exit 1
+        fi
     fi
-    echo "Copied backup db to /var/lib/heketi/heketi.db"
-elif [ -f /backupdb/heketi.db ] ; then
-    cp /backupdb/heketi.db /var/lib/heketi/heketi.db
-    if [ $? -ne 0 ] ; then
-        echo "Unable to copy database"
-        exit 1
+    if [[ -f "${BACKUPDB_PATH}/heketi.db" ]] ; then
+        cp "${BACKUPDB_PATH}/heketi.db" "${HEKETI_PATH}/heketi.db"
+        if [[ $? -ne 0 ]]; then
+            echo "Unable to copy backup database" | tee -a "${HEKETI_PATH}/container.log"
+            exit 1
+        fi
+        echo "Copied backup db to ${HEKETI_PATH}/heketi.db"
     fi
-    echo "Copied backup db to /var/lib/heketi/heketi.db"
 fi
 
 /usr/bin/heketi --config=/etc/heketi/heketi.json
