@@ -2,8 +2,6 @@
 # Based on http://chrismckenzie.io/post/deploying-with-golang/
 #
 
-.PHONY: version all run dist clean
-
 APP_NAME := heketi
 CLIENT_PKG_NAME := heketi-client
 SHA := $(shell git rev-parse --short HEAD)
@@ -151,4 +149,4 @@ release: deps_tarball darwin_amd64_dist linux_arm64_dist linux_arm_dist linux_am
 
 .PHONY: server client test clean name run version release \
 	darwin_amd64_dist linux_arm_dist linux_amd64_dist linux_arm64_dist \
-	heketi clean_vendor deps_tarball
+	heketi clean_vendor deps_tarball all dist
