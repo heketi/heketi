@@ -8,7 +8,7 @@ APP_NAME := heketi-cli
 SHA := $(shell git rev-parse --short HEAD)
 BRANCH := $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
 VER := $(shell git describe)
-ARCH := $(shell go env GOARCH)
+GOARCH := $(shell go env GOARCH)
 GOOS := $(shell go env GOOS)
 DIR=.
 
@@ -31,7 +31,7 @@ EXECUTABLES :=$(APP_NAME)
 # Build Binaries setting main.version and main.build vars
 LDFLAGS :=-ldflags "-X main.HEKETI_CLI_VERSION=$(VERSION) -extldflags '-z relro -z now'"
 # Package target
-PACKAGE :=$(DIR)/dist/$(APP_NAME)-$(VERSION).$(GOOS).$(ARCH).tar.gz
+PACKAGE :=$(DIR)/dist/$(APP_NAME)-$(VERSION).$(GOOS).$(GOARCH).tar.gz
 
 .DEFAULT: all
 
