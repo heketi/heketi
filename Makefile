@@ -12,6 +12,14 @@ VER := $(shell git describe --match='v[0-9].[0-9].[0-9]')
 TAG := $(shell git tag --points-at HEAD --sort=creatordate 'v[0-9].[0-9].[0-9]' | tail -n1)
 GOARCH := $(shell go env GOARCH)
 GOOS := $(shell go env GOOS)
+GOHOSTARCH := $(shell go env GOHOSTARCH)
+GOHOSTOS := $(shell go env GOHOSTOS)
+GOBUILDFLAGS :=
+ifeq ($(GOOS),$(GOHOSTOS))
+ifeq ($(GOARCH),$(GOHOSTARCH))
+  GOBUILDFLAGS :=-i
+endif
+endif
 GLIDEPATH := $(shell command -v glide 2> /dev/null)
 DIR=.
 
@@ -59,7 +67,7 @@ package:
 	@echo $(PACKAGE)
 
 heketi: vendor glide.lock
-	go build -i $(LDFLAGS) -o $(APP_NAME)
+	go build $(GOBUILDFLAGS) $(LDFLAGS) -o $(APP_NAME)
 
 server: heketi
 
