@@ -99,7 +99,7 @@ func NewApp(configIo io.Reader) *App {
 	// Setup BoltDB database
 	app.db, err = bolt.Open(dbfilename, 0600, &bolt.Options{Timeout: 3 * time.Second})
 	if err != nil {
-		logger.Warning("Unable to open database.  Retrying using read only mode")
+		logger.LogError("Unable to open database: %v. Retrying using read only mode", err)
 
 		// Try opening as read-only
 		app.db, err = bolt.Open(dbfilename, 0666, &bolt.Options{
