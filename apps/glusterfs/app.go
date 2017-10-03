@@ -34,6 +34,7 @@ const (
 	BOLTDB_BUCKET_DEVICE      = "DEVICE"
 	BOLTDB_BUCKET_BRICK       = "BRICK"
 	BOLTDB_BUCKET_BLOCKVOLUME = "BLOCKVOLUME"
+	BOLTDB_BUCKET_DBATTRIBUTE = "DBATTRIBUTE"
 )
 
 var (
@@ -148,6 +149,12 @@ func NewApp(configIo io.Reader) *App {
 			_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_BLOCKVOLUME))
 			if err != nil {
 				logger.LogError("Unable to create blockvolume bucket in DB")
+				return err
+			}
+
+			_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_DBATTRIBUTE))
+			if err != nil {
+				logger.LogError("Unable to create dbattribute bucket in DB")
 				return err
 			}
 
