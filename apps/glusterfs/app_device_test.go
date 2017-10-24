@@ -124,7 +124,10 @@ func TestDeviceAddDelete(t *testing.T) {
 		}
 		return nil
 	})
-	tests.Assert(t, err == nil)
+	if err != nil {
+		t.Errorf("error updating database: %+v", err)
+		return
+	}
 
 	// Create a request to a device
 	request := []byte(`{
@@ -134,28 +137,52 @@ func TestDeviceAddDelete(t *testing.T) {
 
 	// Add device using POST
 	r, err := http.Post(ts.URL+"/devices", "application/json", bytes.NewBuffer(request))
-	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	if err != nil {
+		t.Errorf("error running Post: %+v", err)
+		return
+	}
+	if x := r.StatusCode; x != http.StatusAccepted {
+		t.Errorf("status code was %v, not StatusAccepted (%v)", x, http.StatusAccepted)
+		return
+	}
 	location, err := r.Location()
-	tests.Assert(t, err == nil)
+	if err != nil {
+		t.Errorf("error getting location: %+v", err)
+		return
+	}
 
 	// Query queue until finished
 	for {
 		r, err = http.Get(location.String())
-		tests.Assert(t, err == nil)
+		if err != nil {
+			t.Errorf("error running Get on location: %+v", err)
+			return
+		}
 		if r.Header.Get("X-Pending") == "true" {
-			tests.Assert(t, r.StatusCode == http.StatusOK)
+			if x := r.StatusCode; x != http.StatusOK {
+				t.Errorf("status code was %v, not StatusOK (%v)", x, http.StatusOK)
+				return
+			}
 			time.Sleep(time.Millisecond * 10)
 		} else {
-			tests.Assert(t, r.StatusCode == http.StatusNoContent)
+			if x := r.StatusCode; x != http.StatusNoContent {
+				t.Errorf("status code was %v, not StatusNoContent (%v)", x, http.StatusNoContent)
+				return
+			}
 			break
 		}
 	}
 
 	// Add the same device.  It should conflict
 	r, err = http.Post(ts.URL+"/devices", "application/json", bytes.NewBuffer(request))
-	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusConflict)
+	if err != nil {
+		t.Errorf("error running Post: %+v", err)
+		return
+	}
+	if x := r.StatusCode; x != http.StatusConflict {
+		t.Errorf("status code was %v, not StatusConflict (%v)", x, http.StatusConflict)
+		return
+	}
 
 	// Add a second device
 	request = []byte(`{
@@ -165,20 +192,38 @@ func TestDeviceAddDelete(t *testing.T) {
 
 	// Add device using POST
 	r, err = http.Post(ts.URL+"/devices", "application/json", bytes.NewBuffer(request))
-	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	if err != nil {
+		t.Errorf("error running Post: %+v", err)
+		return
+	}
+	if x := r.StatusCode; x != http.StatusAccepted {
+		t.Errorf("status code was %v, not StatusAccepted (%v)", x, http.StatusAccepted)
+		return
+	}
 	location, err = r.Location()
-	tests.Assert(t, err == nil)
+	if err != nil {
+		t.Errorf("error getting location: %+v", err)
+		return
+	}
 
 	// Query queue until finished
 	for {
 		r, err = http.Get(location.String())
-		tests.Assert(t, err == nil)
+		if err != nil {
+			t.Errorf("error running Get on location: %+v", err)
+			return
+		}
 		if r.Header.Get("X-Pending") == "true" {
-			tests.Assert(t, r.StatusCode == http.StatusOK)
+			if x := r.StatusCode; x != http.StatusOK {
+				t.Errorf("status code was %v, not StatusOK (%v)", x, http.StatusOK)
+				return
+			}
 			time.Sleep(time.Millisecond * 10)
 		} else {
-			tests.Assert(t, r.StatusCode == http.StatusNoContent)
+			if x := r.StatusCode; x != http.StatusNoContent {
+				t.Errorf("status code was %v, not StatusNoContent (%v)", x, http.StatusNoContent)
+				return
+			}
 			break
 		}
 	}
@@ -201,17 +246,38 @@ func TestDeviceAddDelete(t *testing.T) {
 
 		return nil
 	})
-	tests.Assert(t, err == nil)
+	if err != nil {
+		t.Errorf("error viewing database: %+v", err)
+		return
+	}
 
 	val, ok := devicemap["/dev/fake1"]
-	tests.Assert(t, ok)
-	tests.Assert(t, val.Info.Name == "/dev/fake1")
-	tests.Assert(t, len(val.Bricks) == 0)
+	if !ok {
+		t.Errorf("device: %s is missing", "/dev/fake1")
+		return
+	}
+	if x := "/dev/fake1"; x != val.Info.Name {
+		t.Errorf("device: %s has incorrect name of: %s", "/dev/fake1", val.Info.Name)
+		return
+	}
+	if x := len(val.Bricks); x != 0 {
+		t.Errorf("device: incorrect number of bricks: %d", x)
+		return
+	}
 
 	val, ok = devicemap["/dev/fake2"]
-	tests.Assert(t, ok)
-	tests.Assert(t, val.Info.Name == "/dev/fake2")
-	tests.Assert(t, len(val.Bricks) == 0)
+	if !ok {
+		t.Errorf("device: %s is missing", "/dev/fake2")
+		return
+	}
+	if x := "/dev/fake2"; x != val.Info.Name {
+		t.Errorf("device: %s has incorrect name of: %s", "/dev/fake2", val.Info.Name)
+		return
+	}
+	if x := len(val.Bricks); x != 0 {
+		t.Errorf("device: incorrect number of bricks: %d", x)
+		return
+	}
 
 	// Add some bricks to check if delete conflicts works
 	fakeid := devicemap["/dev/fake1"].Info.Id
@@ -225,15 +291,30 @@ func TestDeviceAddDelete(t *testing.T) {
 		device.BrickAdd("456")
 		return device.Save(tx)
 	})
-	tests.Assert(t, err == nil)
+	if err != nil {
+		t.Errorf("error updating database: %+v", err)
+		return
+	}
 
 	// Now delete device and check for conflict
 	req, err := http.NewRequest("DELETE", ts.URL+"/devices/"+fakeid, nil)
-	tests.Assert(t, err == nil)
+	if err != nil {
+		t.Errorf("error with http request DELETE: %+v", err)
+		return
+	}
 	r, err = http.DefaultClient.Do(req)
-	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusConflict)
-	tests.Assert(t, utils.GetErrorFromResponse(r).Error() == devicemap["/dev/fake1"].ConflictString())
+	if err != nil {
+		t.Errorf("error with http Do: %+v", err)
+		return
+	}
+	if x := r.StatusCode; x != http.StatusConflict {
+		t.Errorf("status code was %v, not StatusConflict (%v)", x, http.StatusConflict)
+		return
+	}
+	if !(utils.GetErrorFromResponse(r).Error() == devicemap["/dev/fake1"].ConflictString()) {
+		t.Errorf("error GetErrorFromResponse [...] ConflictString was false")
+		return
+	}
 
 	// Check the db is still intact
 	err = app.db.View(func(tx *bolt.Tx) error {
@@ -249,8 +330,14 @@ func TestDeviceAddDelete(t *testing.T) {
 
 		return nil
 	})
-	tests.Assert(t, err == nil)
-	tests.Assert(t, utils.SortedStringHas(node.Devices, fakeid))
+	if err != nil {
+		t.Errorf("error viewing database: %+v", err)
+		return
+	}
+	if !utils.SortedStringHas(node.Devices, fakeid) {
+		t.Errorf("error SortedStringHas was false")
+		return
+	}
 
 	// Node delete bricks from the device
 	err = app.db.Update(func(tx *bolt.Tx) error {
@@ -263,27 +350,51 @@ func TestDeviceAddDelete(t *testing.T) {
 		device.BrickDelete("456")
 		return device.Save(tx)
 	})
-	tests.Assert(t, err == nil)
+	if err != nil {
+		t.Errorf("error updating database: %+v", err)
+		return
+	}
 
 	// Delete device
 	req, err = http.NewRequest("DELETE", ts.URL+"/devices/"+fakeid, nil)
-	tests.Assert(t, err == nil)
+	if err != nil {
+		t.Errorf("error with http request DELETE: %+v", err)
+		return
+	}
 	r, err = http.DefaultClient.Do(req)
-	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	if err != nil {
+		t.Errorf("error with http Do: %+v", err)
+		return
+	}
+	if x := r.StatusCode; x != http.StatusAccepted {
+		t.Errorf("status code was %v, not StatusAccepted (%v)", x, http.StatusAccepted)
+		return
+	}
 	location, err = r.Location()
-	tests.Assert(t, err == nil)
+	if err != nil {
+		t.Errorf("error getting location: %+v", err)
+		return
+	}
 
 	// Wait for deletion
 	for {
 		r, err := http.Get(location.String())
-		tests.Assert(t, err == nil)
+		if err != nil {
+			t.Errorf("error running Get on location: %+v", err)
+			return
+		}
 		if r.Header.Get("X-Pending") == "true" {
-			tests.Assert(t, r.StatusCode == http.StatusOK)
+			if x := r.StatusCode; x != http.StatusOK {
+				t.Errorf("status code was %v, not StatusOK (%v)", x, http.StatusOK)
+				return
+			}
 			time.Sleep(time.Millisecond * 10)
 			continue
 		} else {
-			tests.Assert(t, r.StatusCode == http.StatusNoContent)
+			if x := r.StatusCode; x != http.StatusNoContent {
+				t.Errorf("status code was %v, not StatusNoContent (%v)", x, http.StatusNoContent)
+				return
+			}
 			break
 		}
 	}
@@ -293,15 +404,24 @@ func TestDeviceAddDelete(t *testing.T) {
 		_, err := NewDeviceEntryFromId(tx, fakeid)
 		return err
 	})
-	tests.Assert(t, err == ErrNotFound)
+	if err != ErrNotFound {
+		t.Errorf("error viewing database: %+v", err)
+		return
+	}
 
 	// Check node does not have the device
 	err = app.db.View(func(tx *bolt.Tx) error {
 		node, err = NewNodeEntryFromId(tx, node.Info.Id)
 		return err
 	})
-	tests.Assert(t, err == nil)
-	tests.Assert(t, !utils.SortedStringHas(node.Devices, fakeid))
+	if err != nil {
+		t.Errorf("error viewing database: %+v", err)
+		return
+	}
+	if utils.SortedStringHas(node.Devices, fakeid) {
+		t.Errorf("error SortedStringHas was true")
+		return
+	}
 
 	// Check the registration of the device has been removed,
 	// and the device can be added again
@@ -310,20 +430,38 @@ func TestDeviceAddDelete(t *testing.T) {
         "name" : "/dev/fake1"
     }`)
 	r, err = http.Post(ts.URL+"/devices", "application/json", bytes.NewBuffer(request))
-	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	if err != nil {
+		t.Errorf("error running Post: %+v", err)
+		return
+	}
+	if x := r.StatusCode; x != http.StatusAccepted {
+		t.Errorf("status code was %v, not StatusAccepted (%v)", x, http.StatusAccepted)
+		return
+	}
 	location, err = r.Location()
-	tests.Assert(t, err == nil)
+	if err != nil {
+		t.Errorf("error getting location: %+v", err)
+		return
+	}
 
 	// Query queue until finished
 	for {
 		r, err = http.Get(location.String())
-		tests.Assert(t, err == nil)
+		if err != nil {
+			t.Errorf("error running Get on location: %+v", err)
+			return
+		}
 		if r.Header.Get("X-Pending") == "true" {
-			tests.Assert(t, r.StatusCode == http.StatusOK)
+			if x := r.StatusCode; x != http.StatusOK {
+				t.Errorf("status code was %v, not StatusOK (%v)", x, http.StatusOK)
+				return
+			}
 			time.Sleep(time.Millisecond * 10)
 		} else {
-			tests.Assert(t, r.StatusCode == http.StatusNoContent)
+			if x := r.StatusCode; x != http.StatusNoContent {
+				t.Errorf("status code was %v, not StatusNoContent (%v)", x, http.StatusNoContent)
+				return
+			}
 			break
 		}
 	}
