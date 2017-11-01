@@ -10,8 +10,9 @@
 package glusterfs
 
 import (
-	"github.com/boltdb/bolt"
 	"sync"
+
+	"github.com/boltdb/bolt"
 )
 
 // Simple allocator contains a map to rings of clusters
