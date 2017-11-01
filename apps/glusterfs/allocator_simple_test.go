@@ -57,6 +57,7 @@ func TestSimpleAllocatorAddRemoveDevice(t *testing.T) {
 	device := createSampleDeviceEntry(node.Info.Id, 10000)
 
 	tests.Assert(t, len(a.rings) == 0)
+	tests.Assert(t, a.AddCluster(cluster.Info.Id) == nil)
 	err := a.AddDevice(cluster, node, device)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, len(a.rings) == 1)

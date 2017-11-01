@@ -46,6 +46,10 @@ func setupSampleDbWithTopology(app *App,
 		for c := 0; c < clusters; c++ {
 			cluster := createSampleClusterEntry()
 
+			if err := app.allocator.AddCluster(cluster.Info.Id); err != nil {
+				return err
+			}
+
 			for n := 0; n < nodes_per_cluster; n++ {
 				node := createSampleNodeEntry()
 				node.Info.ClusterId = cluster.Info.Id

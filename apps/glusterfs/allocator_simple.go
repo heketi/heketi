@@ -45,6 +45,11 @@ func NewSimpleAllocatorFromDb(db *bolt.DB) *SimpleAllocator {
 				return err
 			}
 
+			// Add Cluster to ring
+			if err = s.AddCluster(cluster.Info.Id); err != nil {
+				return err
+			}
+
 			for _, nodeId := range cluster.Info.Nodes {
 				node, err := NewNodeEntryFromId(tx, nodeId)
 				if err != nil {
@@ -90,15 +95,15 @@ func (s *SimpleAllocator) AddDevice(cluster *ClusterEntry,
 	node *NodeEntry,
 	device *DeviceEntry) error {
 
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
 	// Create a new cluster id if one is not available
 	clusterId := cluster.Info.Id
-	if _, ok := s.rings[clusterId]; !ok {
-		s.rings[clusterId] = NewSimpleAllocatorRing()
+	// TODO: in the future, we should do this call separately
+	if err := s.AddCluster(clusterId); err != nil && err != ErrFound {
+		return err
 	}
 
+	s.lock.Lock()
+	defer s.lock.Unlock()
 	s.rings[clusterId].Add(&SimpleDevice{
 		zone:     node.Info.Zone,
 		nodeId:   node.Info.Id,
