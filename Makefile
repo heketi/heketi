@@ -48,7 +48,6 @@ LDFLAGS :=-ldflags "-X main.HEKETI_VERSION=$(VERSION) -extldflags '-z relro -z n
 PACKAGE :=$(DIR)/dist/$(APP_NAME)-$(VERSION).$(GOOS).$(GOARCH).tar.gz
 CLIENT_PACKAGE :=$(DIR)/dist/$(APP_NAME)-client-$(VERSION).$(GOOS).$(GOARCH).tar.gz
 DEPS_TARBALL :=$(DIR)/dist/$(APP_NAME)-deps-$(VERSION).tar.gz
-GOFILES=$(shell go list ./... | grep -v vendor)
 
 .DEFAULT: all
 
@@ -93,8 +92,7 @@ run: server
 	./$(APP_NAME)
 
 test: vendor glide.lock
-	go test $(GOFILES)	# TODO: move this into a sub-test inside test/*.sh
-	./test.sh
+	./test.sh $(TESTOPTIONS)
 
 clean:
 	@echo Cleaning Workspace...
