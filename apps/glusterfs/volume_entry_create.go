@@ -15,7 +15,6 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
-	"github.com/heketi/heketi/pkg/utils"
 	"github.com/lpabon/godbc"
 )
 
@@ -39,7 +38,7 @@ func (v *VolumeEntry) createVolume(db *bolt.DB,
 	}
 
 	// Get all brick hosts
-	stringset := utils.NewStringSet()
+	hosts := []string{}
 	if err := db.View(func(tx *bolt.Tx) error {
 		cluster, err := NewClusterEntryFromId(tx, v.Info.Cluster)
 		if err != nil {
@@ -50,14 +49,13 @@ func (v *VolumeEntry) createVolume(db *bolt.DB,
 			if err != nil {
 				return err
 			}
-			stringset.Add(node.StorageHostName())
+			hosts = append(hosts, node.StorageHostName())
 		}
 		return err
 	}); err != nil {
 		return err
 	}
 
-	hosts := stringset.Strings()
 	v.Info.Mount.GlusterFS.Hosts = hosts
 
 	// Save volume information
