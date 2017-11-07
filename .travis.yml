@@ -20,10 +20,9 @@ matrix:
     env: COVERAGE="true"
 script:
 - go fmt $(go list ./... | grep -v vendor) | wc -l | grep 0
-- go vet $(go list ./... | grep -v vendor)
 - make
-- if [[ -z "$COVERAGE" ]]; then make test ; fi
-- if [[ -n "$COVERAGE" ]]; then bash .travis-coverage; fi
+- if [[ -z "$COVERAGE" ]]; then make test TESTOPTIONS=-v ; fi
+- if [[ -n "$COVERAGE" ]]; then make test TESTOPTIONS=-vcstdout && bash .travis-coverage; fi
 - make release
 - cd client/api/python
 - ./unittests.sh
