@@ -97,7 +97,7 @@ test: vendor glide.lock
 clean:
 	@echo Cleaning Workspace...
 	rm -rf $(APP_NAME)
-	rm -rf dist
+	rm -rf dist coverage packagecover.out
 	@$(MAKE) -C client/cli/go clean
 
 clean_vendor:
