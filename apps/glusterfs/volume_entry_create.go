@@ -41,7 +41,7 @@ func (v *VolumeEntry) createVolume(db *bolt.DB,
 
 	// Get all brick hosts
 	stringset := utils.NewStringSet()
-	err = db.View(func(tx *bolt.Tx) error {
+	if err := db.View(func(tx *bolt.Tx) error {
 		cluster, err := NewClusterEntryFromId(tx, v.Info.Cluster)
 		if err != nil {
 			return err
@@ -54,7 +54,9 @@ func (v *VolumeEntry) createVolume(db *bolt.DB,
 			stringset.Add(node.StorageHostName())
 		}
 		return err
-	})
+	}); err != nil {
+		return err
+	}
 
 	hosts := stringset.Strings()
 	v.Info.Mount.GlusterFS.Hosts = hosts
