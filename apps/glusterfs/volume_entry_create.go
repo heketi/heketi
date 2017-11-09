@@ -34,8 +34,7 @@ func (v *VolumeEntry) createVolume(db *bolt.DB,
 	}
 
 	// Create the volume
-	_, err = executor.VolumeCreate(host, vr)
-	if err != nil {
+	if _, err := executor.VolumeCreate(host, vr); err != nil {
 		return err
 	}
 
