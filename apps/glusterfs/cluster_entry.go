@@ -211,7 +211,5 @@ func addBlockFileFlagsInClusterEntry(tx *bolt.Tx) error {
 	}
 
 	entry.Value = "yes"
-	err = entry.Save(tx)
-
-	return nil
+	return entry.Save(tx)
 }
