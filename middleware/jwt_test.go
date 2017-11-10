@@ -10,18 +10,21 @@
 package middleware
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/hex"
-	jwt "github.com/dgrijalva/jwt-go"
-	"github.com/gorilla/context"
-	"github.com/heketi/heketi/pkg/utils"
-	"github.com/heketi/tests"
-	"github.com/urfave/negroni"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/gorilla/context"
+	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/tests"
+	"github.com/urfave/negroni"
 )
 
 func TestNewJwtAuth(t *testing.T) {
@@ -525,4 +528,78 @@ func TestJwtInvalidKeys(t *testing.T) {
 	s, err = utils.GetStringFromResponse(r)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, strings.Contains(s, "signature is invalid"))
+}
+
+// TestJwtWrongSigningMethod tests the error condition triggered
+// by the use of any signing method other than HMAC + SHA256
+// since that is the only signing method heketi supports.
+// The content is a _valid_ jwt, just not one heketi can accept.
+func TestJwtWrongSigningMethod(t *testing.T) {
+	// Setup jwt
+	c := &JwtAuthConfig{}
+	c.Admin.PrivateKey = "Key"
+	c.User.PrivateKey = "UserKey"
+	j := NewJwtAuth(c)
+	tests.Assert(t, j != nil, "NewJwtAuth failed")
+
+	// Setup middleware framework
+	n := negroni.New(j)
+	tests.Assert(t, n != nil, "negroni.New failed")
+
+	// Create a simple middleware to check if it was called
+	called := false
+	mw := func(rw http.ResponseWriter, r *http.Request) {
+		data := context.Get(r, "jwt")
+		tests.Assert(t, data != nil, "context.Get failed")
+
+		token := data.(*jwt.Token)
+		claims := token.Claims.(jwt.MapClaims)
+		tests.Assert(t, claims["iss"] == "admin",
+			`expected claims["iss"] == "admin", got:`, claims["iss"])
+
+		called = true
+
+		rw.WriteHeader(http.StatusOK)
+	}
+	n.UseHandlerFunc(mw)
+
+	// Create test server
+	ts := httptest.NewServer(n)
+
+	// Instead of creating a token with the H256 suffix (HMAC+SHA256)
+	// we use SigningMethodPS256 (RSASSA-PSS) for no particular reason
+	// other than its not H256.
+	token := jwt.NewWithClaims(jwt.SigningMethodPS256, jwt.MapClaims{
+		// Set issuer
+		"iss": "admin",
+
+		// Set issued at time
+		"iat": time.Now().Unix(),
+
+		// Set expiration
+		"exp": time.Now().Add(time.Second * 10).Unix(),
+	})
+
+	// Setup pre-req bits needed to make our PS256 valid.
+	// Should we use a fake source of randomness instead of real
+	// rand.Reader here?
+	pk, err := rsa.GenerateKey(rand.Reader, 256*2)
+	tests.Assert(t, err == nil, "rsa.GenerateKey failed:", err)
+	tokenString, err := token.SignedString(pk)
+	tests.Assert(t, err == nil, "token.SignedString failed:", err)
+
+	// Setup header
+	req, err := http.NewRequest("GET", ts.URL, nil)
+	tests.Assert(t, err == nil, "http.NewRequest failed:", err)
+
+	// confirm that when we pass this token to the server it
+	// fails with an error message that says the signing method
+	// we provided is unexpected.
+	req.Header.Set("Authorization", "bearer "+tokenString)
+	r, err := http.DefaultClient.Do(req)
+	tests.Assert(t, err == nil, "http.DefaultClient failed:", err)
+	tests.Assert(t, r.StatusCode != 0)
+	s, err := utils.GetStringFromResponse(r)
+	tests.Assert(t, strings.Contains(s, "Unexpected signing method"),
+		`expected s to contain "Unexpected signing method", got:`, s)
 }
