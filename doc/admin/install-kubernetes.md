@@ -81,7 +81,7 @@ Lastly, set an environment variable for the Heketi CLI client so that it knows h
 
 `export HEKETI_CLI_SERVER=http://localhost:57598`
 
-* Next we are going to provide Heketi with the information about the GlusterFS cluster it is to manage. We provide this information via [a topology file](https://github.com/heketi/heketi/wiki/Setting-up-the-topology). There is a sample topology file within the repo you cloned called topology-sample.json. Topologies primarily specify what Kubernetes Nodes the GlusterFS containers are to run on as well as the corresponding available raw block device for each of the nodes. 
+* Next we are going to provide Heketi with the information about the GlusterFS cluster it is to manage. We provide this information via [a topology file](./topology.md). There is a sample topology file within the repo you cloned called topology-sample.json. Topologies primarily specify what Kubernetes Nodes the GlusterFS containers are to run on as well as the corresponding available raw block device for each of the nodes.
 
 > NOTE: Make sure that `hostnames/manage` points to the exact name as shown under `kubectl get nodes`, and `hostnames/storage` is the ip address of the storage network.
 

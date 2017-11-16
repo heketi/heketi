@@ -96,7 +96,7 @@ It should return:
 Hello from Heketi
 ```
 
-Register your [Topology](Setting-up-the-topology) with the bootstrap Heketi:
+Register your [Topology](./topology.md) with the bootstrap Heketi:
 
 ```
 $ heketi-cli -s http://<address to deploy-heketi service> topology load --json=<topology file>
