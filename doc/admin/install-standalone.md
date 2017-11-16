@@ -32,6 +32,3 @@ Heketi v1.0.1
 
 ## Installing as a container
 You can also install Heketi as a container.  Please see https://hub.docker.com/r/heketi/heketi for more information
-
-## Next
-Please visit [Running the server](Running-the-server)

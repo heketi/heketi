@@ -5,7 +5,8 @@ Before informing Heketi of the topology of the data center, you need to determin
 
 You also need to determine which nodes would constitute a cluster.  Heketi supports multiple GlusterFS clusters, which gives cloud services the option of specifying a set of clusters where a volume must be created.  This provides cloud services and administrators the option of creating SSD, SAS, SATA, or any other type of cluster which provide a specific quality of service to users.
 
-In the [demo](Demo), the topology is setup of a single cluster composed of four nodes across two zones.
+In the [demo](http://github.com/heketi/heketi/wiki/Demo),
+the topology is setup of a single cluster composed of four nodes across two zones.
 
 # Topology setup
 Cloud services can provide their own method of informing Heketi of the topology by using the REST API.  For simplicity, the [heketi-cli](heketi-cli) client can be use as an example of how to interact with Heketi.
@@ -35,5 +36,5 @@ An example of a topology file is available in the [demo](https://github.com/heke
 An example is available [client/cli/go/topology-sample.json](https://github.com/heketi/heketi/blob/master/client/cli/go/topology-sample.json)
 
 # Next
-[Create a volume](Create-a-volume)
+[Create a volume](./volume.md)
 

@@ -122,4 +122,4 @@ $ heketi-cli --server http://<server:port> --user <user> --secret <secret> clust
 ```
 
 # Next
-Please see [Topology Setup](Setting-up-the-topology)
+Please see [Topology Setup](./topology.md)

@@ -1,5 +1,6 @@
 # Example
-An example of the usage workflow can be seen by visiting the [Demo](Demo).
+An example of the usage workflow can be seen by visiting
+the [Demo](http://github.com/heketi/heketi/wiki/Demo).
 
 # Requirements
 Heketi requires ssh access to the nodes that it will manage.  For that reason, Heketi has the following requirements:
