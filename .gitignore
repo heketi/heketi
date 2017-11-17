@@ -48,6 +48,8 @@ log
 .vscode
 debug
 
+coverage
+packagecover.out
 .coverage
 .tox
 *.log
