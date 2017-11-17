@@ -5,7 +5,8 @@ Before starting the service for the first time, you need to setup the configurat
 The config file has information required to run the Heketi server.  The config file must be in JSON format with the following settings:
 
 * port: _string_, Heketi REST service port number
-* use_auth: _bool_, Enable JWT Authentication.  See [API/Authentication](https://github.com/heketi/heketi/wiki/API#authentication)
+* use_auth: _bool_, Enable JWT Authentication. For details,
+  refer to the [API Authentication Model](../api/api.md#authentication-model)
 * jwt: _map_, JWT Authentication settings
     * admin: _map_, Settings for the Heketi administrator
         * key: _string_, Shared secret

@@ -1,4 +1,4 @@
-To create a volume you can use the [Volume Create API](https://github.com/heketi/heketi/wiki/API#volume_create) or the command line client.
+To create a volume you can use the [Volume Create API](../api/api.md#create-a-volume) or the command line client.
 
 From the command line client, you can type the following to create a 1TB volume with replica 3 durability:
 
