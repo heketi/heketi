@@ -1,33 +1,33 @@
 # Contents
 * [Overview](#overview)
 * [Development](#development)
-* [Authentication Model](#authentication)
-* [Asynchronous Operations](#async)
+* [Authentication Model](#authentication-model)
+* [Asynchronous Operations](#asynchronous-operations)
 * [API](#api)
     * [Clusters](#clusters)
-        * [Create Cluster](#cluster_create)
-        * [Cluster Information](#cluster_info)
-        * [List Clusters](#cluster_list)
-        * [Delete Cluster](#cluster_delete)
+        * [Create Cluster](#create-cluster)
+        * [Cluster Information](#cluster-information)
+        * [List Clusters](#list-clusters)
+        * [Delete Cluster](#delete-cluster)
     * [Nodes](#nodes)
-        * [Add node](#node_add)
-        * [Node Information](#node_info)
-        * [Delete node](#node_delete)
+        * [Add node](#add-node)
+        * [Node Information](#node-information)
+        * [Delete node](#delete-node)
     * [Devices](#devices)
-        * [Add device](#device_add)
-        * [Device Information](#device_info)
-        * [Delete device](#device_delete)
+        * [Add device](#add-device)
+        * [Device Information](#device-information)
+        * [Delete device](#delete-device)
     * [Volumes](#volumes)
-        * [Create a Volume](#volume_create)
-        * [Volume Information](#volume_info)
-        * [Expand a Volume](#volume_expand)
-        * [Volume Delete](#volume_delete)
-        * [Volumes List](#volume_list)
+        * [Create a Volume](#create-a-volume)
+        * [Volume Information](#volume-information)
+        * [Expand a Volume](#expand-a-volume)
+        * [Delete Volume](#delete-volume)
+        * [List Volumes](#list-volumes)
 
-# Overview <a name="overview" />
+# Overview
 Heketi provides a RESTful management interface which can be used to manage the life cycle of GlusterFS volumes.  The goal of Heketi is to provide a simple way to create, list, and delete GlusterFS volumes in multiple storage clusters.  Heketi intelligently will manage the allocation, creation, and deletion of bricks throughout the disks in the cluster.  Heketi first needs to learn about the topologies of the clusters before satisfying any requests.  It organizes data resources into the following: Clusters, contain Nodes, which contain Devices, which will contain Bricks.
 
-# Development <a name="development" />
+# Development
 To communicate with the Heketi service, you will need to either use a client library or directly communicate with the REST endpoints.  The following client libraries are supported: Go, Python
 
 ## Go Client Library
@@ -72,7 +72,7 @@ The simplest way to development a client for Heketi is to run the Heketi service
 Hello from Heketi
 ```
 
-# Authentication Model <a name="authentication" />
+# Authentication Model
 Heketi uses a stateless authentication model based on the JSON Web Token (JWT) standard as proposed to the [IETF](https://tools.ietf.org/html/draft-ietf-oauth-json-web-token-25).  As specified by the specification, a JWT token has a set of _claims_ which can be added to a token to determine its correctness.  Heketi requires the use of the following standard claims:
 
 * [_iss_](http://self-issued.info/docs/draft-ietf-oauth-json-web-token.html#rfc.section.4.1.1): Issuer.  Heketi supports two types of issuers:
@@ -170,7 +170,7 @@ Copy this example token and decode it in [jwt.io](http://jwt.io) by pasting it i
     * [Ruby JWT client](https://github.com/jwt/ruby-jwt)
 
 
-# Asynchronous Operations <a name="async" />
+# Asynchronous Operations
 Some operations may take a long time to process.  For these operations, Heketi will return [202 Accepted](http://httpstatus.es/202) with a temporary resource set inside the `Location` header.  A client can then issue a _GET_ on this temporary resource and receive the following:
 
 * **HTTP Status 200**: Request is still in progress. _We may decide to add some JSON ETA data here in future releases_.
@@ -181,7 +181,7 @@ Some operations may take a long time to process.  For these operations, Heketi w
 * **HTTP Status [204 Done](http://httpstatus.es/204)**: Request has been completed successfully. There is no data to return.
 
 
-# API <a name="api" />
+# API
 Heketi uses JSON as its data serialization format. XML is not supported.
 
 Most APIs use use the following methods on the URIs:
@@ -194,10 +194,10 @@ Most APIs use use the following methods on the URIs:
 
 Before servicing any requests, Heketi must first learn the topology of the clusters.  Once it knows which nodes and disks to use, it can then service requests.
 
-# Clusters <a name="clusters" />
+# Clusters
 Heketi is able to manage multiple GlusterFS clusters, each composed of a set of storage nodes.  Once a cluster has been created, nodes can then be added to it for Heketi to manage.  A GlusterFS cluster is a set of nodes participating as a trusted storage pool.  Volumes do not cross cluster boundaries.
 
-### Create Cluster <a name="cluster_create" />
+### Create Cluster
 * **Method:** _POST_  
 * **Endpoint**:`/clusters`
 * **Content-Type**: `application/json`
@@ -220,7 +220,7 @@ Heketi is able to manage multiple GlusterFS clusters, each composed of a set of 
 }
 ```
 
-### Cluster Information <a name="cluster_info" />
+### Cluster Information
 * **Method:** _GET_  
 * **Endpoint**:`/clusters/{id}`
 * **Response HTTP Status Code**: 200
@@ -245,7 +245,7 @@ Heketi is able to manage multiple GlusterFS clusters, each composed of a set of 
 }
 ```
 
-### List Clusters <a name="cluster_list" />
+### List Clusters
 * **Method:** _GET_  
 * **Endpoint**:`/clusters`
 * **Response HTTP Status Code**: 200
@@ -263,7 +263,7 @@ Heketi is able to manage multiple GlusterFS clusters, each composed of a set of 
 }
 ```
 
-### Delete Cluster <a name="cluster_delete" />
+### Delete Cluster
 * **Method:** _DELETE_  
 * **Endpoint**:`/clusters/{id}`
 * **Response HTTP Status Code**: 200
@@ -271,10 +271,10 @@ Heketi is able to manage multiple GlusterFS clusters, each composed of a set of 
 * **JSON Request**: None
 * **JSON Response**: None
 
-## Nodes <a name="nodes" />
+## Nodes
 The _node_ RESTful endpoint is used to register a storage system for Heketi to manage.  Devices in this node can then be registered.
 
-### Add Node <a name="node_add" />
+### Add Node
 * **Method:** _POST_  
 * **Endpoint**:`/nodes`
 * **Content-Type**: `application/json`
@@ -306,7 +306,7 @@ The _node_ RESTful endpoint is used to register a storage system for Heketi to m
 }
 ```
 
-### Node Information <a name="node_info" />
+### Node Information
 * **Method:** _GET_
 * **Endpoint**:`/nodes/{id}`
 * **Response HTTP Status Code**: 200
@@ -360,17 +360,17 @@ The _node_ RESTful endpoint is used to register a storage system for Heketi to m
 }
 ```
 
-### Delete Node <a name="node_delete" />
+### Delete Node
 * **Method:** _DELETE_  
 * **Endpoint**:`/nodes/{id}`
 * **Response HTTP Status Code**: 202, See [Asynchronous Operations](#async)
 * **Response HTTP Status Code**: 409, Node contains devices
 * **Temporary Resource Response HTTP Status Code**: 204
 
-## Devices <a name="devices" />
+## Devices
 The `devices` endpoint allows management of raw devices in the cluster.
 
-### Add Device <a name="device_add" />
+### Add Device
 * **Method:** _POST_  
 * **Endpoint**:`/devices`
 * **Content-Type**: `application/json`
@@ -388,7 +388,7 @@ The `devices` endpoint allows management of raw devices in the cluster.
 }
 ```
 
-### Device Information <a name="device_info" />
+### Device Information
 * **Method:** _GET_
 * **Endpoint**:`/devices/{id}`
 * **Response HTTP Status Code**: 200
@@ -433,18 +433,18 @@ The `devices` endpoint allows management of raw devices in the cluster.
 }
 ```
 
-### Device Delete <a name="device_delete" />
+### Delete Device
 * **Method:** _DELETE_  
 * **Endpoint**:`/devices/{id}`
 * **Response HTTP Status Code**: 202, See [Asynchronous Operations](#async)
 * **Response HTTP Status Code**: 409, Device contains bricks
 * **Temporary Resource Response HTTP Status Code**: 204
 
-## Volumes <a name="volumes" />
+## Volumes
 These APIs inform Heketi to create a network file system of a certain size available to be used by clients.
 
 
-### Create a Volume <a name="volume_create" />
+### Create a Volume
 * **Method:** _POST_  
 * **Endpoint**:`/volumes`
 * **Content-Type**: `application/json`
@@ -488,7 +488,7 @@ These APIs inform Heketi to create a network file system of a certain size avail
 ```
 
 
-### Volume Information <a name="volume_info" />
+### Volume Information
 * **Method:** _GET_
 * **Endpoint**:`/volumes/{id}`
 * **Response HTTP Status Code**: 200
@@ -554,7 +554,7 @@ These APIs inform Heketi to create a network file system of a certain size avail
 }
 ```
 
-### Expand a Volume <a name="volume_expand" />
+### Expand a Volume
 New volume size will be reflected in the volume information.
 * **Method:** _POST_  
 * **Endpoint**:`/volumes/{id}/expand`
@@ -568,14 +568,14 @@ New volume size will be reflected in the volume information.
 { "expand_size" : 1000000 }
 ```
 
-### Volume Delete <a name="volume_delete" />
+### Delete Volume
 When a volume is deleted, Heketi will first stop, then destroy the volume.  Once destroyed, it will remove the allocated bricks and free the allocated space.
 * **Method:** _DELETE_  
 * **Endpoint**:`/volumes/{id}`
 * **Response HTTP Status Code**: 202, See [Asynchronous Operations](#async)
 * **Temporary Resource Response HTTP Status Code**: 204
 
-### Volume List <a name="volume_list" />
+### List Volumes
 * **Method:** _GET_  
 * **Endpoint**:`/volumes`
 * **Response HTTP Status Code**: 200
