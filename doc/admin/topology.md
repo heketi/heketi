@@ -30,10 +30,11 @@ Where _topology_ is a file in JSON format describing the clusters, nodes, and di
                 * node: _map_, Same map as [Node Add](https://github.com/heketi/heketi/wiki/API#node_add) except there is no need to supply the cluster id.
                 * devices: _array of strings_, Name of each disk to be added, which should be raw block storage, and not a file system.
 
-An example of a topology file is available in the [demo](https://github.com/heketi/vagrant-heketi/blob/master/standalone/roles/heketi/files/topology_virtualbox.json).  Also there is a description of the topology file during the [Gluster.Next talk](https://www.youtube.com/watch?v=iBFfHv4bne8&t=2425).
+## Example
+An example topology file is available at
+[client/cli/go/topology-sample.json](https://github.com/heketi/heketi/blob/master/client/cli/go/topology-sample.json)
+in the Heketi repository.
 
-# Example
-An example is available [client/cli/go/topology-sample.json](https://github.com/heketi/heketi/blob/master/client/cli/go/topology-sample.json)
 
 # Next
 [Create a volume](./volume.md)
