@@ -89,7 +89,7 @@ test: vendor glide.lock
 	./test.sh $(TESTOPTIONS)
 
 test-functional: vendor glide.lock
-	$(MAKE) -C tests/functional test
+	$(MAKE) -C test/functional test
 
 clean:
 	@echo Cleaning Workspace...
