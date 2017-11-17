@@ -9,7 +9,7 @@ In the [demo](http://github.com/heketi/heketi/wiki/Demo),
 the topology is setup of a single cluster composed of four nodes across two zones.
 
 # Topology setup
-Cloud services can provide their own method of informing Heketi of the topology by using the REST API.  For simplicity, the [heketi-cli](heketi-cli) client can be use as an example of how to interact with Heketi.
+Cloud services can provide their own method of informing Heketi of the topology by using the REST API.  For simplicity, the heketi-cli client can be used as an example of how to interact with Heketi.
 
 ## Loading a topology with heketi-cli
 You can use the command line client to create a cluster, then add nodes to that cluster, then add disks to each one of those nodes.  This process can be quite tedious from the command line.  For that reason, the command line client supports the option of loading this information to Heketi using a _topology_ file, which describes clusters, their nodes and disks on each node.
