@@ -8,6 +8,7 @@ APP_NAME := heketi-cli
 SHA := $(shell git rev-parse --short HEAD)
 BRANCH := $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
 VER := $(shell git describe)
+TAG := $(shell git tag --points-at HEAD 'v[0-9].[0-9].[0-9]' | tail -n1)
 GOARCH := $(shell go env GOARCH)
 GOOS := $(shell go env GOOS)
 GOHOSTARCH := $(shell go env GOHOSTARCH)
@@ -23,7 +24,11 @@ DIR=.
 ifeq (master,$(BRANCH))
   VERSION = $(VER)
 else
+ifeq ($(VER),$(TAG))
+  VERSION = $(VER)
+else
   VERSION = $(VER)-$(BRANCH)
+endif
 endif
 
 # Go setup
