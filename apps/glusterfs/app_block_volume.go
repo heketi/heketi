@@ -28,6 +28,13 @@ func (a *App) BlockVolumeCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	err = msg.Validate()
+	if err != nil {
+		http.Error(w, "validation failed: "+err.Error(), http.StatusBadRequest)
+		logger.LogError("validation failed: " + err.Error())
+		return
+	}
+
 	if msg.Size < 1 {
 		http.Error(w, "Invalid volume size", http.StatusBadRequest)
 		logger.LogError("Invalid volume size")

@@ -34,7 +34,7 @@ func (s *SshExecutor) DeviceSetup(host, device, vgid string) (d *executors.Devic
 
 	// Setup commands
 	commands := []string{
-		fmt.Sprintf("pvcreate --metadatasize=128M --dataalignment=256K %v", device),
+		fmt.Sprintf("pvcreate --metadatasize=128M --dataalignment=256K '%v'", device),
 		fmt.Sprintf("vgcreate %v %v", s.vgName(vgid), device),
 	}
 
@@ -69,7 +69,7 @@ func (s *SshExecutor) DeviceTeardown(host, device, vgid string) error {
 	// Setup commands
 	commands := []string{
 		fmt.Sprintf("vgremove %v", s.vgName(vgid)),
-		fmt.Sprintf("pvremove %v", device),
+		fmt.Sprintf("pvremove '%v'", device),
 	}
 
 	// Execute command

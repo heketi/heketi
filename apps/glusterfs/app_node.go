@@ -28,6 +28,13 @@ func (a *App) NodeAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	err = msg.Validate()
+	if err != nil {
+		http.Error(w, "validation failed: "+err.Error(), http.StatusBadRequest)
+		logger.LogError("validation failed: " + err.Error())
+		return
+	}
+
 	// Check information in JSON request
 	if len(msg.Hostnames.Manage) == 0 {
 		http.Error(w, "Manage hostname missing", http.StatusBadRequest)
@@ -338,6 +345,12 @@ func (a *App) NodeSetState(w http.ResponseWriter, r *http.Request) {
 	err := utils.GetJsonFromRequest(r, &msg)
 	if err != nil {
 		http.Error(w, "request unable to be parsed", 422)
+		return
+	}
+	err = msg.Validate()
+	if err != nil {
+		http.Error(w, "validation failed: "+err.Error(), http.StatusBadRequest)
+		logger.LogError("validation failed: " + err.Error())
 		return
 	}
 
