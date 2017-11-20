@@ -23,9 +23,6 @@ endif
 GLIDEPATH := $(shell command -v glide 2> /dev/null)
 DIR=.
 
-ifdef APP_SUFFIX
-  VERSION = $(VER)-$(subst /,-,$(APP_SUFFIX))
-else
 ifeq (master,$(BRANCH))
   VERSION = $(VER)
 else
@@ -33,7 +30,6 @@ ifeq ($(VER),$(TAG))
   VERSION = $(VER)
 else
   VERSION = $(VER)-$(BRANCH)
-endif
 endif
 endif
 

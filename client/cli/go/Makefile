@@ -20,14 +20,10 @@ endif
 endif
 DIR=.
 
-ifdef APP_SUFFIX
-  VERSION = $(VER)-$(subst /,-,$(APP_SUFFIX))
-else
 ifeq (master,$(BRANCH))
   VERSION = $(VER)
 else
   VERSION = $(VER)-$(BRANCH)
-endif
 endif
 
 # Go setup
