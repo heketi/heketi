@@ -35,7 +35,7 @@ const (
 	HeketiStorageEndpointName = "heketi-storage-endpoints"
 	HeketiStorageSecretName   = "heketi-storage-secret"
 	HeketiStorageVolTagName   = "heketi-storage"
-	HeketiServiceAccount			= "heketi-storage-service-account"
+	HeketiServiceAccount      = "heketi-storage-service-account"
 
 	HeketiStorageVolumeSize    = 2
 	HeketiStorageVolumeSizeStr = "2Gi"
