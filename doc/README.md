@@ -11,6 +11,7 @@ volumes.
 * [Heketi API](./api/api.md)
 * [Adminstration](./admin/readme.md)
 * [Troubleshooting Guide](./troubleshooting.md)
+* [Contributing to Heketi](./contributing.md)
 
 
 As with many projects our documentation is a work in progress. If you
