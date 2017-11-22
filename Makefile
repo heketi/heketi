@@ -88,6 +88,9 @@ run: server
 test: vendor glide.lock
 	./test.sh $(TESTOPTIONS)
 
+test-functional: vendor glide.lock
+	$(MAKE) -C tests/functional test
+
 clean:
 	@echo Cleaning Workspace...
 	rm -rf $(APP_NAME)
@@ -149,4 +152,5 @@ release: deps_tarball darwin_amd64_dist linux_arm64_dist linux_arm_dist linux_am
 
 .PHONY: server client test clean name run version release \
 	darwin_amd64_dist linux_arm_dist linux_amd64_dist linux_arm64_dist \
-	heketi clean_vendor deps_tarball all dist
+	heketi clean_vendor deps_tarball all dist \
+	test-functional
