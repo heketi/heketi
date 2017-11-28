@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 GOPACKAGES="$(go list ./... | grep -v vendor)"
 # no special options, exec to go test w/ all pkgs
