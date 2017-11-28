@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # This "test" exists merely to exercise the test "framework"
 
