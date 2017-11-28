@@ -1,0 +1,614 @@
+
+swagger: "2.0"
+
+info:
+  version: "5.0"
+  title: Heketi API
+  description: >
+    The goal of Heketi is to provide a simple way to create, list, and
+    delete GlusterFS volumes in multiple storage clusters. Heketi will
+    manage the allocation, creation, and deletion of bricks throughout
+    the disks in the cluster. Heketi first needs to learn about the
+    topologies of the clusters before satisfying any requests. It
+    organizes data resources into the following:
+    Clusters, contain Nodes, which contain Devices, which are allocated
+    to Bricks. Volumes are built out of Bricks.
+
+    Except as where otherwise noted the Heketi APIs require
+    clients to perform
+    [JWT Authentication](./api.md#authentication-model)
+    to function.
+
+schemes:
+  - http
+
+consumes:
+  - application/json
+
+
+securityDefinitions:
+  JWTAuth:
+    type: apiKey
+    in: header
+    name: Authorization
+    description: >
+      Most Heketi operations require authentication based on the
+      JSON Web Token standard. Please refer to the
+      [Heketi Authentication Model](./api.md#authentication-model)
+      for more complete details on how authentication is performed
+      in Heketi.
+
+
+security:
+  - JWTAuth: []
+
+
+definitions:
+  Cluster:
+    properties:
+      id:
+        type: string
+        description: Heketi internal UUID
+        example: "67e267ea403dfcdf80731165b300d1ca"
+      nodes:
+        type: array
+        items:
+          type: string
+        example: ["78696abbba372659effa", "799029acaa867a66934"]
+      volumes:
+        type: array
+        items:
+          type: string
+        example: ["aa927734601288237463aa", "70927734601288237463aa"]
+  ClusterList:
+    properties:
+      clusters:
+        type: array
+        items:
+          type: string
+        example: ["67e267ea403dfcdf80731165b300d1ca", "ff6667ea403dfcdf80731165b300d1ca"]
+  Brick:
+    properties:
+      id:
+        type: string
+        description: UUID of brick
+        example: "aaaaaad2e40df882180479024ac4c24c8"
+      device:
+        type: string
+        description: UUID of device associated with brick
+        example: "7168bd33a5d9a8bd1dd5b5c33f5f5f78"
+      node:
+        type: string
+        description: UUID of node associated with brick
+        example: "7b14a1d8843f92bfb3ef56d151f00014"
+      path:
+        type: string
+        description: Path of brick on the node
+        example: "/gluster/brick_bbbbbbd2e40df882180479024ac4c24c8/brick"
+      size:
+        type: integer
+        description: Size of brick in KB
+        format: uint64
+        example: 0
+  NewDevice:
+    properties:
+      name:
+        type: string
+        description: Name of device
+        example: "/dev/sdb"
+      node:
+        type: string
+        description: UUID of node which the device belongs to
+        example: "88ddb76ad403dfcdf80731165b300d1ca"
+  Device:
+    properties:
+      name:
+        type: string
+        description: Name of device
+        example: "/dev/sdh"
+      id:
+        type: string
+        description: UUID of device
+        example: "49a9bd2e40df882180479024ac4c24c8"
+      storage:
+        properties:
+          total:
+            type: integer
+            format: uint64
+            description: Total storage in KB
+            example: 2000000
+          free:
+            type: integer
+            format: uint64
+            description: Available storage in KB
+            example: 2000000
+          used:
+            type: integer
+            format: uint64
+            description: Allocated storage in KB
+            example: 0
+        readOnly: true
+      bricks:
+        type: array
+        items:
+          $ref: "#/definitions/Brick"
+        readOnly: true
+  Node:
+    properties:
+      zone:
+        type: integer
+        description: Failure Domain ID
+        example: 1
+        minimum: 1
+      id:
+        type: string
+        description: UUID for node
+        example: "88ddb76ad403dfcdf80731165b300d1ca"
+        readOnly: true
+      cluster:
+        type: string
+        description: UUID of cluster the node is part of
+        example: "67e267ea403dfcdf80731165b300d1ca"
+      hostnames:
+        properties:
+          manage:
+            type: array
+            items:
+              type: string
+            description: >
+              A list of hostnames for management access to the node.
+
+              * In SSH configurations these names/addresses will be used
+                as the remote ssh host. On creation, It is _highly_ recommended
+                to use hostnames instead of IP adddresses.
+              * In Kubernetes and OpenShift configurations this must be
+                the name of the node running the gluster pod as shown in
+                `kubectl get nodes`.
+            maxItems: 1
+            example: ["node1-manage.gluster.lab.com"]
+          storage:
+            type: array
+            items:
+              type: string
+            description: >
+              A list of hostnames for storage access to the node.
+
+              The storage network addesses will be used to create and access
+              the volume. It is _highly_ recommended to use hostnames instead
+              of IP addresses.
+            maxItems: 1
+            example: ["node1-storage.gluster.lab.com"]
+      devices:
+        type: array
+        items:
+          $ref: "#/definitions/Device"
+        readOnly: true
+  Durability:
+    required:
+      - type
+    properties:
+      type:
+        type: string
+        enum:
+          - none
+          - replicate
+          - disperse
+        description: Durability type
+      replicate:
+        properties:
+          replica:
+            type: integer
+            description: Number of replica per brick
+            example: 3
+      disperse:
+        properties:
+          data:
+            type: integer
+            description: Number of dispersed data volumes
+            example: 4
+          redundancy:
+            type: integer
+            description: Level of redundancy
+            example: 2
+    description: |
+      The replicate object is relevant if the type is none or
+      replicate. The disperse object is relevant if the type is
+      disperse.
+
+      When creating a new volume, if durability is omitted type
+      will default to none.
+  VolumeList:
+    properties:
+      volumes:
+        type: array
+        items:
+          type: string
+        example: ["cd16b16aa69b933772b5659a23fe91c9", "e0f6bf6aa63b333772b5653a23fe3fe3"]
+  CommonVolume:
+    properties:
+      name:
+        type: string
+        description: Name of volume
+        example: "vol_70927734601288237463aa"
+      size:
+        type: integer
+        description: Size of volume in GB
+        example: 123456
+      durability:
+        $ref: "#/definitions/Durability"
+      snapshot:
+        properties:
+          enable:
+            type: boolean
+            description: Snapshot support requested for this volume
+            example: true
+          factor:
+            type: number
+            format: float
+            description: Snapshot reserved space factor if enabled
+            example: 1.2
+        description: Snapshot configuration. If omitted snapshots are disabled
+  NewVolume:
+    allOf:
+      - $ref: "#/definitions/CommonVolume"
+      - required:
+          - size
+        properties:
+          clusters:
+            type: array
+            items:
+              type: string
+            description: |
+              UUIDs of clusters where the volume should be created.
+              If omitted, each cluster will be checked until one is found
+              that can satisfy the request.
+            example: ["2f84c71240f43e16808bc64b05ad0d06", "5a2c52d04075373e80dbfa1e291ba0de"]
+  Volume:
+    allOf:
+      - $ref: "#/definitions/CommonVolume"
+      - properties:
+          id:
+            type: string
+            description: Volume UUID
+            example: "cd16b16aa69b933772b5659a23fe91c9"
+            readOnly: true
+          cluster:
+            type: string
+            description: UUID of cluster which contains this volume
+            example: "294b915aff5a811c53e1e476369b6fcd"
+          mount:
+            properties:
+              glusterfs:
+                properties:
+                  device:
+                    type: string
+                    description: Mount point used for native GlusterFS FUSE mount
+                    example: "192.168.1.103:vol_70927734601288237463aa"
+                  options:
+                    properties:
+                      "backup-volfile-servers":
+                        type: string
+                        description: |
+                            List of backup volfile servers
+                            It is up to the calling service to determine which of
+                            the volfile servers to use in the actual mount command.
+                        example: "192.168.1.103,192.168.101"
+          bricks:
+            type: array
+            items:
+              $ref: "#/definitions/Brick"
+            description: A list of bricks that make up the volume
+  ExpandVolume:
+    properties:
+      expand_size:
+        type: integer
+        format: uint64
+        description: Amount of storage to add to the existing volume (in GB)
+        example: 1000000
+
+
+parameters:
+  clusterId:
+    name: clusterId
+    in: path
+    required: true
+    description: Cluster UUID
+    type: string
+  nodeId:
+    name: nodeId
+    in: path
+    required: true
+    description: Node UUID
+    type: string
+  deviceId:
+    name: deviceId
+    in: path
+    required: true
+    description: Device UUID
+    type: string
+  volumeId:
+    name: volumeId
+    in: path
+    required: true
+    description: Volume UUID
+    type: string
+  queueId:
+    name: queueId
+    in: path
+    required: true
+    description: Temporary resource UUID
+    type: string
+
+
+responses:
+  AsyncAcceptedResponse:
+    description: >
+      The request was accepted for processing.
+      Please see the [Asynchronous Operations](./api.md#asynchronous-operations)
+      discusssion in the Heketi documentation for more details.
+    headers:
+      Location:
+        type: string
+        format: URL
+        description: URL of temporary resource
+
+tags:
+  - name: Clusters
+    description: >
+      APIs to manage storage clusters.
+
+      Heketi is able to manage multiple GlusterFS clusters, each
+      composed of a set of storage nodes. Once a cluster has been
+      created, nodes can then be added to it for Heketi to manage.
+      A GlusterFS cluster is a set of nodes participating as a trusted
+      storage pool. Volumes do not cross cluster boundaries.
+  - name: Devices
+    description: >
+      APIs to manage block storage devices.
+  - name: Nodes
+    description: >
+      APIs to manage storage systems.
+
+      Once nodes have been defined devices in this node can
+      be registered.
+  - name: Volumes
+    description: >
+      APIs used to manage glusterfs storage volumes.
+
+
+paths:
+  /clusters:
+    get:
+      summary: List clusters
+      tags:
+        - Clusters
+      responses:
+        "200":
+          description: A listing of cluster ids
+          schema:
+            $ref: "#/definitions/ClusterList"
+    post:
+      summary: Create a cluster
+      tags:
+        - Clusters
+      responses:
+        "201":
+          description: |
+            Cluster created.
+            A new cluster will always have empty node and volume lists.
+          schema:
+            $ref: "#/definitions/Cluster"
+        default:
+          description: Unexpected Error
+  /clusters/{clusterId}:
+    parameters:
+      - $ref: "#/parameters/clusterId"
+    get:
+      summary: Cluster information
+      tags:
+        - Clusters
+      responses:
+        "200":
+          description: Cluster information
+          schema:
+            $ref: "#/definitions/Cluster"
+    delete:
+      summary: Delete a cluster
+      tags:
+        - Clusters
+      responses:
+        "200":
+          description: Cluster deleted
+        "409":
+          description: Cluster contains nodes and may not be deleted
+        default:
+          description: Unexpected Error
+  /nodes:
+    post:
+      summary: Add a node
+      tags:
+        - Nodes
+      parameters:
+        - name: node
+          in: body
+          description: Node to be created
+          schema:
+            $ref: "#/definitions/Node"
+      responses:
+        "202":
+          $ref: "#/responses/AsyncAcceptedResponse"
+        default:
+          description: Unexpected error
+  /nodes/{nodeId}:
+    parameters:
+      - $ref: "#/parameters/nodeId"
+    get:
+      summary: Node information
+      tags:
+        - Nodes
+      responses:
+        "200":
+          description: Node information
+          schema:
+            $ref: "#/definitions/Node"
+        default:
+          description: Unexpected error
+    delete:
+      summary: Delete a node
+      tags:
+        - Nodes
+      responses:
+        "202":
+          $ref: "#/responses/AsyncAcceptedResponse"
+        "409":
+          description: Node contains devices
+        default:
+          description: Unexpected error
+  /devices:
+    post:
+      summary: Add device
+      tags:
+        - Devices
+      parameters:
+        - name: device
+          in: body
+          description: Device to add to node
+          schema:
+            $ref: "#/definitions/NewDevice"
+      responses:
+        "202":
+          $ref: "#/responses/AsyncAcceptedResponse"
+        default:
+          description: Unexpected error
+  /devices/{deviceId}:
+    parameters:
+      - $ref: "#/parameters/deviceId"
+    get:
+      tags:
+        - Devices
+      summary: Device information
+      responses:
+        "200":
+          description: Device information
+          schema:
+            $ref: "#/definitions/Device"
+    delete:
+      summary: Delete device
+      tags:
+        - Devices
+      responses:
+        "202":
+          $ref: "#/responses/AsyncAcceptedResponse"
+        "409":
+          description: Node contains bricks
+        default:
+          description: Unexpected error
+  /volumes:
+    get:
+      summary: List volumes
+      tags:
+        - Volumes
+      responses:
+        "200":
+          description: A listing of volume IDs
+          schema:
+            $ref: "#/definitions/VolumeList"
+        default:
+          description: Unexpected error
+    post:
+      summary: Create a volume
+      tags:
+        - Volumes
+      parameters:
+        - name: volume
+          in: body
+          description: Volume to create
+          schema:
+            $ref: "#/definitions/NewVolume"
+      responses:
+        "202":
+          $ref: "#/responses/AsyncAcceptedResponse"
+        default:
+          description: Unexpected error
+  /volumes/{volumeId}:
+    parameters:
+      - $ref: "#/parameters/volumeId"
+    get:
+      summary: Volume information
+      tags:
+        - Volumes
+      responses:
+        "200":
+          description: Volume information
+          schema:
+            $ref: "#/definitions/Volume"
+    delete:
+      summary: Delete volume
+      tags:
+        - Volumes
+      responses:
+        "202":
+          $ref: "#/responses/AsyncAcceptedResponse"
+        default:
+          description: Unexpected error
+  /volumes/{volumeId}/expand:
+    parameters:
+      - $ref: "#/parameters/volumeId"
+    post:
+      summary: Expand a volume
+      tags:
+        - Volumes
+      parameters:
+        - name: expand volume
+          in: body
+          schema:
+            $ref: "#/definitions/ExpandVolume"
+      responses:
+        "202":
+          $ref: "#/responses/AsyncAcceptedResponse"
+        default:
+          description: Unexpected error
+  /queue/{queueId}:
+    parameters:
+      - $ref: "#/parameters/queueId"
+    get:
+      summary: Test the status of an asynchronous operation
+      description: |
+        Query the status of a long-running asynchronous operation.
+        Please see the [Asynchronous Operations](./api.md#asynchronous-operations)
+        discussion in the Heketi documentation for more details.
+      tags:
+        - Special
+      responses:
+        "200":
+          description: Request is still in progress.
+          headers:
+            X-Pending:
+              type: boolean
+              description: Always set to true
+        "404":
+          description: Temporary resource requested is not found
+        "500":
+          description: |
+            Request completed and has failed.
+            Body will be filled in with error information
+        "303":
+          description: |
+            Request has been completed successfully.
+            The URL for the resulting is provided in the `Location` header.
+          headers:
+            Location:
+              type: string
+              format: URL
+        "204":
+          description: Request has completed successfully without data
+  /hello:
+    get:
+      summary: Test url
+      description: Plain text test url. Does not require auth.
+      tags:
+        - Special
+      security: []
+      responses:
+        "200":
+          description: A friendly greeting
