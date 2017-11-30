@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # main test runner for heketi
-# Executes all executable scripts under tests dir
+# Executes all executable scripts under test dir
 # in sorted order.
 
 FAILURES=()
@@ -108,8 +108,8 @@ export HEKETI_TEST_SCRIPT_DIR="${SCRIPT_DIR}"
 export HEKETI_TEST_COVERAGE=${coverage}
 
 cd "${SCRIPT_DIR}"
-for tname in $(ls tests | sort) ; do
-	tpath="./tests/${tname}"
+for tname in $(ls test | sort) ; do
+	tpath="./test/${tname}"
 	if [[ ${tpath} =~ .*\.sh$ && -f ${tpath} && -x ${tpath} ]]; then
 		run_test "${tpath}"
 	fi
