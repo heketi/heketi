@@ -21,4 +21,5 @@ Heketi requires ssh access to the nodes that it will manage.  For that reason, H
 * [Running the server](./server.md)
 * [Setting up the topology](./topology.md)
 * [Creating a volume](./volume.md)
+* [Cluster Maintenance](./maintenance.md)
 
