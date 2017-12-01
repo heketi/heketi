@@ -13,21 +13,21 @@ ENV HEKETI_BRANCH="master"
 
 # install dependencies, build and cleanup
 RUN mkdir $BUILD_HOME $GOPATH && \
-    dnf -q -y install glide golang git && \
-    dnf -q -y install make && \
-    dnf -q -y clean all && \
+    dnf -y install glide golang git make && \
+    dnf -y clean all && \
     mkdir -p $GOPATH/src/github.com/heketi && \
     cd $GOPATH/src/github.com/heketi && \
     git clone -b $HEKETI_BRANCH https://github.com/heketi/heketi.git && \
     cd $GOPATH/src/github.com/heketi/heketi && \
-    glide install -v && make && \
+    glide install -v && \
+    make && \
     cp heketi /usr/bin/heketi && \
     cp client/cli/go/heketi-cli /usr/bin/heketi-cli && \
     glide cc && \
     cd && rm -rf $BUILD_HOME && \
-    dnf -q -y remove git glide golang make && \
-    dnf -q -y autoremove && \
-    dnf -q -y clean all
+    dnf -y remove git glide golang && \
+    dnf -y autoremove && \
+    dnf -y clean all
 
 # post install config and volume setup
 ADD ./heketi.json /etc/heketi/heketi.json
