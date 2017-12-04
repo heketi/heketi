@@ -3,6 +3,7 @@
 GOPACKAGES="$(go list ./... | grep -v vendor)"
 # no special options, exec to go test w/ all pkgs
 if [[ ${HEKETI_TEST_EXITFIRST} != "yes" && -z ${HEKETI_TEST_COVERAGE} ]]; then
+	# shellcheck disable=SC2086
 	exec go test ${GOPACKAGES}
 fi
 
@@ -17,6 +18,7 @@ fi
 failed=0
 for gopackage in ${GOPACKAGES}; do
 	echo "--- testing: ${gopackage} ---"
+	# shellcheck disable=SC2086
 	go test ${GOTESTOPTS} "${gopackage}"
 	[ $? -ne 0 ] && ((failed+=1))
 	if [[ -f cover.out ]]; then
