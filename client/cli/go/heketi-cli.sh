@@ -1,4 +1,5 @@
 # bash completion for heketi-cli                           -*- shell-script -*-
+# HEKETI-SKIP-SHELLCHECK
 
 __debug()
 {

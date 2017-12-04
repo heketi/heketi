@@ -1,4 +1,5 @@
 #!/bin/sh
+# FIXME HEKETI-SKIP-SHELLCHECK
 
 TESTS="TestSmokeTest"
 TESTS="TestVolumeNotDeletedWhenNodeIsDown $TESTS"
