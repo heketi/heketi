@@ -11,6 +11,7 @@ package glusterfs
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -59,6 +60,7 @@ type App struct {
 
 // Use for tests only
 func NewApp(configIo io.Reader) *App {
+	var err error
 	app := &App{}
 
 	// Load configuration file
@@ -68,13 +70,17 @@ func NewApp(configIo io.Reader) *App {
 	}
 
 	// Setup loglevel
-	app.setLogLevel(app.conf.Loglevel)
+	err = app.setLogLevel(app.conf.Loglevel)
+	if err != nil {
+		// just log that the log level was bad, it never failed
+		// anything in previous versions
+		logger.Err(err)
+	}
 
 	// Setup asynchronous manager
 	app.asyncManager = rest.NewAsyncHttpManager(ASYNC_ROUTE)
 
 	// Setup executor
-	var err error
 	switch {
 	case app.conf.Executor == "mock":
 		app.xo, err = mockexec.NewMockExecutor()
@@ -174,7 +180,7 @@ func NewApp(configIo io.Reader) *App {
 	return app
 }
 
-func (a *App) setLogLevel(level string) {
+func (a *App) setLogLevel(level string) error {
 	switch level {
 	case "none":
 		logger.SetLevel(utils.LEVEL_NOLOG)
@@ -188,7 +194,10 @@ func (a *App) setLogLevel(level string) {
 		logger.SetLevel(utils.LEVEL_INFO)
 	case "debug":
 		logger.SetLevel(utils.LEVEL_DEBUG)
+	default:
+		return fmt.Errorf("invalid log level: %s", level)
 	}
+	return nil
 }
 
 func (a *App) setFromEnvironmentalVariable() {
@@ -398,6 +407,18 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Method:      "GET",
 			Pattern:     "/db/dump",
 			HandlerFunc: a.DbDump},
+
+		// Logging
+		rest.Route{
+			Name:        "GetLogLevel",
+			Method:      "GET",
+			Pattern:     "/internal/logging",
+			HandlerFunc: a.GetLogLevel},
+		rest.Route{
+			Name:        "SetLogLevel",
+			Method:      "POST",
+			Pattern:     "/internal/logging",
+			HandlerFunc: a.SetLogLevel},
 	}
 
 	// Register all routes from the App
