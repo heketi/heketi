@@ -28,7 +28,7 @@ for gopackage in ${GOPACKAGES}; do
 	fi
 	if [[ ${HEKETI_TEST_COVERAGE} = "html" && -f cover.out ]]; then
 		mkdir -p coverage
-		fn="coverage/$(echo "${gopackage}" | sed 's,/,-,g').html"
+		fn="coverage/${gopackage////-}.html"
 		echo " * generating coverage html: ${fn}"
 		go tool cover -html=cover.out -o "${fn}"
 	fi

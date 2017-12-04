@@ -1,10 +1,10 @@
 #!/bin/sh
 
-CURRENT_DIR=`pwd`
+CURRENT_DIR="$(pwd)"
 
 # Build server if we need to
 if [ ! -x heketi-server ] ; then
-    ( cd ../../../ ; make ; cp heketi $CURRENT_DIR/heketi-server )
+    ( cd ../../../ && make && cp heketi "$CURRENT_DIR/heketi-server" ) || exit 1
 fi
 
 # Start server
