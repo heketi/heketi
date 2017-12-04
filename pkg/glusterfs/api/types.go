@@ -376,6 +376,11 @@ type BlockVolumeListResponse struct {
 	BlockVolumes []string `json:"blockvolumes"`
 }
 
+type LogLevelInfo struct {
+	// should contain one or more logger to log-level-name mapping
+	LogLevel map[string]string `json:"loglevel"`
+}
+
 // Constructors
 
 func NewVolumeInfoResponse() *VolumeInfoResponse {
