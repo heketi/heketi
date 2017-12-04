@@ -1,3 +1,5 @@
+#!/bin/bash
+# FIXME HEKETI-SKIP-SHELLCHECK
 
 fail() {
     echo "==> ERROR: $@"

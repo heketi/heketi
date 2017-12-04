@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/bin/bash
+# FIXME HEKETI-SKIP-SHELLCHECK - this script really confuses shellcheck
 
 # This is needed to build the executable on an x86 machine for RPi
 

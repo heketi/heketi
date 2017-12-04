@@ -1,4 +1,5 @@
 #!/bin/sh
+# FIXME HEKETI-SKIP-SHELLCHECK
 
 TOP=../../..
 CURRENT_DIR=`pwd`
