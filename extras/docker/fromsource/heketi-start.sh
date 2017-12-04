@@ -1,7 +1,7 @@
-#!/bin/sh
+#!/bin/bash
 
-: ${HEKETI_PATH:=/var/lib/heketi}
-: ${BACKUPDB_PATH:=/backupdb}
+: "${HEKETI_PATH:=/var/lib/heketi}"
+: "${BACKUPDB_PATH:=/backupdb}"
 
 echo "Setting up heketi database"
 

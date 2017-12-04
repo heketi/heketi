@@ -29,7 +29,7 @@ run_test() {
 summary() {
 	if [[ ${#FAILURES[@]} -gt 0 ]]; then
 		echo "ERROR: failing tests:"
-		for i in ${!FAILURES[@]}; do
+		for i in "${!FAILURES[@]}"; do
 			echo "  ${FAILURES[i]}"
 		done
 		exit 1
@@ -57,7 +57,7 @@ show_help() {
 	echo "      summary mode disables all additional output."
 }
 
-CLI="$(getopt -o c:xvh --long coverage:,exitfirst,verbose,help -n $0 -- "$@")"
+CLI="$(getopt -o c:xvh --long coverage:,exitfirst,verbose,help -n "$0" -- "$@")"
 eval set -- "${CLI}"
 while true ; do
 	case "$1" in
@@ -107,7 +107,7 @@ export HEKETI_TEST_EXITFIRST=${exitfirst}
 export HEKETI_TEST_SCRIPT_DIR="${SCRIPT_DIR}"
 export HEKETI_TEST_COVERAGE=${coverage}
 
-cd "${SCRIPT_DIR}"
+cd "${SCRIPT_DIR}" || exit 1
 for tname in $(ls tests | sort) ; do
 	tpath="./tests/${tname}"
 	if [[ ${tpath} =~ .*\.sh$ && -f ${tpath} && -x ${tpath} ]]; then
