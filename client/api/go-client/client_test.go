@@ -700,3 +700,52 @@ func TestClientVolume(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 }
+
+func TestLogLevel(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+
+	// Setup the server
+	ts := setupHeketiServer(app)
+	defer ts.Close()
+
+	// Create cluster
+	c := NewClient(ts.URL, "admin", TEST_ADMIN_KEY)
+	tests.Assert(t, c != nil, "NewClient failed:", c)
+	llinfo, err := c.LogLevelGet()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, llinfo.LogLevel["glusterfs"] == "info",
+		`expected llinfo.LogLevel["glusterfs"] == "info", get:`, llinfo.LogLevel)
+
+	llinfo.LogLevel["glusterfs"] = "debug"
+	err = c.LogLevelSet(llinfo)
+	tests.Assert(t, err == nil, "unexpected error running c.LogLevelSet:", err)
+
+	llinfo, err = c.LogLevelGet()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, llinfo.LogLevel["glusterfs"] == "debug",
+		`expected llinfo.LogLevel["glusterfs"] == "debug", get:`, llinfo.LogLevel)
+
+	llinfo.LogLevel["glusterfs"] = "bingo"
+	err = c.LogLevelSet(llinfo)
+	tests.Assert(t, err != nil, "expected error running c.LogLevelSet:", err)
+
+	llinfo, err = c.LogLevelGet()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, llinfo.LogLevel["glusterfs"] == "debug",
+		`expected llinfo.LogLevel["glusterfs"] == "debug", get:`, llinfo.LogLevel)
+
+	llinfo.LogLevel["glusterfs"] = "info"
+	err = c.LogLevelSet(llinfo)
+	tests.Assert(t, err == nil, "unexpected error running c.LogLevelSet:", err)
+
+	llinfo, err = c.LogLevelGet()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, llinfo.LogLevel["glusterfs"] == "info",
+		`expected llinfo.LogLevel["glusterfs"] == "info", get:`, llinfo.LogLevel)
+	return
+}
