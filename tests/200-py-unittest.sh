@@ -41,4 +41,4 @@ require_server
 start_server
 trap cleanup_server EXIT
 
-tox -e py27
+tox -e py27,py35,py36 --skip-missing-interpreters
