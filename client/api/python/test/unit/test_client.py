@@ -227,7 +227,7 @@ class test_heketi(unittest.TestCase):
         self.assertEqual(True, cluster['id'] != '')
 
         # Create node request packet
-        print "Creating Cluster"
+        print ("Creating Cluster")
         for i in range(3):
             node_req = {}
             node_req['cluster'] = cluster['id']
@@ -254,7 +254,7 @@ class test_heketi(unittest.TestCase):
         self.assertEqual(True, len(list['volumes']) == 0)
 
         # Create a volume
-        print "Creating a volume"
+        print ("Creating a volume")
         volume_req = {}
         volume_req['size'] = 10
         volume = c.volume_create(volume_req)
@@ -282,7 +282,7 @@ class test_heketi(unittest.TestCase):
             c.volume_expand("badid", volume_ex_params)
 
         # Expand volume
-        print "Expanding volume"
+        print ("Expanding volume")
         volumeInfo = c.volume_expand(volume['id'], volume_ex_params)
         self.assertEqual(True, volumeInfo['size'] == 20)
 
@@ -291,11 +291,11 @@ class test_heketi(unittest.TestCase):
             c.volume_delete("badid")
 
         # Delete volume
-        print "Deleting volume"
+        print ("Deleting volume")
         volume_delete = c.volume_delete(volume['id'])
         self.assertEqual(True, volume_delete)
 
-        print "Deleting Cluster"
+        print ("Deleting Cluster")
         clusterInfo = c.cluster_info(cluster['id'])
         for node_id in clusterInfo['nodes']:
             # Get node information

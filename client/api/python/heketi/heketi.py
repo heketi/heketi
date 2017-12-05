@@ -42,10 +42,11 @@ class HeketiClient(object):
             + datetime.timedelta(seconds=1)
 
         # URI tampering protection
-        claims['qsh'] = hashlib.sha256(method + '&' + uri).hexdigest()
+        val = b'%s&%s' % (method.encode('utf8'), uri.encode('utf8'))
+        claims['qsh'] = hashlib.sha256(val).hexdigest()
 
         token = jwt.encode(claims, self.key, algorithm='HS256')
-        headers['Authorization'] = 'bearer ' + token
+        headers['Authorization'] = b'bearer ' + token
 
         return headers
 
