@@ -9,4 +9,4 @@ if ! command -v tox &>/dev/null; then
 	exit 0
 fi
 
-exec tox -e pep8
+exec tox -e flake8
