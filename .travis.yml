@@ -26,6 +26,3 @@ script:
 - if [[ -z "$COVERAGE" ]]; then make test TESTOPTIONS=-v ; fi
 - if [[ -n "$COVERAGE" ]]; then make test TESTOPTIONS=-vcstdout && bash .travis-coverage; fi
 - make release
-- cd client/api/python
-- ./unittests.sh
-- tox -e pep8
