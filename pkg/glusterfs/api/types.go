@@ -43,7 +43,7 @@ func ValidateUUID(value interface{}) error {
 	s, _ := value.(string)
 	err := validation.Validate(s, validation.RuneLength(32, 32), is.Hexadecimal)
 	if err != nil {
-		return fmt.Errorf("not a valid UUID")
+		return fmt.Errorf("%v is not a valid UUID", s)
 	}
 	return nil
 }
@@ -59,10 +59,10 @@ const (
 )
 
 func ValidateEntryState(value interface{}) error {
-	s, _ := value.(string)
+	s, _ := value.(EntryState)
 	err := validation.Validate(s, validation.Required, validation.In(EntryStateOnline, EntryStateOffline, EntryStateFailed))
 	if err != nil {
-		return fmt.Errorf("state requested is not valid")
+		return fmt.Errorf("%v is not valid state", s)
 	}
 	return nil
 }
@@ -76,10 +76,10 @@ const (
 )
 
 func ValidateDurabilityType(value interface{}) error {
-	s, _ := value.(string)
+	s, _ := value.(DurabilityType)
 	err := validation.Validate(s, validation.Required, validation.In(DurabilityReplicate, DurabilityDistributeOnly, DurabilityEC))
 	if err != nil {
-		return fmt.Errorf("durability type requested is not valid")
+		return fmt.Errorf("%v is not a valid durability type", s)
 	}
 	return nil
 }
@@ -112,7 +112,7 @@ func ValidateManagementHostname(value interface{}) error {
 	for _, fqdn := range s {
 		err := validation.Validate(fqdn, validation.Required, is.Host)
 		if err != nil {
-			return fmt.Errorf("Manage hostname should be valid hostname")
+			return fmt.Errorf("%v is not a valid manage hostname", s)
 		}
 	}
 	return nil
@@ -123,7 +123,7 @@ func ValidateStorageHostname(value interface{}) error {
 	for _, ip := range s {
 		err := validation.Validate(ip, validation.Required, is.Host)
 		if err != nil {
-			return fmt.Errorf("Storage hostname should be valid IP")
+			return fmt.Errorf("%v is not a valid storage hostname", s)
 		}
 	}
 	return nil

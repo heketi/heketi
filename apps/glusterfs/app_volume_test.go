@@ -162,7 +162,7 @@ func TestVolumeCreateInvalidSize(t *testing.T) {
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, r.ContentLength))
 	tests.Assert(t, err == nil)
 	r.Body.Close()
-	tests.Assert(t, strings.Contains(string(body), "Invalid volume size"))
+	tests.Assert(t, strings.Contains(string(body), "size: cannot be blank"), string(body))
 }
 
 func TestVolumeCreateSmallSize(t *testing.T) {
@@ -993,7 +993,7 @@ func TestVolumeExpandSizeTooSmall(t *testing.T) {
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, r.ContentLength))
 	tests.Assert(t, err == nil)
 	r.Body.Close()
-	tests.Assert(t, strings.Contains(string(body), "Invalid volume size"))
+	tests.Assert(t, strings.Contains(string(body), "size: cannot be blank"), string(body))
 }
 
 func TestVolumeExpand(t *testing.T) {

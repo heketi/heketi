@@ -112,7 +112,8 @@ func TestNodeAddBadRequests(t *testing.T) {
 	tests.Assert(t, r.StatusCode == http.StatusBadRequest)
 	s, err := utils.GetStringFromResponse(r)
 	tests.Assert(t, err == nil)
-	tests.Assert(t, strings.Contains(s, "empty string"))
+	tests.Assert(t, strings.Contains(s, "is not a valid manage hostname"), s)
+	tests.Assert(t, strings.Contains(s, "is not a valid storage hostname"), s)
 
 	// Make a request where the zone is missing
 	request = []byte(`{
@@ -129,11 +130,11 @@ func TestNodeAddBadRequests(t *testing.T) {
 	tests.Assert(t, r.StatusCode == http.StatusBadRequest)
 	s, err = utils.GetStringFromResponse(r)
 	tests.Assert(t, err == nil)
-	tests.Assert(t, strings.Contains(s, "Zone cannot be zero"))
+	tests.Assert(t, strings.Contains(s, "zone: cannot be blank"), s)
 
 	// Make a request where the cluster id does not exist
 	request = []byte(`{
-		"cluster" : "123",
+		"cluster" : "3071582c8575a06d824f6bfc125eb270",
 		"hostnames" : {
 			"storage" : [ "storage.hostname.com" ],
 			"manage" : [ "manage.hostname.com"  ]
@@ -1212,23 +1213,7 @@ func TestNodeState(t *testing.T) {
 	r, err = http.Post(ts.URL+"/nodes/"+node.Id+"/state",
 		"application/json", bytes.NewBuffer(request))
 	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusAccepted)
-
-	location, err = r.Location()
-	tests.Assert(t, err == nil)
-
-	// Query queue until finished
-	for {
-		r, err = http.Get(location.String())
-		tests.Assert(t, err == nil)
-		if r.Header.Get("X-Pending") == "true" {
-			tests.Assert(t, r.StatusCode == http.StatusOK)
-			time.Sleep(time.Millisecond * 10)
-		} else {
-			tests.Assert(t, r.StatusCode == http.StatusInternalServerError)
-			break
-		}
-	}
+	tests.Assert(t, r.StatusCode == http.StatusBadRequest)
 
 	// Check that the device is still in the ring
 	tests.Assert(t, len(mockAllocator.clustermap[cluster.Id]) == 1)

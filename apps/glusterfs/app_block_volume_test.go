@@ -23,8 +23,8 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
-	"github.com/heketi/utils"
 )
 
 func TestBlockVolumeCreateBadJson(t *testing.T) {
@@ -102,7 +102,7 @@ func TestBlockVolumeCreateInvalidSize(t *testing.T) {
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, r.ContentLength))
 	tests.Assert(t, err == nil)
 	r.Body.Close()
-	tests.Assert(t, strings.Contains(string(body), "Invalid volume size"))
+	tests.Assert(t, strings.Contains(string(body), "size: cannot be blank"), string(body))
 }
 
 func TestBlockVolumeCreateBadClusters(t *testing.T) {
