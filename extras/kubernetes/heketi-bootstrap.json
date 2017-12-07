@@ -3,24 +3,10 @@
   "apiVersion": "v1",
   "items": [
     {
-      "kind": "Secret",
-      "apiVersion": "v1",
-      "metadata": {
-        "name": "heketi-db-backup",
-        "labels": {
-          "glusterfs": "heketi-db",
-          "heketi": "db"
-        }
-      },
-      "data": {
-      },
-      "type": "Opaque"
-    },
-    {
       "kind": "Service",
       "apiVersion": "v1",
       "metadata": {
-        "name": "heketi",
+        "name": "deploy-heketi",
         "labels": {
           "glusterfs": "heketi-service",
           "deploy-heketi": "support"
@@ -31,11 +17,11 @@
       },
       "spec": {
         "selector": {
-          "name": "heketi"
+          "name": "deploy-heketi"
         },
         "ports": [
           {
-            "name": "heketi",
+            "name": "deploy-heketi",
             "port": 8080,
             "targetPort": 8080
           }
@@ -46,9 +32,10 @@
       "kind": "Deployment",
       "apiVersion": "extensions/v1beta1",
       "metadata": {
-        "name": "heketi",
+        "name": "deploy-heketi",
         "labels": {
-          "glusterfs": "heketi-deployment"
+          "glusterfs": "heketi-deployment",
+          "deploy-heketi": "deployment"
         },
         "annotations": {
           "description": "Defines how to deploy Heketi"
@@ -58,10 +45,11 @@
         "replicas": 1,
         "template": {
           "metadata": {
-            "name": "heketi",
+            "name": "deploy-heketi",
             "labels": {
-              "name": "heketi",
-              "glusterfs": "heketi-pod"
+              "name": "deploy-heketi",
+              "glusterfs": "heketi-pod",
+              "deploy-heketi": "pod"
             }
           },
           "spec": {
@@ -70,7 +58,7 @@
               {
                 "image": "heketi/heketi:dev",
                 "imagePullPolicy": "Always",
-                "name": "heketi",
+                "name": "deploy-heketi",
                 "env": [
                   {
                     "name": "HEKETI_EXECUTOR",
@@ -95,10 +83,6 @@
                   }
                 ],
                 "volumeMounts": [
-                  {
-                    "mountPath": "/backupdb",
-                    "name": "heketi-db-secret"
-                  },
                   {
                     "name": "db",
                     "mountPath": "/var/lib/heketi"
@@ -128,17 +112,7 @@
             ],
             "volumes": [
               {
-                "name": "db",
-                "glusterfs": {
-                  "endpoints": "heketi-storage-endpoints",
-                  "path": "heketidbstorage"
-                }
-              },
-              {
-                "name": "heketi-db-secret",
-                "secret": {
-                  "secretName": "heketi-db-backup"
-                }
+                "name": "db"
               },
               {
                 "name": "config",
