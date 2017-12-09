@@ -37,8 +37,22 @@ if ! command -v tox &>/dev/null; then
 	exit 0
 fi
 
+TOXENVS="py27"
+if command -v python3.5 &>/dev/null; then
+	TOXENVS="${TOXENVS},py35"
+	if command -v pyenv &>/dev/null; then
+		pyenv global system 3.5
+	fi
+fi
+if command -v python3.6 &>/dev/null; then
+	TOXENVS="${TOXENVS},py36"
+	if command -v pyenv &>/dev/null; then
+		pyenv global system 3.6
+	fi
+fi
+
 require_server
 start_server
 trap cleanup_server EXIT
 
-tox -e py27,py35,py36 --skip-missing-interpreters
+tox -e "${TOXENVS}" --skip-missing-interpreters
