@@ -37,7 +37,7 @@ func init() {
 	blockVolumeCommand.AddCommand(blockVolumeListCommand)
 
 	blockVolumeCreateCommand.Flags().IntVar(&bv_size, "size", -1,
-		"\n\tSize of volume in GB")
+		"\n\tSize of volume in GiB")
 	blockVolumeCreateCommand.Flags().IntVar(&bv_ha, "ha", 0,
 		"\n\tHA count for block volume")
 	blockVolumeCreateCommand.Flags().BoolVar(&bv_auth, "auth", false,
@@ -66,18 +66,18 @@ var blockVolumeCreateCommand = &cobra.Command{
 	Use:   "create",
 	Short: "Create a GlusterFS block volume",
 	Long:  "Create a GlusterFS block volume",
-	Example: `  * Create a 100GB block volume
+	Example: `  * Create a 100GiB block volume
       $ heketi-cli blockvolume create --size=100
 
-  * Create a 100GB block volume specifying two specific clusters:
+  * Create a 100GiB block volume specifying two specific clusters:
       $ heketi-cli blockvolume create --size=100 \
         --clusters=0995098e1284ddccb46c7752d142c832,60d46d518074b13a04ce1022c8c7193c
 
-  * Create a 100GB block volume requesting ha count to be 2.
+  * Create a 100GiB block volume requesting ha count to be 2.
     (Otherwise HA count is all the nodes on which block hosting volume reside.):
 	  $ heketi-cli blockvolume create --size=100 --ha=2
 
-  * Create a 100GB block volume specifying two specific clusters auth enabled:
+  * Create a 100GiB block volume specifying two specific clusters auth enabled:
       $ heketi-cli blockvolume create --size=100 --auth \
         --clusters=0995098e1284ddccb46c7752d142c832,60d46d518074b13a04ce1022c8c7193c
 `,
