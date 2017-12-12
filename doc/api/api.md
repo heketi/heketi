@@ -451,7 +451,7 @@ These APIs inform Heketi to create a network file system of a certain size avail
 * **Response HTTP Status Code**: 202, See [Asynchronous Operations](#async)
 * **Temporary Resource Response HTTP Status Code**: 303, `Location` header will contain `/volumes/{id}`. See [Volume Info](#volume_info) for JSON response.
 * **JSON Request**:
-    * size: _int_, Size of volume requested in GB
+    * size: _int_, Size of volume requested in GiB
     * name: _string_, _optional_, Name of volume.  If not provided, the name of the volume will be `vol_{id}`, for example `vol_728faa5522838746abce2980`
     * durability: _map_, _optional_, Durability Settings
         * type: _string_, optional, Durability type.  Choices are **none** (Distributed Only), **replicate** (Distributed-Replicated), **disperse** (Distributed-Disperse).  If omitted, durability type will default to **none**.
@@ -495,7 +495,7 @@ These APIs inform Heketi to create a network file system of a certain size avail
 * **JSON Request**: None
 * **JSON Response**:
     * name: _string_, Name of volume
-    * size: _int_, Size of volume in GB
+    * size: _int_, Size of volume in GiB
     * id: _string_, Volume UUID
     * cluster: _string_, UUID of cluster which contains this volume
     * durability: _map_, Durability settings.  See [Volume Create](#volume_create) for more information.
@@ -562,7 +562,7 @@ New volume size will be reflected in the volume information.
 * **Response HTTP Status Code**: 202, See [Asynchronous Operations](#async)
 * **Temporary Resource Response HTTP Status Code**: 303, `Location` header will contain `/volumes/{id}`. See [Volume Info](#volume_info) for JSON response.
 * **JSON Request**:
-    * expand_size: _int_, Amount of storage to add to the existing volume in GB
+    * expand_size: _int_, Amount of storage to add to the existing volume in GiB
 
 ```json
 { "expand_size" : 1000000 }

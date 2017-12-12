@@ -49,7 +49,7 @@ OPTIONS
 	Default is 3 (default 3)
   -size int
     	
-	Size of volume in GB (default -1)
+	Size of volume in GiB (default -1)
   -snapshot-factor float
     	
 	Optional: Amount of storage to allocate for snapshot support.
@@ -58,23 +58,23 @@ OPTIONS
 	value is set to 1, then snapshots will not be enabled for this volume (default 1)
 
 EXAMPLES
-  * Create a 100GB replica 3 volume:
+  * Create a 100GiB replica 3 volume:
       $ heketi-cli volume create -size=100
 
-  * Create a 100GB replica 3 volume specifying two specific clusters:
+  * Create a 100GiB replica 3 volume specifying two specific clusters:
       $ heketi-cli volume create -size=100 \
           -clusters=0995098e1284ddccb46c7752d142c832,60d46d518074b13a04ce1022c8c7193c
 
-  * Create a 100GB replica 2 volume with 50GB of snapshot storage:
+  * Create a 100GiB replica 2 volume with 50GiB of snapshot storage:
       $ heketi-cli volume create -size=100 -snapshot-factor=1.5 -replica=2 
 
-  * Create a 100GB distributed volume
+  * Create a 100GiB distributed volume
       $ heketi-cli volume create -size=100 -durabilty=none
 
-  * Create a 100GB erasure coded 4+2 volume with 25GB snapshot storage:
+  * Create a 100GiB erasure coded 4+2 volume with 25GiB snapshot storage:
       $ heketi-cli volume create -size=100 -durability=disperse -snapshot-factor=1.25
 
-  * Create a 100GB erasure coded 8+3 volume with 25GB snapshot storage:
+  * Create a 100GiB erasure coded 8+3 volume with 25GiB snapshot storage:
       $ heketi-cli volume create -size=100 -durability=disperse -snapshot-factor=1.25 \
           -disperse-data=8 -redundancy=3
 ```
