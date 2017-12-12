@@ -157,7 +157,7 @@ type VolumeDurabilityInfo struct {
 }
 
 type VolumeCreateRequest struct {
-	// Size in GB
+	// Size in GiB
 	Size                 int                  `json:"size"`
 	Clusters             []string             `json:"clusters,omitempty"`
 	Name                 string               `json:"name"`
@@ -204,7 +204,7 @@ type VolumeExpandRequest struct {
 // BlockVolume
 
 type BlockVolumeCreateRequest struct {
-	// Size in GB
+	// Size in GiB
 	Size     int      `json:"size"`
 	Clusters []string `json:"clusters,omitempty"`
 	Name     string   `json:"name"`
