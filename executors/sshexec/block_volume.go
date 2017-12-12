@@ -42,7 +42,7 @@ func (s *SshExecutor) BlockVolumeCreate(host string,
 		auth_set = "disable"
 	}
 
-	cmd := fmt.Sprintf("gluster-block create %v/%v  ha %v auth %v prealloc full %v %vG --json",
+	cmd := fmt.Sprintf("gluster-block create %v/%v  ha %v auth %v prealloc full %v %vGiB --json",
 		volume.GlusterVolumeName, volume.Name, volume.Hacount, auth_set, strings.Join(volume.BlockHosts, ","), volume.Size)
 
 	// Initialize the commands with the create command
