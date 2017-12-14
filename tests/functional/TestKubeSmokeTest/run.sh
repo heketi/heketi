@@ -1,15 +1,14 @@
-#!/bin/sh
-# FIXME HEKETI-SKIP-SHELLCHECK
+#!/bin/bash
 
 TOP=../../..
-CURRENT_DIR=`pwd`
+CURRENT_DIR=$(pwd)
 RESOURCES_DIR=$CURRENT_DIR/resources
 FUNCTIONAL_DIR=${CURRENT_DIR}/..
 HEKETI_DOCKER_IMG=heketi-docker-ci.img
 DOCKERDIR=$TOP/extras/docker
 CLIENTDIR=$TOP/client/cli/go
 
-source ${FUNCTIONAL_DIR}/lib.sh
+source "${FUNCTIONAL_DIR}/lib.sh"
 
 ### VERSIONS ###
 KUBEVERSION=v1.4.3
@@ -23,45 +22,45 @@ docker_set_env() {
     if grep -q -s "CentOS\|Fedora" /etc/redhat-release ; then
         echo "CentOS/Fedora DOCKER WORKAROUND"
         curl -sL https://download.getcarina.com/dvm/latest/install.sh | sh
-        eval $(minikube docker-env)
+        eval "$(minikube docker-env)"
         source ~/.dvm/dvm.sh
         dvm install 1.10.3
         dvm use 1.10.3
     else
-        eval $(minikube docker-env)
+        eval "$(minikube docker-env)"
     fi
 }
 
 copy_docker_files() {
     docker_set_env
-    docker load -i $heketi_docker || fail "Unable to load Heketi docker image"
+    docker load -i "$heketi_docker" || fail "Unable to load Heketi docker image"
 }
 
 build_docker_file(){
     echo "Create Heketi Docker image"
     heketi_docker=$RESOURCES_DIR/$HEKETI_DOCKER_IMG
     if [ ! -f "$heketi_docker" ] ; then
-        cd $DOCKERDIR/ci
+        cd $DOCKERDIR/ci || fail "Unable to 'cd $DOCKERDIR/ci'."
         cp $TOP/heketi $DOCKERDIR/ci || fail "Unable to copy $TOP/heketi to $DOCKERDIR/ci"
         _sudo docker build --rm --tag heketi/heketi:ci . || fail "Unable to create docker container"
         _sudo docker save -o $HEKETI_DOCKER_IMG heketi/heketi:ci || fail "Unable to save docker image"
         _sudo chmod 0666 $HEKETI_DOCKER_IMG || fail "Unable to chmod docker image"
-        cp $HEKETI_DOCKER_IMG $heketi_docker || fail "Unable to copy image"
+        cp $HEKETI_DOCKER_IMG "$heketi_docker" || fail "Unable to copy image"
         _sudo docker rmi heketi/heketi:ci
-        cd $CURRENT_DIR
+        cd "$CURRENT_DIR" || fail "Unable to 'cd $CURRENT_DIR'."
     fi
     copy_docker_files
 }
 
 build_heketi() {
-    cd $TOP
+    cd "$TOP" || fail "Unable to 'cd $TOP'."
     make || fail  "Unable to build heketi"
-    cd $CURRENT_DIR
+    cd "$CURRENT_DIR" || fail "Unable to 'cd $CURRENT_DIR'."
 }
 
 copy_client_files() {
-    cp $CLIENTDIR/heketi-cli $RESOURCES_DIR || fail "Unable to copy client files"
-    cp $TOP/extras/kubernetes/* $RESOURCES_DIR || fail "Unable to copy kubernetes deployment files"
+    cp $CLIENTDIR/heketi-cli "$RESOURCES_DIR" || fail "Unable to copy client files"
+    cp $TOP/extras/kubernetes/* "$RESOURCES_DIR" || fail "Unable to copy kubernetes deployment files"
 }
 
 teardown() {
@@ -69,12 +68,12 @@ teardown() {
         minikube stop > /dev/null
         minikube delete > /dev/null
     fi
-    rm -rf $RESOURCES_DIR > /dev/null
+    rm -rf "$RESOURCES_DIR" > /dev/null
 }
 
 setup_minikube() {
-    if [ ! -d $RESOURCES_DIR ] ; then
-        mkdir $RESOURCES_DIR
+    if [ ! -d "$RESOURCES_DIR" ] ; then
+        mkdir "$RESOURCES_DIR"
     fi
 
     if ! md5sum -c md5sums > /dev/null 2>&1 ; then
@@ -89,7 +88,7 @@ setup_minikube() {
         chmod +x docker-machine-driver-kvm
         _sudo mv docker-machine-driver-kvm /usr/local/bin
 
-        _sudo usermod -a -G libvirt $(whoami)
+        _sudo usermod -a -G libvirt "$(whoami)"
         #newgrp libvirt
 
         echo -e "\nGet minikube"
@@ -118,7 +117,7 @@ start_minikube() {
 
     # wait until it is ready
     echo -e "\nWait until kubernetes containers are running and ready"
-    while [ 3 -ne $(kubectl get pods --all-namespaces | grep Running | wc -l) ] ; do
+    while [ 3 -ne "$(kubectl get pods --all-namespaces | grep -c Running)" ] ; do
         echo -n "."
         sleep 1
     done
@@ -149,7 +148,7 @@ setup
 for kubetest in test*.sh ; do
    test_setup
    println "TEST $kubetest"
-   bash $kubetest; result=$?
+   bash "$kubetest"; result=$?
 
    if [ $result -ne 0 ] ; then
        println "FAILED $kubetest"
