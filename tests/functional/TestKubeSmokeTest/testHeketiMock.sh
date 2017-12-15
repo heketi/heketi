@@ -1,16 +1,14 @@
-#!/bin/sh
-# FIXME HEKETI-SKIP-SHELLCHECK
+#!/bin/bash
 
-TOP=../../..
-CURRENT_DIR=`pwd`
+CURRENT_DIR=$(pwd)
 FUNCTIONAL_DIR=${CURRENT_DIR}/..
 RESOURCES_DIR=$CURRENT_DIR/resources
 PATH=$PATH:$RESOURCES_DIR
 
-source ${FUNCTIONAL_DIR}/lib.sh
+source "${FUNCTIONAL_DIR}/lib.sh"
 
 # Setup Docker environment
-eval $(minikube docker-env)
+eval "$(minikube docker-env)"
 
 display_information() {
 	# Display information
@@ -37,14 +35,16 @@ setup_heketi() {
 	kubectl expose deployment heketi --type=NodePort || fail "Unable to expose heketi service"
 
 	echo -e "\nShow Topology"
-	export HEKETI_CLI_SERVER=$(minikube service heketi --url)
+	HEKETI_CLI_SERVER=$(minikube service heketi --url)
+	export HEKETI_CLI_SERVER
 	heketi-cli topology info
 
 	echo -e "\nLoad mock topology"
 	heketi-cli topology load --json=mock-topology.json || fail "Unable to load topology"
 
 	echo -e "\nShow Topology"
-	export HEKETI_CLI_SERVER=$(minikube service heketi --url)
+	HEKETI_CLI_SERVER="$(minikube service heketi --url)"
+	export HEKETI_CLI_SERVER
 	heketi-cli topology info
 
 	echo -e "\nRegister mock endpoints"
@@ -53,8 +53,8 @@ setup_heketi() {
 	echo -e "\nRegister storage class"
 	sed -e \
 	"s#%%URL%%#${HEKETI_CLI_SERVER}#" \
-	storageclass.yaml.sed > ${RESOURCES_DIR}/sc.yaml
-    kubectl create -f ${RESOURCES_DIR}/sc.yaml || fail "Unable to register storage class"
+	storageclass.yaml.sed > "${RESOURCES_DIR}/sc.yaml"
+    kubectl create -f "${RESOURCES_DIR}/sc.yaml" || fail "Unable to register storage class"
 }
 
 test_create() {
@@ -74,13 +74,13 @@ test_create() {
 	fi
 
 	echo "Assert only one volume created in Heketi"
-	if ! heketi-cli volume list | grep Id | wc -l | grep 1 ; then
+	if ! heketi-cli volume list | grep -c Id | grep 1 ; then
 		fail "Incorrect number of volumes in Heketi"
 	fi
 
 	echo "Assert volume size is 100GiB"
-	id=`heketi-cli volume list | grep Id | awk '{print $1}' | cut -d: -f2`
-    if ! heketi-cli volume info ${id} | grep Size | cut -d: -f2 | grep 100 ; then
+	id=$(heketi-cli volume list | grep Id | awk '{print $1}' | cut -d: -f2)
+    if ! heketi-cli volume info "${id}" | grep Size | cut -d: -f2 | grep 100 ; then
 		fail "Invalid size"
 	fi
 }
