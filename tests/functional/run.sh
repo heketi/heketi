@@ -1,5 +1,4 @@
-#!/bin/sh
-# FIXME HEKETI-SKIP-SHELLCHECK
+#!/bin/bash
 
 TESTS="TestSmokeTest"
 TESTS="TestVolumeNotDeletedWhenNodeIsDown $TESTS"
@@ -16,7 +15,8 @@ fi
 # Download golang 1.8.3
 curl -O https://storage.googleapis.com/golang/go1.8.3.linux-amd64.tar.gz
 tar xzvf go1.8.3.linux-amd64.tar.gz
-export GOROOT=$(pwd)/go
+GOROOT=$(pwd)/go
+export GOROOT
 export PATH=$GOROOT/bin:$PATH
 
 source ./lib.sh
@@ -24,9 +24,9 @@ source ./lib.sh
 teardown_all() {
     results=0
     for testDir in $TESTS ; do
-        if [ -x $testDir/teardown.sh ] ; then
+        if [ -x "$testDir/teardown.sh" ] ; then
             println "TEARDOWN $testDir"
-            cd $testDir
+            cd "$testDir" || fail "Unable to 'cd $testDir'."
             teardown.sh
             cd ..
         fi
@@ -38,11 +38,11 @@ teardown_all() {
 # See https://bugzilla.redhat.com/show_bug.cgi?id=1327740
 _sudo setenforce 0
 
-starttime=`date`
+starttime=$(date)
 export PATH=$PATH:.
 
 # Check go can build
-if [ -z $GOPATH ] ; then
+if [ -z "$GOPATH" ] ; then
     fail "GOPATH must be specified"
 fi
 
@@ -53,9 +53,9 @@ teardown_all
 # Check each dir for tests
 results=0
 for testDir in $TESTS ; do
-    if [ -x $testDir/run.sh ] ; then
+    if [ -x "$testDir/run.sh" ] ; then
         println "TEST $testDir"
-        cd $testDir
+        cd "$testDir" || fail "Unable to 'cd $testDir'."
 
         # Run the command with a large timeout.
         # Just large enough so that it doesn't run forever.
@@ -76,7 +76,7 @@ done
 
 # Summary
 println "Started $starttime"
-println "Ended `date`"
+println "Ended $(date)"
 if [ $results -eq 0 ] ; then
     println "PASSED"
 else
