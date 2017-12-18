@@ -122,7 +122,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Substitue values using any set environment variables
+	// Substitute values using any set environment variables
 	setWithEnvVariables(&options)
 
 	// Use negroni to add middleware.  Here we add two
