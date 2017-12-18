@@ -153,7 +153,7 @@ class test_heketi(unittest.TestCase):
 
         # Create a device request
         device_req = {}
-        device_req['name'] = "sda"
+        device_req['name'] = "/dev/sda"
         device_req['node'] = node['id']
 
         device = c.device_add(device_req)
@@ -243,7 +243,7 @@ class test_heketi(unittest.TestCase):
             # Create and add devices
             for i in range(1, 4):
                 device_req = {}
-                device_req['name'] = "sda%s" % (i)
+                device_req['name'] = "/dev/sda%s" % (i)
                 device_req['node'] = node['id']
 
                 device = c.device_add(device_req)
