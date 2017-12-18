@@ -58,7 +58,7 @@ func TestDeviceAddBadRequests(t *testing.T) {
 
 	// Make a request with no device
 	request = []byte(`{
-        "node" : "123"
+        "node" : "3071582c8575a06d824f6bfc125eb270"
     }`)
 
 	// Post bad JSON
@@ -68,14 +68,14 @@ func TestDeviceAddBadRequests(t *testing.T) {
 
 	// Make a request with unknown node
 	request = []byte(`{
-        "node" : "123",
+        "node" : "3071582c8575a06d824f6bfc125eb270",
         "name" : "/dev/fake"
     }`)
 
 	// Post unknown node
 	r, err = http.Post(ts.URL+"/devices", "application/json", bytes.NewBuffer(request))
 	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusNotFound)
+	tests.Assert(t, r.StatusCode == http.StatusNotFound, r.StatusCode)
 
 }
 
@@ -689,22 +689,7 @@ func TestDeviceState(t *testing.T) {
 	r, err = http.Post(ts.URL+"/devices/"+device.Id+"/state",
 		"application/json", bytes.NewBuffer(request))
 	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusAccepted)
-	location, err = r.Location()
-	tests.Assert(t, err == nil)
-
-	// Query queue until finished
-	for {
-		r, err = http.Get(location.String())
-		tests.Assert(t, err == nil)
-		if r.Header.Get("X-Pending") == "true" {
-			tests.Assert(t, r.StatusCode == http.StatusOK)
-			time.Sleep(time.Millisecond * 10)
-		} else {
-			tests.Assert(t, r.StatusCode == http.StatusInternalServerError)
-			break
-		}
-	}
+	tests.Assert(t, r.StatusCode == http.StatusBadRequest, r.StatusCode)
 
 	// Check that the device is still in the ring
 	tests.Assert(t, len(mockAllocator.clustermap[cluster.Id]) == 1)

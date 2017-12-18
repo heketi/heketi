@@ -124,7 +124,7 @@ func TestTopology(t *testing.T) {
 				defer sg.Done()
 
 				deviceReq := &api.DeviceAddRequest{}
-				deviceReq.Name = "sd" + utils.GenUUID()[:8]
+				deviceReq.Name = "/sd" + utils.GenUUID()[:8]
 				deviceReq.NodeId = node.Id
 
 				// Create device
@@ -390,7 +390,7 @@ func TestClientDevice(t *testing.T) {
 
 	// Create a device request
 	deviceReq := &api.DeviceAddRequest{}
-	deviceReq.Name = "sda"
+	deviceReq.Name = "/sda"
 	deviceReq.NodeId = node.Id
 
 	// Create device
@@ -420,7 +420,7 @@ func TestClientDevice(t *testing.T) {
 	err = c.DeviceState(deviceId, &api.StateRequest{
 		State: api.EntryStateOffline,
 	})
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, err)
 	deviceInfo, err = c.DeviceInfo(deviceId)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, deviceInfo.State == api.EntryStateOffline)
@@ -494,7 +494,7 @@ func TestClientVolume(t *testing.T) {
 				defer sg.Done()
 
 				deviceReq := &api.DeviceAddRequest{}
-				deviceReq.Name = "sd" + utils.GenUUID()[:8]
+				deviceReq.Name = "/sd" + utils.GenUUID()[:8]
 				deviceReq.NodeId = node.Id
 
 				// Create device
