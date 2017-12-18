@@ -381,7 +381,7 @@ func (d *DeviceEntry) SetExtentSize(amount uint64) {
 
 // Allocates a new brick if the space is available.  It will automatically reserve
 // the storage amount required from the device's used storage, but it will not add
-// the brick id to the brick list.  The caller is responsabile for adding the brick
+// the brick id to the brick list.  The caller is responsible for adding the brick
 // id to the list.
 func (d *DeviceEntry) NewBrickEntry(amount uint64, snapFactor float64, gid int64, volumeid string) *BrickEntry {
 
