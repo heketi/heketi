@@ -385,6 +385,22 @@ func (v *VolumeEntry) Create(db *bolt.DB,
 		}
 	}()
 
+	// Save updated bricks (the have a path now)
+	err = db.Update(func(tx *bolt.Tx) error {
+		// Save brick entries
+		for _, brick := range brick_entries {
+			err := brick.Save(tx)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
 	// Create GlusterFS volume
 	err = v.createVolume(db, executor, brick_entries)
 	if err != nil {
