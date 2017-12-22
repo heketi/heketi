@@ -35,6 +35,7 @@ const (
 	HeketiStorageEndpointName = "heketi-storage-endpoints"
 	HeketiStorageSecretName   = "heketi-storage-secret"
 	HeketiStorageVolTagName   = "heketi-storage"
+	HeketiServiceAccount      = "heketi-storage-service-account"
 
 	HeketiStorageVolumeSize    = 2
 	HeketiStorageVolumeSizeStr = "2Gi"
@@ -254,6 +255,8 @@ func createHeketiCopyJob(volume *api.VolumeInfoResponse) *batch.Job {
 			},
 		},
 	}
+	job.Spec.Template.Spec.ServiceAccountName = HeketiServiceAccount
+	job.Spec.Template.Spec.DeprecatedServiceAccount = HeketiServiceAccount
 	job.Spec.Template.Spec.RestartPolicy = kubeapi.RestartPolicyNever
 
 	return job
