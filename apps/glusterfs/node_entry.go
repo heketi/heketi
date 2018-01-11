@@ -447,3 +447,12 @@ func (n *NodeEntry) DeviceDelete(id string) {
 func NodeEntryUpgrade(tx *bolt.Tx) error {
 	return nil
 }
+
+func NodeList(tx *bolt.Tx) ([]string, error) {
+
+	list := EntryKeys(tx, BOLTDB_BUCKET_NODE)
+	if list == nil {
+		return nil, ErrAccessList
+	}
+	return list, nil
+}
