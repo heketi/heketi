@@ -203,18 +203,6 @@ func (s *SshExecutor) RemoteCommandExecute(host string,
 	return s.exec.ConnectAndExec(host+":"+s.port, commands, timeoutMinutes, s.config.Sudo)
 }
 
-func (s *SshExecutor) vgName(vgId string) string {
-	return "vg_" + vgId
-}
-
-func (s *SshExecutor) brickName(brickId string) string {
-	return "brick_" + brickId
-}
-
-func (s *SshExecutor) tpName(brickId string) string {
-	return "tp_" + brickId
-}
-
 func (s *SshExecutor) RebalanceOnExpansion() bool {
 	return s.config.RebalanceOnExpansion
 }
