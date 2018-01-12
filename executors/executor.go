@@ -57,6 +57,8 @@ type BrickRequest struct {
 	Size             uint64
 	PoolMetadataSize uint64
 	Gid              int64
+	// Path is the brick mountpoint (named Path for symmetry with BrickInfo)
+	Path string
 }
 
 // Returns information about the location of the brick

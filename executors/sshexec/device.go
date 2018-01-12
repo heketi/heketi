@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/heketi/heketi/executors"
+	"github.com/heketi/heketi/pkg/utils"
 )
 
 const (
@@ -35,7 +36,7 @@ func (s *SshExecutor) DeviceSetup(host, device, vgid string) (d *executors.Devic
 	// Setup commands
 	commands := []string{
 		fmt.Sprintf("pvcreate --metadatasize=128M --dataalignment=256K '%v'", device),
-		fmt.Sprintf("vgcreate %v %v", s.vgName(vgid), device),
+		fmt.Sprintf("vgcreate %v %v", utils.VgIdToName(vgid), device),
 	}
 
 	// Execute command
@@ -68,7 +69,7 @@ func (s *SshExecutor) DeviceTeardown(host, device, vgid string) error {
 
 	// Setup commands
 	commands := []string{
-		fmt.Sprintf("vgremove %v", s.vgName(vgid)),
+		fmt.Sprintf("vgremove %v", utils.VgIdToName(vgid)),
 		fmt.Sprintf("pvremove '%v'", device),
 	}
 
@@ -79,8 +80,9 @@ func (s *SshExecutor) DeviceTeardown(host, device, vgid string) error {
 			device, vgid, host, err)
 	}
 
+	pdir := utils.BrickMountPointParent(vgid)
 	commands = []string{
-		fmt.Sprintf("ls %v/%v", rootMountPoint, s.vgName(vgid)),
+		fmt.Sprintf("ls %v", pdir),
 	}
 	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
@@ -88,7 +90,7 @@ func (s *SshExecutor) DeviceTeardown(host, device, vgid string) error {
 	}
 
 	commands = []string{
-		fmt.Sprintf("rmdir %v/%v", rootMountPoint, s.vgName(vgid)),
+		fmt.Sprintf("rmdir %v", pdir),
 	}
 
 	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
@@ -106,7 +108,7 @@ func (s *SshExecutor) getVgSizeFromNode(
 
 	// Setup command
 	commands := []string{
-		fmt.Sprintf("vgdisplay -c %v", s.vgName(vgid)),
+		fmt.Sprintf("vgdisplay -c %v", utils.VgIdToName(vgid)),
 	}
 
 	// Execute command

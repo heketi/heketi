@@ -152,6 +152,7 @@ func (b *BrickEntry) Create(db *bolt.DB, executor executors.Executor) error {
 	req.TpSize = b.TpSize
 	req.VgId = b.Info.DeviceId
 	req.PoolMetadataSize = b.PoolMetadataSize
+	req.Path = utils.BrickMountPoint(req.VgId, req.Name)
 
 	// Create brick on node
 	logger.Info("Creating brick %v", b.Info.Id)
@@ -194,6 +195,7 @@ func (b *BrickEntry) Destroy(db *bolt.DB, executor executors.Executor) error {
 	req.Size = b.Info.Size
 	req.TpSize = b.TpSize
 	req.VgId = b.Info.DeviceId
+	req.Path = utils.BrickMountPoint(req.VgId, req.Name)
 
 	// Delete brick on node
 	logger.Info("Deleting brick %v", b.Info.Id)
@@ -232,6 +234,7 @@ func (b *BrickEntry) DestroyCheck(db *bolt.DB, executor executors.Executor) erro
 	req.Size = b.Info.Size
 	req.TpSize = b.TpSize
 	req.VgId = b.Info.DeviceId
+	req.Path = utils.BrickMountPoint(req.VgId, req.Name)
 
 	// Check brick on node
 	return executor.BrickDestroyCheck(host, req)
