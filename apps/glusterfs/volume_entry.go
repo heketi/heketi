@@ -38,10 +38,18 @@ const (
 	DEFAULT_THINP_SNAPSHOT_FACTOR = 1.5
 )
 
+// VolumeEntry struct represents a volume in heketi. Serialization is done using
+// gob when written to db and using json package when exportdb/importdb is used
+// There are two reasons I skip Durability field for json pkg
+//   1. Durability is used in some places in code, however, it represents the
+//      same info that is in Info.Durability.
+//   2. I wasn't able to serialize interface type to json in a straightfoward
+//      way.
+// Chose to skip writing redundant data than adding kludgy code
 type VolumeEntry struct {
 	Info                 api.VolumeInfo
 	Bricks               sort.StringSlice
-	Durability           VolumeDurability
+	Durability           VolumeDurability `json:"-"`
 	GlusterVolumeOptions []string
 }
 

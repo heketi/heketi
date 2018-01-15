@@ -223,3 +223,9 @@ class HeketiClient(object):
         uri = '/volumes/' + volume_id
         req = self._make_request('DELETE', uri)
         return req.status_code == requests.codes.NO_CONTENT
+
+    def db_dump(self):
+        uri = '/db/dump'
+        req = self._make_request('GET', uri)
+        if req.status_code == requests.codes.ok:
+            return req
