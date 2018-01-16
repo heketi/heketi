@@ -72,3 +72,11 @@ func (dba *DbAttributeEntry) Unmarshal(buffer []byte) error {
 
 	return nil
 }
+
+func DbAttributeList(tx *bolt.Tx) ([]string, error) {
+	list := EntryKeys(tx, BOLTDB_BUCKET_DBATTRIBUTE)
+	if list == nil {
+		return nil, ErrAccessList
+	}
+	return list, nil
+}
