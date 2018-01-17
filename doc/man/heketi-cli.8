@@ -194,6 +194,16 @@ list object is created to configure the volume.
 \fB               \-\-listfile\fP="heketi\-storage.json"
                    Filename to contain list of objects
 
+\fB               \-\-durability\fP="replicate"
+                   Optional: Durability type.
+                     Values are:
+                     none: No durability, for testing with single storage server environments.
+                     replicate: (Default) Replica volume.
+
+\fB               \-\-replica\fP=3
+                     Replica value for durability type 'replicate'.
+                     Default is 3
+
     \fB       Example\fP
            $ heketi\-cli setup\-openshift\-heketi\-storage
 
