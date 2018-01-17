@@ -484,34 +484,52 @@ func (a *App) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Invalid path or request", http.StatusNotFound)
 }
 
+// Allocator returns an allocator appropriate for the configuration
+// of this app. The allocator may be dynamically provided at
+// the time of the function call or cached from a prior call to
+// SetAllocator.
 func (a *App) Allocator() Allocator {
 	if a._allocator == nil {
-		a.setupAllocator()
+		return a.newAllocator()
 	}
 	return a._allocator
 }
 
+// SetAllocator manually sets the allocator for thie app.
+// The specified allocator will be cached on the app and
+// subsequent calls to Allocator will return the same object.
+// Generally this should only be used in test code.
 func (a *App) SetAllocator(allocator Allocator) {
 	if allocator == nil {
-		err := errors.New("don't do that")
+		err := errors.New("use ClearAllocator to reset cached allocator")
 		panic(err)
 	}
 	a._allocator = allocator
 }
 
-func (a *App) setupAllocator() {
-	// Setup allocator
+// ClearAllocator resets the cached alloctor for this app.
+// This should be paired with calls to SetAllocator in order to
+// reset the app behavior to default when the test allocator is
+// no loger needed.
+func (a *App) ClearAllocator() {
+	a._allocator = nil
+}
+
+// newAllocator returns a newly created allocator based on the
+// configuration of the app.
+func (a *App) newAllocator() Allocator {
+	var alloc Allocator
 	switch {
 	case a.conf.Allocator == "mock":
 		if r := NewMockAllocator(a.db); r != nil {
-			a._allocator = r
+			alloc = r
 		} else {
 			panic(errors.New("failed to set up mock allocator"))
 		}
 	case a.conf.Allocator == "simple" || a.conf.Allocator == "":
 		a.conf.Allocator = "simple"
 		if r := NewSimpleAllocatorFromDb(a.db); r != nil {
-			a._allocator = r
+			alloc = r
 		} else {
 			panic(errors.New("failed to set up simple allocator"))
 		}
@@ -519,4 +537,5 @@ func (a *App) setupAllocator() {
 		panic(errors.New("cannot load invalid allocator: " + a.conf.Allocator))
 	}
 	logger.Info("Loaded %v allocator", a.conf.Allocator)
+	return alloc
 }
