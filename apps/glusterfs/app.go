@@ -10,6 +10,7 @@
 package glusterfs
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"os"
@@ -48,7 +49,7 @@ type App struct {
 	db           *bolt.DB
 	dbReadOnly   bool
 	executor     executors.Executor
-	allocator    Allocator
+	_allocator   Allocator
 	conf         *GlusterFSConfig
 
 	// For testing only.  Keep access to the object
@@ -184,17 +185,7 @@ func NewApp(configIo io.Reader) *App {
 	// Set block settings
 	app.setBlockSettings()
 
-	// Setup allocator
-	switch {
-	case app.conf.Allocator == "mock":
-		app.allocator = NewMockAllocator(app.db)
-	case app.conf.Allocator == "simple" || app.conf.Allocator == "":
-		app.conf.Allocator = "simple"
-		app.allocator = NewSimpleAllocatorFromDb(app.db)
-	default:
-		return nil
-	}
-	logger.Info("Loaded %v allocator", app.conf.Allocator)
+	app.setupAllocator()
 
 	// Show application has loaded
 	logger.Info("GlusterFS Application Loaded")
@@ -495,10 +486,29 @@ func (a *App) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Invalid path or request", http.StatusNotFound)
 }
 
-func (a *App) Allocator() (Allocator) {
-	return a.allocator
+func (a *App) Allocator() Allocator {
+	return a._allocator
 }
 
 func (a *App) SetAllocator(allocator Allocator) {
-	a.allocator = allocator
+	if allocator == nil {
+		err := errors.New("don't do that")
+		panic(err)
+	}
+	a._allocator = allocator
+}
+
+func (a *App) setupAllocator() {
+	// Setup allocator
+	switch {
+	case a.conf.Allocator == "mock":
+		a._allocator = NewMockAllocator(a.db)
+	case a.conf.Allocator == "simple" || a.conf.Allocator == "":
+		a.conf.Allocator = "simple"
+		a._allocator = NewSimpleAllocatorFromDb(a.db)
+	default:
+		err := errors.New("cannot load invalid allocator")
+		panic(err)
+	}
+	logger.Info("Loaded %v allocator", a.conf.Allocator)
 }
