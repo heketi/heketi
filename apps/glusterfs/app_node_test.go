@@ -1042,7 +1042,7 @@ func TestNodeState(t *testing.T) {
 
 	// Create mock allocator
 	mockAllocator := NewMockAllocator(app.db)
-	app.allocator = mockAllocator
+	app.SetAllocator(mockAllocator)
 
 	// Create a client
 	c := client.NewClientNoAuth(ts.URL)
@@ -1355,7 +1355,7 @@ func TestNodeInfoAfterDelete(t *testing.T) {
 
 	// Create mock allocator
 	mockAllocator := NewMockAllocator(app.db)
-	app.allocator = mockAllocator
+	app.SetAllocator(mockAllocator)
 
 	// Create a client
 	c := client.NewClientNoAuth(ts.URL)

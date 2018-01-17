@@ -498,3 +498,7 @@ func (a *App) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 func (a *App) Allocator() (Allocator) {
 	return a.allocator
 }
+
+func (a *App) SetAllocator(allocator Allocator) {
+	a.allocator = allocator
+}
