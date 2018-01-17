@@ -436,7 +436,7 @@ The `devices` endpoint allows management of raw devices in the cluster.
 ### Delete Device
 * **Method:** _DELETE_  
 * **Endpoint**:`/devices/{id}`
-* **Response HTTP Status Code**: 202, See [Asynchronous Operations](#async)
+* **Response HTTP Status Code**: 202, See [Asynchronous Operations](#asynchronous-operations)
 * **Response HTTP Status Code**: 409, Device contains bricks
 * **Temporary Resource Response HTTP Status Code**: 204
 
@@ -448,7 +448,7 @@ These APIs inform Heketi to create a network file system of a certain size avail
 * **Method:** _POST_  
 * **Endpoint**:`/volumes`
 * **Content-Type**: `application/json`
-* **Response HTTP Status Code**: 202, See [Asynchronous Operations](#async)
+* **Response HTTP Status Code**: 202, See [Asynchronous Operations](#asynchronous-operations)
 * **Temporary Resource Response HTTP Status Code**: 303, `Location` header will contain `/volumes/{id}`. See [Volume Info](#volume_info) for JSON response.
 * **JSON Request**:
     * size: _int_, Size of volume requested in GiB
