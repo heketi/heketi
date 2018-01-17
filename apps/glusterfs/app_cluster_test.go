@@ -268,60 +268,72 @@ func TestClusterDelete(t *testing.T) {
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	// Create an entry with volumes and nodes
-	entries := make([]*ClusterEntry, 0)
-	entry := NewClusterEntry()
-	entry.Info.Id = "a1"
-	for _, node := range []string{"a1", "a2", "a3"} {
-		entry.NodeAdd(node)
+	clusters := [](*ClusterEntry){}
+	nodes := [](*NodeEntry){}
+	volumes := [](*VolumeEntry){}
+
+	// Create a cluster with volumes and nodes
+	cluster := NewClusterEntry()
+	cluster.Info.Id = "a1"
+	for _, node := range []string{"n11", "n12", "n13"} {
+		cluster.NodeAdd(node)
+		n := NewNodeEntry()
+		n.Info.Id = node
+		nodes = append(nodes, n)
 	}
+	for _, vol := range []string{"v1", "v2", "v3"} {
+		cluster.VolumeAdd(vol)
+		v := NewVolumeEntry()
+		v.Info.Id = vol
+		volumes = append(volumes, v)
+	}
+	clusters = append(clusters, cluster)
+
+	// Create a cluster with only volumes
+	cluster = NewClusterEntry()
+	cluster.Info.Id = "a2"
 	for _, vol := range []string{"b1", "b2", "b3"} {
-		entry.VolumeAdd(vol)
+		cluster.VolumeAdd(vol)
+		v := NewVolumeEntry()
+		v.Info.Id = vol
+		volumes = append(volumes, v)
 	}
-	entries = append(entries, entry)
+	clusters = append(clusters, cluster)
 
-	// Create an entry with only volumes
-	entry = NewClusterEntry()
-	entry.Info.Id = "a2"
-	for _, vol := range []string{"b1", "b2", "b3"} {
-		entry.VolumeAdd(vol)
+	// Create a cluster with only nodes
+	cluster = NewClusterEntry()
+	cluster.Info.Id = "a3"
+	for _, node := range []string{"n31", "n32", "n33"} {
+		cluster.NodeAdd(node)
+		n := NewNodeEntry()
+		n.Info.Id = node
+		nodes = append(nodes, n)
 	}
-	entries = append(entries, entry)
+	clusters = append(clusters, cluster)
 
-	// Create an entry with only nodes
-	entry = NewClusterEntry()
-	entry.Info.Id = "a3"
-	for _, node := range []string{"a1", "a2", "a3"} {
-		entry.NodeAdd(node)
-	}
-	entries = append(entries, entry)
-
-	// Create an empty entry
-	entry = NewClusterEntry()
-	entry.Info.Id = "000"
-	entries = append(entries, entry)
+	// Create an empty cluster
+	cluster = NewClusterEntry()
+	cluster.Info.Id = "000"
+	clusters = append(clusters, cluster)
 
 	// Save the info in the database
 	err := app.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
-		if b == nil {
-			return errors.New("Unable to open bucket")
-		}
-
-		for _, entry := range entries {
-			buffer, err := entry.Marshal()
-			if err != nil {
-				return err
-			}
-
-			err = b.Put([]byte(entry.Info.Id), buffer)
-			if err != nil {
+		for _, entry := range clusters {
+			if err := EntrySave(tx, entry, entry.Info.Id); err != nil {
 				return err
 			}
 		}
-
+		for _, entry := range nodes {
+			if err := EntrySave(tx, entry, entry.Info.Id); err != nil {
+				return err
+			}
+		}
+		for _, entry := range volumes {
+			if err := EntrySave(tx, entry, entry.Info.Id); err != nil {
+				return err
+			}
+		}
 		return nil
-
 	})
 	tests.Assert(t, err == nil)
 
@@ -331,7 +343,7 @@ func TestClusterDelete(t *testing.T) {
 	r, err := http.DefaultClient.Do(req)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, r.StatusCode == http.StatusConflict)
-	tests.Assert(t, utils.GetErrorFromResponse(r).Error() == entries[0].ConflictString())
+	tests.Assert(t, utils.GetErrorFromResponse(r).Error() == clusters[0].ConflictString())
 
 	// Check that we cannot delete a cluster with volumes
 	req, err = http.NewRequest("DELETE", ts.URL+"/clusters/"+"a2", nil)
@@ -339,7 +351,7 @@ func TestClusterDelete(t *testing.T) {
 	r, err = http.DefaultClient.Do(req)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, r.StatusCode == http.StatusConflict)
-	tests.Assert(t, utils.GetErrorFromResponse(r).Error() == entries[1].ConflictString())
+	tests.Assert(t, utils.GetErrorFromResponse(r).Error() == clusters[1].ConflictString())
 
 	// Check that we cannot delete a cluster with nodes
 	req, err = http.NewRequest("DELETE", ts.URL+"/clusters/"+"a3", nil)
@@ -347,7 +359,7 @@ func TestClusterDelete(t *testing.T) {
 	r, err = http.DefaultClient.Do(req)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, r.StatusCode == http.StatusConflict)
-	tests.Assert(t, utils.GetErrorFromResponse(r).Error() == entries[2].ConflictString())
+	tests.Assert(t, utils.GetErrorFromResponse(r).Error() == clusters[2].ConflictString())
 
 	// Delete cluster with no elements
 	req, err = http.NewRequest("DELETE", ts.URL+"/clusters/"+"000", nil)
