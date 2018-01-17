@@ -150,7 +150,7 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
 
 		logger.Info("Creating volume %v", vol.Info.Id)
-		err := vol.Create(a.db, a.executor, a.allocator)
+		err := vol.Create(a.db, a.executor, a.Allocator())
 		if err != nil {
 			logger.LogError("Failed to create volume: %v", err)
 			return "", err
@@ -344,7 +344,7 @@ func (a *App) VolumeExpand(w http.ResponseWriter, r *http.Request) {
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
 
 		logger.Info("Expanding volume %v", volume.Info.Id)
-		err := volume.Expand(a.db, a.executor, a.allocator, msg.Size)
+		err := volume.Expand(a.db, a.executor, a.Allocator(), msg.Size)
 		if err != nil {
 			logger.LogError("Failed to expand volume %v", volume.Info.Id)
 			return "", err

@@ -373,7 +373,7 @@ func (a *App) NodeSetState(w http.ResponseWriter, r *http.Request) {
 
 	// Set state
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
-		err = node.SetState(a.db, a.executor, a.allocator, msg.State)
+		err = node.SetState(a.db, a.executor, a.Allocator(), msg.State)
 		if err != nil {
 			return "", err
 		}

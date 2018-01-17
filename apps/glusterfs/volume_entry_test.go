@@ -46,7 +46,7 @@ func setupSampleDbWithTopology(app *App,
 		for c := 0; c < clusters; c++ {
 			cluster := createSampleClusterEntry()
 
-			if err := app.allocator.AddCluster(cluster.Info.Id); err != nil {
+			if err := app.Allocator().AddCluster(cluster.Info.Id); err != nil {
 				return err
 			}
 
@@ -62,7 +62,7 @@ func setupSampleDbWithTopology(app *App,
 					node.DeviceAdd(device.Id())
 
 					// Update allocator
-					err := app.allocator.AddDevice(cluster, node, device)
+					err := app.Allocator().AddDevice(cluster, node, device)
 					if err != nil {
 						return nil
 					}
@@ -968,7 +968,7 @@ func TestVolumeEntryCreateCheckingClustersForSpace(t *testing.T) {
 				node.DeviceAdd(device.Id())
 
 				// update allocator
-				err := app.allocator.AddDevice(cluster, node, device)
+				err := app.Allocator().AddDevice(cluster, node, device)
 				if err != nil {
 					return nil
 				}
