@@ -494,3 +494,7 @@ func (a *App) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	logger.Warning("Invalid path or request %v", r.URL.Path)
 	http.Error(w, "Invalid path or request", http.StatusNotFound)
 }
+
+func (a *App) Allocator() (Allocator) {
+	return a.allocator
+}

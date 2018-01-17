@@ -300,7 +300,7 @@ func TestBlockVolumeInfo(t *testing.T) {
 	v := NewBlockVolumeEntryFromRequest(req)
 	tests.Assert(t, v != nil)
 	tests.Assert(t, v.Info.Auth == true)
-	err = v.Create(app.db, app.executor, app.allocator)
+	err = v.Create(app.db, app.executor, app.Allocator())
 	tests.Assert(t, err == nil)
 
 	// Now that we have some data in the database, we can
@@ -531,7 +531,7 @@ func TestBlockVolumeDelete(t *testing.T) {
 	// Create a volume
 	v := createSampleBlockVolumeEntry(100)
 	tests.Assert(t, v != nil)
-	err = v.Create(app.db, app.executor, app.allocator)
+	err = v.Create(app.db, app.executor, app.Allocator())
 	tests.Assert(t, err == nil)
 
 	// Delete the volume

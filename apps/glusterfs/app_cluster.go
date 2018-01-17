@@ -39,7 +39,7 @@ func (a *App) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		err = a.allocator.AddCluster(entry.Info.Id)
+		err = a.Allocator().AddCluster(entry.Info.Id)
 		if err != nil {
 			logger.LogError("Error adding cluster to ring: %v", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
