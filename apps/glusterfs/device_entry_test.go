@@ -599,7 +599,7 @@ func TestDeviceSetStateFailed(t *testing.T) {
 
 	// Create allocator
 	mockAllocator := NewMockAllocator(app.db)
-	app.allocator = mockAllocator
+	app.SetAllocator(mockAllocator)
 
 	// Create cluster entry
 	c := NewClusterEntry()
@@ -682,7 +682,7 @@ func TestDeviceSetStateOfflineOnline(t *testing.T) {
 
 	// Create allocator
 	mockAllocator := NewMockAllocator(app.db)
-	app.allocator = mockAllocator
+	app.SetAllocator(mockAllocator)
 
 	// Create cluster entry
 	c := NewClusterEntry()
