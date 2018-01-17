@@ -502,13 +502,20 @@ func (a *App) setupAllocator() {
 	// Setup allocator
 	switch {
 	case a.conf.Allocator == "mock":
-		a._allocator = NewMockAllocator(a.db)
+		if r := NewMockAllocator(a.db); r != nil {
+			a._allocator = r
+		} else {
+			panic(errors.New("failed to set up mock allocator"))
+		}
 	case a.conf.Allocator == "simple" || a.conf.Allocator == "":
 		a.conf.Allocator = "simple"
-		a._allocator = NewSimpleAllocatorFromDb(a.db)
+		if r := NewSimpleAllocatorFromDb(a.db); r != nil {
+			a._allocator = r
+		} else {
+			panic(errors.New("failed to set up simple allocator"))
+		}
 	default:
-		err := errors.New("cannot load invalid allocator")
-		panic(err)
+		panic(errors.New("cannot load invalid allocator: " + a.conf.Allocator))
 	}
 	logger.Info("Loaded %v allocator", a.conf.Allocator)
 }
