@@ -85,7 +85,7 @@ func (a *App) BlockVolumeCreate(w http.ResponseWriter, r *http.Request) {
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
 
 		logger.Info("Creating block volume %v", blockVolume.Info.Id)
-		err := blockVolume.Create(a.db, a.executor, a.allocator)
+		err := blockVolume.Create(a.db, a.executor, a.Allocator())
 		if err != nil {
 			logger.LogError("Failed to create block volume: %v", err)
 			return "", err

@@ -139,7 +139,7 @@ func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Add to allocator
-			err = a.allocator.AddDevice(clusterEntry, nodeEntry, device)
+			err = a.Allocator().AddDevice(clusterEntry, nodeEntry, device)
 			if err != nil {
 				return err
 			}
@@ -261,7 +261,7 @@ func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Remove device from allocator
-		err = a.allocator.RemoveDevice(cluster, node, device)
+		err = a.Allocator().RemoveDevice(cluster, node, device)
 		if err != nil {
 			return "", err
 		}
@@ -356,7 +356,7 @@ func (a *App) DeviceSetState(w http.ResponseWriter, r *http.Request) {
 
 	// Set state
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
-		err = device.SetState(a.db, a.executor, a.allocator, msg.State)
+		err = device.SetState(a.db, a.executor, a.Allocator(), msg.State)
 		if err != nil {
 			return "", err
 		}
