@@ -185,8 +185,6 @@ func NewApp(configIo io.Reader) *App {
 	// Set block settings
 	app.setBlockSettings()
 
-	app.setupAllocator()
-
 	// Show application has loaded
 	logger.Info("GlusterFS Application Loaded")
 
@@ -487,6 +485,9 @@ func (a *App) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) Allocator() Allocator {
+	if a._allocator == nil {
+		a.setupAllocator()
+	}
 	return a._allocator
 }
 
