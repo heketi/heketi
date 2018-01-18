@@ -1051,8 +1051,10 @@ func TestNodeState(t *testing.T) {
 
 	// Create Cluster
 	cluster_req := &api.ClusterCreateRequest{
-		Block: true,
-		File:  true,
+		ClusterFlags: api.ClusterFlags{
+			Block: true,
+			File:  true,
+		},
 	}
 	cluster, err := c.ClusterCreate(cluster_req)
 	tests.Assert(t, err == nil)
@@ -1365,8 +1367,10 @@ func TestNodeInfoAfterDelete(t *testing.T) {
 
 	// Create Cluster
 	cluster_req := &api.ClusterCreateRequest{
-		Block: true,
-		File:  true,
+		ClusterFlags: api.ClusterFlags{
+			Block: true,
+			File:  true,
+		},
 	}
 	cluster, err := c.ClusterCreate(cluster_req)
 	tests.Assert(t, err == nil)

@@ -22,8 +22,10 @@ import (
 
 func createSampleClusterEntry() *ClusterEntry {
 	cluster_req := &api.ClusterCreateRequest{
-		Block: true,
-		File:  true,
+		ClusterFlags: api.ClusterFlags{
+			Block: true,
+			File:  true,
+		},
 	}
 	return NewClusterEntryFromRequest(cluster_req)
 }
@@ -42,8 +44,10 @@ func TestNewClusterEntry(t *testing.T) {
 func TestNewClusterEntryFromRequest(t *testing.T) {
 
 	cluster_req := &api.ClusterCreateRequest{
-		Block: true,
-		File:  true,
+		ClusterFlags: api.ClusterFlags{
+			Block: true,
+			File:  true,
+		},
 	}
 
 	c := NewClusterEntryFromRequest(cluster_req)
@@ -168,8 +172,10 @@ func TestNewClusterEntryFromId(t *testing.T) {
 
 	// Create a cluster
 	cluster_req := &api.ClusterCreateRequest{
-		Block: true,
-		File:  true,
+		ClusterFlags: api.ClusterFlags{
+			Block: true,
+			File:  true,
+		},
 	}
 	c := NewClusterEntryFromRequest(cluster_req)
 	c.NodeAdd("node_abc")
@@ -213,8 +219,10 @@ func TestNewClusterEntrySaveDelete(t *testing.T) {
 
 	// Create a cluster
 	cluster_req := &api.ClusterCreateRequest{
-		Block: true,
-		File:  true,
+		ClusterFlags: api.ClusterFlags{
+			Block: true,
+			File:  true,
+		},
 	}
 	c := NewClusterEntryFromRequest(cluster_req)
 	c.NodeAdd("node_abc")
@@ -345,8 +353,10 @@ func TestNewClusterEntryNewInfoResponse(t *testing.T) {
 
 	// Create a cluster
 	cluster_req := &api.ClusterCreateRequest{
-		Block: true,
-		File:  true,
+		ClusterFlags: api.ClusterFlags{
+			Block: true,
+			File:  true,
+		},
 	}
 	c := NewClusterEntryFromRequest(cluster_req)
 	c.NodeAdd("node_abc")
@@ -388,8 +398,10 @@ func TestUpdateClusterEntryForFlags(t *testing.T) {
 	app := NewTestApp(tmpfile)
 
 	cluster_req := &api.ClusterCreateRequest{
-		File:  true,
-		Block: false,
+		ClusterFlags: api.ClusterFlags{
+			Block: false,
+			File:  true,
+		},
 	}
 	c := NewClusterEntryFromRequest(cluster_req)
 	c.NodeAdd("node_abc")

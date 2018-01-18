@@ -52,8 +52,10 @@ func TestHeketiMockTestServer(t *testing.T) {
 	api := client.NewClient(h.URL(), "admin", "admin")
 	tests.Assert(t, api != nil)
 	cluster_req := &glusterapi.ClusterCreateRequest{
-		Block: true,
-		File:  true,
+		ClusterFlags: glusterapi.ClusterFlags{
+			Block: true,
+			File:  true,
+		},
 	}
 	cluster, err := api.ClusterCreate(cluster_req)
 	tests.Assert(t, err == nil)
