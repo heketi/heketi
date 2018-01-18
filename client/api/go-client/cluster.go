@@ -62,6 +62,42 @@ func (c *Client) ClusterCreate(request *api.ClusterCreateRequest) (*api.ClusterI
 	return &cluster, nil
 }
 
+func (c *Client) ClusterSetFlags(id string, request *api.ClusterSetFlagsRequest) error {
+
+	buffer, err := json.Marshal(request)
+	if err != nil {
+		return err
+	}
+
+	// Create a request
+	req, err := http.NewRequest("POST", c.host+"/clusters/"+id+"/flags",
+		bytes.NewBuffer(buffer))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// Set token
+	err = c.setToken(req)
+	if err != nil {
+		return err
+	}
+
+	// Send request
+	r, err := c.do(req)
+	if err != nil {
+		return err
+	}
+
+	if r.StatusCode != http.StatusOK {
+		return utils.GetErrorFromResponse(r)
+	}
+
+	r.Body.Close()
+
+	return nil
+}
+
 func (c *Client) ClusterInfo(id string) (*api.ClusterInfoResponse, error) {
 
 	// Create request
@@ -78,6 +114,7 @@ func (c *Client) ClusterInfo(id string) (*api.ClusterInfoResponse, error) {
 
 	// Get info
 	r, err := c.do(req)
+	defer r.Body.Close()
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +125,6 @@ func (c *Client) ClusterInfo(id string) (*api.ClusterInfoResponse, error) {
 	// Read JSON response
 	var cluster api.ClusterInfoResponse
 	err = utils.GetJsonFromResponse(r, &cluster)
-	r.Body.Close()
 	if err != nil {
 		return nil, err
 	}

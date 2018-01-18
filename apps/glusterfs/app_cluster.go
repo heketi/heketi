@@ -60,6 +60,48 @@ func (a *App) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (a *App) ClusterSetFlags(w http.ResponseWriter, r *http.Request) {
+	var msg api.ClusterSetFlagsRequest
+
+	// Get the id from the URL
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	err := utils.GetJsonFromRequest(r, &msg)
+	if err != nil {
+		http.Error(w, "request unable to be parsed", 422)
+		return
+	}
+
+	err = a.db.Update(func(tx *bolt.Tx) error {
+		entry, err := NewClusterEntryFromId(tx, id)
+		if err == ErrNotFound {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return err
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+
+		entry.Info.File = msg.File
+		entry.Info.Block = msg.Block
+
+		err = entry.Save(tx)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+}
+
 func (a *App) ClusterList(w http.ResponseWriter, r *http.Request) {
 
 	var list api.ClusterListResponse
