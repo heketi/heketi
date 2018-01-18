@@ -67,8 +67,10 @@ func setupCluster(t *testing.T, numNodes int, numDisks int) {
 
 	// Create a cluster
 	cluster_req := &api.ClusterCreateRequest{
-		Block: true,
-		File:  true,
+		ClusterFlags: api.ClusterFlags{
+			Block: true,
+			File:  true,
+		},
 	}
 
 	cluster, err := heketi.ClusterCreate(cluster_req)

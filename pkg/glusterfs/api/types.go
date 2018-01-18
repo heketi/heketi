@@ -210,12 +210,17 @@ type NodeInfoResponse struct {
 }
 
 // Cluster
+
+type ClusterFlags struct {
+	Block bool `json:"block"`
+	File  bool `json:"file"`
+}
+
 type Cluster struct {
 	Volumes []VolumeInfoResponse `json:"volumes"`
 	Nodes   []NodeInfoResponse   `json:"nodes"`
 	Id      string               `json:"id"`
-	Block   bool                 `json:"block"`
-	File    bool                 `json:"file"`
+	ClusterFlags
 }
 
 type TopologyInfoResponse struct {
@@ -223,16 +228,14 @@ type TopologyInfoResponse struct {
 }
 
 type ClusterCreateRequest struct {
-	Block bool `json:"block"`
-	File  bool `json:"file"`
+	ClusterFlags
 }
 
 type ClusterInfoResponse struct {
-	Id           string           `json:"id"`
-	Nodes        sort.StringSlice `json:"nodes"`
-	Volumes      sort.StringSlice `json:"volumes"`
-	Block        bool             `json:"block"`
-	File         bool             `json:"file"`
+	Id      string           `json:"id"`
+	Nodes   sort.StringSlice `json:"nodes"`
+	Volumes sort.StringSlice `json:"volumes"`
+	ClusterFlags
 	BlockVolumes sort.StringSlice `json:"blockvolumes"`
 }
 

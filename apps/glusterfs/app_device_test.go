@@ -96,8 +96,10 @@ func TestDeviceAddDelete(t *testing.T) {
 	// Add Cluster then a Node on the cluster
 	// node
 	cluster_req := &api.ClusterCreateRequest{
-		Block: true,
-		File:  true,
+		ClusterFlags: api.ClusterFlags{
+			Block: true,
+			File:  true,
+		},
 	}
 	cluster := NewClusterEntryFromRequest(cluster_req)
 	nodereq := &api.NodeAddRequest{
@@ -346,8 +348,10 @@ func TestDeviceAddCleansUp(t *testing.T) {
 	// Add Cluster then a Node on the cluster
 	// node
 	cluster_req := &api.ClusterCreateRequest{
-		Block: true,
-		File:  true,
+		ClusterFlags: api.ClusterFlags{
+			Block: true,
+			File:  true,
+		},
 	}
 	cluster := NewClusterEntryFromRequest(cluster_req)
 	nodereq := &api.NodeAddRequest{
@@ -569,8 +573,10 @@ func TestDeviceState(t *testing.T) {
 
 	// Create Cluster
 	cluster_req := &api.ClusterCreateRequest{
-		Block: true,
-		File:  true,
+		ClusterFlags: api.ClusterFlags{
+			Block: true,
+			File:  true,
+		},
 	}
 	cluster, err := c.ClusterCreate(cluster_req)
 	tests.Assert(t, err == nil)

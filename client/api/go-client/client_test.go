@@ -69,8 +69,10 @@ func TestTopology(t *testing.T) {
 	//Create multiple clusters
 	clusteridlist := make([]api.ClusterInfoResponse, 0)
 	cluster_req := &api.ClusterCreateRequest{
-		Block: true,
-		File:  true,
+		ClusterFlags: api.ClusterFlags{
+			Block: true,
+			File:  true,
+		},
 	}
 	for m := 0; m < 4; m++ {
 		cluster, err := c.ClusterCreate(cluster_req)
@@ -91,8 +93,10 @@ func TestTopology(t *testing.T) {
 
 	//Create a cluster and add multiple nodes,devices and volumes
 	cluster_req = &api.ClusterCreateRequest{
-		Block: true,
-		File:  true,
+		ClusterFlags: api.ClusterFlags{
+			Block: true,
+			File:  true,
+		},
 	}
 	cluster, err := c.ClusterCreate(cluster_req)
 	tests.Assert(t, err == nil)
@@ -239,8 +243,10 @@ func TestClientCluster(t *testing.T) {
 	c := NewClient(ts.URL, "asdf", "")
 	tests.Assert(t, c != nil)
 	cluster_req := &api.ClusterCreateRequest{
-		Block: true,
-		File:  true,
+		ClusterFlags: api.ClusterFlags{
+			Block: true,
+			File:  true,
+		},
 	}
 	cluster, err := c.ClusterCreate(cluster_req)
 	tests.Assert(t, err != nil)
@@ -303,8 +309,10 @@ func TestClientNode(t *testing.T) {
 	c := NewClient(ts.URL, "admin", TEST_ADMIN_KEY)
 	tests.Assert(t, c != nil)
 	cluster_req := &api.ClusterCreateRequest{
-		Block: true,
-		File:  true,
+		ClusterFlags: api.ClusterFlags{
+			Block: true,
+			File:  true,
+		},
 	}
 	cluster, err := c.ClusterCreate(cluster_req)
 	tests.Assert(t, err == nil)
@@ -393,8 +401,10 @@ func TestClientDevice(t *testing.T) {
 	c := NewClient(ts.URL, "admin", TEST_ADMIN_KEY)
 	tests.Assert(t, c != nil)
 	cluster_req := &api.ClusterCreateRequest{
-		Block: true,
-		File:  true,
+		ClusterFlags: api.ClusterFlags{
+			Block: true,
+			File:  true,
+		},
 	}
 	cluster, err := c.ClusterCreate(cluster_req)
 	tests.Assert(t, err == nil)
@@ -503,8 +513,10 @@ func TestClientVolume(t *testing.T) {
 	c := NewClient(ts.URL, "admin", TEST_ADMIN_KEY)
 	tests.Assert(t, c != nil)
 	cluster_req := &api.ClusterCreateRequest{
-		Block: true,
-		File:  true,
+		ClusterFlags: api.ClusterFlags{
+			Block: true,
+			File:  true,
+		},
 	}
 	cluster, err := c.ClusterCreate(cluster_req)
 	tests.Assert(t, err == nil)
