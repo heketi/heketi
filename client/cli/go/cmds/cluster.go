@@ -142,7 +142,6 @@ var clusterInfoCommand = &cobra.Command{
 		// Create a client to talk to Heketi
 		heketi := client.NewClient(options.Url, options.User, options.Key)
 
-		// Create cluster
 		info, err := heketi.ClusterInfo(clusterId)
 		if err != nil {
 			return err
