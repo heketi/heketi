@@ -231,6 +231,10 @@ type ClusterCreateRequest struct {
 	ClusterFlags
 }
 
+type ClusterSetFlagsRequest struct {
+	ClusterFlags
+}
+
 type ClusterInfoResponse struct {
 	Id      string           `json:"id"`
 	Nodes   sort.StringSlice `json:"nodes"`

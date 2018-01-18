@@ -320,6 +320,11 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Pattern:     "/clusters",
 			HandlerFunc: a.ClusterCreate},
 		rest.Route{
+			Name:        "ClusterSetFlags",
+			Method:      "POST",
+			Pattern:     "/clusters/{id:[A-Fa-f0-9]+}/flags",
+			HandlerFunc: a.ClusterSetFlags},
+		rest.Route{
 			Name:        "ClusterInfo",
 			Method:      "GET",
 			Pattern:     "/clusters/{id:[A-Fa-f0-9]+}",
