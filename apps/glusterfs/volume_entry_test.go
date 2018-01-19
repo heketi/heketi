@@ -2090,3 +2090,87 @@ func TestReplaceBrickInVolumeSelfHealQuorumNotMet(t *testing.T) {
 	tests.Assert(t, brickOnOldNode, "brick found on oldNode")
 	tests.Assert(t, oldBrickIdExists, "old Brick not deleted")
 }
+
+func TestVolumeEntryNoMatchingFlags(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		2,    // clusters
+		3,    // nodes_per_cluster
+		6,    // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+	// now change the clusters to disable block access
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		cl, err := ClusterList(tx)
+		if err != nil {
+			return err
+		}
+		for _, cid := range cl {
+			c, err := NewClusterEntryFromId(tx, cid)
+			if err != nil {
+				return err
+			}
+			c.Info.Block = false
+			c.Save(tx)
+		}
+		return nil
+	})
+	tests.Assert(t, err == nil)
+
+	// Create volume
+	v := createSampleReplicaVolumeEntry(1024, 2)
+	v.Info.Name = "blockhead"
+	// request block volume
+	v.Info.Block = true
+	err = v.Create(app.db, app.executor, app.allocator)
+	// expect no space error due to no clusters able to satifsy block volume
+	tests.Assert(t, err == ErrNoSpace)
+}
+
+func TestVolumeEntryMissingFlags(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		2,    // clusters
+		3,    // nodes_per_cluster
+		6,    // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+	// now change the clusters to disable block and file flags
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		cl, err := ClusterList(tx)
+		if err != nil {
+			return err
+		}
+		for _, cid := range cl {
+			c, err := NewClusterEntryFromId(tx, cid)
+			if err != nil {
+				return err
+			}
+			c.Info.File = false
+			c.Info.Block = false
+			c.Save(tx)
+		}
+		return nil
+	})
+	tests.Assert(t, err == nil)
+
+	// Create volume
+	v := createSampleReplicaVolumeEntry(1024, 2)
+	err = v.Create(app.db, app.executor, app.allocator)
+	// expect no space error due to no clusters able to satifsy block volume
+	tests.Assert(t, err == ErrNoSpace)
+}
