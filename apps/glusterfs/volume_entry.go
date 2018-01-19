@@ -254,84 +254,19 @@ func (v *VolumeEntry) Create(db *bolt.DB,
 		possibleClusters = v.Info.Clusters
 	}
 
-	//
-	// If the request carries the Block flag, consider only
-	// those clusters that carry the Block flag if there are
-	// any, otherwise consider all clusters.
-	// If the request does *not* carry the Block flag, consider
-	// only those clusters that do not carry the Block flag.
-	//
-	var candidateClusters []string
-	for _, clusterId := range possibleClusters {
-		err := db.View(func(tx *bolt.Tx) error {
-			c, err := NewClusterEntryFromId(tx, clusterId)
-			if err != nil {
-				return err
-			}
-			if v.Info.Block {
-				if c.Info.Block {
-					candidateClusters = append(candidateClusters, clusterId)
-				}
-			} else {
-				if c.Info.File {
-					candidateClusters = append(candidateClusters, clusterId)
-				}
-			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
+	possibleClusters, err := eligibleClusters(db, v, possibleClusters)
+	if err != nil {
+		return err
 	}
-	possibleClusters = candidateClusters
-
-	// Check we have clusters
 	if len(possibleClusters) == 0 {
-		logger.LogError("Volume being ask to be created, but there are no clusters configured")
+		logger.LogError("No clusters eligible to satisfy create volume request")
 		return ErrNoSpace
 	}
 	logger.Debug("Using the following clusters: %+v", possibleClusters)
 
-	// Check for volume name conflict on any cluster
-	var clusters []string
-	for _, cluster := range possibleClusters {
-		var err error
-
-		// Check this cluster does not have a volume with the name
-		err = db.View(func(tx *bolt.Tx) error {
-			ce, err := NewClusterEntryFromId(tx, cluster)
-			if err != nil {
-				return err
-			}
-
-			for _, volumeId := range ce.Info.Volumes {
-				volume, err := NewVolumeEntryFromId(tx, volumeId)
-				if err != nil {
-					return err
-				}
-				if v.Info.Name == volume.Info.Name {
-					return fmt.Errorf("Name %v already in use in cluster %v",
-						v.Info.Name, cluster)
-				}
-			}
-
-			return nil
-
-		})
-		if err != nil {
-			logger.Warning("%v", err.Error())
-		} else {
-			clusters = append(clusters, cluster)
-		}
-	}
-	if len(clusters) == 0 {
-		return fmt.Errorf("Name %v is already in use in all available clusters", v.Info.Name)
-	}
-
 	// For each cluster look for storage space for this volume
 	var brick_entries []*BrickEntry
-	var err error
-	for _, cluster := range clusters {
+	for _, cluster := range possibleClusters {
 
 		// Check this cluster for space
 		brick_entries, err = v.allocBricksInCluster(db, allocator, cluster, v.Info.Size)
@@ -659,4 +594,74 @@ func (v *VolumeEntry) BlockVolumeAdd(id string) {
 
 func (v *VolumeEntry) BlockVolumeDelete(id string) {
 	v.Info.BlockInfo.BlockVolumes = utils.SortedStringsDelete(v.Info.BlockInfo.BlockVolumes, id)
+}
+
+func eligibleClusters(db *bolt.DB, v *VolumeEntry,
+	possibleClusters []string) ([]string, error) {
+	//
+	// If the request carries the Block flag, consider only
+	// those clusters that carry the Block flag if there are
+	// any, otherwise consider all clusters.
+	// If the request does *not* carry the Block flag, consider
+	// only those clusters that do not carry the Block flag.
+	//
+	var candidateClusters []string
+	for _, clusterId := range possibleClusters {
+		err := db.View(func(tx *bolt.Tx) error {
+			c, err := NewClusterEntryFromId(tx, clusterId)
+			if err != nil {
+				return err
+			}
+			if v.Info.Block {
+				if c.Info.Block {
+					candidateClusters = append(candidateClusters, clusterId)
+				}
+			} else {
+				if c.Info.File {
+					candidateClusters = append(candidateClusters, clusterId)
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return possibleClusters, err
+		}
+	}
+
+	possibleClusters = candidateClusters
+
+	// Check for volume name conflict on any cluster
+	var clusters []string
+	for _, cluster := range possibleClusters {
+		var err error
+
+		// Check this cluster does not have a volume with the name
+		err = db.View(func(tx *bolt.Tx) error {
+			ce, err := NewClusterEntryFromId(tx, cluster)
+			if err != nil {
+				return err
+			}
+
+			for _, volumeId := range ce.Info.Volumes {
+				volume, err := NewVolumeEntryFromId(tx, volumeId)
+				if err != nil {
+					return err
+				}
+				if v.Info.Name == volume.Info.Name {
+					return fmt.Errorf("Name %v already in use in cluster %v",
+						v.Info.Name, cluster)
+				}
+			}
+
+			return nil
+
+		})
+		if err != nil {
+			logger.Warning("%v", err.Error())
+		} else {
+			clusters = append(clusters, cluster)
+		}
+	}
+
+	return clusters, nil
 }
