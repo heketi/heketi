@@ -605,63 +605,35 @@ func eligibleClusters(db *bolt.DB, v *VolumeEntry,
 	// If the request does *not* carry the Block flag, consider
 	// only those clusters that do not carry the Block flag.
 	//
-	var candidateClusters []string
-	for _, clusterId := range possibleClusters {
-		err := db.View(func(tx *bolt.Tx) error {
+	candidateClusters := []string{}
+	err := db.View(func(tx *bolt.Tx) error {
+	CLUSTERS:
+		for _, clusterId := range possibleClusters {
 			c, err := NewClusterEntryFromId(tx, clusterId)
 			if err != nil {
 				return err
 			}
-			if v.Info.Block {
-				if c.Info.Block {
-					candidateClusters = append(candidateClusters, clusterId)
-				}
-			} else {
-				if c.Info.File {
-					candidateClusters = append(candidateClusters, clusterId)
-				}
+			switch {
+			case v.Info.Block && c.Info.Block:
+			case !v.Info.Block && c.Info.File:
+			default:
+				continue CLUSTERS
 			}
-			return nil
-		})
-		if err != nil {
-			return possibleClusters, err
-		}
-	}
-
-	possibleClusters = candidateClusters
-
-	// Check for volume name conflict on any cluster
-	var clusters []string
-	for _, cluster := range possibleClusters {
-		var err error
-
-		// Check this cluster does not have a volume with the name
-		err = db.View(func(tx *bolt.Tx) error {
-			ce, err := NewClusterEntryFromId(tx, cluster)
-			if err != nil {
-				return err
-			}
-
-			for _, volumeId := range ce.Info.Volumes {
+			for _, volumeId := range c.Info.Volumes {
 				volume, err := NewVolumeEntryFromId(tx, volumeId)
 				if err != nil {
 					return err
 				}
 				if v.Info.Name == volume.Info.Name {
-					return fmt.Errorf("Name %v already in use in cluster %v",
-						v.Info.Name, cluster)
+					logger.LogError("Name %v already in use in cluster %v",
+						v.Info.Name, clusterId)
+					continue CLUSTERS
 				}
 			}
-
-			return nil
-
-		})
-		if err != nil {
-			logger.Warning("%v", err.Error())
-		} else {
-			clusters = append(clusters, cluster)
+			candidateClusters = append(candidateClusters, clusterId)
 		}
-	}
+		return nil
+	})
 
-	return clusters, nil
+	return candidateClusters, err
 }
