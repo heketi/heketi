@@ -616,6 +616,11 @@ func eligibleClusters(db *bolt.DB, v *VolumeEntry,
 			switch {
 			case v.Info.Block && c.Info.Block:
 			case !v.Info.Block && c.Info.File:
+			case !(c.Info.Block || c.Info.File):
+				// possibly bad cluster config
+				logger.Info("Cluster %v lacks both block and file flags",
+					clusterId)
+				continue CLUSTERS
 			default:
 				continue CLUSTERS
 			}
