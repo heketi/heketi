@@ -73,7 +73,7 @@ func TestSshExecPeerProbe(t *testing.T) {
 	// Call function
 	err = s.PeerProbe("host", "newnode")
 	tests.Assert(t, err == nil, err)
-	tests.Assert(t, count == 2)
+	tests.Assert(t, count == 2, "expected count == 2, got:", count)
 
 }
 
