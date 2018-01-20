@@ -7,32 +7,17 @@
 // cases as published by the Free Software Foundation.
 //
 
-package sshexec
+package cmdexec
 
 import (
 	"testing"
 
-	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
 )
 
 func TestSshExecPeerProbe(t *testing.T) {
-
-	f := NewFakeSsh()
-	defer tests.Patch(&sshNew,
-		func(logger *utils.Logger, user string, file string) (Ssher, error) {
-			return f, nil
-		}).Restore()
-
-	config := &SshConfig{
-		PrivateKeyFile: "xkeyfile",
-		User:           "xuser",
-		CLICommandConfig: CLICommandConfig{
-			Fstab: "/my/fstab",
-		},
-	}
-
-	s, err := NewSshExecutor(config)
+	f := NewCommandFaker()
+	s, err := NewFakeExecutor(f)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, s != nil)
 
@@ -53,19 +38,11 @@ func TestSshExecPeerProbe(t *testing.T) {
 	err = s.PeerProbe("host", "newnode")
 	tests.Assert(t, err == nil, err)
 
-	// Now set the snapshot limit
-	config = &SshConfig{
-		PrivateKeyFile: "xkeyfile",
-		User:           "xuser",
-		CLICommandConfig: CLICommandConfig{
-			Fstab:         "/my/fstab",
-			SnapShotLimit: 14,
-		},
-	}
-
-	s, err = NewSshExecutor(config)
+	s, err = NewFakeExecutor(f)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, s != nil)
+	// set the snapshot limit > 0 to trigger settings probe from gluster
+	s.snapShotLimit = 14
 
 	// Mock ssh function
 	count := 0
@@ -101,21 +78,8 @@ func TestSshExecPeerProbe(t *testing.T) {
 }
 
 func TestSshExecGlusterdCheck(t *testing.T) {
-	f := NewFakeSsh()
-	defer tests.Patch(&sshNew,
-		func(logger *utils.Logger, user string, file string) (Ssher, error) {
-			return f, nil
-		}).Restore()
-
-	config := &SshConfig{
-		PrivateKeyFile: "xkeyfile",
-		User:           "xuser",
-		CLICommandConfig: CLICommandConfig{
-			Fstab: "/my/fstab",
-		},
-	}
-
-	s, err := NewSshExecutor(config)
+	f := NewCommandFaker()
+	s, err := NewFakeExecutor(f)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, s != nil)
 
