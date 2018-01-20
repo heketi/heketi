@@ -7,7 +7,7 @@
 // cases as published by the Free Software Foundation.
 //
 
-package sshexec
+package cmdexec
 
 import (
 	"encoding/xml"

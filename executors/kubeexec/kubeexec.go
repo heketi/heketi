@@ -24,7 +24,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
 	kubeletcmd "k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
 
-	"github.com/heketi/heketi/executors/sshexec"
+	"github.com/heketi/heketi/executors/cmdexec"
 	"github.com/heketi/heketi/pkg/kubernetes"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/lpabon/godbc"
@@ -36,7 +36,7 @@ const (
 
 type KubeExecutor struct {
 	// Embed all sshexecutor functions
-	sshexec.CmdExecutor
+	cmdexec.CmdExecutor
 
 	// save kube configuration
 	config     *KubeConfig

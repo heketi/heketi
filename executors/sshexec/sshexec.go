@@ -15,6 +15,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/heketi/heketi/executors/cmdexec"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/heketi/pkg/utils/ssh"
 	"github.com/lpabon/godbc"
@@ -25,7 +26,7 @@ type Ssher interface {
 }
 
 type SshExecutor struct {
-	CmdExecutor
+	cmdexec.CmdExecutor
 
 	// Private
 	private_keyfile string
@@ -116,14 +117,14 @@ func NewSshExecutor(config *SshConfig) (*SshExecutor, error) {
 
 	// Show experimental settings
 	if s.config.RebalanceOnExpansion {
-		logger.Warning("Rebalance on volume expansion has been enabled.  This is an EXPERIMENTAL feature")
+		s.Logger().Warning("Rebalance on volume expansion has been enabled.  This is an EXPERIMENTAL feature")
 	}
 
 	// Setup key
 	var err error
-	s.exec, err = sshNew(logger, s.user, s.private_keyfile)
+	s.exec, err = sshNew(s.Logger(), s.user, s.private_keyfile)
 	if err != nil {
-		logger.Err(err)
+		s.Logger().Err(err)
 		return nil, err
 	}
 

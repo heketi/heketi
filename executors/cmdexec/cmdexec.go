@@ -7,7 +7,7 @@
 // cases as published by the Free Software Foundation.
 //
 
-package sshexec
+package cmdexec
 
 import (
 	"sync"
@@ -72,4 +72,8 @@ func (s *CmdExecutor) SetLogLevel(level string) {
 	case "debug":
 		logger.SetLevel(utils.LEVEL_DEBUG)
 	}
+}
+
+func (s *CmdExecutor) Logger() *utils.Logger {
+	return logger
 }
