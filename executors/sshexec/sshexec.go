@@ -21,12 +21,6 @@ import (
 	"github.com/lpabon/godbc"
 )
 
-type RemoteCommandTransport interface {
-	RemoteCommandExecute(host string, commands []string, timeoutMinutes int) ([]string, error)
-	RebalanceOnExpansion() bool
-	SnapShotLimit() int
-}
-
 type Ssher interface {
 	ConnectAndExec(host string, commands []string, timeoutMinutes int, useSudo bool) ([]string, error)
 }
@@ -47,7 +41,6 @@ type SshExecutor struct {
 }
 
 var (
-	logger           = utils.NewLogger("[sshexec]", utils.LEVEL_DEBUG)
 	ErrSshPrivateKey = errors.New("Unable to read private key file")
 	sshNew           = func(logger *utils.Logger, user string, file string) (Ssher, error) {
 		s := ssh.NewSshExecWithKeyFile(logger, user, file)
