@@ -31,7 +31,7 @@ const (
 // https://access.redhat.com/documentation/en-US/Red_Hat_Storage/3.1/html/Administration_Guide/Brick_Configuration.html
 //
 
-func (s *SshExecutor) DeviceSetup(host, device, vgid string) (d *executors.DeviceInfo, e error) {
+func (s *CmdExecutor) DeviceSetup(host, device, vgid string) (d *executors.DeviceInfo, e error) {
 
 	// Setup commands
 	commands := []string{
@@ -55,7 +55,7 @@ func (s *SshExecutor) DeviceSetup(host, device, vgid string) (d *executors.Devic
 	return s.GetDeviceInfo(host, device, vgid)
 }
 
-func (s *SshExecutor) GetDeviceInfo(host, device, vgid string) (d *executors.DeviceInfo, e error) {
+func (s *CmdExecutor) GetDeviceInfo(host, device, vgid string) (d *executors.DeviceInfo, e error) {
 	// Vg info
 	d = &executors.DeviceInfo{}
 	err := s.getVgSizeFromNode(d, host, device, vgid)
@@ -65,7 +65,7 @@ func (s *SshExecutor) GetDeviceInfo(host, device, vgid string) (d *executors.Dev
 	return d, nil
 }
 
-func (s *SshExecutor) DeviceTeardown(host, device, vgid string) error {
+func (s *CmdExecutor) DeviceTeardown(host, device, vgid string) error {
 
 	// Setup commands
 	commands := []string{
@@ -102,7 +102,7 @@ func (s *SshExecutor) DeviceTeardown(host, device, vgid string) error {
 	return nil
 }
 
-func (s *SshExecutor) getVgSizeFromNode(
+func (s *CmdExecutor) getVgSizeFromNode(
 	d *executors.DeviceInfo,
 	host, device, vgid string) error {
 

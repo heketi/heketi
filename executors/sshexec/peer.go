@@ -16,7 +16,7 @@ import (
 )
 
 // :TODO: Rename this function to NodeInit or something
-func (s *SshExecutor) PeerProbe(host, newnode string) error {
+func (s *CmdExecutor) PeerProbe(host, newnode string) error {
 
 	godbc.Require(host != "")
 	godbc.Require(newnode != "")
@@ -47,7 +47,7 @@ func (s *SshExecutor) PeerProbe(host, newnode string) error {
 	return nil
 }
 
-func (s *SshExecutor) PeerDetach(host, detachnode string) error {
+func (s *CmdExecutor) PeerDetach(host, detachnode string) error {
 	godbc.Require(host != "")
 	godbc.Require(detachnode != "")
 
@@ -64,7 +64,7 @@ func (s *SshExecutor) PeerDetach(host, detachnode string) error {
 	return nil
 }
 
-func (s *SshExecutor) GlusterdCheck(host string) error {
+func (s *CmdExecutor) GlusterdCheck(host string) error {
 	godbc.Require(host != "")
 
 	logger.Info("Check Glusterd service status in node %v", host)

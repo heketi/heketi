@@ -17,7 +17,7 @@ import (
 	"github.com/lpabon/godbc"
 )
 
-func (s *SshExecutor) VolumeCreate(host string,
+func (s *CmdExecutor) VolumeCreate(host string,
 	volume *executors.VolumeRequest) (*executors.Volume, error) {
 
 	godbc.Require(volume != nil)
@@ -75,7 +75,7 @@ func (s *SshExecutor) VolumeCreate(host string,
 	return &executors.Volume{}, nil
 }
 
-func (s *SshExecutor) VolumeExpand(host string,
+func (s *CmdExecutor) VolumeExpand(host string,
 	volume *executors.VolumeRequest) (*executors.Volume, error) {
 
 	godbc.Require(volume != nil)
@@ -117,7 +117,7 @@ func (s *SshExecutor) VolumeExpand(host string,
 	return &executors.Volume{}, nil
 }
 
-func (s *SshExecutor) VolumeDestroy(host string, volume string) error {
+func (s *CmdExecutor) VolumeDestroy(host string, volume string) error {
 	godbc.Require(host != "")
 	godbc.Require(volume != "")
 
@@ -144,7 +144,7 @@ func (s *SshExecutor) VolumeDestroy(host string, volume string) error {
 	return nil
 }
 
-func (s *SshExecutor) VolumeDestroyCheck(host, volume string) error {
+func (s *CmdExecutor) VolumeDestroyCheck(host, volume string) error {
 	godbc.Require(host != "")
 	godbc.Require(volume != "")
 
@@ -157,7 +157,7 @@ func (s *SshExecutor) VolumeDestroyCheck(host, volume string) error {
 	return nil
 }
 
-func (s *SshExecutor) createVolumeOptionsCommand(volume *executors.VolumeRequest) []string {
+func (s *CmdExecutor) createVolumeOptionsCommand(volume *executors.VolumeRequest) []string {
 	commands := []string{}
 	var cmd string
 
@@ -172,7 +172,7 @@ func (s *SshExecutor) createVolumeOptionsCommand(volume *executors.VolumeRequest
 	return commands
 }
 
-func (s *SshExecutor) createAddBrickCommands(volume *executors.VolumeRequest,
+func (s *CmdExecutor) createAddBrickCommands(volume *executors.VolumeRequest,
 	start, inSet, maxPerSet int) []string {
 
 	commands := []string{}
@@ -200,7 +200,7 @@ func (s *SshExecutor) createAddBrickCommands(volume *executors.VolumeRequest,
 	return commands
 }
 
-func (s *SshExecutor) checkForSnapshots(host, volume string) error {
+func (s *CmdExecutor) checkForSnapshots(host, volume string) error {
 
 	// Structure used to unmarshal XML from snapshot gluster cli
 	type CliOutput struct {
@@ -232,7 +232,7 @@ func (s *SshExecutor) checkForSnapshots(host, volume string) error {
 	return nil
 }
 
-func (s *SshExecutor) VolumeInfo(host string, volume string) (*executors.Volume, error) {
+func (s *CmdExecutor) VolumeInfo(host string, volume string) (*executors.Volume, error) {
 
 	godbc.Require(volume != "")
 	godbc.Require(host != "")
@@ -262,7 +262,7 @@ func (s *SshExecutor) VolumeInfo(host string, volume string) (*executors.Volume,
 	return &volumeInfo.VolInfo.Volumes.VolumeList[0], nil
 }
 
-func (s *SshExecutor) VolumeReplaceBrick(host string, volume string, oldBrick *executors.BrickInfo, newBrick *executors.BrickInfo) error {
+func (s *CmdExecutor) VolumeReplaceBrick(host string, volume string, oldBrick *executors.BrickInfo, newBrick *executors.BrickInfo) error {
 	godbc.Require(volume != "")
 	godbc.Require(host != "")
 	godbc.Require(oldBrick != nil)
@@ -281,7 +281,7 @@ func (s *SshExecutor) VolumeReplaceBrick(host string, volume string, oldBrick *e
 
 }
 
-func (s *SshExecutor) HealInfo(host string, volume string) (*executors.HealInfo, error) {
+func (s *CmdExecutor) HealInfo(host string, volume string) (*executors.HealInfo, error) {
 
 	godbc.Require(volume != "")
 	godbc.Require(host != "")

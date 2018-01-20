@@ -18,7 +18,7 @@ import (
 	"github.com/lpabon/godbc"
 )
 
-func (s *SshExecutor) BlockVolumeCreate(host string,
+func (s *CmdExecutor) BlockVolumeCreate(host string,
 	volume *executors.BlockVolumeRequest) (*executors.BlockVolumeInfo, error) {
 
 	godbc.Require(volume != nil)
@@ -82,7 +82,7 @@ func (s *SshExecutor) BlockVolumeCreate(host string,
 	return &blockVolumeInfo, nil
 }
 
-func (s *SshExecutor) BlockVolumeDestroy(host string, blockHostingVolumeName string, blockVolumeName string) error {
+func (s *CmdExecutor) BlockVolumeDestroy(host string, blockHostingVolumeName string, blockVolumeName string) error {
 	godbc.Require(host != "")
 	godbc.Require(blockHostingVolumeName != "")
 	godbc.Require(blockVolumeName != "")
