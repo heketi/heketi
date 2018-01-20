@@ -15,15 +15,15 @@ import (
 	"github.com/heketi/heketi/pkg/utils"
 )
 
-//var (
-//	logger = utils.NewLogger("[sshexec]", utils.LEVEL_DEBUG)
-//)
+var (
+	logger = utils.NewLogger("[sshexec]", utils.LEVEL_DEBUG)
+)
 
-//type RemoteCommandTransport interface {
-//	RemoteCommandExecute(host string, commands []string, timeoutMinutes int) ([]string, error)
-//	RebalanceOnExpansion() bool
-//	SnapShotLimit() int
-//}
+type RemoteCommandTransport interface {
+	RemoteCommandExecute(host string, commands []string, timeoutMinutes int) ([]string, error)
+	RebalanceOnExpansion() bool
+	SnapShotLimit() int
+}
 
 type CmdExecutor struct {
 	Throttlemap map[string]chan bool
