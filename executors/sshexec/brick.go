@@ -18,7 +18,7 @@ import (
 	"github.com/lpabon/godbc"
 )
 
-func (s *SshExecutor) BrickCreate(host string,
+func (s *CmdExecutor) BrickCreate(host string,
 	brick *executors.BrickRequest) (*executors.BrickInfo, error) {
 
 	godbc.Require(brick != nil)
@@ -100,7 +100,7 @@ func (s *SshExecutor) BrickCreate(host string,
 	return b, nil
 }
 
-func (s *SshExecutor) BrickDestroy(host string,
+func (s *CmdExecutor) BrickDestroy(host string,
 	brick *executors.BrickRequest) error {
 
 	godbc.Require(brick != nil)
@@ -150,7 +150,7 @@ func (s *SshExecutor) BrickDestroy(host string,
 	return nil
 }
 
-func (s *SshExecutor) BrickDestroyCheck(host string,
+func (s *CmdExecutor) BrickDestroyCheck(host string,
 	brick *executors.BrickRequest) error {
 	godbc.Require(brick != nil)
 	godbc.Require(host != "")
@@ -168,7 +168,7 @@ func (s *SshExecutor) BrickDestroyCheck(host string,
 // Determine if any other logical volumes are using the thin pool.
 // If they are, then either a clone volume or a snapshot is using that storage,
 // and we cannot delete the brick.
-func (s *SshExecutor) checkThinPoolUsage(host string,
+func (s *CmdExecutor) checkThinPoolUsage(host string,
 	brick *executors.BrickRequest) error {
 
 	// Sample output:
