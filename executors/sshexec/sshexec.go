@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"sync"
 
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/heketi/pkg/utils/ssh"
@@ -26,11 +25,7 @@ type Ssher interface {
 }
 
 type SshExecutor struct {
-	// "Public"
-	Throttlemap    map[string]chan bool
-	Lock           sync.Mutex
-	RemoteExecutor RemoteCommandTransport
-	Fstab          string
+	CmdExecutor
 
 	// Private
 	private_keyfile string
@@ -140,48 +135,6 @@ func NewSshExecutor(config *SshConfig) (*SshExecutor, error) {
 	godbc.Ensure(s.Fstab != "")
 
 	return s, nil
-}
-
-func (s *SshExecutor) SetLogLevel(level string) {
-	switch level {
-	case "none":
-		logger.SetLevel(utils.LEVEL_NOLOG)
-	case "critical":
-		logger.SetLevel(utils.LEVEL_CRITICAL)
-	case "error":
-		logger.SetLevel(utils.LEVEL_ERROR)
-	case "warning":
-		logger.SetLevel(utils.LEVEL_WARNING)
-	case "info":
-		logger.SetLevel(utils.LEVEL_INFO)
-	case "debug":
-		logger.SetLevel(utils.LEVEL_DEBUG)
-	}
-}
-
-func (s *SshExecutor) AccessConnection(host string) {
-
-	var (
-		c  chan bool
-		ok bool
-	)
-
-	s.Lock.Lock()
-	if c, ok = s.Throttlemap[host]; !ok {
-		c = make(chan bool, 1)
-		s.Throttlemap[host] = c
-	}
-	s.Lock.Unlock()
-
-	c <- true
-}
-
-func (s *SshExecutor) FreeConnection(host string) {
-	s.Lock.Lock()
-	c := s.Throttlemap[host]
-	s.Lock.Unlock()
-
-	<-c
 }
 
 func (s *SshExecutor) RemoteCommandExecute(host string,
