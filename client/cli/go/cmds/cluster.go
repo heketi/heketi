@@ -33,15 +33,15 @@ func init() {
 	clusterCommand.AddCommand(clusterInfoCommand)
 
 	clusterCreateCommand.Flags().BoolVar(&cl_block, "block", true,
-		"\n\tOptional: Control the possibility of creating block volumes"+
-			"\n\ton the cluster to be created. This is enabled by default."+
-			"\n\tUse '--block=false' to disable creation of block volumes"+
-			"\n\ton this cluster.")
+		"\n\tOptional: Allow the user to control the possibility of creating"+
+			"\n\tblock volumes on the cluster to be created. This is enabled"+
+			"\n\tby default. Use '--block=false' to disable creation of"+
+			"\n\tblock volumes on this cluster.")
 	clusterCreateCommand.Flags().BoolVar(&cl_file, "file", true,
-		"\n\tOptional: Control the possibility of creating regular file"+
-			"\n\tvolumes on the cluster to be created. This is enabled by"+
-			"\n\tdefault. Use '--file=false' to disable creation of file"+
-			"\n\tvolumes on this cluster.")
+		"\n\tOptional: Allow the user to control the possibility of creating"+
+			"\n\tregular file volumes on the cluster to be created."+
+			"\n\tThis is enabled by default. Use '--file=false' to"+
+			"\n\tdisable creation of file volumes on this cluster.")
 
 	clusterCreateCommand.SilenceUsage = true
 	clusterDeleteCommand.SilenceUsage = true
