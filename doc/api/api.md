@@ -6,6 +6,7 @@
 * [API](#api)
     * [Clusters](#clusters)
         * [Create Cluster](#create-cluster)
+        * [Set Cluster Flags](#set-cluster-flags)
         * [Cluster Information](#cluster-information)
         * [List Clusters](#list-clusters)
         * [Delete Cluster](#delete-cluster)
@@ -223,6 +224,26 @@ Heketi is able to manage multiple GlusterFS clusters, each composed of a set of 
     "volumes": [],
 }
 ```
+
+### Set Cluster Flags
+* **Method:** _POST_
+* **Endpoint**:`/clusters/{id}/flags`
+* **Content-Type**: `application/json`
+* **Response HTTP Status Code**: 200
+* **JSON Request**:
+    * file: _bool_, whether this cluster should allow creation of file volumes
+    * block: _bool_, whether this cluster should allow creation of block volumes
+    * Example:
+
+```json
+{
+    "file": true,
+    "block": false,
+}
+```
+
+* **JSON Response**: None
+
 
 ### Cluster Information
 * **Method:** _GET_  
