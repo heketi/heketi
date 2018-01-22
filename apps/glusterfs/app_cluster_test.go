@@ -77,6 +77,75 @@ func TestClusterCreate(t *testing.T) {
 	tests.Assert(t, len(entry.Info.Nodes) == 0)
 }
 
+func TestClusterSetFlags(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	clusterId := "123abc"
+
+	// Store a cluster in the DB
+	entry := NewClusterEntry()
+	entry.Info.Id = clusterId
+	entry.Info.File = true
+	entry.Info.Block = true
+
+	err := app.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER))
+		if b == nil {
+			return errors.New("Unable to open bucket")
+		}
+
+		buffer, err := entry.Marshal()
+		if err != nil {
+			return err
+		}
+
+		err = b.Put([]byte(entry.Info.Id), buffer)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	tests.Assert(t, err == nil)
+
+	// ClusterSetFlags JSON Request
+	request := []byte(`{
+"file": true,
+"block": false
+}`)
+
+	// Send the ClusterSetFlags request
+	r, err := http.Post(ts.URL+"/clusters/"+clusterId+"/flags",
+		"application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusOK,
+		"Expected http status OK, got: ", http.StatusText(r.StatusCode))
+
+	// Check that the data on the database is recorded correctly
+	var ce ClusterEntry
+	err = app.db.View(func(tx *bolt.Tx) error {
+		return ce.Unmarshal(
+			tx.Bucket([]byte(BOLTDB_BUCKET_CLUSTER)).
+				Get([]byte(clusterId)))
+	})
+	tests.Assert(t, err == nil)
+
+	tests.Assert(t, ce.Info.Id == clusterId)
+	tests.Assert(t, ce.Info.File == true)
+	tests.Assert(t, ce.Info.Block == false)
+}
+
 func TestClusterList(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
