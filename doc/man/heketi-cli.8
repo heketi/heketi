@@ -51,6 +51,32 @@ $ heketi\-cli cluster create \-\-block=false
 .RE
 .RE
 .PP
+.B heketi\-cli cluster setflags [\-\-file=true|false] [\-\-block=true|false] <Cluster-ID>
+.RS
+Set file and block flags on a cluster.
+.PP
+.B Options
+.RS
+.TP
+\fB\-\-file\fP=true|false
+Optional:
+Allow the user to control the possibility of creating regular file volumes on the cluster.
+Use '\-\-block=true' to enable and '\-\-block=false' to disable creation of block volumes on this cluster.
+.TP
+\fB\-\-block\fP=true|false
+Optional:
+Allow the user to control the possibility of creating block volumes on the cluster.
+Use '\-\-block=true' to enable and '\-\-block=false' to disable creation of block volumes on this cluster.
+.RE
+.PP
+.B Example
+.RS
+.nf
+$ heketi\-cli cluster setflags \-\-block=false 886a86a868711bef83001
+.fi
+.RE
+.RE
+.PP
 \fBheketi\-cli cluster delete <CLUSTER-ID>\fP
 .RS
 Delete a cluster
