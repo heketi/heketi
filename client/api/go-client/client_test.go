@@ -278,6 +278,22 @@ func TestClientCluster(t *testing.T) {
 	tests.Assert(t, err == nil)
 	tests.Assert(t, reflect.DeepEqual(info, cluster))
 
+	// Set flags on the cluster
+	cluster_setflags_req := &api.ClusterSetFlagsRequest{
+		ClusterFlags: api.ClusterFlags{
+			File:  true,
+			Block: false,
+		},
+	}
+	err = c.ClusterSetFlags(cluster.Id, cluster_setflags_req)
+	tests.Assert(t, err == nil, err)
+
+	// Check flags result
+	info, err = c.ClusterInfo(cluster.Id)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, info.File == true)
+	tests.Assert(t, info.Block == false)
+
 	// Get a list of clusters
 	list, err := c.ClusterList()
 	tests.Assert(t, err == nil)
