@@ -198,15 +198,19 @@ Before servicing any requests, Heketi must first learn the topology of the clust
 Heketi is able to manage multiple GlusterFS clusters, each composed of a set of storage nodes.  Once a cluster has been created, nodes can then be added to it for Heketi to manage.  A GlusterFS cluster is a set of nodes participating as a trusted storage pool.  Volumes do not cross cluster boundaries.
 
 ### Create Cluster
-* **Method:** _POST_  
+* **Method:** _POST_
 * **Endpoint**:`/clusters`
 * **Content-Type**: `application/json`
 * **Response HTTP Status Code**: 201
-* **JSON Request**: Empty body, or an empty JSON request
+* **JSON Request**: Empty body, or a JSON request with optional attributes:
+    * file: _bool_, _optional_, whether this cluster should allow creation of file volumes (default: true)
+    * block: _bool_, _optional_, whether this cluster should allow creation of block volumes (default: true)
     * Example:
 
 ```json
-{}
+{
+"block" : false
+}
 ```
 
 * **JSON Response**: See [Cluster Information](#cluster_info)
