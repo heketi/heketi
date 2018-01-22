@@ -21,14 +21,32 @@ Command line program for Heketi
 .SH COMMANDS
 .SS "Cluster Commands"
 .PP
-\fBheketi\-cli cluster create\fP
+.B heketi\-cli cluster create [\-\-file[=false]] [\-\-block[=false]]
 .RS
 Create a cluster
+.PP
+.B Options
+.RS
+.TP
+\fB\-\-file\fP[=false]
+Optional:
+Allow the user to control the possibility of creating regular file volumes on the cluster to be created.
+This is enabled by default.
+Use '\-\-block=false' to disable creation of block volumes on this cluster.
+(default true)
+.TP
+\fB\-\-block\fP[=false]
+Optional:
+Allow the user to control the possibility of creating block volumes on the cluster to be created.
+This is enabled by default.
+Use '\-\-block=false' to disable creation of block volumes on this cluster.
+(default true)
+.RE
 .PP
 \fBExample\fP
 .RS
 .nf
-$ heketi\-cli cluster create
+$ heketi\-cli cluster create \-\-block=false
 .fi
 .RE
 .RE
