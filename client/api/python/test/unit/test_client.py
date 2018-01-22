@@ -42,6 +42,19 @@ class test_heketi(unittest.TestCase):
         info = c.cluster_info(cluster['id'])
         self.assertEqual(True, info == cluster)
 
+        # change cluster flags
+        cluster_setflags_req = {}
+        cluster_setflags_req['block'] = False
+        cluster_setflags_req['file'] = True
+        ok = c.cluster_setflags(cluster['id'], cluster_setflags_req)
+        self.assertTrue(ok)
+
+        # verify the cluster flags have changed
+        info = c.cluster_info(cluster['id'])
+        self.assertEqual(info['id'], cluster['id'])
+        self.assertFalse(info['block'])
+        self.assertTrue(info['file'])
+
         # Get a list of clusters
         list = c.cluster_list()
         self.assertEqual(True, len(list['clusters']) == 1)

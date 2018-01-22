@@ -106,6 +106,11 @@ class HeketiClient(object):
         if req.status_code == requests.codes.created:
             return req.json()
 
+    def cluster_setflags(self, cluster_id, cluster_options={}):
+        uri = "/clusters/" + cluster_id + "/flags"
+        req = self._make_request('POST', uri, cluster_options)
+        return req.status_code == requests.codes.ok
+
     def cluster_info(self, cluster_id):
         uri = "/clusters/" + cluster_id
         req = self._make_request('GET', uri)
