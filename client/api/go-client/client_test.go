@@ -273,7 +273,7 @@ func TestClientCluster(t *testing.T) {
 	tests.Assert(t, err != nil)
 	tests.Assert(t, info == nil)
 
-	// Get information about the client
+	// Get information about the cluster
 	info, err = c.ClusterInfo(cluster.Id)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, reflect.DeepEqual(info, cluster))
