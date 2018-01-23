@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	logger = utils.NewLogger("[sshexec]", utils.LEVEL_DEBUG)
+	logger = utils.NewLogger("[cmdexec]", utils.LEVEL_DEBUG)
 )
 
 type RemoteCommandTransport interface {
