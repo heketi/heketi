@@ -13,15 +13,25 @@ package utils
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"io"
+
 	"github.com/lpabon/godbc"
 )
 
-// Return a 16-byte uuid
-func GenUUID() string {
+type IdSource struct {
+	io.Reader
+}
+
+func (s IdSource) ReadUUID() string {
 	uuid := make([]byte, 16)
-	n, err := rand.Read(uuid)
+	n, err := s.Read(uuid)
 	godbc.Check(n == len(uuid), n, len(uuid))
 	godbc.Check(err == nil, err)
 
 	return hex.EncodeToString(uuid)
+}
+
+// Return a 16-byte uuid
+func GenUUID() string {
+	return IdSource{rand.Reader}.ReadUUID()
 }
