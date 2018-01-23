@@ -87,7 +87,9 @@ func TestBackupToKubeSecretMaxSizeFailure(t *testing.T) {
 	tests.Assert(t, err == nil)
 	err = gz.Close()
 	tests.Assert(t, err == nil)
-	tests.Assert(t, b.Len() > 1024*MB)
+	// changing the pattern of IDs generate really changes the compression
+	// ratios of the db. this is a crappy test!
+	tests.Assert(t, b.Len() > MB)
 }
 
 func TestBackupToKubeSecretBackupOnNonGet(t *testing.T) {
