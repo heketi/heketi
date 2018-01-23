@@ -13,6 +13,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/heketi/heketi/executors/cmdexec"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
 )
@@ -58,7 +59,7 @@ func TestNewSshExec(t *testing.T) {
 		PrivateKeyFile: "xkeyfile",
 		User:           "xuser",
 		Port:           "100",
-		CLICommandConfig: CLICommandConfig{
+		CmdConfig: cmdexec.CmdConfig{
 			Fstab: "xfstab",
 		},
 	}
@@ -85,7 +86,7 @@ func TestSshExecRebalanceOnExpansion(t *testing.T) {
 		PrivateKeyFile: "xkeyfile",
 		User:           "xuser",
 		Port:           "100",
-		CLICommandConfig: CLICommandConfig{
+		CmdConfig: cmdexec.CmdConfig{
 			Fstab: "xfstab",
 		},
 	}
@@ -104,7 +105,7 @@ func TestSshExecRebalanceOnExpansion(t *testing.T) {
 		PrivateKeyFile: "xkeyfile",
 		User:           "xuser",
 		Port:           "100",
-		CLICommandConfig: CLICommandConfig{
+		CmdConfig: cmdexec.CmdConfig{
 			Fstab:                "xfstab",
 			RebalanceOnExpansion: true,
 		},
@@ -185,7 +186,7 @@ func TestSshExecutorEnvVariables(t *testing.T) {
 		PrivateKeyFile: "xkeyfile",
 		User:           "xuser",
 		Port:           "100",
-		CLICommandConfig: CLICommandConfig{
+		CmdConfig: cmdexec.CmdConfig{
 			Fstab: "xfstab",
 		},
 	}
