@@ -35,7 +35,6 @@ const (
 )
 
 type KubeExecutor struct {
-	// Embed all sshexecutor functions
 	cmdexec.CmdExecutor
 
 	// save kube configuration
