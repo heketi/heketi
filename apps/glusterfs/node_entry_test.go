@@ -22,11 +22,12 @@ import (
 )
 
 func createSampleNodeEntry() *NodeEntry {
+	g := utils.GenUUID()
 	req := &api.NodeAddRequest{
 		ClusterId: "123",
 		Hostnames: api.HostAddresses{
-			Manage:  []string{"manage" + utils.GenUUID()[:8]},
-			Storage: []string{"storage" + utils.GenUUID()[:8]},
+			Manage:  []string{"manage" + g[:4] + g[24:]},
+			Storage: []string{"storage" + g[:4] + g[24:]},
 		},
 		Zone: 99,
 	}
