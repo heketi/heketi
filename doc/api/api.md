@@ -194,7 +194,7 @@ Most APIs use use the following methods on the URIs:
 
 Before servicing any requests, Heketi must first learn the topology of the clusters.  Once it knows which nodes and disks to use, it can then service requests.
 
-# Clusters
+## Clusters
 Heketi is able to manage multiple GlusterFS clusters, each composed of a set of storage nodes.  Once a cluster has been created, nodes can then be added to it for Heketi to manage.  A GlusterFS cluster is a set of nodes participating as a trusted storage pool.  Volumes do not cross cluster boundaries.
 
 ### Create Cluster
