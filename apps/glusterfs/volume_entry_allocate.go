@@ -19,16 +19,23 @@ import (
 	"github.com/heketi/heketi/pkg/utils"
 )
 
+type BrickAllocation struct {
+	Bricks  []*BrickEntry
+	Devices []*DeviceEntry
+}
+
 func allocateBricks(
 	db wdb.RODB,
 	allocator Allocator,
 	cluster string,
 	v *VolumeEntry,
 	bricksets int,
-	brick_size uint64) ([]*BrickEntry, error) {
+	brick_size uint64) (*BrickAllocation, error) {
 
-	// Initialize brick_entries
-	brick_entries := make([]*BrickEntry, 0)
+	r := &BrickAllocation{
+		Bricks:  []*BrickEntry{},
+		Devices: []*DeviceEntry{},
+	}
 
 	// Determine allocation for each brick required for this volume
 	for brick_num := 0; brick_num < bricksets; brick_num++ {
@@ -92,7 +99,8 @@ func allocateBricks(
 						}
 
 						// Save the brick entry to create later
-						brick_entries = append(brick_entries, brick)
+						r.Bricks = append(r.Bricks, brick)
+						r.Devices = append(r.Devices, device)
 
 						// Add to set list
 						setlist = append(setlist, brick)
@@ -128,11 +136,11 @@ func allocateBricks(
 
 			})
 			if err != nil {
-				return brick_entries, err
+				return r, err
 			}
 		}
 	}
-	return brick_entries, nil
+	return r, nil
 }
 
 func (v *VolumeEntry) allocBricksInCluster(db wdb.DB,
@@ -527,7 +535,8 @@ func (v *VolumeEntry) allocBricks(
 		}
 	}()
 
-	brick_entries, e = allocateBricks(db, allocator, cluster, v, bricksets, brick_size)
+	r, e := allocateBricks(db, allocator, cluster, v, bricksets, brick_size)
+	brick_entries = r.Bricks
 
 	return brick_entries, e
 }
