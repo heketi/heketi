@@ -1412,10 +1412,8 @@ func TestNodeInfoAfterDelete(t *testing.T) {
 	}
 
 	// Check it was removed from the ring
-	// TODO: can we check the node?
-	// The mock allocator does (currently) not track the nodes...
-	//tests.Assert(t, !app.Allocator.HasNode(cluster.Id, node.Zone,
-	//	node.Id))
+	tests.Assert(t, !app.Allocator().HasNode(cluster.Id, node.Zone,
+		node.Id))
 
 	// Get node info
 	node, err = c.NodeInfo(node.Id)
