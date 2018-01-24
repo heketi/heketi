@@ -37,6 +37,8 @@ func allocateBricks(
 		Devices: []*DeviceEntry{},
 	}
 
+	devcache := map[string](*DeviceEntry){}
+
 	// Determine allocation for each brick required for this volume
 	for brick_num := 0; brick_num < bricksets; brick_num++ {
 		logger.Info("brick_num: %v", brick_num)
@@ -61,15 +63,21 @@ func allocateBricks(
 
 			// Do the work in the database context so that the cluster
 			// data does not change while determining brick location
-			err := db.Update(func(tx *bolt.Tx) error {
+			err := db.View(func(tx *bolt.Tx) error {
 
 				// Check the ring for devices to place the brick
 				for deviceId := range deviceCh {
 
-					// Get device entry
-					device, err := NewDeviceEntryFromId(tx, deviceId)
-					if err != nil {
-						return err
+					// Get device entry from cache if possible
+					device, ok := devcache[deviceId]
+					if !ok {
+						// Get device entry from db otherwise
+						var err error
+						device, err = NewDeviceEntryFromId(tx, deviceId)
+						if err != nil {
+							return err
+						}
+						devcache[deviceId] = device
 					}
 
 					// Do not allow a device from the same node to be
@@ -110,17 +118,6 @@ func allocateBricks(
 
 						// Add brick to volume
 						v.BrickAdd(brick.Id())
-
-						// Save values
-						err := brick.Save(tx)
-						if err != nil {
-							return err
-						}
-
-						err = device.Save(tx)
-						if err != nil {
-							return err
-						}
 
 						return nil
 					}
@@ -536,7 +533,26 @@ func (v *VolumeEntry) allocBricks(
 	}()
 
 	r, e := allocateBricks(db, allocator, cluster, v, bricksets, brick_size)
+	// mimic the previous unconditional db update behavior
+	err := db.Update(func(tx *bolt.Tx) error {
+		for _, x := range r.Bricks {
+			err := x.Save(tx)
+			if err != nil {
+				return err
+			}
+		}
+		for _, x := range r.Devices {
+			err := x.Save(tx)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 	brick_entries = r.Bricks
+	if e == nil && err != nil {
+		e = err
+	}
 
 	return brick_entries, e
 }
