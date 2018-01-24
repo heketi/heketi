@@ -191,6 +191,19 @@ func (s *SimpleAllocatorRing) GetDeviceList(uuid string) SimpleDevices {
 
 }
 
+func (s *SimpleAllocatorRing) HasNode(zone int, nodeId string) bool {
+	nodes, ok := s.ring[zone]
+	if !ok {
+		return false
+	}
+
+	if _, ok := nodes[nodeId]; !ok {
+		return false
+	}
+
+	return true
+}
+
 func (s *SimpleAllocatorRing) HasDevice(zone int,
 	nodeId, deviceId string) bool {
 
