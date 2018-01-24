@@ -596,11 +596,6 @@ func TestDeviceSetStateFailed(t *testing.T) {
 	app := NewTestApp(tmpfile)
 	defer app.Close()
 
-	// Create allocator
-	mockAllocator := NewMockAllocator(app.db)
-	app.SetAllocator(mockAllocator)
-	defer app.ClearAllocator()
-
 	// Create cluster entry
 	c := NewClusterEntry()
 	c.Info.Id = "cluster"
@@ -623,9 +618,6 @@ func TestDeviceSetStateFailed(t *testing.T) {
 	d.NodeId = n.Info.Id
 
 	n.DeviceAdd(d.Info.Id)
-
-	// Add to allocator
-	app.Allocator().AddDevice(c, n, d)
 
 	// Save in db
 	app.db.Update(func(tx *bolt.Tx) error {
@@ -687,11 +679,6 @@ func TestDeviceSetStateOfflineOnline(t *testing.T) {
 	app := NewTestApp(tmpfile)
 	defer app.Close()
 
-	// Create allocator
-	mockAllocator := NewMockAllocator(app.db)
-	app.SetAllocator(mockAllocator)
-	defer app.ClearAllocator()
-
 	// Create cluster entry
 	c := NewClusterEntry()
 	c.Info.Id = "cluster"
@@ -714,9 +701,6 @@ func TestDeviceSetStateOfflineOnline(t *testing.T) {
 	d.NodeId = n.Info.Id
 
 	n.DeviceAdd(d.Info.Id)
-
-	// Add to allocator
-	app.Allocator().AddDevice(c, n, d)
 
 	// Save in db
 	app.db.Update(func(tx *bolt.Tx) error {
