@@ -535,8 +535,8 @@ func TestNodeSetStateFailed(t *testing.T) {
 	})
 
 	// Check ring
-	tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 1)
-	tests.Assert(t, mockAllocator.clustermap[c.Info.Id][0] == d.Info.Id)
+	tests.Assert(t, mockAllocator.HasDevice(c.Info.Id, n.Info.Zone,
+		n.Info.Id, d.Info.Id))
 
 	// Set failed
 	err := n.SetState(app.db, app.executor, mockAllocator, api.EntryStateFailed)
@@ -549,7 +549,8 @@ func TestNodeSetStateFailed(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Check it was removed from ring
-	tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 0)
+	tests.Assert(t, !mockAllocator.HasDevice(c.Info.Id, n.Info.Zone,
+		n.Info.Id, d.Info.Id))
 
 	// Set failed
 	err = n.SetState(app.db, app.executor, mockAllocator, api.EntryStateFailed)
@@ -560,14 +561,15 @@ func TestNodeSetStateFailed(t *testing.T) {
 	err = n.SetState(app.db, app.executor, mockAllocator, api.EntryStateOffline)
 	tests.Assert(t, n.State == api.EntryStateFailed)
 	tests.Assert(t, err != nil)
-	tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 0)
+	tests.Assert(t, !mockAllocator.HasDevice(c.Info.Id, n.Info.Zone,
+		n.Info.Id, d.Info.Id))
 
 	// Set online
 	err = n.SetState(app.db, app.executor, mockAllocator, api.EntryStateOnline)
 	tests.Assert(t, n.State == api.EntryStateFailed)
 	tests.Assert(t, err != nil)
-	tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 0)
-
+	tests.Assert(t, !mockAllocator.HasDevice(c.Info.Id, n.Info.Zone,
+		n.Info.Id, d.Info.Id))
 }
 
 func TestNodeSetStateOfflineOnline(t *testing.T) {
@@ -623,8 +625,8 @@ func TestNodeSetStateOfflineOnline(t *testing.T) {
 	})
 
 	// Check ring
-	tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 1)
-	tests.Assert(t, mockAllocator.clustermap[c.Info.Id][0] == d.Info.Id)
+	tests.Assert(t, mockAllocator.HasDevice(c.Info.Id, n.Info.Zone,
+		n.Info.Id, d.Info.Id))
 
 	// Set offline
 	err := n.SetState(app.db, app.executor, mockAllocator, api.EntryStateOffline)
@@ -632,7 +634,8 @@ func TestNodeSetStateOfflineOnline(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Check it was removed from ring
-	tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 0)
+	tests.Assert(t, !mockAllocator.HasDevice(c.Info.Id, n.Info.Zone,
+		n.Info.Id, d.Info.Id))
 
 	// Set offline again
 	err = n.SetState(app.db, app.executor, mockAllocator, api.EntryStateOffline)
@@ -643,8 +646,8 @@ func TestNodeSetStateOfflineOnline(t *testing.T) {
 	err = n.SetState(app.db, app.executor, mockAllocator, api.EntryStateOnline)
 	tests.Assert(t, n.State == api.EntryStateOnline)
 	tests.Assert(t, err == nil)
-	tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 1)
-	tests.Assert(t, mockAllocator.clustermap[c.Info.Id][0] == d.Info.Id)
+	tests.Assert(t, mockAllocator.HasDevice(c.Info.Id, n.Info.Zone,
+		n.Info.Id, d.Info.Id))
 }
 
 func TestGetVerifiedManageHostname(t *testing.T) {
