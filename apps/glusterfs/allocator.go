@@ -30,6 +30,9 @@ type Allocator interface {
 	GetNodes(clusterId, brickId string) (<-chan string,
 		chan<- struct{}, <-chan error)
 
+	// Check whether a node is currently considered by the allocator
+	HasNode(clusterId string, zone int, nodeId string) bool
+
 	// Check whether a device is currently considered by the allocator
 	HasDevice(clusterId string, zone int, nodeId, deviceId string) bool
 }

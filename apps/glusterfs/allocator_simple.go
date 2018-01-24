@@ -230,6 +230,20 @@ func (s *SimpleAllocator) GetNodes(clusterId, brickId string) (<-chan string,
 	return device, done, errc
 }
 
+func (s *SimpleAllocator) HasNode(clusterId string, zone int,
+	nodeId string) bool {
+
+	if _, ok := s.rings[clusterId]; !ok {
+		return false
+	}
+
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	ring := s.rings[clusterId]
+
+	return ring.HasNode(zone, nodeId)
+}
 func (s *SimpleAllocator) HasDevice(clusterId string, zone int,
 	nodeId, deviceId string) bool {
 
