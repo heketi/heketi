@@ -1040,11 +1040,6 @@ func TestNodeState(t *testing.T) {
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	// Create mock allocator
-	mockAllocator := NewMockAllocator(app.db)
-	app.SetAllocator(mockAllocator)
-	defer app.ClearAllocator()
-
 	// Create a client
 	c := client.NewClientNoAuth(ts.URL)
 	tests.Assert(t, c != nil)
@@ -1361,11 +1356,6 @@ func TestNodeInfoAfterDelete(t *testing.T) {
 	// Setup the server
 	ts := httptest.NewServer(router)
 	defer ts.Close()
-
-	// Create mock allocator
-	mockAllocator := NewMockAllocator(app.db)
-	app.SetAllocator(mockAllocator)
-	defer app.ClearAllocator()
 
 	// Create a client
 	c := client.NewClientNoAuth(ts.URL)
