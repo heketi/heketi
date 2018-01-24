@@ -29,4 +29,7 @@ type Allocator interface {
 	// needs to read from the generator.
 	GetNodes(clusterId, brickId string) (<-chan string,
 		chan<- struct{}, <-chan error)
+
+	// Check whether a device is currently considered by the allocator
+	HasDevice(clusterId string, zone int, nodeId, deviceId string) bool
 }
