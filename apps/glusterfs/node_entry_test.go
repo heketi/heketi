@@ -518,7 +518,7 @@ func TestNodeSetStateFailed(t *testing.T) {
 	n.DeviceAdd(d.Info.Id)
 
 	// Add to allocator
-	mockAllocator.AddDevice(c, n, d)
+	app.Allocator().AddDevice(c, n, d)
 
 	// Save in db
 	app.db.Update(func(tx *bolt.Tx) error {
@@ -535,40 +535,40 @@ func TestNodeSetStateFailed(t *testing.T) {
 	})
 
 	// Check ring
-	tests.Assert(t, mockAllocator.HasDevice(c.Info.Id, n.Info.Zone,
+	tests.Assert(t, app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
 		n.Info.Id, d.Info.Id))
 
 	// Set failed
-	err := n.SetState(app.db, app.executor, mockAllocator, api.EntryStateFailed)
+	err := n.SetState(app.db, app.executor, app.Allocator(), api.EntryStateFailed)
 	tests.Assert(t, n.State == api.EntryStateOnline)
 	tests.Assert(t, err != nil)
 
 	// Set offline
-	err = n.SetState(app.db, app.executor, mockAllocator, api.EntryStateOffline)
+	err = n.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
 	tests.Assert(t, n.State == api.EntryStateOffline)
 	tests.Assert(t, err == nil)
 
 	// Check it was removed from ring
-	tests.Assert(t, !mockAllocator.HasDevice(c.Info.Id, n.Info.Zone,
+	tests.Assert(t, !app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
 		n.Info.Id, d.Info.Id))
 
 	// Set failed
-	err = n.SetState(app.db, app.executor, mockAllocator, api.EntryStateFailed)
+	err = n.SetState(app.db, app.executor, app.Allocator(), api.EntryStateFailed)
 	tests.Assert(t, n.State == api.EntryStateFailed)
 	tests.Assert(t, err == nil)
 
 	// Set offline
-	err = n.SetState(app.db, app.executor, mockAllocator, api.EntryStateOffline)
+	err = n.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
 	tests.Assert(t, n.State == api.EntryStateFailed)
 	tests.Assert(t, err != nil)
-	tests.Assert(t, !mockAllocator.HasDevice(c.Info.Id, n.Info.Zone,
+	tests.Assert(t, !app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
 		n.Info.Id, d.Info.Id))
 
 	// Set online
-	err = n.SetState(app.db, app.executor, mockAllocator, api.EntryStateOnline)
+	err = n.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOnline)
 	tests.Assert(t, n.State == api.EntryStateFailed)
 	tests.Assert(t, err != nil)
-	tests.Assert(t, !mockAllocator.HasDevice(c.Info.Id, n.Info.Zone,
+	tests.Assert(t, !app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
 		n.Info.Id, d.Info.Id))
 }
 
@@ -609,7 +609,7 @@ func TestNodeSetStateOfflineOnline(t *testing.T) {
 	n.DeviceAdd(d.Info.Id)
 
 	// Add to allocator
-	mockAllocator.AddDevice(c, n, d)
+	app.Allocator().AddDevice(c, n, d)
 
 	// Save in db
 	app.db.Update(func(tx *bolt.Tx) error {
@@ -625,28 +625,28 @@ func TestNodeSetStateOfflineOnline(t *testing.T) {
 	})
 
 	// Check ring
-	tests.Assert(t, mockAllocator.HasDevice(c.Info.Id, n.Info.Zone,
+	tests.Assert(t, app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
 		n.Info.Id, d.Info.Id))
 
 	// Set offline
-	err := n.SetState(app.db, app.executor, mockAllocator, api.EntryStateOffline)
+	err := n.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
 	tests.Assert(t, n.State == api.EntryStateOffline)
 	tests.Assert(t, err == nil)
 
 	// Check it was removed from ring
-	tests.Assert(t, !mockAllocator.HasDevice(c.Info.Id, n.Info.Zone,
+	tests.Assert(t, !app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
 		n.Info.Id, d.Info.Id))
 
 	// Set offline again
-	err = n.SetState(app.db, app.executor, mockAllocator, api.EntryStateOffline)
+	err = n.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
 	tests.Assert(t, n.State == api.EntryStateOffline)
 	tests.Assert(t, err == nil)
 
 	// Set online
-	err = n.SetState(app.db, app.executor, mockAllocator, api.EntryStateOnline)
+	err = n.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOnline)
 	tests.Assert(t, n.State == api.EntryStateOnline)
 	tests.Assert(t, err == nil)
-	tests.Assert(t, mockAllocator.HasDevice(c.Info.Id, n.Info.Zone,
+	tests.Assert(t, app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
 		n.Info.Id, d.Info.Id))
 }
 
