@@ -638,11 +638,12 @@ func TestDeviceSetStateFailed(t *testing.T) {
 		err = d.Save(tx)
 		tests.Assert(t, err == nil)
 
-		// Check ring
-		tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 1)
-		tests.Assert(t, mockAllocator.clustermap[c.Info.Id][0] == d.Info.Id)
 		return nil
 	})
+
+	// Check ring
+	tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 1)
+	tests.Assert(t, mockAllocator.clustermap[c.Info.Id][0] == d.Info.Id)
 
 	// Set offline
 	err := d.SetState(app.db, app.executor, mockAllocator, api.EntryStateOffline)
@@ -725,11 +726,12 @@ func TestDeviceSetStateOfflineOnline(t *testing.T) {
 		err = d.Save(tx)
 		tests.Assert(t, err == nil)
 
-		// Check ring
-		tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 1)
-		tests.Assert(t, mockAllocator.clustermap[c.Info.Id][0] == d.Info.Id)
 		return nil
 	})
+
+	// Check ring
+	tests.Assert(t, len(mockAllocator.clustermap[c.Info.Id]) == 1)
+	tests.Assert(t, mockAllocator.clustermap[c.Info.Id][0] == d.Info.Id)
 
 	// Set offline
 	err := d.SetState(app.db, app.executor, mockAllocator, api.EntryStateOffline)
