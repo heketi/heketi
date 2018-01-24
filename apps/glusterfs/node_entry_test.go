@@ -489,11 +489,6 @@ func TestNodeSetStateFailed(t *testing.T) {
 	app := NewTestApp(tmpfile)
 	defer app.Close()
 
-	// Create allocator
-	mockAllocator := NewMockAllocator(app.db)
-	app.SetAllocator(mockAllocator)
-	defer app.ClearAllocator()
-
 	// Create cluster entry
 	c := NewClusterEntry()
 	c.Info.Id = "cluster"
@@ -579,11 +574,6 @@ func TestNodeSetStateOfflineOnline(t *testing.T) {
 	// Create the app
 	app := NewTestApp(tmpfile)
 	defer app.Close()
-
-	// Create allocator
-	mockAllocator := NewMockAllocator(app.db)
-	app.SetAllocator(mockAllocator)
-	defer app.ClearAllocator()
 
 	// Create cluster entry
 	c := NewClusterEntry()
