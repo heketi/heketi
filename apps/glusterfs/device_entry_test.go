@@ -625,7 +625,7 @@ func TestDeviceSetStateFailed(t *testing.T) {
 	n.DeviceAdd(d.Info.Id)
 
 	// Add to allocator
-	mockAllocator.AddDevice(c, n, d)
+	app.Allocator().AddDevice(c, n, d)
 
 	// Save in db
 	app.db.Update(func(tx *bolt.Tx) error {
@@ -642,40 +642,40 @@ func TestDeviceSetStateFailed(t *testing.T) {
 	})
 
 	// Check ring
-	tests.Assert(t, mockAllocator.HasDevice(c.Info.Id,
+	tests.Assert(t, app.Allocator().HasDevice(c.Info.Id,
 		n.Info.Zone, n.Info.Id, d.Info.Id))
 
 	// Set offline
-	err := d.SetState(app.db, app.executor, mockAllocator, api.EntryStateOffline)
+	err := d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
 	tests.Assert(t, d.State == api.EntryStateOffline)
 	tests.Assert(t, err == nil, err)
-	tests.Assert(t, !mockAllocator.HasDevice(c.Info.Id, n.Info.Zone,
+	tests.Assert(t, !app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
 		n.Info.Id, d.Info.Id))
 
 	// Set failed, Note: this requires the current state to be offline
-	err = d.SetState(app.db, app.executor, mockAllocator, api.EntryStateFailed)
+	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateFailed)
 	tests.Assert(t, d.State == api.EntryStateFailed)
 	tests.Assert(t, err == nil)
-	tests.Assert(t, !mockAllocator.HasDevice(c.Info.Id, n.Info.Zone,
+	tests.Assert(t, !app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
 		n.Info.Id, d.Info.Id))
 
 	// Set failed again
-	err = d.SetState(app.db, app.executor, mockAllocator, api.EntryStateFailed)
+	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateFailed)
 	tests.Assert(t, d.State == api.EntryStateFailed)
 	tests.Assert(t, err == nil)
 
 	// Set offline
-	err = d.SetState(app.db, app.executor, mockAllocator, api.EntryStateOffline)
+	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
 	tests.Assert(t, d.State == api.EntryStateFailed)
 	tests.Assert(t, err != nil)
-	tests.Assert(t, !mockAllocator.HasDevice(c.Info.Id, n.Info.Zone,
+	tests.Assert(t, !app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
 		n.Info.Id, d.Info.Id))
 
 	// Set online
-	err = d.SetState(app.db, app.executor, mockAllocator, api.EntryStateOnline)
+	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOnline)
 	tests.Assert(t, d.State == api.EntryStateFailed)
 	tests.Assert(t, err != nil)
-	tests.Assert(t, !mockAllocator.HasDevice(c.Info.Id, n.Info.Zone,
+	tests.Assert(t, !app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
 		n.Info.Id, d.Info.Id))
 }
 
@@ -716,7 +716,7 @@ func TestDeviceSetStateOfflineOnline(t *testing.T) {
 	n.DeviceAdd(d.Info.Id)
 
 	// Add to allocator
-	mockAllocator.AddDevice(c, n, d)
+	app.Allocator().AddDevice(c, n, d)
 
 	// Save in db
 	app.db.Update(func(tx *bolt.Tx) error {
@@ -733,27 +733,27 @@ func TestDeviceSetStateOfflineOnline(t *testing.T) {
 	})
 
 	// Check ring
-	tests.Assert(t, mockAllocator.HasDevice(c.Info.Id, n.Info.Zone,
+	tests.Assert(t, app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
 		n.Info.Id, d.Info.Id))
 
 	// Set offline
-	err := d.SetState(app.db, app.executor, mockAllocator, api.EntryStateOffline)
+	err := d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
 	tests.Assert(t, d.State == api.EntryStateOffline)
 	tests.Assert(t, err == nil)
 
 	// Check it was removed from ring
-	tests.Assert(t, !mockAllocator.HasDevice(c.Info.Id, n.Info.Zone,
+	tests.Assert(t, !app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
 		n.Info.Id, d.Info.Id))
 
 	// Set offline again
-	err = d.SetState(app.db, app.executor, mockAllocator, api.EntryStateOffline)
+	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
 	tests.Assert(t, d.State == api.EntryStateOffline)
 	tests.Assert(t, err == nil)
 
 	// Set online
-	err = d.SetState(app.db, app.executor, mockAllocator, api.EntryStateOnline)
+	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOnline)
 	tests.Assert(t, d.State == api.EntryStateOnline)
 	tests.Assert(t, err == nil)
-	tests.Assert(t, mockAllocator.HasDevice(c.Info.Id, n.Info.Zone,
+	tests.Assert(t, app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
 		n.Info.Id, d.Info.Id))
 }
