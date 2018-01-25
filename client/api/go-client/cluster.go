@@ -47,6 +47,7 @@ func (c *Client) ClusterCreate(request *api.ClusterCreateRequest) (*api.ClusterI
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 	if r.StatusCode != http.StatusCreated {
 		return nil, utils.GetErrorFromResponse(r)
 	}
@@ -54,7 +55,6 @@ func (c *Client) ClusterCreate(request *api.ClusterCreateRequest) (*api.ClusterI
 	// Read JSON response
 	var cluster api.ClusterInfoResponse
 	err = utils.GetJsonFromResponse(r, &cluster)
-	r.Body.Close()
 	if err != nil {
 		return nil, err
 	}
@@ -88,12 +88,10 @@ func (c *Client) ClusterSetFlags(id string, request *api.ClusterSetFlagsRequest)
 	if err != nil {
 		return err
 	}
-
+	defer r.Body.Close()
 	if r.StatusCode != http.StatusOK {
 		return utils.GetErrorFromResponse(r)
 	}
-
-	r.Body.Close()
 
 	return nil
 }
@@ -114,10 +112,10 @@ func (c *Client) ClusterInfo(id string) (*api.ClusterInfoResponse, error) {
 
 	// Get info
 	r, err := c.do(req)
-	defer r.Body.Close()
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 	if r.StatusCode != http.StatusOK {
 		return nil, utils.GetErrorFromResponse(r)
 	}
@@ -151,6 +149,7 @@ func (c *Client) ClusterList() (*api.ClusterListResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 	if r.StatusCode != http.StatusOK {
 		return nil, utils.GetErrorFromResponse(r)
 	}
@@ -184,6 +183,7 @@ func (c *Client) ClusterDelete(id string) error {
 	if err != nil {
 		return err
 	}
+	defer r.Body.Close()
 	if r.StatusCode != http.StatusOK {
 		return utils.GetErrorFromResponse(r)
 	}
