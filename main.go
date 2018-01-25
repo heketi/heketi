@@ -12,16 +12,17 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/apps"
 	"github.com/heketi/heketi/apps/glusterfs"
 	"github.com/heketi/heketi/middleware"
 	"github.com/spf13/cobra"
 	"github.com/urfave/negroni"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 
 	restclient "k8s.io/client-go/rest"
 )
