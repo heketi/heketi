@@ -42,14 +42,9 @@ func setupSampleDbWithTopology(app *App,
 	disksize uint64) error {
 
 	var clusterlist []string
-	alloc := app.Allocator()
 	err := app.db.Update(func(tx *bolt.Tx) error {
 		for c := 0; c < clusters; c++ {
 			cluster := createSampleClusterEntry()
-
-			if err := alloc.AddCluster(cluster.Info.Id); err != nil {
-				return err
-			}
 
 			for n := 0; n < nodes_per_cluster; n++ {
 				node := createSampleNodeEntry()
@@ -62,13 +57,7 @@ func setupSampleDbWithTopology(app *App,
 					device := createSampleDeviceEntry(node.Info.Id, disksize)
 					node.DeviceAdd(device.Id())
 
-					// Update allocator
-					err := alloc.AddDevice(cluster, node, device)
-					if err != nil {
-						return nil
-					}
-
-					err = device.Save(tx)
+					err := device.Save(tx)
 					if err != nil {
 						return err
 					}
@@ -956,7 +945,6 @@ func TestVolumeEntryCreateCheckingClustersForSpace(t *testing.T) {
 
 	// Create one large cluster
 	cluster := createSampleClusterEntry()
-	alloc := app.Allocator()
 	err = app.db.Update(func(tx *bolt.Tx) error {
 		for n := 0; n < 100; n++ {
 			node := createSampleNodeEntry()
@@ -968,12 +956,6 @@ func TestVolumeEntryCreateCheckingClustersForSpace(t *testing.T) {
 			for d := 0; d < 10; d++ {
 				device := createSampleDeviceEntry(node.Info.Id, 4*TB)
 				node.DeviceAdd(device.Id())
-
-				// update allocator
-				err := alloc.AddDevice(cluster, node, device)
-				if err != nil {
-					return nil
-				}
 
 				// Save
 				err = device.Save(tx)
