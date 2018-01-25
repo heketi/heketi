@@ -512,9 +512,6 @@ func TestNodeSetStateFailed(t *testing.T) {
 
 	n.DeviceAdd(d.Info.Id)
 
-	// Add to allocator
-	app.Allocator().AddDevice(c, n, d)
-
 	// Save in db
 	app.db.Update(func(tx *bolt.Tx) error {
 		err := c.Save(tx)
@@ -597,9 +594,6 @@ func TestNodeSetStateOfflineOnline(t *testing.T) {
 	d.NodeId = n.Info.Id
 
 	n.DeviceAdd(d.Info.Id)
-
-	// Add to allocator
-	app.Allocator().AddDevice(c, n, d)
 
 	// Save in db
 	app.db.Update(func(tx *bolt.Tx) error {
