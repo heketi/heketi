@@ -12,7 +12,6 @@ package glusterfs
 import (
 	"os"
 	"reflect"
-	"sort"
 	"testing"
 
 	"github.com/boltdb/bolt"
@@ -506,14 +505,17 @@ func TestNodeSetStateFailed(t *testing.T) {
 
 	// Initialize node
 	n.Info.Id = "node"
-	n.Info.ClusterId = "cluster"
-	n.Devices = sort.StringSlice{"d1"}
+	n.Info.ClusterId = c.Info.Id
+
+	c.NodeAdd(n.Info.Id)
 
 	// Create device entry
 	d := NewDeviceEntry()
 	d.Info.Id = "d1"
 	d.Info.Name = "/d1"
-	d.NodeId = "node"
+	d.NodeId = n.Info.Id
+
+	n.DeviceAdd(d.Info.Id)
 
 	// Add to allocator
 	mockAllocator.AddDevice(c, n, d)
@@ -592,14 +594,17 @@ func TestNodeSetStateOfflineOnline(t *testing.T) {
 
 	// Initialize node
 	n.Info.Id = "node"
-	n.Info.ClusterId = "cluster"
-	n.Devices = sort.StringSlice{"d1"}
+	n.Info.ClusterId = c.Info.Id
+
+	c.NodeAdd(n.Info.Id)
 
 	// Create device entry
 	d := NewDeviceEntry()
 	d.Info.Id = "d1"
 	d.Info.Name = "/d1"
-	d.NodeId = "node"
+	d.NodeId = n.Info.Id
+
+	n.DeviceAdd(d.Info.Id)
 
 	// Add to allocator
 	mockAllocator.AddDevice(c, n, d)
