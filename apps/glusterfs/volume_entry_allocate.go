@@ -11,11 +11,16 @@ package glusterfs
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
+)
+
+var (
+	allocationLock = sync.Mutex{}
 )
 
 type BrickAllocation struct {
@@ -106,6 +111,8 @@ func allocateBricks(
 						}
 
 						// Save the brick entry to create later
+						logger.Debug("Recording brick %v on device %s",
+							brick.Id(), device.Info.Id)
 						r.Bricks = append(r.Bricks, brick)
 						r.Devices = append(r.Devices, device)
 
@@ -531,6 +538,8 @@ func (v *VolumeEntry) allocBricks(
 		}
 	}()
 
+	allocationLock.Lock()
+	defer allocationLock.Unlock()
 	r, e := allocateBricks(db, allocator, cluster, v, bricksets, brick_size)
 	// mimic the previous unconditional db update behavior
 	err := db.Update(func(tx *bolt.Tx) error {
