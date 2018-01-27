@@ -16,6 +16,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
+	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/lpabon/godbc"
@@ -34,7 +35,7 @@ func BlockVolumeList(tx *bolt.Tx) ([]string, error) {
 }
 
 // Creates a File volume to host block volumes
-func CreateBlockHostingVolume(db *bolt.DB, executor executors.Executor, allocator Allocator, clusters []string) (*VolumeEntry, error) {
+func CreateBlockHostingVolume(db wdb.DB, executor executors.Executor, allocator Allocator, clusters []string) (*VolumeEntry, error) {
 	var msg api.VolumeCreateRequest
 	var err error
 
@@ -151,7 +152,7 @@ func (v *BlockVolumeEntry) Unmarshal(buffer []byte) error {
 	return nil
 }
 
-func (v *BlockVolumeEntry) Create(db *bolt.DB,
+func (v *BlockVolumeEntry) Create(db wdb.DB,
 	executor executors.Executor,
 	allocator Allocator) (e error) {
 
@@ -344,7 +345,7 @@ func (v *BlockVolumeEntry) Create(db *bolt.DB,
 	return nil
 }
 
-func (v *BlockVolumeEntry) Destroy(db *bolt.DB, executor executors.Executor) error {
+func (v *BlockVolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error {
 	logger.Info("Destroying volume %v", v.Info.Id)
 
 	var blockHostingVolumeName string

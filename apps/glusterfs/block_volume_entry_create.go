@@ -14,11 +14,12 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
+	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/lpabon/godbc"
 )
 
 // Creates a block volume
-func (v *BlockVolumeEntry) createBlockVolume(db *bolt.DB,
+func (v *BlockVolumeEntry) createBlockVolume(db wdb.RODB,
 	executor executors.Executor, blockHostingVolumeId string) error {
 
 	godbc.Require(db != nil)
@@ -46,7 +47,7 @@ func (v *BlockVolumeEntry) createBlockVolume(db *bolt.DB,
 	return nil
 }
 
-func (v *BlockVolumeEntry) createBlockVolumeRequest(db *bolt.DB,
+func (v *BlockVolumeEntry) createBlockVolumeRequest(db wdb.RODB,
 	executor executors.Executor,
 	blockHostingVolumeId string) (*executors.BlockVolumeRequest, string, error) {
 	godbc.Require(db != nil)
