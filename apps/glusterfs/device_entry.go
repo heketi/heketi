@@ -17,6 +17,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
+	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/lpabon/godbc"
@@ -203,7 +204,7 @@ func (d *DeviceEntry) addDeviceToRing(tx *bolt.Tx,
 	return a.AddDevice(cluster, node, d)
 }
 
-func (d *DeviceEntry) SetState(db *bolt.DB,
+func (d *DeviceEntry) SetState(db wdb.DB,
 	e executors.Executor,
 	a Allocator,
 	s api.EntryState) error {
@@ -435,7 +436,7 @@ func (d *DeviceEntry) poolMetadataSize(tpsize uint64) uint64 {
 }
 
 // Moves all the bricks from the device to one or more other devices
-func (d *DeviceEntry) Remove(db *bolt.DB,
+func (d *DeviceEntry) Remove(db wdb.DB,
 	executor executors.Executor,
 	allocator Allocator) (e error) {
 
