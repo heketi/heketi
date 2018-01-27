@@ -14,11 +14,12 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
+	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 )
 
-func (v *VolumeEntry) allocBricksInCluster(db *bolt.DB,
+func (v *VolumeEntry) allocBricksInCluster(db wdb.DB,
 	allocator Allocator,
 	cluster string,
 	gbsize int) ([]*BrickEntry, error) {
@@ -67,7 +68,7 @@ func (v *VolumeEntry) allocBricksInCluster(db *bolt.DB,
 	}
 }
 
-func (v *VolumeEntry) getBrickEntryfromBrickName(db *bolt.DB, brickname string) (brickEntry *BrickEntry, e error) {
+func (v *VolumeEntry) getBrickEntryfromBrickName(db wdb.RODB, brickname string) (brickEntry *BrickEntry, e error) {
 
 	var nodeEntry *NodeEntry
 	for _, brickid := range v.BricksIds() {
@@ -96,7 +97,7 @@ func (v *VolumeEntry) getBrickEntryfromBrickName(db *bolt.DB, brickname string) 
 	return nil, ErrNotFound
 }
 
-func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Executor,
+func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executor,
 	allocator Allocator,
 	oldBrickId string) (e error) {
 
@@ -389,7 +390,7 @@ func (v *VolumeEntry) replaceBrickInVolume(db *bolt.DB, executor executors.Execu
 }
 
 func (v *VolumeEntry) allocBricks(
-	db *bolt.DB,
+	db wdb.DB,
 	allocator Allocator,
 	cluster string,
 	bricksets int,

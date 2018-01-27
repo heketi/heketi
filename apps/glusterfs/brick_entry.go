@@ -15,6 +15,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
+	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/lpabon/godbc"
@@ -123,7 +124,7 @@ func (b *BrickEntry) Unmarshal(buffer []byte) error {
 	return nil
 }
 
-func (b *BrickEntry) Create(db *bolt.DB, executor executors.Executor) error {
+func (b *BrickEntry) Create(db wdb.RODB, executor executors.Executor) error {
 	godbc.Require(db != nil)
 	godbc.Require(b.TpSize > 0)
 	godbc.Require(b.Info.Size > 0)
@@ -167,7 +168,7 @@ func (b *BrickEntry) Create(db *bolt.DB, executor executors.Executor) error {
 	return nil
 }
 
-func (b *BrickEntry) Destroy(db *bolt.DB, executor executors.Executor) error {
+func (b *BrickEntry) Destroy(db wdb.RODB, executor executors.Executor) error {
 
 	godbc.Require(db != nil)
 	godbc.Require(b.TpSize > 0)
