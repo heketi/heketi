@@ -330,7 +330,7 @@ func (n *NodeEntry) addAllDisksToRing(tx *bolt.Tx,
 	return nil
 }
 
-func (n *NodeEntry) SetState(db *bolt.DB, e executors.Executor,
+func (n *NodeEntry) SetState(db wdb.DB, e executors.Executor,
 	a Allocator,
 	s api.EntryState) error {
 
