@@ -18,7 +18,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/boltdb/bolt"
+	//"github.com/boltdb/bolt"
+	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
 )
@@ -101,7 +102,7 @@ func TestBackupToKubeSecretBackupOnNonGet(t *testing.T) {
 	defer app.Close()
 
 	incluster_count := 0
-	defer tests.Patch(&kubeBackupDbToSecret, func(db *bolt.DB) error {
+	defer tests.Patch(&kubeBackupDbToSecret, func(db wdb.RODB) error {
 		incluster_count++
 		return nil
 	}).Restore()
@@ -143,7 +144,7 @@ func TestBackupToKubeSecretBackupOnGet(t *testing.T) {
 	defer app.Close()
 
 	incluster_count := 0
-	defer tests.Patch(&kubeBackupDbToSecret, func(db *bolt.DB) error {
+	defer tests.Patch(&kubeBackupDbToSecret, func(db wdb.RODB) error {
 		incluster_count++
 		return nil
 	}).Restore()
