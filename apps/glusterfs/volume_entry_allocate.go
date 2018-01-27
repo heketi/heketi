@@ -532,9 +532,13 @@ func (v *VolumeEntry) allocBricks(
 		}
 	}()
 
-	r, e := allocateBricks(db, allocator, cluster, v, bricksets, brick_size)
 	// mimic the previous unconditional db update behavior
 	err := db.Update(func(tx *bolt.Tx) error {
+		wtx := wdb.WrapTx(tx)
+		r, e := allocateBricks(wtx, allocator, cluster, v, bricksets, brick_size)
+		if e != nil {
+			return e
+		}
 		for _, x := range r.Bricks {
 			err := x.Save(tx)
 			if err != nil {
@@ -547,14 +551,14 @@ func (v *VolumeEntry) allocBricks(
 				return err
 			}
 		}
+		brick_entries = r.Bricks
 		return nil
 	})
-	brick_entries = r.Bricks
-	if e == nil && err != nil {
-		e = err
+	if err != nil {
+		return brick_entries, err
 	}
 
-	return brick_entries, e
+	return brick_entries, nil
 }
 
 func (v *VolumeEntry) removeBrickFromDb(tx *bolt.Tx, brick *BrickEntry) error {
