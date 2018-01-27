@@ -10,8 +10,8 @@
 package glusterfs
 
 import (
-	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
+	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/utils"
 )
 
@@ -22,7 +22,7 @@ const (
 	CREATOR_DESTROY
 )
 
-func createDestroyConcurrently(db *bolt.DB,
+func createDestroyConcurrently(db wdb.DB,
 	executor executors.Executor,
 	brick_entries []*BrickEntry,
 	create_type CreateType) error {
@@ -56,10 +56,10 @@ func createDestroyConcurrently(db *bolt.DB,
 	return err
 }
 
-func CreateBricks(db *bolt.DB, executor executors.Executor, brick_entries []*BrickEntry) error {
+func CreateBricks(db wdb.DB, executor executors.Executor, brick_entries []*BrickEntry) error {
 	return createDestroyConcurrently(db, executor, brick_entries, CREATOR_CREATE)
 }
 
-func DestroyBricks(db *bolt.DB, executor executors.Executor, brick_entries []*BrickEntry) error {
+func DestroyBricks(db wdb.DB, executor executors.Executor, brick_entries []*BrickEntry) error {
 	return createDestroyConcurrently(db, executor, brick_entries, CREATOR_DESTROY)
 }
