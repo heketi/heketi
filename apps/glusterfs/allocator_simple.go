@@ -13,6 +13,7 @@ import (
 	"sync"
 
 	"github.com/boltdb/bolt"
+	wdb "github.com/heketi/heketi/pkg/db"
 )
 
 // Simple allocator contains a map to rings of clusters
@@ -29,7 +30,7 @@ func NewSimpleAllocator() *SimpleAllocator {
 }
 
 // Create a new simple allocator and initialize it with data from the db
-func NewSimpleAllocatorFromDb(db *bolt.DB) *SimpleAllocator {
+func NewSimpleAllocatorFromDb(db wdb.RODB) *SimpleAllocator {
 
 	s := NewSimpleAllocator()
 
