@@ -15,10 +15,11 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
+	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/lpabon/godbc"
 )
 
-func (v *VolumeEntry) createVolume(db *bolt.DB,
+func (v *VolumeEntry) createVolume(db wdb.RODB,
 	executor executors.Executor,
 	brick_entries []*BrickEntry) error {
 
@@ -71,7 +72,7 @@ func (v *VolumeEntry) createVolume(db *bolt.DB,
 	return nil
 }
 
-func (v *VolumeEntry) createVolumeRequest(db *bolt.DB,
+func (v *VolumeEntry) createVolumeRequest(db wdb.RODB,
 	brick_entries []*BrickEntry) (*executors.VolumeRequest, string, error) {
 	godbc.Require(db != nil)
 	godbc.Require(brick_entries != nil)

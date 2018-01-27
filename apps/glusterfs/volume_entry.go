@@ -17,6 +17,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
+	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/lpabon/godbc"
@@ -224,7 +225,7 @@ func (v *VolumeEntry) BrickDelete(id string) {
 	v.Bricks = utils.SortedStringsDelete(v.Bricks, id)
 }
 
-func (v *VolumeEntry) Create(db *bolt.DB,
+func (v *VolumeEntry) Create(db wdb.DB,
 	executor executors.Executor,
 	allocator Allocator) (e error) {
 
@@ -385,7 +386,7 @@ func (v *VolumeEntry) Create(db *bolt.DB,
 
 }
 
-func (v *VolumeEntry) Destroy(db *bolt.DB, executor executors.Executor) error {
+func (v *VolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error {
 	logger.Info("Destroying volume %v", v.Info.Id)
 
 	// Get the entries from the database
@@ -476,7 +477,7 @@ func (v *VolumeEntry) Destroy(db *bolt.DB, executor executors.Executor) error {
 	return err
 }
 
-func (v *VolumeEntry) Expand(db *bolt.DB,
+func (v *VolumeEntry) Expand(db wdb.DB,
 	executor executors.Executor,
 	allocator Allocator,
 	sizeGB int) (e error) {
@@ -559,7 +560,7 @@ func (v *VolumeEntry) BricksIds() sort.StringSlice {
 	return ids
 }
 
-func (v *VolumeEntry) checkBricksCanBeDestroyed(db *bolt.DB,
+func (v *VolumeEntry) checkBricksCanBeDestroyed(db wdb.RODB,
 	executor executors.Executor,
 	brick_entries []*BrickEntry) error {
 
@@ -596,7 +597,7 @@ func (v *VolumeEntry) BlockVolumeDelete(id string) {
 	v.Info.BlockInfo.BlockVolumes = utils.SortedStringsDelete(v.Info.BlockInfo.BlockVolumes, id)
 }
 
-func eligibleClusters(db *bolt.DB, v *VolumeEntry,
+func eligibleClusters(db wdb.RODB, v *VolumeEntry,
 	possibleClusters []string) ([]string, error) {
 	//
 	// If the request carries the Block flag, consider only
