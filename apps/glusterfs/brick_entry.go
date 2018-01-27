@@ -208,7 +208,7 @@ func (b *BrickEntry) Destroy(db wdb.RODB, executor executors.Executor) error {
 	return nil
 }
 
-func (b *BrickEntry) DestroyCheck(db *bolt.DB, executor executors.Executor) error {
+func (b *BrickEntry) DestroyCheck(db wdb.RODB, executor executors.Executor) error {
 	godbc.Require(db != nil)
 	godbc.Require(b.TpSize > 0)
 	godbc.Require(b.Info.Size > 0)
