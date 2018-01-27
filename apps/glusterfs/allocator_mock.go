@@ -14,15 +14,17 @@ import (
 	"github.com/heketi/heketi/pkg/utils"
 	"sort"
 	"sync"
+
+	wdb "github.com/heketi/heketi/pkg/db"
 )
 
 type MockAllocator struct {
 	clustermap map[string]sort.StringSlice
 	lock       sync.Mutex
-	db         bolt.DB
+	db         wdb.RODB
 }
 
-func NewMockAllocator(db *bolt.DB) *MockAllocator {
+func NewMockAllocator(db wdb.RODB) *MockAllocator {
 	d := &MockAllocator{}
 	d.clustermap = make(map[string]sort.StringSlice)
 
