@@ -2156,3 +2156,56 @@ func TestVolumeEntryMissingFlags(t *testing.T) {
 	// expect no space error due to no clusters able to satifsy block volume
 	tests.Assert(t, err == ErrNoSpace)
 }
+
+func TestVolumeCreateBrickAlloc(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		2,    // clusters
+		3,    // nodes_per_cluster
+		4,    // devices_per_node,
+		2*TB, // disksize)
+	)
+
+	// create a fairly large volume
+	req := &api.VolumeCreateRequest{}
+	req.Size = 1024
+	req.Durability.Type = api.DurabilityReplicate
+	req.Durability.Replicate.Replica = 3
+	v := NewVolumeEntryFromRequest(req)
+
+	err = v.Create(app.db, app.executor, app.Allocator())
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	// check that the volume has exactly 3 bricks
+	tests.Assert(t, len(v.Bricks) == 3,
+		"expected len(v.Bricks) == 3, got:", len(v.Bricks))
+
+	req = &api.VolumeCreateRequest{}
+	req.Size = 1024 * 6
+	req.Durability.Type = api.DurabilityReplicate
+	req.Durability.Replicate.Replica = 3
+	v2 := NewVolumeEntryFromRequest(req)
+
+	err = v2.Create(app.db, app.executor, app.Allocator())
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	// check that the volume has exactly 12 bricks
+	tests.Assert(t, len(v2.Bricks) == 12,
+		"expected len(v.Bricks) == 12, got:", len(v2.Bricks))
+
+	// verify that the corrent number of bricks is saved in the DB
+	var bc int
+	app.db.View(func(tx *bolt.Tx) error {
+		bl, err := BrickList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		bc = len(bl)
+		return nil
+	})
+	tests.Assert(t, bc == 15, "expected bc == 15, got:", bc)
+}
