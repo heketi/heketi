@@ -116,9 +116,6 @@ func allocateBricks(
 						// Add brick to device
 						device.BrickAdd(brick.Id())
 
-						// Add brick to volume
-						v.BrickAdd(brick.Id())
-
 						return nil
 					}
 				}
@@ -137,6 +134,13 @@ func allocateBricks(
 			}
 		}
 	}
+
+	// Only assign bricks to the volume object on success
+	for _, brick := range r.Bricks {
+		logger.Debug("Adding brick %v to volume %v", brick.Id(), v.Info.Id)
+		v.BrickAdd(brick.Id())
+	}
+
 	return r, nil
 }
 
