@@ -324,6 +324,16 @@ func (v *VolumeEntry) createOneShot(db wdb.DB,
 		return ErrNoSpace
 	}
 
+	err = v.updateMountInfo(db)
+	if err != nil {
+		return err
+	}
+
+	err = v.saveCreateVolume(db, allocator)
+	if err != nil {
+		return err
+	}
+
 	// Make sure to clean up bricks on error
 	defer func() {
 		if e != nil {
@@ -348,16 +358,6 @@ func (v *VolumeEntry) createOneShot(db wdb.DB,
 			DestroyBricks(db, executor, brick_entries)
 		}
 	}()
-
-	err = v.updateMountInfo(db)
-	if err != nil {
-		return err
-	}
-
-	err = v.saveCreateVolume(db, allocator)
-	if err != nil {
-		return err
-	}
 
 	// Create GlusterFS volume
 	err = v.createVolume(db, executor, brick_entries)
