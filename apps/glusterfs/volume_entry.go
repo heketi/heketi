@@ -380,14 +380,6 @@ func (v *VolumeEntry) createOneShot(db wdb.DB,
 	// Save information on db
 	err = db.Update(func(tx *bolt.Tx) error {
 
-		// Save brick entries
-		for _, brick := range brick_entries {
-			err := brick.Save(tx)
-			if err != nil {
-				return err
-			}
-		}
-
 		// Save volume information
 		if v.Info.Block {
 			v.Info.BlockInfo.FreeSize = v.Info.Size
