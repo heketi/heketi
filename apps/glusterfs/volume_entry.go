@@ -361,14 +361,17 @@ func (v *VolumeEntry) createOneShot(db wdb.DB,
 		}
 	}()
 
-	// Save information on db
-	err = db.Update(func(tx *bolt.Tx) error {
+	return v.saveCreateVolume(db, allocator)
+}
+
+func (v *VolumeEntry) saveCreateVolume(db wdb.DB, allocator Allocator) error {
+	return db.Update(func(tx *bolt.Tx) error {
 
 		// Save volume information
 		if v.Info.Block {
 			v.Info.BlockInfo.FreeSize = v.Info.Size
 		}
-		err = v.Save(tx)
+		err := v.Save(tx)
 		if err != nil {
 			return err
 		}
@@ -381,12 +384,6 @@ func (v *VolumeEntry) createOneShot(db wdb.DB,
 		cluster.VolumeAdd(v.Info.Id)
 		return cluster.Save(tx)
 	})
-	if err != nil {
-		return err
-	}
-
-	return nil
-
 }
 
 func (v *VolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error {
