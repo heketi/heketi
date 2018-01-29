@@ -343,22 +343,6 @@ func (v *VolumeEntry) createOneShot(db wdb.DB,
 		}
 	}()
 
-	// Save updated bricks (the have a path now)
-	err = db.Update(func(tx *bolt.Tx) error {
-		// Save brick entries
-		for _, brick := range brick_entries {
-			err := brick.Save(tx)
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
 	err = v.updateMountInfo(db)
 	if err != nil {
 		return err
