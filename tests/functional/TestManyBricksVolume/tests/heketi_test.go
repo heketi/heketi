@@ -120,13 +120,13 @@ func setupCluster(t *testing.T) {
 
 	// Wait here for results
 	err := sg.Result()
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 }
 
 func teardownCluster(t *testing.T) {
 	clusters, err := heketi.ClusterList()
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	sg := utils.NewStatusGroup()
 	for _, cluster := range clusters.Clusters {
@@ -210,12 +210,12 @@ func teardownCluster(t *testing.T) {
 	}
 
 	err = sg.Result()
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 }
 
 func TestConnection(t *testing.T) {
 	err := heketi.Hello()
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 }
 
 func TestHeketiManyBricksVolume(t *testing.T) {
@@ -231,7 +231,7 @@ func TestHeketiManyBricksVolume(t *testing.T) {
 	volReq.Durability.Replicate.Replica = 3
 
 	volInfo, err := heketi.VolumeCreate(volReq)
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, volInfo.Size == 500)
 	tests.Assert(t, volInfo.Mount.GlusterFS.MountPoint != "")
 	tests.Assert(t, volInfo.Durability.Type == api.DurabilityReplicate)
