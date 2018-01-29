@@ -237,6 +237,13 @@ func (v *VolumeEntry) Create(db wdb.DB,
 	executor executors.Executor,
 	allocator Allocator) (e error) {
 
+	return v.createOneShot(db, executor, allocator)
+}
+
+func (v *VolumeEntry) createOneShot(db wdb.DB,
+	executor executors.Executor,
+	allocator Allocator) (e error) {
+
 	// On any error, remove the volume
 	defer func() {
 		if e != nil {
