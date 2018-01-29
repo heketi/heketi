@@ -37,6 +37,11 @@ func (v *VolumeEntry) createVolume(db wdb.RODB,
 	if _, err := executor.VolumeCreate(host, vr); err != nil {
 		return err
 	}
+	return nil
+}
+
+func (v *VolumeEntry) updateMountInfo(db wdb.RODB) error {
+	godbc.Require(v.Info.Cluster != "")
 
 	// Get all brick hosts
 	hosts := []string{}
@@ -61,14 +66,13 @@ func (v *VolumeEntry) createVolume(db wdb.RODB,
 
 	// Save volume information
 	v.Info.Mount.GlusterFS.MountPoint = fmt.Sprintf("%v:%v",
-		hosts[0], vr.Name)
+		hosts[0], v.Info.Name)
 
 	// Set glusterfs mount volfile-servers options
 	v.Info.Mount.GlusterFS.Options = make(map[string]string)
 	v.Info.Mount.GlusterFS.Options["backup-volfile-servers"] =
 		strings.Join(hosts[1:], ",")
 
-	godbc.Ensure(v.Info.Mount.GlusterFS.MountPoint != "")
 	return nil
 }
 
