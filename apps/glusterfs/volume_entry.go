@@ -240,6 +240,34 @@ func (v *VolumeEntry) Create(db wdb.DB,
 	return v.createOneShot(db, executor, allocator)
 }
 
+func (v *VolumeEntry) tryAllocateBricks(
+	db wdb.DB,
+	allocator Allocator,
+	possibleClusters []string) (brick_entries []*BrickEntry, err error) {
+
+	for _, cluster := range possibleClusters {
+		// Check this cluster for space
+		brick_entries, err = v.allocBricksInCluster(db, allocator, cluster, v.Info.Size)
+
+		if err == nil {
+			v.Info.Cluster = cluster
+			logger.Debug("Volume to be created on cluster %v", cluster)
+			break
+		} else if err == ErrNoSpace ||
+			err == ErrMaxBricks ||
+			err == ErrMinimumBrickSize {
+			logger.Debug("Cluster %v can not accommodate volume "+
+				"(%v), trying next cluster", cluster, err)
+			continue
+		} else {
+			// A genuine error occurred - bail out
+			logger.LogError("Error calling v.allocBricksInCluster: %v", err)
+			return
+		}
+	}
+	return
+}
+
 func (v *VolumeEntry) createOneShot(db wdb.DB,
 	executor executors.Executor,
 	allocator Allocator) (e error) {
@@ -281,28 +309,7 @@ func (v *VolumeEntry) createOneShot(db wdb.DB,
 	logger.Debug("Using the following clusters: %+v", possibleClusters)
 
 	// For each cluster look for storage space for this volume
-	var brick_entries []*BrickEntry
-	for _, cluster := range possibleClusters {
-
-		// Check this cluster for space
-		brick_entries, err = v.allocBricksInCluster(db, allocator, cluster, v.Info.Size)
-
-		if err == nil {
-			v.Info.Cluster = cluster
-			logger.Debug("Volume to be created on cluster %v", cluster)
-			break
-		} else if err == ErrNoSpace ||
-			err == ErrMaxBricks ||
-			err == ErrMinimumBrickSize {
-			logger.Debug("Cluster %v can not accommodate volume "+
-				"(%v), trying next cluster", cluster, err)
-			continue
-		} else {
-			// A genuine error occurred - bail out
-			return logger.LogError("Error calling v.allocBricksInCluster: %v", err)
-		}
-	}
-
+	brick_entries, err := v.tryAllocateBricks(db, allocator, possibleClusters)
 	if err != nil || brick_entries == nil {
 		// Map all 'valid' errors to NoSpace here:
 		// Only the last such error could get propagated down,
