@@ -276,8 +276,14 @@ func (v *VolumeEntry) createOneShot(db wdb.DB,
 	defer func() {
 		if e != nil {
 			db.Update(func(tx *bolt.Tx) error {
+				if v.Info.Cluster != "" {
+					cluster, err := NewClusterEntryFromId(tx, v.Info.Cluster)
+					if err == nil {
+						cluster.VolumeDelete(v.Info.Id)
+						cluster.Save(tx)
+					}
+				}
 				v.Delete(tx)
-
 				return nil
 			})
 		}
@@ -348,6 +354,11 @@ func (v *VolumeEntry) createOneShot(db wdb.DB,
 		return err
 	}
 
+	err = v.saveCreateVolume(db, allocator)
+	if err != nil {
+		return err
+	}
+
 	// Create GlusterFS volume
 	err = v.createVolume(db, executor, brick_entries)
 	if err != nil {
@@ -361,7 +372,7 @@ func (v *VolumeEntry) createOneShot(db wdb.DB,
 		}
 	}()
 
-	return v.saveCreateVolume(db, allocator)
+	return err
 }
 
 func (v *VolumeEntry) saveCreateVolume(db wdb.DB, allocator Allocator) error {
