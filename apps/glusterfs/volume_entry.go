@@ -359,6 +359,11 @@ func (v *VolumeEntry) createOneShot(db wdb.DB,
 		return err
 	}
 
+	err = v.updateMountInfo(db)
+	if err != nil {
+		return err
+	}
+
 	// Create GlusterFS volume
 	err = v.createVolume(db, executor, brick_entries)
 	if err != nil {
