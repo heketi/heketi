@@ -1165,7 +1165,9 @@ func TestVolumeEntryCreateVolumeCreationFailure(t *testing.T) {
 
 		cluster, err := NewClusterEntryFromId(tx, clusters[0])
 		tests.Assert(t, err == nil)
-		tests.Assert(t, len(cluster.Info.Volumes) == 0)
+		tests.Assert(t, len(cluster.Info.Volumes) == 0,
+			"expected len(cluster.Info.Volumes) == 0, got:",
+			len(cluster.Info.Volumes))
 
 		return nil
 
