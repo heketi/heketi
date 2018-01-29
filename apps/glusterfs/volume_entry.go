@@ -362,24 +362,24 @@ func (v *VolumeEntry) createOneShot(db wdb.DB,
 
 func (v *VolumeEntry) saveCreateVolume(db wdb.DB,
 	allocator Allocator,
-	possibleClusters []string) ([]*BrickEntry, error) {
-
-	// For each cluster look for storage space for this volume
-	brick_entries, err := v.tryAllocateBricks(db, allocator, possibleClusters)
-	if err != nil || brick_entries == nil {
-		// Map all 'valid' errors to NoSpace here:
-		// Only the last such error could get propagated down,
-		// so it does not make sense to hand the granularity on.
-		// But for other callers (Expand), we keep it.
-		return brick_entries, ErrNoSpace
-	}
-
-	err = v.updateMountInfo(db)
-	if err != nil {
-		return brick_entries, err
-	}
+	possibleClusters []string) (brick_entries []*BrickEntry, err error) {
 
 	err = db.Update(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
+		// For each cluster look for storage space for this volume
+		brick_entries, err = v.tryAllocateBricks(txdb, allocator, possibleClusters)
+		if err != nil || brick_entries == nil {
+			// Map all 'valid' errors to NoSpace here:
+			// Only the last such error could get propagated down,
+			// so it does not make sense to hand the granularity on.
+			// But for other callers (Expand), we keep it.
+			return ErrNoSpace
+		}
+
+		err = v.updateMountInfo(txdb)
+		if err != nil {
+			return err
+		}
 
 		// Save volume information
 		if v.Info.Block {
@@ -398,7 +398,7 @@ func (v *VolumeEntry) saveCreateVolume(db wdb.DB,
 		cluster.VolumeAdd(v.Info.Id)
 		return cluster.Save(tx)
 	})
-	return brick_entries, err
+	return
 }
 
 func (v *VolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error {
