@@ -13,6 +13,7 @@ package functional
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"testing"
 
 	client "github.com/heketi/heketi/client/api/go-client"
@@ -22,20 +23,21 @@ import (
 	"github.com/heketi/tests"
 )
 
-// These are the settings for the vagrant file
-const (
-
+var (
 	// The heketi server must be running on the host
 	heketiUrl = "http://localhost:8080"
 
 	// VMs
-	storage0 = "192.168.10.100"
-	storage1 = "192.168.10.101"
-	storage2 = "192.168.10.102"
-	storage3 = "192.168.10.103"
-)
+	storage0    = "192.168.10.100"
+	storage1    = "192.168.10.101"
+	storage2    = "192.168.10.102"
+	storage3    = "192.168.10.103"
+	portNum     = "22"
+	storage0ssh = storage0 + ":" + portNum
+	storage1ssh = storage1 + ":" + portNum
+	storage2ssh = storage2 + ":" + portNum
+	storage3ssh = storage3 + ":" + portNum
 
-var (
 	// Heketi client
 	heketi = client.NewClientNoAuth(heketiUrl)
 	logger = utils.NewLogger("[test]", utils.LEVEL_DEBUG)
@@ -65,6 +67,40 @@ var (
 func setupCluster(t *testing.T, numNodes int, numDisks int) {
 	tests.Assert(t, heketi != nil)
 
+	// Get ssh port first, we need it to create
+	// storageXssh variables
+	env := os.Getenv("HEKETI_TEST_STORAGEPORT")
+	if "" != env {
+		portNum = env
+	}
+
+	env = os.Getenv("HEKETI_TEST_STORAGE0")
+	if "" != env {
+		storage0 = env
+		storage0ssh = storage0 + ":" + portNum
+	}
+	env = os.Getenv("HEKETI_TEST_STORAGE1")
+	if "" != env {
+		storage1 = env
+		storage1ssh = storage1 + ":" + portNum
+	}
+	env = os.Getenv("HEKETI_TEST_STORAGE2")
+	if "" != env {
+		storage2 = env
+		storage2ssh = storage2 + ":" + portNum
+	}
+	env = os.Getenv("HEKETI_TEST_STORAGE3")
+	if "" != env {
+		storage3 = env
+		storage3ssh = storage3 + ":" + portNum
+	}
+	// Storage systems
+	storagevms = []string{
+		storage0,
+		storage1,
+		storage2,
+		storage3,
+	}
 	// Create a cluster
 	cluster_req := &api.ClusterCreateRequest{
 		ClusterFlags: api.ClusterFlags{
@@ -284,7 +320,7 @@ func HeketiCreateVolumeWithGid(t *testing.T) {
 		"sudo useradd writer2 -G writegroup -p'$6$WBG5yf03$3DvyE41cicXEZDW.HDeJg3S4oEoELqKWoS/n6l28vorNxhIlcBe2SLQFDhqq6.Pq'",
 		fmt.Sprintf("sudo mount -t glusterfs %v /mnt", volInfo.Mount.GlusterFS.MountPoint),
 	}
-	_, err = vagrantexec.ConnectAndExec("192.168.10.100:22", cmd, 10, true)
+	_, err = vagrantexec.ConnectAndExec(storage0ssh, cmd, 10, true)
 	tests.Assert(t, err == nil, err)
 
 	writer1exec := ssh.NewSshExecWithPassword(logger, "writer1", "$6$WBG5yf03$3DvyE41cicXEZDW.HDeJg3S4oEoELqKWoS/n6l28vorNxhIlcBe2SLQFDhqq6.Pq")
@@ -293,7 +329,7 @@ func HeketiCreateVolumeWithGid(t *testing.T) {
 		"mkdir /mnt/writer1dir",
 		"touch /mnt/writer1dir/testfile",
 	}
-	_, err = writer1exec.ConnectAndExec("192.168.10.100:22", cmd, 10, false)
+	_, err = writer1exec.ConnectAndExec(storage0ssh, cmd, 10, false)
 	tests.Assert(t, err == nil, err)
 
 	writer2exec := ssh.NewSshExecWithPassword(logger, "writer2", "$6$WBG5yf03$3DvyE41cicXEZDW.HDeJg3S4oEoELqKWoS/n6l28vorNxhIlcBe2SLQFDhqq6.Pq")
@@ -302,13 +338,13 @@ func HeketiCreateVolumeWithGid(t *testing.T) {
 		"mkdir /mnt/writer2dir",
 		"touch /mnt/writer2dir/testfile",
 	}
-	_, err = writer2exec.ConnectAndExec("192.168.10.100:22", cmd, 10, false)
+	_, err = writer2exec.ConnectAndExec(storage0ssh, cmd, 10, false)
 	tests.Assert(t, err == nil, err)
 	cmd = []string{
 		"mkdir /mnt/writer1dir/writer2subdir",
 		"touch /mnt/writer1dir/writer2testfile",
 	}
-	_, err = writer2exec.ConnectAndExec("192.168.10.100:22", cmd, 10, false)
+	_, err = writer2exec.ConnectAndExec(storage0ssh, cmd, 10, false)
 	tests.Assert(t, err == nil, err)
 
 }
@@ -520,13 +556,13 @@ func TestHeketiVolumeExpandWithGid(t *testing.T) {
 	cmd := []string{
 		fmt.Sprintf("sudo ls -l /var/lib/heketi/mounts/vg_*/brick_*/  | grep  -e \"^d\" | cut -d\" \" -f4 | grep -q %v", volReq.Gid),
 	}
-	_, err = vagrantexec.ConnectAndExec("192.168.10.100:22", cmd, 10, true)
+	_, err = vagrantexec.ConnectAndExec(storage0ssh, cmd, 10, true)
 	tests.Assert(t, err == nil, "Brick found with different Gid")
-	_, err = vagrantexec.ConnectAndExec("192.168.10.101:22", cmd, 10, true)
+	_, err = vagrantexec.ConnectAndExec(storage1ssh, cmd, 10, true)
 	tests.Assert(t, err == nil, "Brick found with different Gid")
-	_, err = vagrantexec.ConnectAndExec("192.168.10.102:22", cmd, 10, true)
+	_, err = vagrantexec.ConnectAndExec(storage2ssh, cmd, 10, true)
 	tests.Assert(t, err == nil, "Brick found with different Gid")
-	_, err = vagrantexec.ConnectAndExec("192.168.10.103:22", cmd, 10, true)
+	_, err = vagrantexec.ConnectAndExec(storage3ssh, cmd, 10, true)
 	tests.Assert(t, err == nil, "Brick found with different Gid")
 
 }
@@ -559,6 +595,7 @@ func TestHeketiVolumeCreateWithOptions(t *testing.T) {
 	cmd := []string{
 		fmt.Sprintf("sudo gluster v info %v | grep performance.rda-cache-limit | grep 10MB", volInfo.Name),
 	}
-	_, err = vagrantexec.ConnectAndExec("192.168.10.100:22", cmd, 10, true)
+	_, err = vagrantexec.ConnectAndExec(storage0ssh, cmd, 10, true)
 	tests.Assert(t, err == nil, "Volume Created with specified options")
+
 }

@@ -58,19 +58,28 @@ force_cleanup_libvirt_disks() {
 }
 
 teardown() {
-    teardown_vagrant
-    force_cleanup_libvirt_disks
+    if [[ "$HEKETI_TEST_VAGRANT" != "no" ]]
+    then
+        teardown_vagrant
+        force_cleanup_libvirt_disks
+    fi
     rm -f heketi.db > /dev/null 2>&1
 }
 
 functional_tests() {
-    start_vagrant
+    if [[ "$HEKETI_TEST_VAGRANT" != "no" ]]
+    then
+        start_vagrant
+    fi
     start_heketi
 
     run_tests
 
     kill $HEKETI_PID
-    teardown
+    if [[ "$HEKETI_TEST_CLEANUP" != "no" ]]
+    then
+        teardown
+    fi
 
     exit $gotest_result
 }
