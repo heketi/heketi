@@ -33,6 +33,7 @@ func (s *CmdExecutor) BrickCreate(host string,
 	// make local vars with more accurate names to cut down on name confusion
 	// and make future refactoring easier
 	mountPath := brick.Path
+	brickPath := fmt.Sprintf("%v/brick", mountPath)
 
 	// Create command set to execute on the node
 	devnode := utils.BrickDevNode(brick.VgId, brick.Name)
@@ -74,7 +75,7 @@ func (s *CmdExecutor) BrickCreate(host string,
 		fmt.Sprintf("mount -o rw,inode64,noatime,nouuid %v %v", devnode, mountPath),
 
 		// Create a directory inside the formated volume for GlusterFS
-		fmt.Sprintf("mkdir %v/brick", mountPath),
+		fmt.Sprintf("mkdir %v", brickPath),
 	}
 
 	// Only set the GID if the value is other than root(gid 0).
@@ -82,10 +83,10 @@ func (s *CmdExecutor) BrickCreate(host string,
 	if 0 != brick.Gid {
 		commands = append(commands, []string{
 			// Set GID on brick
-			fmt.Sprintf("chown :%v %v/brick", brick.Gid, mountPath),
+			fmt.Sprintf("chown :%v %v", brick.Gid, brickPath),
 
 			// Set writable by GID and UID
-			fmt.Sprintf("chmod 2775 %v/brick", mountPath),
+			fmt.Sprintf("chmod 2775 %v", brickPath),
 		}...)
 	}
 
@@ -99,7 +100,7 @@ func (s *CmdExecutor) BrickCreate(host string,
 
 	// Save brick location
 	b := &executors.BrickInfo{
-		Path: fmt.Sprintf("%v/brick", mountPath),
+		Path: brickPath,
 	}
 	return b, nil
 }
