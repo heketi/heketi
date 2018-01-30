@@ -153,7 +153,7 @@ func (b *BrickEntry) Create(db wdb.RODB, executor executors.Executor) error {
 	req.TpSize = b.TpSize
 	req.VgId = b.Info.DeviceId
 	req.PoolMetadataSize = b.PoolMetadataSize
-	req.Path = utils.BrickMountPoint(req.VgId, req.Name)
+	req.Path = utils.BrickPath(req.VgId, req.Name)
 
 	// Create brick on node
 	logger.Info("Creating brick %v", b.Info.Id)
