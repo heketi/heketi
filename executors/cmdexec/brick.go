@@ -32,8 +32,8 @@ func (s *CmdExecutor) BrickCreate(host string,
 
 	// make local vars with more accurate names to cut down on name confusion
 	// and make future refactoring easier
-	mountPath := brick.Path
-	brickPath := fmt.Sprintf("%v/brick", mountPath)
+	brickPath := brick.Path
+	mountPath := utils.BrickMountFromPath(brickPath)
 
 	// Create command set to execute on the node
 	devnode := utils.BrickDevNode(brick.VgId, brick.Name)

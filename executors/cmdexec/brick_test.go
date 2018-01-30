@@ -32,7 +32,7 @@ func TestSshExecBrickCreate(t *testing.T) {
 		TpSize:           100,
 		Size:             10,
 		PoolMetadataSize: 5,
-		Path:             utils.BrickMountPoint("xvgid", "id"),
+		Path:             utils.BrickPath("xvgid", "id"),
 	}
 
 	// Mock ssh function
@@ -105,7 +105,7 @@ func TestSshExecBrickCreateWithGid(t *testing.T) {
 		Size:             10,
 		PoolMetadataSize: 5,
 		Gid:              1234,
-		Path:             utils.BrickMountPoint("xvgid", "id"),
+		Path:             utils.BrickPath("xvgid", "id"),
 	}
 
 	// Mock ssh function
@@ -188,7 +188,7 @@ func TestSshExecBrickCreateSudo(t *testing.T) {
 		TpSize:           100,
 		Size:             10,
 		PoolMetadataSize: 5,
-		Path:             utils.BrickMountPoint("xvgid", "id"),
+		Path:             utils.BrickPath("xvgid", "id"),
 	}
 
 	// Mock ssh function
@@ -261,7 +261,7 @@ func TestSshExecBrickDestroy(t *testing.T) {
 		TpSize:           100,
 		Size:             10,
 		PoolMetadataSize: 5,
-		Path:             utils.BrickMountPoint("xvgid", "id"),
+		Path:             utils.BrickPath("xvgid", "id"),
 	}
 
 	// Mock ssh function
