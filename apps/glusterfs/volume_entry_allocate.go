@@ -11,12 +11,140 @@ package glusterfs
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 )
+
+var (
+	allocationLock = sync.Mutex{}
+)
+
+type BrickAllocation struct {
+	Bricks  []*BrickEntry
+	Devices []*DeviceEntry
+}
+
+func allocateBricks(
+	db *bolt.DB,
+	allocator Allocator,
+	cluster string,
+	v *VolumeEntry,
+	bricksets int,
+	brick_size uint64) (*BrickAllocation, error) {
+
+	r := &BrickAllocation{
+		Bricks:  []*BrickEntry{},
+		Devices: []*DeviceEntry{},
+	}
+
+	devcache := map[string](*DeviceEntry){}
+
+	// Determine allocation for each brick required for this volume
+	for brick_num := 0; brick_num < bricksets; brick_num++ {
+		logger.Info("brick_num: %v", brick_num)
+
+		// Create a brick set list to later make sure that the
+		// proposed bricks and devices are acceptable
+		setlist := make([]*BrickEntry, 0)
+
+		// Generate an id for the brick
+		brickId := utils.GenUUID()
+
+		// Get allocator generator
+		// The same generator should be used for the brick and its replicas
+		deviceCh, done, errc := allocator.GetNodes(cluster, brickId)
+		defer func() {
+			close(done)
+		}()
+
+		// Check location has space for each brick and its replicas
+		for i := 0; i < v.Durability.BricksInSet(); i++ {
+			logger.Debug("%v / %v", i, v.Durability.BricksInSet())
+
+			// Do the work in the database context so that the cluster
+			// data does not change while determining brick location
+			err := db.View(func(tx *bolt.Tx) error {
+
+				// Check the ring for devices to place the brick
+				for deviceId := range deviceCh {
+
+					// Get device entry from cache if possible
+					device, ok := devcache[deviceId]
+					if !ok {
+						// Get device entry from db otherwise
+						var err error
+						device, err = NewDeviceEntryFromId(tx, deviceId)
+						if err != nil {
+							return err
+						}
+						devcache[deviceId] = device
+					}
+
+					// Do not allow a device from the same node to be
+					// in the set
+					deviceOk := true
+					for _, brickInSet := range setlist {
+						if brickInSet.Info.NodeId == device.NodeId {
+							deviceOk = false
+						}
+					}
+
+					if !deviceOk {
+						continue
+					}
+
+					// Try to allocate a brick on this device
+					brick := device.NewBrickEntry(brick_size,
+						float64(v.Info.Snapshot.Factor),
+						v.Info.Gid, v.Info.Id)
+
+					// Determine if it was successful
+					if brick != nil {
+
+						// If the first in the set, the reset the id
+						if i == 0 {
+							brick.SetId(brickId)
+						}
+
+						// Save the brick entry to create later
+						logger.Debug("Recording brick %v on device %s",
+							brick.Id(), device.Info.Id)
+						r.Bricks = append(r.Bricks, brick)
+						r.Devices = append(r.Devices, device)
+
+						// Add to set list
+						setlist = append(setlist, brick)
+
+						// Add brick to device
+						device.BrickAdd(brick.Id())
+
+						// Add brick to volume
+						v.BrickAdd(brick.Id())
+
+						return nil
+					}
+				}
+
+				// Check if allocator returned an error
+				if err := <-errc; err != nil {
+					return err
+				}
+
+				// No devices found
+				return ErrNoSpace
+
+			})
+			if err != nil {
+				return r, err
+			}
+		}
+	}
+	return r, nil
+}
 
 func (v *VolumeEntry) allocBricksInCluster(db *bolt.DB,
 	allocator Allocator,
@@ -410,114 +538,31 @@ func (v *VolumeEntry) allocBricks(
 		}
 	}()
 
-	// Initialize brick_entries
-	brick_entries = make([]*BrickEntry, 0)
-
-	// Determine allocation for each brick required for this volume
-	for brick_num := 0; brick_num < bricksets; brick_num++ {
-		logger.Info("brick_num: %v", brick_num)
-
-		// Create a brick set list to later make sure that the
-		// proposed bricks and devices are acceptable
-		setlist := make([]*BrickEntry, 0)
-
-		// Generate an id for the brick
-		brickId := utils.GenUUID()
-
-		// Get allocator generator
-		// The same generator should be used for the brick and its replicas
-		deviceCh, done, errc := allocator.GetNodes(cluster, brickId)
-		defer func() {
-			close(done)
-		}()
-
-		// Check location has space for each brick and its replicas
-		for i := 0; i < v.Durability.BricksInSet(); i++ {
-			logger.Debug("%v / %v", i, v.Durability.BricksInSet())
-
-			// Do the work in the database context so that the cluster
-			// data does not change while determining brick location
-			err := db.Update(func(tx *bolt.Tx) error {
-
-				// Check the ring for devices to place the brick
-				for deviceId := range deviceCh {
-
-					// Get device entry
-					device, err := NewDeviceEntryFromId(tx, deviceId)
-					if err != nil {
-						return err
-					}
-
-					// Do not allow a device from the same node to be
-					// in the set
-					deviceOk := true
-					for _, brickInSet := range setlist {
-						if brickInSet.Info.NodeId == device.NodeId {
-							deviceOk = false
-						}
-					}
-
-					if !deviceOk {
-						continue
-					}
-
-					// Try to allocate a brick on this device
-					brick := device.NewBrickEntry(brick_size,
-						float64(v.Info.Snapshot.Factor),
-						v.Info.Gid, v.Info.Id)
-
-					// Determine if it was successful
-					if brick != nil {
-
-						// If the first in the set, the reset the id
-						if i == 0 {
-							brick.SetId(brickId)
-						}
-
-						// Save the brick entry to create later
-						brick_entries = append(brick_entries, brick)
-
-						// Add to set list
-						setlist = append(setlist, brick)
-
-						// Add brick to device
-						device.BrickAdd(brick.Id())
-
-						// Add brick to volume
-						v.BrickAdd(brick.Id())
-
-						// Save values
-						err := brick.Save(tx)
-						if err != nil {
-							return err
-						}
-
-						err = device.Save(tx)
-						if err != nil {
-							return err
-						}
-
-						return nil
-					}
-				}
-
-				// Check if allocator returned an error
-				if err := <-errc; err != nil {
-					return err
-				}
-
-				// No devices found
-				return ErrNoSpace
-
-			})
+	allocationLock.Lock()
+	defer allocationLock.Unlock()
+	r, e := allocateBricks(db, allocator, cluster, v, bricksets, brick_size)
+	// mimic the previous unconditional db update behavior
+	err := db.Update(func(tx *bolt.Tx) error {
+		for _, x := range r.Bricks {
+			err := x.Save(tx)
 			if err != nil {
-				return brick_entries, err
+				return err
 			}
 		}
+		for _, x := range r.Devices {
+			err := x.Save(tx)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	brick_entries = r.Bricks
+	if e == nil && err != nil {
+		e = err
 	}
 
-	return brick_entries, nil
-
+	return brick_entries, e
 }
 
 func (v *VolumeEntry) removeBrickFromDb(tx *bolt.Tx, brick *BrickEntry) error {
