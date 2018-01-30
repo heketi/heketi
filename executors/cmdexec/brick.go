@@ -30,12 +30,16 @@ func (s *CmdExecutor) BrickCreate(host string,
 	godbc.Require(brick.Path != "")
 	godbc.Require(s.Fstab != "")
 
+	// make local vars with more accurate names to cut down on name confusion
+	// and make future refactoring easier
+	mountPath := brick.Path
+
 	// Create command set to execute on the node
 	devnode := utils.BrickDevNode(brick.VgId, brick.Name)
 	commands := []string{
 
 		// Create a directory
-		fmt.Sprintf("mkdir -p %v", brick.Path),
+		fmt.Sprintf("mkdir -p %v", mountPath),
 
 		// Setup the LV
 		fmt.Sprintf("lvcreate --poolmetadatasize %vK -c 256K -L %vK -T %v/%v -V %vK -n %v",
@@ -63,14 +67,14 @@ func (s *CmdExecutor) BrickCreate(host string,
 		// Fstab
 		fmt.Sprintf("echo \"%v %v xfs rw,inode64,noatime,nouuid 1 2\" | tee -a %v > /dev/null ",
 			devnode,
-			brick.Path,
+			mountPath,
 			s.Fstab),
 
 		// Mount
-		fmt.Sprintf("mount -o rw,inode64,noatime,nouuid %v %v", devnode, brick.Path),
+		fmt.Sprintf("mount -o rw,inode64,noatime,nouuid %v %v", devnode, mountPath),
 
 		// Create a directory inside the formated volume for GlusterFS
-		fmt.Sprintf("mkdir %v/brick", brick.Path),
+		fmt.Sprintf("mkdir %v/brick", mountPath),
 	}
 
 	// Only set the GID if the value is other than root(gid 0).
@@ -78,10 +82,10 @@ func (s *CmdExecutor) BrickCreate(host string,
 	if 0 != brick.Gid {
 		commands = append(commands, []string{
 			// Set GID on brick
-			fmt.Sprintf("chown :%v %v/brick", brick.Gid, brick.Path),
+			fmt.Sprintf("chown :%v %v/brick", brick.Gid, mountPath),
 
 			// Set writable by GID and UID
-			fmt.Sprintf("chmod 2775 %v/brick", brick.Path),
+			fmt.Sprintf("chmod 2775 %v/brick", mountPath),
 		}...)
 	}
 
@@ -95,7 +99,7 @@ func (s *CmdExecutor) BrickCreate(host string,
 
 	// Save brick location
 	b := &executors.BrickInfo{
-		Path: fmt.Sprintf("%v/brick", brick.Path),
+		Path: fmt.Sprintf("%v/brick", mountPath),
 	}
 	return b, nil
 }
