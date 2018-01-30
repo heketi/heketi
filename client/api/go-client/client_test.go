@@ -132,13 +132,12 @@ func TestTopology(t *testing.T) {
 		// Create a device request
 		sg := utils.NewStatusGroup()
 		for i := 0; i < 50; i++ {
-			b := utils.GenUUID()
 			sg.Add(1)
 			go func() {
 				defer sg.Done()
 
 				deviceReq := &api.DeviceAddRequest{}
-				deviceReq.Name = "/sd" + b[:4] + b[24:]
+				deviceReq.Name = "/sd" + utils.GenUUID()
 				deviceReq.NodeId = node.Id
 
 				// Create device
@@ -552,13 +551,12 @@ func TestClientVolume(t *testing.T) {
 		// Create a device request
 		sg := utils.NewStatusGroup()
 		for i := 0; i < 50; i++ {
-			b := utils.GenUUID()
 			sg.Add(1)
 			go func() {
 				defer sg.Done()
 
 				deviceReq := &api.DeviceAddRequest{}
-				deviceReq.Name = "/sd" + b[:4] + b[24:]
+				deviceReq.Name = "/sd" + utils.GenUUID()
 				deviceReq.NodeId = node.Id
 
 				// Create device
