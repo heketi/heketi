@@ -45,7 +45,7 @@ teardown_vagrant() {
 
 run_tests() {
     cd tests || fail "Unable to 'cd tests'."
-    go test -timeout=1h -tags functional
+    go test -timeout=1h -tags functional -v
     gotest_result=$?
     cd ..
 }
