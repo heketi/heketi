@@ -74,7 +74,7 @@ func setupCluster(t *testing.T, numNodes int, numDisks int) {
 	}
 
 	cluster, err := heketi.ClusterCreate(cluster_req)
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	// hardcoded limits from the lists above
 	// possible TODO: generalize
@@ -90,7 +90,7 @@ func setupCluster(t *testing.T, numNodes int, numDisks int) {
 		nodeReq.Zone = index%2 + 1
 
 		node, err := heketi.NodeAdd(nodeReq)
-		tests.Assert(t, err == nil)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 		// Add devices
 		sg := utils.NewStatusGroup()
@@ -109,7 +109,7 @@ func setupCluster(t *testing.T, numNodes int, numDisks int) {
 		}
 
 		err = sg.Result()
-		tests.Assert(t, err == nil)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	}
 }
 
@@ -120,12 +120,12 @@ func teardownCluster(t *testing.T) {
 	for _, cluster := range clusters.Clusters {
 
 		clusterInfo, err := heketi.ClusterInfo(cluster)
-		tests.Assert(t, err == nil)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 		// Delete volumes in this cluster
 		for _, volume := range clusterInfo.Volumes {
 			err := heketi.VolumeDelete(volume)
-			tests.Assert(t, err == nil)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
 		}
 
 		// Delete nodes
@@ -133,7 +133,7 @@ func teardownCluster(t *testing.T) {
 
 			// Get node information
 			nodeInfo, err := heketi.NodeInfo(node)
-			tests.Assert(t, err == nil)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 			// Delete each device
 			sg := utils.NewStatusGroup()
@@ -148,22 +148,22 @@ func teardownCluster(t *testing.T) {
 				}(device.Id)
 			}
 			err = sg.Result()
-			tests.Assert(t, err == nil)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 			// Delete node
 			err = heketi.NodeDelete(node)
-			tests.Assert(t, err == nil)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
 		}
 
 		// Delete cluster
 		err = heketi.ClusterDelete(cluster)
-		tests.Assert(t, err == nil)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	}
 }
 
 func TestConnection(t *testing.T) {
 	r, err := http.Get(heketiUrl + "/hello")
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, r.StatusCode == http.StatusOK)
 }
 
@@ -184,18 +184,18 @@ func TestHeketiSmokeTest(t *testing.T) {
 		volReq.Durability.Type = api.DurabilityReplicate
 
 		volInfo, err := heketi.VolumeCreate(volReq)
-		tests.Assert(t, err == nil)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 		tests.Assert(t, volInfo.Size == 4000)
 		tests.Assert(t, volInfo.Mount.GlusterFS.MountPoint != "")
 		tests.Assert(t, volInfo.Name != "")
 
 		volumes, err := heketi.VolumeList()
-		tests.Assert(t, err == nil)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 		tests.Assert(t, len(volumes.Volumes) == 1)
 		tests.Assert(t, volumes.Volumes[0] == volInfo.Id)
 
 		err = heketi.VolumeDelete(volInfo.Id)
-		tests.Assert(t, err == nil)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	}
 
 	// Create a 1TB volume
@@ -206,7 +206,7 @@ func TestHeketiSmokeTest(t *testing.T) {
 	volReq.Durability.Type = api.DurabilityReplicate
 
 	simplevol, err := heketi.VolumeCreate(volReq)
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	// Create a 12TB volume with 6TB of snapshot space
 	// There should be no space
@@ -221,7 +221,7 @@ func TestHeketiSmokeTest(t *testing.T) {
 
 	// Check there is only one
 	volumes, err := heketi.VolumeList()
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, len(volumes.Volumes) == 1)
 
 	// Create a 100G volume with replica 3
@@ -231,7 +231,7 @@ func TestHeketiSmokeTest(t *testing.T) {
 	volReq.Durability.Replicate.Replica = 3
 
 	volInfo, err := heketi.VolumeCreate(volReq)
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, volInfo.Size == 100)
 	tests.Assert(t, volInfo.Mount.GlusterFS.MountPoint != "")
 	tests.Assert(t, volInfo.Name != "")
@@ -239,7 +239,7 @@ func TestHeketiSmokeTest(t *testing.T) {
 
 	// Check there are two volumes
 	volumes, err = heketi.VolumeList()
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, len(volumes.Volumes) == 2)
 
 	// Expand volume
@@ -247,12 +247,12 @@ func TestHeketiSmokeTest(t *testing.T) {
 	volExpReq.Size = 2000
 
 	volInfo, err = heketi.VolumeExpand(simplevol.Id, volExpReq)
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, volInfo.Size == simplevol.Size+2000)
 
 	// Delete volume
 	err = heketi.VolumeDelete(volInfo.Id)
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 }
 
 func HeketiCreateVolumeWithGid(t *testing.T) {
@@ -274,7 +274,7 @@ func HeketiCreateVolumeWithGid(t *testing.T) {
 
 	// Create the volume
 	volInfo, err := heketi.VolumeCreate(volReq)
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	// SSH into system and create two writers belonging to writegroup gid
 	vagrantexec := ssh.NewSshExecWithKeyFile(logger, "vagrant", "../config/insecure_private_key")
@@ -345,11 +345,11 @@ func TestRemoveDevice(t *testing.T) {
 	volReq.Durability.Type = api.DurabilityReplicate
 	volReq.Durability.Replicate.Replica = 3
 	vol1, err := heketi.VolumeCreate(volReq)
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	// Check there is only one
 	volumes, err := heketi.VolumeList()
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, len(volumes.Volumes) == 1)
 
 	volReq = &api.VolumeCreateRequest{}
@@ -357,7 +357,7 @@ func TestRemoveDevice(t *testing.T) {
 	volReq.Durability.Type = api.DurabilityReplicate
 	volReq.Durability.Replicate.Replica = 3
 	vol2, err := heketi.VolumeCreate(volReq)
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	deviceOccurence := make(map[string]int)
 	maxBricksPerDevice := 0
@@ -389,19 +389,19 @@ func TestRemoveDevice(t *testing.T) {
 	stateReq := &api.StateRequest{}
 	stateReq.State = api.EntryStateOffline
 	err = heketi.DeviceState(deviceToRemove, stateReq)
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	stateReq = &api.StateRequest{}
 	stateReq.State = api.EntryStateFailed
 	err = heketi.DeviceState(deviceToRemove, stateReq)
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	logger.Info("%v %v", vol1, vol2)
 	// Delete volumes
 	err = heketi.VolumeDelete(vol1.Id)
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	err = heketi.VolumeDelete(vol2.Id)
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 }
 
 func TestRemoveDeviceVsVolumeCreate(t *testing.T) {
@@ -419,23 +419,23 @@ func TestRemoveDeviceVsVolumeCreate(t *testing.T) {
 	volReq.Durability.Type = api.DurabilityReplicate
 	volReq.Durability.Replicate.Replica = 3
 	_, err := heketi.VolumeCreate(volReq)
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	// Check there is only one
 	volumes, err := heketi.VolumeList()
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, len(volumes.Volumes) == 1)
 
 	clusters, err := heketi.ClusterList()
 	tests.Assert(t, err == nil, err)
 	for _, cluster := range clusters.Clusters {
 		clusterInfo, err := heketi.ClusterInfo(cluster)
-		tests.Assert(t, err == nil)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 		for _, node := range clusterInfo.Nodes {
 
 			// Get node information
 			nodeInfo, err := heketi.NodeInfo(node)
-			tests.Assert(t, err == nil)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
 			for _, device := range nodeInfo.DevicesInfo {
 				if len(device.Bricks) == 0 {
 					newDevice = device.Id
@@ -449,7 +449,7 @@ func TestRemoveDeviceVsVolumeCreate(t *testing.T) {
 	stateReq := &api.StateRequest{}
 	stateReq.State = api.EntryStateOffline
 	err = heketi.DeviceState(deviceToRemove, stateReq)
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	sgDeviceRemove := utils.NewStatusGroup()
 	sgDeviceRemove.Add(1)
@@ -476,9 +476,9 @@ func TestRemoveDeviceVsVolumeCreate(t *testing.T) {
 	}
 
 	err = sgVolumeCreate.Result()
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	err = sgDeviceRemove.Result()
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	// At this point, we should have one brick moved to new device as a result of remove device
 	// and 15 bricks created on new device as a result of 15 volume creates
 	newDeviceResponse, err := heketi.DeviceInfo(newDevice)
@@ -505,14 +505,14 @@ func TestHeketiVolumeExpandWithGid(t *testing.T) {
 
 	// Create the volume
 	volInfo, err := heketi.VolumeCreate(volReq)
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	// Expand volume
 	volExpReq := &api.VolumeExpandRequest{}
 	volExpReq.Size = 300
 
 	newVolInfo, err := heketi.VolumeExpand(volInfo.Id, volExpReq)
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, newVolInfo.Size == volInfo.Size+300)
 
 	// SSH into system and check gid of bricks
@@ -551,7 +551,7 @@ func TestHeketiVolumeCreateWithOptions(t *testing.T) {
 
 	// Create the volume
 	volInfo, err := heketi.VolumeCreate(volReq)
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, len(volInfo.GlusterVolumeOptions) > 0)
 
 	// SSH into system and check volume options.
