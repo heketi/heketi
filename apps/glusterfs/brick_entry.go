@@ -54,6 +54,7 @@ func NewBrickEntry(size, tpsize, poolMetadataSize uint64,
 	entry.Info.NodeId = nodeid
 	entry.Info.DeviceId = deviceid
 	entry.Info.VolumeId = volumeid
+	entry.UpdatePath()
 
 	godbc.Ensure(entry.Info.Id != "")
 	godbc.Ensure(entry.TpSize == tpsize)
@@ -82,6 +83,7 @@ func (b *BrickEntry) BucketName() string {
 
 func (b *BrickEntry) SetId(id string) {
 	b.Info.Id = id
+	b.UpdatePath()
 }
 
 func (b *BrickEntry) Id() string {
@@ -128,6 +130,7 @@ func (b *BrickEntry) Create(db wdb.RODB, executor executors.Executor) error {
 	godbc.Require(db != nil)
 	godbc.Require(b.TpSize > 0)
 	godbc.Require(b.Info.Size > 0)
+	godbc.Require(b.Info.Path != "")
 
 	// Get node hostname
 	var host string
@@ -153,18 +156,16 @@ func (b *BrickEntry) Create(db wdb.RODB, executor executors.Executor) error {
 	req.TpSize = b.TpSize
 	req.VgId = b.Info.DeviceId
 	req.PoolMetadataSize = b.PoolMetadataSize
-	req.Path = utils.BrickPath(req.VgId, req.Name)
+	req.Path = b.Info.Path
+	// remove this some time post-refactoring
+	godbc.Require(req.Path == utils.BrickPath(req.VgId, req.Name))
 
 	// Create brick on node
 	logger.Info("Creating brick %v", b.Info.Id)
-	info, err := executor.BrickCreate(host, req)
+	_, err = executor.BrickCreate(host, req)
 	if err != nil {
 		return err
 	}
-	b.Info.Path = info.Path
-
-	godbc.Ensure(b.Info.Path != "")
-
 	return nil
 }
 
@@ -285,4 +286,8 @@ func addVolumeIdInBrickEntry(tx *bolt.Tx) error {
 		}
 	}
 	return nil
+}
+
+func (b *BrickEntry) UpdatePath() {
+	b.Info.Path = utils.BrickPath(b.Info.DeviceId, b.Info.Id)
 }
