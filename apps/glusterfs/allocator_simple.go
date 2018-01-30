@@ -96,11 +96,12 @@ func (s *SimpleAllocator) AddDevice(cluster *ClusterEntry,
 	node *NodeEntry,
 	device *DeviceEntry) error {
 
-	// Create a new cluster id if one is not available
 	clusterId := cluster.Info.Id
-	// TODO: in the future, we should do this call separately
-	if err := s.AddCluster(clusterId); err != nil && err != ErrFound {
-		return err
+
+	// Check the cluster id is in the map
+	if _, ok := s.rings[clusterId]; !ok {
+		logger.LogError("Unknown cluster id requested: %v", clusterId)
+		return ErrNotFound
 	}
 
 	s.lock.Lock()
