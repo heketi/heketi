@@ -28,11 +28,11 @@ class test_heketi(unittest.TestCase):
         cluster_req['block'] = True
         cluster_req['file'] = True
         cluster = c.cluster_create(cluster_req)
-        self.assertEqual(True, cluster['id'] != "")
-        self.assertEqual(True, len(cluster['nodes']) == 0)
-        self.assertEqual(True, len(cluster['volumes']) == 0)
-        self.assertEqual(True, cluster['block'])
-        self.assertEqual(True, cluster['file'])
+        self.assertNotEqual(cluster['id'], "")
+        self.assertEqual(len(cluster['nodes']), 0)
+        self.assertEqual(len(cluster['volumes']), 0)
+        self.assertTrue(cluster['block'])
+        self.assertTrue(cluster['file'])
 
         # Request bad id
         with self.assertRaises(requests.exceptions.HTTPError):
@@ -40,7 +40,7 @@ class test_heketi(unittest.TestCase):
 
         # Get info about the cluster
         info = c.cluster_info(cluster['id'])
-        self.assertEqual(True, info == cluster)
+        self.assertEqual(info, cluster)
 
         # change cluster flags
         cluster_setflags_req = {}
@@ -57,30 +57,30 @@ class test_heketi(unittest.TestCase):
 
         # Get a list of clusters
         list = c.cluster_list()
-        self.assertEqual(True, len(list['clusters']) == 1)
-        self.assertEqual(True, list['clusters'][0] == cluster['id'])
+        self.assertEqual(1, len(list['clusters']))
+        self.assertEqual(list['clusters'][0], cluster['id'])
 
         # Delete non-existent cluster
         with self.assertRaises(requests.exceptions.HTTPError):
             c.cluster_delete("badid")
 
         # Delete current cluster
-        self.assertEqual(True, c.cluster_delete(info['id']))
+        self.assertTrue(c.cluster_delete(info['id']))
 
     def test_node(self):
         node_req = {}
 
         c = HeketiClient(TEST_SERVER, "admin", TEST_ADMIN_KEY)
-        self.assertEqual(True, c != '')
+        self.assertNotEqual(c, '')
 
         # Create cluster
         cluster_req = {}
         cluster_req['block'] = True
         cluster_req['file'] = True
         cluster = c.cluster_create(cluster_req)
-        self.assertEqual(True, cluster['id'] != "")
-        self.assertEqual(True, len(cluster['nodes']) == 0)
-        self.assertEqual(True, len(cluster['volumes']) == 0)
+        self.assertNotEqual(cluster['id'], "")
+        self.assertEqual(len(cluster['nodes']), 0)
+        self.assertEqual(len(cluster['volumes']), 0)
 
         # Add node to unknown cluster
         node_req['cluster'] = "bad_id"
@@ -96,10 +96,10 @@ class test_heketi(unittest.TestCase):
         # Create node request packet
         node_req['cluster'] = cluster['id']
         node = c.node_add(node_req)
-        self.assertEqual(True, node['zone'] == node_req['zone'])
-        self.assertEqual(True, node['id'] != "")
-        self.assertEqual(True, node_req['hostnames'] == node['hostnames'])
-        self.assertEqual(True, len(node['devices']) == 0)
+        self.assertEqual(node['zone'], node_req['zone'])
+        self.assertNotEqual(node['id'], "")
+        self.assertEqual(node_req['hostnames'], node['hostnames'])
+        self.assertEqual(len(node['devices']), 0)
 
         # Info on invalid id
         with self.assertRaises(requests.exceptions.HTTPError):
@@ -107,20 +107,20 @@ class test_heketi(unittest.TestCase):
 
         # Get node info
         info = c.node_info(node['id'])
-        self.assertEqual(True, info == node)
+        self.assertEqual(info, node)
         self.assertEqual(info['state'], 'online')
 
         # Set offline
         state = {}
         state['state'] = 'offline'
-        self.assertEqual(True, c.node_state(node['id'], state))
+        self.assertTrue(c.node_state(node['id'], state))
 
         # Get node info
         info = c.node_info(node['id'])
         self.assertEqual(info['state'], 'offline')
 
         state['state'] = 'online'
-        self.assertEqual(True, c.node_state(node['id'], state))
+        self.assertTrue(c.node_state(node['id'], state))
 
         info = c.node_info(node['id'])
         self.assertEqual(info['state'], 'online')
@@ -135,11 +135,11 @@ class test_heketi(unittest.TestCase):
 
         # Delete node
         del_node = c.node_delete(node['id'])
-        self.assertEqual(True, del_node)
+        self.assertTrue(del_node)
 
         # Delete cluster
         del_cluster = c.cluster_delete(cluster['id'])
-        self.assertEqual(True, del_cluster)
+        self.assertTrue(del_cluster)
 
     def test_device(self):
         # Create app
@@ -150,7 +150,7 @@ class test_heketi(unittest.TestCase):
         cluster_req['block'] = True
         cluster_req['file'] = True
         cluster = c.cluster_create(cluster_req)
-        self.assertEqual(True, cluster['id'] != '')
+        self.assertNotEqual(cluster['id'], '')
 
         # Create node
         node_req = {}
@@ -162,7 +162,7 @@ class test_heketi(unittest.TestCase):
         }
 
         node = c.node_add(node_req)
-        self.assertEqual(True, node['id'] != '')
+        self.assertNotEqual(node['id'], '')
 
         # Create a device request
         device_req = {}
@@ -170,15 +170,14 @@ class test_heketi(unittest.TestCase):
         device_req['node'] = node['id']
 
         device = c.device_add(device_req)
-        self.assertEqual(True, device)
+        self.assertTrue(device)
 
         # Get node information
         info = c.node_info(node['id'])
-        self.assertEqual(True, len(info['devices']) == 1)
-        self.assertEqual(True, len(info['devices'][0]['bricks']) == 0)
-        self.assertEqual(
-            True, info['devices'][0]['name'] == device_req['name'])
-        self.assertEqual(True, info['devices'][0]['id'] != '')
+        self.assertEqual(len(info['devices']), 1)
+        self.assertEqual(len(info['devices'][0]['bricks']), 0)
+        self.assertEqual(info['devices'][0]['name'], device_req['name'])
+        self.assertNotEqual(info['devices'][0]['id'], '')
 
         # Get info from an unknown id
         with self.assertRaises(requests.exceptions.HTTPError):
@@ -187,26 +186,26 @@ class test_heketi(unittest.TestCase):
         # Get device information
         device_id = info['devices'][0]['id']
         device_info = c.device_info(device_id)
-        self.assertEqual(True, device_info == info['devices'][0])
+        self.assertEqual(device_info, info['devices'][0])
 
         # Set offline
         state = {}
         state['state'] = 'offline'
-        self.assertEqual(True, c.device_state(device_id, state))
+        self.assertTrue(c.device_state(device_id, state))
 
         # Get device info
         info = c.device_info(device_id)
         self.assertEqual(info['state'], 'offline')
 
         state['state'] = 'online'
-        self.assertEqual(True, c.device_state(device_id, state))
+        self.assertTrue(c.device_state(device_id, state))
 
         info = c.device_info(device_id)
         self.assertEqual(info['state'], 'online')
 
         # Resync device
         device_resync = c.device_resync(device_id)
-        self.assertEqual(True, device_resync)
+        self.assertTrue(device_resync)
 
         # Try to delete node, and will not until we delete the device
         with self.assertRaises(requests.exceptions.HTTPError):
@@ -218,15 +217,15 @@ class test_heketi(unittest.TestCase):
 
         # Delete device
         device_delete = c.device_delete(device_info['id'])
-        self.assertEqual(True, device_delete)
+        self.assertTrue(device_delete)
 
         # Delete node
         node_delete = c.node_delete(node['id'])
-        self.assertEqual(True, node_delete)
+        self.assertTrue(node_delete)
 
         # Delete cluster
         cluster_delete = c.cluster_delete(cluster['id'])
-        self.assertEqual(True, cluster_delete)
+        self.assertTrue(cluster_delete)
 
     def test_volume(self):
         # Create cluster
@@ -237,7 +236,7 @@ class test_heketi(unittest.TestCase):
         cluster_req['block'] = True
         cluster_req['file'] = True
         cluster = c.cluster_create(cluster_req)
-        self.assertEqual(True, cluster['id'] != '')
+        self.assertNotEqual(cluster['id'], '')
 
         # Create node request packet
         print ("Creating Cluster")
@@ -251,7 +250,7 @@ class test_heketi(unittest.TestCase):
 
             # Create node
             node = c.node_add(node_req)
-            self.assertEqual(True, node['id'] != '')
+            self.assertNotEqual(node['id'], '')
 
             # Create and add devices
             for i in range(1, 4):
@@ -260,24 +259,24 @@ class test_heketi(unittest.TestCase):
                 device_req['node'] = node['id']
 
                 device = c.device_add(device_req)
-                self.assertEqual(True, device)
+                self.assertTrue(device)
 
         # Get list of volumes
         list = c.volume_list()
-        self.assertEqual(True, len(list['volumes']) == 0)
+        self.assertEqual(len(list['volumes']), 0)
 
         # Create a volume
         print ("Creating a volume")
         volume_req = {}
         volume_req['size'] = 10
         volume = c.volume_create(volume_req)
-        self.assertEqual(True, volume['id'] != "")
-        self.assertEqual(True, volume['size'] == volume_req['size'])
+        self.assertNotEqual(volume['id'], "")
+        self.assertEqual(volume['size'], volume_req['size'])
 
         # Get list of volumes
         list = c.volume_list()
-        self.assertEqual(True, len(list['volumes']) == 1)
-        self.assertEqual(True, list['volumes'][0] == volume['id'])
+        self.assertEqual(len(list['volumes']), 1)
+        self.assertEqual(list['volumes'][0], volume['id'])
 
         # Get info on incorrect id
         with self.assertRaises(requests.exceptions.HTTPError):
@@ -285,7 +284,7 @@ class test_heketi(unittest.TestCase):
 
         # Get info
         info = c.volume_info(volume['id'])
-        self.assertEqual(True, info == volume)
+        self.assertEqual(info, volume)
 
         # Expand volume with a bad id
         volume_ex_params = {}
@@ -297,7 +296,7 @@ class test_heketi(unittest.TestCase):
         # Expand volume
         print ("Expanding volume")
         volumeInfo = c.volume_expand(volume['id'], volume_ex_params)
-        self.assertEqual(True, volumeInfo['size'] == 20)
+        self.assertEqual(volumeInfo['size'], 20)
 
         # Delete bad id
         with self.assertRaises(requests.exceptions.HTTPError):
@@ -306,7 +305,7 @@ class test_heketi(unittest.TestCase):
         # Delete volume
         print ("Deleting volume")
         volume_delete = c.volume_delete(volume['id'])
-        self.assertEqual(True, volume_delete)
+        self.assertTrue(volume_delete)
 
         print ("Deleting Cluster")
         clusterInfo = c.cluster_info(cluster['id'])
@@ -317,15 +316,15 @@ class test_heketi(unittest.TestCase):
             # Delete all devices
             for device in nodeInfo['devices']:
                 device_delete = c.device_delete(device['id'])
-                self.assertEqual(True, device_delete)
+                self.assertTrue(device_delete)
 
             # Delete node
             node_delete = c.node_delete(node_id)
-            self.assertEqual(True, node_delete)
+            self.assertTrue(node_delete)
 
         # Delete cluster
         cluster_delete = c.cluster_delete(cluster['id'])
-        self.assertEqual(True, cluster_delete)
+        self.assertTrue(cluster_delete)
 
 
 if __name__ == '__main__':
