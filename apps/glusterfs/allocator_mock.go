@@ -94,6 +94,10 @@ func (d *MockAllocator) AddCluster(clusterId string) error {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
+	if _, ok := d.clustermap[clusterId]; ok {
+		return nil
+	}
+
 	d.clustermap[clusterId] = []string{}
 
 	return nil
