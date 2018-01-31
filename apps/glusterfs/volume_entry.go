@@ -234,7 +234,24 @@ func (v *VolumeEntry) Create(db wdb.DB,
 	executor executors.Executor,
 	allocator Allocator) (e error) {
 
-	return v.createOneShot(db, executor, allocator)
+	// OLD STYLE
+	// return v.createOneShot(db, executor, allocator)
+	defer func() {
+		if e != nil {
+			logger.LogError("Create volume failed: %v", e)
+		}
+	}()
+	vc := NewVolumeCreateOperation(v, db)
+	if e := vc.Build(allocator); e != nil {
+		return e
+	}
+	if e := vc.Exec(executor); e != nil {
+		if rerr := vc.Rollback(executor); rerr != nil {
+			logger.LogError("Create volume - Rollback error: %v", rerr)
+		}
+		return e
+	}
+	return vc.Finalize()
 }
 
 func (v *VolumeEntry) tryAllocateBricks(
