@@ -146,22 +146,13 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Add device in an asynchronous function
-	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
-
-		logger.Info("Creating volume %v", vol.Info.Id)
-		err := vol.Create(a.db, a.executor, a.Allocator())
-		if err != nil {
-			logger.LogError("Failed to create volume: %v", err)
-			return "", err
-		}
-
-		logger.Info("Created volume %v", vol.Info.Id)
-
-		// Done
-		return "/volumes/" + vol.Info.Id, nil
-	})
-
+	vc := NewVolumeCreateOperation(vol, a.db)
+	if err := AsyncHttpOperation(a, w, r, vc); err != nil {
+		http.Error(w,
+			fmt.Sprintf("Failed to allocate new volume: %v", err),
+			http.StatusInternalServerError)
+		return
+	}
 }
 
 func (a *App) VolumeList(w http.ResponseWriter, r *http.Request) {
