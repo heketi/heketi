@@ -303,6 +303,16 @@ func (v *VolumeEntry) createOneShot(db wdb.DB,
 		}
 	}()
 
+	brick_entries, e = v.createVolumeComponents(db, allocator)
+	if e != nil {
+		return e
+	}
+	return v.createVolumeExec(db, executor, brick_entries)
+}
+
+func (v *VolumeEntry) createVolumeComponents(db wdb.DB,
+	allocator Allocator) (brick_entries []*BrickEntry, e error) {
+
 	// Get list of clusters
 	var possibleClusters []string
 	if len(v.Info.Clusters) == 0 {
@@ -312,7 +322,7 @@ func (v *VolumeEntry) createOneShot(db wdb.DB,
 			return err
 		})
 		if err != nil {
-			return err
+			return brick_entries, err
 		}
 	} else {
 		possibleClusters = v.Info.Clusters
@@ -320,33 +330,29 @@ func (v *VolumeEntry) createOneShot(db wdb.DB,
 
 	possibleClusters, err := eligibleClusters(db, v, possibleClusters)
 	if err != nil {
-		return err
+		return brick_entries, err
 	}
 	if len(possibleClusters) == 0 {
 		logger.LogError("No clusters eligible to satisfy create volume request")
-		return ErrNoSpace
+		return brick_entries, ErrNoSpace
 	}
 	logger.Debug("Using the following clusters: %+v", possibleClusters)
 
-	brick_entries, err = v.saveCreateVolume(db, allocator, possibleClusters)
-	if err != nil {
-		return err
-	}
+	return v.saveCreateVolume(db, allocator, possibleClusters)
+}
+
+func (v *VolumeEntry) createVolumeExec(db wdb.DB,
+	executor executors.Executor,
+	brick_entries []*BrickEntry) (e error) {
 
 	// Create the bricks on the nodes
-	err = CreateBricks(db, executor, brick_entries)
-	if err != nil {
-		return err
+	e = CreateBricks(db, executor, brick_entries)
+	if e != nil {
+		return
 	}
 
 	// Create GlusterFS volume
-	err = v.createVolume(db, executor, brick_entries)
-	if err != nil {
-		return err
-	}
-
-
-	return err
+	return v.createVolume(db, executor, brick_entries)
 }
 
 func (v *VolumeEntry) saveCreateVolume(db wdb.DB,
