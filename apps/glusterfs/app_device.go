@@ -121,11 +121,6 @@ func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 			// Add device to node
 			nodeEntry.DeviceAdd(device.Info.Id)
 
-			clusterEntry, err := NewClusterEntryFromId(tx, nodeEntry.Info.ClusterId)
-			if err != nil {
-				return err
-			}
-
 			// Commit
 			err = nodeEntry.Save(tx)
 			if err != nil {
@@ -134,12 +129,6 @@ func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 
 			// Save drive
 			err = device.Save(tx)
-			if err != nil {
-				return err
-			}
-
-			// Add to allocator
-			err = a.Allocator().AddDevice(clusterEntry, nodeEntry, device)
 			if err != nil {
 				return err
 			}
@@ -256,12 +245,6 @@ func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
 		// Teardown device
 		err := a.executor.DeviceTeardown(node.ManageHostName(),
 			device.Info.Name, device.Info.Id)
-		if err != nil {
-			return "", err
-		}
-
-		// Remove device from allocator
-		err = a.Allocator().RemoveDevice(cluster, node, device)
 		if err != nil {
 			return "", err
 		}
