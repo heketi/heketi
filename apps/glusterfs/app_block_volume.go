@@ -41,12 +41,6 @@ func (a *App) BlockVolumeCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if msg.Size > BlockHostingVolumeSize {
-		err := logger.LogError("Default Block Hosting Volume size is less than block volume requested.")
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
 	// TODO: factor this into a function (it's also in VolumeCreate)
 	// Check that the clusters requested are available
 	err = a.db.View(func(tx *bolt.Tx) error {
