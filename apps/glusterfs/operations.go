@@ -2,6 +2,7 @@ package glusterfs
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
@@ -151,4 +152,34 @@ func bricksFromOp(db wdb.RODB,
 		return nil
 	})
 	return brick_entries, err
+}
+
+func AsyncHttpOperation(app *App,
+	w http.ResponseWriter,
+	r *http.Request,
+	op Operation) error {
+
+	label := op.Label()
+	if err := op.Build(app.Allocator()); err != nil {
+		logger.LogError("%v Build Failed: %v", label, err)
+		return err
+	}
+
+	app.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
+		logger.Info("Started async operation: %v", label)
+		if err := op.Exec(app.executor); err != nil {
+			if rerr := op.Rollback(app.executor); rerr != nil {
+				logger.LogError("%v Rollback error: %v", label, rerr)
+			}
+			logger.LogError("%v Failed: %v", label, err)
+			return "", err
+		}
+		if err := op.Finalize(); err != nil {
+			logger.LogError("%v Finalize failed: %v", label, err)
+			return "", err
+		}
+		logger.Info("%v succeeded", label)
+		return op.ResourceUrl(), nil
+	})
+	return nil
 }
