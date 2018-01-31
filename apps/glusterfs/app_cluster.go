@@ -39,13 +39,6 @@ func (a *App) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		err = a.Allocator().AddCluster(entry.Info.Id)
-		if err != nil {
-			logger.LogError("Error adding cluster to ring: %v", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return err
-		}
-
 		return nil
 	})
 	if err != nil {
@@ -207,9 +200,6 @@ func (a *App) ClusterDelete(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-
-	// Update allocator hat the cluster has been removed
-	a.Allocator().RemoveCluster(id)
 
 	// Show that the key has been deleted
 	logger.Info("Deleted cluster [%s]", id)
