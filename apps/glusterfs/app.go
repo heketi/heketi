@@ -525,12 +525,6 @@ func (a *App) ClearAllocator() {
 func (a *App) newAllocator() Allocator {
 	var alloc Allocator
 	switch {
-	case a.conf.Allocator == "mock":
-		if r := NewMockAllocator(a.db); r != nil {
-			alloc = r
-		} else {
-			panic(errors.New("failed to set up mock allocator"))
-		}
 	case a.conf.Allocator == "simple" || a.conf.Allocator == "":
 		a.conf.Allocator = "simple"
 		if r := NewSimpleAllocatorFromDb(a.db); r != nil {
