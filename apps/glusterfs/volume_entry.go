@@ -268,6 +268,29 @@ func (v *VolumeEntry) tryAllocateBricks(
 	return
 }
 
+func (v *VolumeEntry) cleanupCreateVolume(db wdb.DB,
+	executor executors.Executor,
+	brick_entries []*BrickEntry) error {
+
+	// from a quick read its "safe" to unconditionally try to delete
+	// bricks. TODO: find out if that is true with functional tests
+	DestroyBricks(db, executor, brick_entries)
+	return db.Update(func(tx *bolt.Tx) error {
+		for _, brick := range brick_entries {
+			v.removeBrickFromDb(tx, brick)
+		}
+		if v.Info.Cluster != "" {
+			cluster, err := NewClusterEntryFromId(tx, v.Info.Cluster)
+			if err == nil {
+				cluster.VolumeDelete(v.Info.Id)
+				cluster.Save(tx)
+			}
+		}
+		v.Delete(tx)
+		return nil
+	})
+}
+
 func (v *VolumeEntry) createOneShot(db wdb.DB,
 	executor executors.Executor,
 	allocator Allocator) (e error) {
@@ -276,23 +299,7 @@ func (v *VolumeEntry) createOneShot(db wdb.DB,
 	// On any error, remove the volume
 	defer func() {
 		if e != nil {
-			// from a quick read its "safe" to unconditionally try to delete
-			// bricks. TODO: find out if that is true with functional tests
-			DestroyBricks(db, executor, brick_entries)
-			db.Update(func(tx *bolt.Tx) error {
-				for _, brick := range brick_entries {
-					v.removeBrickFromDb(tx, brick)
-				}
-				if v.Info.Cluster != "" {
-					cluster, err := NewClusterEntryFromId(tx, v.Info.Cluster)
-					if err == nil {
-						cluster.VolumeDelete(v.Info.Id)
-						cluster.Save(tx)
-					}
-				}
-				v.Delete(tx)
-				return nil
-			})
+			v.cleanupCreateVolume(db, executor, brick_entries)
 		}
 	}()
 
