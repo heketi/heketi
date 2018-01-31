@@ -272,10 +272,17 @@ func (v *VolumeEntry) createOneShot(db wdb.DB,
 	executor executors.Executor,
 	allocator Allocator) (e error) {
 
+	var brick_entries []*BrickEntry
 	// On any error, remove the volume
 	defer func() {
 		if e != nil {
+			// from a quick read its "safe" to unconditionally try to delete
+			// bricks. TODO: find out if that is true with functional tests
+			DestroyBricks(db, executor, brick_entries)
 			db.Update(func(tx *bolt.Tx) error {
+				for _, brick := range brick_entries {
+					v.removeBrickFromDb(tx, brick)
+				}
 				if v.Info.Cluster != "" {
 					cluster, err := NewClusterEntryFromId(tx, v.Info.Cluster)
 					if err == nil {
@@ -314,22 +321,10 @@ func (v *VolumeEntry) createOneShot(db wdb.DB,
 	}
 	logger.Debug("Using the following clusters: %+v", possibleClusters)
 
-	brick_entries, err := v.saveCreateVolume(db, allocator, possibleClusters)
+	brick_entries, err = v.saveCreateVolume(db, allocator, possibleClusters)
 	if err != nil {
 		return err
 	}
-
-	// Make sure to clean up bricks on error
-	defer func() {
-		if e != nil {
-			db.Update(func(tx *bolt.Tx) error {
-				for _, brick := range brick_entries {
-					v.removeBrickFromDb(tx, brick)
-				}
-				return nil
-			})
-		}
-	}()
 
 	// Create the bricks on the nodes
 	err = CreateBricks(db, executor, brick_entries)
@@ -337,25 +332,12 @@ func (v *VolumeEntry) createOneShot(db wdb.DB,
 		return err
 	}
 
-	// Clean up created bricks on failure
-	defer func() {
-		if e != nil {
-			DestroyBricks(db, executor, brick_entries)
-		}
-	}()
-
 	// Create GlusterFS volume
 	err = v.createVolume(db, executor, brick_entries)
 	if err != nil {
 		return err
 	}
 
-	// Destroy volume on failure
-	defer func() {
-		if e != nil {
-			v.Destroy(db, executor)
-		}
-	}()
 
 	return err
 }
