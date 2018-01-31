@@ -616,7 +616,8 @@ func TestVolumeEntryCreateTwoBricks(t *testing.T) {
 			Path: "/mockpath",
 		}
 
-		tests.Assert(t, brick.Gid == gid)
+		tests.Assert(t, brick.Gid == gid,
+			"expected brick.Gid == gid, got:", brick.Gid, gid)
 		return bInfo, nil
 	}
 
