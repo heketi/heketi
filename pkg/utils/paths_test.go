@@ -67,3 +67,25 @@ func TestBrickDevNode(t *testing.T) {
 		`calling BrickDevNode("asdf", "fireplace"), expected`,
 		expected, "got", result)
 }
+
+func TestBrickMountFromPath(t *testing.T) {
+	p := "/var/lib/heketi/mounts/vg_asdf/brick_fireplace/brick"
+	expected := "/var/lib/heketi/mounts/vg_asdf/brick_fireplace"
+	result := BrickMountFromPath(p)
+	tests.Assert(t, expected == result,
+		"expected", expected, "got", result)
+
+	tests.Assert(t,
+		BrickMountPoint("abc", "def") == BrickMountFromPath(BrickPath("abc", "def")),
+		`expected BrickMountPoint("abc", "def") == BrickMountFromPath(BrickPath("abc", "def")), got:`,
+		BrickMountPoint("abc", "def"), BrickMountFromPath(BrickPath("abc", "def")))
+}
+
+func TestBrickMountFromPathIsStrict(t *testing.T) {
+	defer func() {
+		err := recover()
+		tests.Assert(t, err != nil, "epxected err != nil")
+	}()
+	BrickMountFromPath("asdf")
+	t.Fatalf("should not be reached")
+}
