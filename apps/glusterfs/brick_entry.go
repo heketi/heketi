@@ -26,6 +26,7 @@ type BrickEntry struct {
 	TpSize           uint64
 	PoolMetadataSize uint64
 	gidRequested     int64
+	Pending          PendingItem
 }
 
 func BrickList(tx *bolt.Tx) ([]string, error) {

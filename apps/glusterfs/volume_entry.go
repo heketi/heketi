@@ -51,6 +51,7 @@ type VolumeEntry struct {
 	Bricks               sort.StringSlice
 	Durability           VolumeDurability `json:"-"`
 	GlusterVolumeOptions []string
+	Pending              PendingItem
 }
 
 func VolumeList(tx *bolt.Tx) ([]string, error) {
