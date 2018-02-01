@@ -172,7 +172,7 @@ func (a *App) VolumeList(w http.ResponseWriter, r *http.Request) {
 	err := a.db.View(func(tx *bolt.Tx) error {
 		var err error
 
-		list.Volumes, err = VolumeList(tx)
+		list.Volumes, err = ListCompleteVolumes(tx)
 		if err != nil {
 			return err
 		}
@@ -201,9 +201,10 @@ func (a *App) VolumeInfo(w http.ResponseWriter, r *http.Request) {
 	var info *api.VolumeInfoResponse
 	err := a.db.View(func(tx *bolt.Tx) error {
 		entry, err := NewVolumeEntryFromId(tx, id)
-		if err == ErrNotFound {
+		if err == ErrNotFound || !entry.Visible() {
+			// treat an invisible entry like it doesn't exist
 			http.Error(w, "Id not found", http.StatusNotFound)
-			return err
+			return ErrNotFound
 		} else if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return err
