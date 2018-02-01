@@ -164,25 +164,66 @@ func TestBlockVolumeLargerThanBlockHostingVolume(t *testing.T) {
 	// Setup database
 	err := setupSampleDbWithTopology(app,
 		1,    // clusters
-		10,   // nodes_per_cluster
-		10,   // devices_per_node,
-		5*TB, // disksize)
+		3,    // nodes_per_cluster
+		1,    // devices_per_node,
+		2*TB, // disksize)
 	)
 	tests.Assert(t, err == nil)
+	var info api.BlockVolumeInfoResponse
 
-	// BlockVolumeCreate
+	// Create a small blockvolume to auto create block hosting volume
 	request := []byte(`{
-        "size" : 1500
+        "size" : 1
     }`)
-
-	// Send request
 	r, err := http.Post(ts.URL+"/blockvolumes", "application/json", bytes.NewBuffer(request))
 	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusBadRequest)
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	location, err := r.Location()
+	tests.Assert(t, err == nil)
+
+	for {
+		r, err = http.Get(location.String())
+		tests.Assert(t, err == nil)
+		if r.Header.Get("X-Pending") == "true" {
+			tests.Assert(t, r.StatusCode == http.StatusOK)
+			time.Sleep(time.Millisecond * 10)
+		} else {
+			tests.Assert(t, r.StatusCode == http.StatusOK, "got", r.StatusCode)
+			err := utils.GetJsonFromResponse(r, &info)
+			tests.Assert(t, err == nil)
+			tests.Assert(t, info.Id != "")
+			break
+		}
+	}
+
+	// now create blockvolume request which can't fit in existing 500 GiB
+	// blockhosting volume and any new blockhosting volume that can
+	// be created
+	request = []byte(`{
+        "size" : 1600
+    }`)
+	r, err = http.Post(ts.URL+"/blockvolumes", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	location, err = r.Location()
+	tests.Assert(t, err == nil)
+
+	for {
+		r, err = http.Get(location.String())
+		tests.Assert(t, err == nil)
+		if r.Header.Get("X-Pending") == "true" {
+			tests.Assert(t, r.StatusCode == http.StatusOK)
+			time.Sleep(time.Millisecond * 10)
+		} else {
+			tests.Assert(t, r.StatusCode == http.StatusInternalServerError, "got", r.StatusCode)
+			break
+		}
+	}
+
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, r.ContentLength))
 	tests.Assert(t, err == nil)
 	r.Body.Close()
-	tests.Assert(t, strings.Contains(string(body), "Default Block Hosting Volume size is less than block volume requested."))
+	tests.Assert(t, strings.Contains(string(body), "No space"), "got", string(body))
 }
 
 func TestBlockVolumeCreate(t *testing.T) {
