@@ -605,6 +605,13 @@ func (v *VolumeEntry) BlockVolumeDelete(id string) {
 	v.Info.BlockInfo.BlockVolumes = utils.SortedStringsDelete(v.Info.BlockInfo.BlockVolumes, id)
 }
 
+// Visible returns true if this volume is meant to be visible to
+// API calls.
+func (v *VolumeEntry) Visible() bool {
+	// right now volumes are always visible, this won't always be true
+	return true
+}
+
 func eligibleClusters(db wdb.RODB, v *VolumeEntry,
 	possibleClusters []string) ([]string, error) {
 	//
