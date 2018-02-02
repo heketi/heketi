@@ -37,9 +37,32 @@ func (s IdSource) ReadUUID() string {
 	return hex.EncodeToString(uuid)
 }
 
+// ShortID returns a unique-as-possible ID of length l.
+// The length l must be a multiple of 2, greater than 1 and less than or
+// equal to 32. The function will panic if l is invalid.
+func (s IdSource) ShortID(l int) string {
+	godbc.Require(l <= 32)
+	godbc.Require(l > 1)
+	godbc.Require((l & 1) != 1)
+	id := make([]byte, l/2)
+	n, err := s.Read(id)
+
+	godbc.Check(n == len(id), n, len(id))
+	godbc.Check(err == nil, err)
+
+	return hex.EncodeToString(id)
+}
+
 // Return a 16-byte uuid
 func GenUUID() string {
 	return IdSource{Randomness}.ReadUUID()
+}
+
+// ShortID returns a unique-as-possible ID of length l.
+// The length l must be a multiple of 2, greater than 1 and less than or
+// equal to 32. The function will panic if l is invalid.
+func ShortID(l int) string {
+	return IdSource{Randomness}.ShortID(l)
 }
 
 type NonRandom struct {
@@ -56,12 +79,18 @@ func (n *NonRandom) Count() (curr uint64) {
 }
 
 func (n *NonRandom) Read(p []byte) (s int, err error) {
-	offset := 0
-	if len(p) > 8 {
-		offset = len(p) - 8
+	switch {
+	case len(p) > 8:
+		offset := len(p) - 8
+		binary.BigEndian.PutUint64(p[offset:], n.Count())
+	case len(p) < 8:
+		b := make([]byte, 8)
+		binary.BigEndian.PutUint64(b, n.Count())
+		offset := 8 - len(p)
+		copy(p, b[offset:])
+	default:
+		binary.BigEndian.PutUint64(p, n.Count())
 	}
-
-	binary.BigEndian.PutUint64(p[offset:], n.Count())
 	s = len(p)
 	return
 }

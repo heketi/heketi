@@ -79,6 +79,93 @@ func TestReplaceRandomness(t *testing.T) {
 	tests.Assert(t, uuid != "00000000000000000000000000000002", "got:", uuid)
 }
 
+func TestShortID(t *testing.T) {
+	s := IdSource{Randomness}
+
+	for i := 2; i < 34; i += 2 {
+		id := s.ShortID(i)
+		tests.Assert(t, len(id) == i, "expected length ", i, ", got:", len(id))
+	}
+}
+
+func TestGlobalShortID(t *testing.T) {
+	for i := 2; i < 34; i += 2 {
+		id := ShortID(i)
+		tests.Assert(t, len(id) == i, "expected length ", i, ", got:", len(id))
+	}
+}
+
+func TestShortIDTooShort(t *testing.T) {
+	defer func() {
+		r := recover()
+		tests.Assert(t, r != nil, "expected r to be not nil, got nil")
+	}()
+
+	s := IdSource{Randomness}
+	s.ShortID(1)
+
+	t.Fatalf("should not reach this line")
+}
+
+func TestShortIDTooLong(t *testing.T) {
+	defer func() {
+		r := recover()
+		tests.Assert(t, r != nil, "expected r to be not nil, got nil")
+	}()
+
+	s := IdSource{Randomness}
+	id := s.ShortID(32)
+	tests.Assert(t, len(id) == 32, "expected length ", 32, ", got:", len(id))
+
+	s.ShortID(34)
+	t.Fatalf("should not reach this line")
+}
+
+func TestShortIDOddLen(t *testing.T) {
+	defer func() {
+		r := recover()
+		tests.Assert(t, r != nil, "expected r to be not nil, got nil")
+	}()
+
+	s := IdSource{Randomness}
+	id := s.ShortID(4)
+	tests.Assert(t, len(id) == 4, "expected length ", 4, ", got:", len(id))
+
+	s.ShortID(5)
+	t.Fatalf("should not reach this line")
+}
+
+func TestShortIDNonRandom(t *testing.T) {
+	s := IdSource{&NonRandom{}}
+
+	id := s.ShortID(16)
+	tests.Assert(t, id == "0000000000000000",
+		"expected id == 0000000000000000, got:", id)
+
+	id = s.ShortID(8)
+	tests.Assert(t, id == "00000001",
+		"expected id == 00000001, got:", id)
+	id = s.ShortID(8)
+	tests.Assert(t, id == "00000002",
+		"expected id == 00000002, got:", id)
+
+	id = s.ShortID(2)
+	tests.Assert(t, id == "03",
+		"expected id == 03, got:", id)
+
+	id = s.ShortID(4)
+	tests.Assert(t, id == "0004",
+		"expected id == 0004, got:", id)
+
+	id = s.ShortID(6)
+	tests.Assert(t, id == "000005",
+		"expected id == 000005, got:", id)
+
+	id = s.ShortID(18)
+	tests.Assert(t, id == "000000000000000006",
+		"expected id == 000000000000000006, got:", id)
+}
+
 // NOTE: the Original GenUUID function aborts the applicaion
 // when conditions are not met. This was carried over into the
 // version with selectable random sources so we dont actually
