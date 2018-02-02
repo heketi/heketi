@@ -196,9 +196,8 @@ func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
 
 	// Check request
 	var (
-		device  *DeviceEntry
-		node    *NodeEntry
-		cluster *ClusterEntry
+		device *DeviceEntry
+		node   *NodeEntry
 	)
 	err := a.db.View(func(tx *bolt.Tx) error {
 		var err error
@@ -223,12 +222,6 @@ func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
 		node, err = NewNodeEntryFromId(tx, device.NodeId)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return logger.Err(err)
-		}
-
-		// Save cluster to update allocator
-		cluster, err = NewClusterEntryFromId(tx, node.Info.ClusterId)
-		if err != nil {
 			return logger.Err(err)
 		}
 
