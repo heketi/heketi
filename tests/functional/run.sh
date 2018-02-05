@@ -50,12 +50,46 @@ if ! command -v glide ; then
 	exit 1
 fi
 
-# Download golang 1.8.3
-curl -O https://storage.googleapis.com/golang/go1.8.3.linux-amd64.tar.gz
-tar xzvf go1.8.3.linux-amd64.tar.gz
-GOROOT=$(pwd)/go
-export GOROOT
-export PATH=$GOROOT/bin:$PATH
+fetch_golang() {
+    # Download golang 1.8.3
+    curl -O https://storage.googleapis.com/golang/go1.8.3.linux-amd64.tar.gz
+    tar xzvf go1.8.3.linux-amd64.tar.gz
+    GOROOT=$(pwd)/go
+    export GOROOT
+    export PATH=$GOROOT/bin:$PATH
+}
+
+vercheck() {
+    # return true (0) if version number $2 is greater-or-equal to
+    # version number $1
+    r="$(echo -e "$1\n$2" | sort -V | head -n1)"
+    if [[ "$r" == "$1" ]]; then
+        return 0
+    fi
+    return 1
+}
+
+case "$HEKETI_TEST_SYSTEM_GO" in
+    yes)
+        echo "Using system go packages"
+    ;;
+    auto|"")
+        gv="$(go version | awk '{print $3}')"
+        gv="${gv/go/}"
+        if [[ "${gv}" ]] && vercheck "1.8.3" "${gv}"; then
+            echo "Using system go (version ${gv})"
+        else
+            fetch_golang
+        fi
+    ;;
+    no)
+        fetch_golang
+    ;;
+    *)
+        echo "error: unknown value for HEKETI_TEST_SYSTEM_GO, need yes|no|auto" >&2
+        exit 2
+    ;;
+esac
 
 source ./lib.sh
 
