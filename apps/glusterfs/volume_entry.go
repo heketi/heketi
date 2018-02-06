@@ -507,12 +507,7 @@ func (v *VolumeEntry) Expand(db wdb.DB,
 	allocator Allocator,
 	sizeGB int) (e error) {
 
-	// Allocate new bricks in the cluster
-	brick_entries, err := v.allocBricksInCluster(db, allocator, v.Info.Cluster, sizeGB)
-	if err != nil {
-		return err
-	}
-
+	var brick_entries []*BrickEntry
 	// Setup cleanup function
 	defer func() {
 		if e != nil {
@@ -531,6 +526,12 @@ func (v *VolumeEntry) Expand(db wdb.DB,
 			})
 		}
 	}()
+
+	// Allocate new bricks in the cluster
+	brick_entries, err := v.allocBricksInCluster(db, allocator, v.Info.Cluster, sizeGB)
+	if err != nil {
+		return err
+	}
 
 	// Create bricks
 	err = CreateBricks(db, executor, brick_entries)
