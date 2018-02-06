@@ -332,19 +332,11 @@ func (a *App) VolumeExpand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Expand volume in an asynchronous function
-	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
-
-		logger.Info("Expanding volume %v", volume.Info.Id)
-		err := volume.Expand(a.db, a.executor, a.Allocator(), msg.Size)
-		if err != nil {
-			logger.LogError("Failed to expand volume %v", volume.Info.Id)
-			return "", err
-		}
-
-		logger.Info("Expanded volume %v", volume.Info.Id)
-
-		return "/volumes/" + volume.Info.Id, nil
-	})
-
+	ve := NewVolumeExpandOperation(volume, a.db, msg.Size)
+	if err := AsyncHttpOperation(a, w, r, ve); err != nil {
+		http.Error(w,
+			fmt.Sprintf("Failed to allocate volume expansion: %v", err),
+			http.StatusInternalServerError)
+		return
+	}
 }
