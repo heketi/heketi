@@ -505,7 +505,8 @@ func (v *VolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error {
 
 func (v *VolumeEntry) expandVolumeComponents(db wdb.DB,
 	allocator Allocator,
-	sizeGB int) (brick_entries []*BrickEntry, e error) {
+	sizeGB int,
+	setSize bool) (brick_entries []*BrickEntry, e error) {
 
 	e = db.Update(func(tx *bolt.Tx) error {
 		// Allocate new bricks in the cluster
@@ -517,7 +518,9 @@ func (v *VolumeEntry) expandVolumeComponents(db wdb.DB,
 		}
 
 		// Increase the recorded volume size
-		v.Info.Size += sizeGB
+		if setSize {
+			v.Info.Size += sizeGB
+		}
 
 		// Save brick entries
 		for _, brick := range brick_entries {
@@ -593,7 +596,7 @@ func (v *VolumeEntry) Expand(db wdb.DB,
 		}
 	}()
 
-	brick_entries, e = v.expandVolumeComponents(db, allocator, sizeGB)
+	brick_entries, e = v.expandVolumeComponents(db, allocator, sizeGB, true)
 	if e != nil {
 		return
 	}
