@@ -508,6 +508,7 @@ func (v *VolumeEntry) Expand(db wdb.DB,
 	sizeGB int) (e error) {
 
 	var brick_entries []*BrickEntry
+	origSize := v.Info.Size
 	// Setup cleanup function
 	defer func() {
 		if e != nil {
@@ -519,6 +520,7 @@ func (v *VolumeEntry) Expand(db wdb.DB,
 				for _, brick := range brick_entries {
 					v.removeBrickFromDb(tx, brick)
 				}
+				v.Info.Size = origSize
 				err := v.Save(tx)
 				godbc.Check(err == nil)
 
@@ -527,8 +529,29 @@ func (v *VolumeEntry) Expand(db wdb.DB,
 		}
 	}()
 
-	// Allocate new bricks in the cluster
-	brick_entries, err := v.allocBricksInCluster(db, allocator, v.Info.Cluster, sizeGB)
+	// Save volume entry
+	err := db.Update(func(tx *bolt.Tx) error {
+		// Allocate new bricks in the cluster
+		txdb := wdb.WrapTx(tx)
+		var err error
+		brick_entries, err = v.allocBricksInCluster(txdb, allocator, v.Info.Cluster, sizeGB)
+		if err != nil {
+			return err
+		}
+
+		// Increase the recorded volume size
+		v.Info.Size += sizeGB
+
+		// Save brick entries
+		for _, brick := range brick_entries {
+			err := brick.Save(tx)
+			if err != nil {
+				return err
+			}
+		}
+
+		return v.Save(tx)
+	})
 	if err != nil {
 		return err
 	}
@@ -551,23 +574,6 @@ func (v *VolumeEntry) Expand(db wdb.DB,
 	if err != nil {
 		return err
 	}
-
-	// Increase the recorded volume size
-	v.Info.Size += sizeGB
-
-	// Save volume entry
-	err = db.Update(func(tx *bolt.Tx) error {
-
-		// Save brick entries
-		for _, brick := range brick_entries {
-			err := brick.Save(tx)
-			if err != nil {
-				return err
-			}
-		}
-
-		return v.Save(tx)
-	})
 
 	return err
 
