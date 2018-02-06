@@ -587,21 +587,22 @@ func (v *VolumeEntry) Expand(db wdb.DB,
 	allocator Allocator,
 	sizeGB int) (e error) {
 
-	var brick_entries []*BrickEntry
-	origSize := v.Info.Size
-	// Setup cleanup function
 	defer func() {
 		if e != nil {
-			v.cleanupExpandVolume(db, executor, brick_entries, origSize)
+			logger.LogError("Expand volume failed: %v", e)
 		}
 	}()
-
-	brick_entries, e = v.expandVolumeComponents(db, allocator, sizeGB, true)
-	if e != nil {
-		return
+	ve := NewVolumeExpandOperation(v, db, sizeGB)
+	if e := ve.Build(allocator); e != nil {
+		return e
 	}
-
-	return v.expandVolumeExec(db, executor, brick_entries)
+	if e := ve.Exec(executor); e != nil {
+		if rerr := ve.Rollback(executor); rerr != nil {
+			logger.LogError("Expand volume - Rollback error: %v", rerr)
+		}
+		return e
+	}
+	return ve.Finalize()
 }
 
 func (v *VolumeEntry) BricksIds() sort.StringSlice {
