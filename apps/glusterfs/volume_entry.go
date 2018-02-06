@@ -448,6 +448,41 @@ func (v *VolumeEntry) deleteVolumeExec(db wdb.RODB,
 	return nil
 }
 
+func (v *VolumeEntry) saveDeleteVolume(db wdb.DB,
+	brick_entries []*BrickEntry) error {
+
+	// Remove from entries from the db
+	return db.Update(func(tx *bolt.Tx) error {
+		for _, brick := range brick_entries {
+			err := v.removeBrickFromDb(tx, brick)
+			if err != nil {
+				logger.Err(err)
+				// Everything is destroyed anyways, just keep deleting the others
+				// Do not return here
+			}
+		}
+
+		// Remove volume from cluster
+		cluster, err := NewClusterEntryFromId(tx, v.Info.Cluster)
+		if err != nil {
+			logger.Err(err)
+			// Do not return here.. keep going
+		}
+		cluster.VolumeDelete(v.Info.Id)
+
+		err = cluster.Save(tx)
+		if err != nil {
+			logger.Err(err)
+			// Do not return here.. keep going
+		}
+
+		// Delete volume
+		v.Delete(tx)
+
+		return nil
+	})
+}
+
 func (v *VolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error {
 	logger.Info("Destroying volume %v", v.Info.Id)
 
@@ -481,40 +516,8 @@ func (v *VolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error {
 		return err
 	}
 
-	// Remove from entries from the db
-	err = db.Update(func(tx *bolt.Tx) error {
-		for _, brick := range brick_entries {
-			err = v.removeBrickFromDb(tx, brick)
-			if err != nil {
-				logger.Err(err)
-				// Everything is destroyed anyways, just keep deleting the others
-				// Do not return here
-			}
-		}
-
-		// Remove volume from cluster
-		cluster, err := NewClusterEntryFromId(tx, v.Info.Cluster)
-		if err != nil {
-			logger.Err(err)
-			// Do not return here.. keep going
-		}
-		cluster.VolumeDelete(v.Info.Id)
-
-		err = cluster.Save(tx)
-		if err != nil {
-			logger.Err(err)
-			// Do not return here.. keep going
-		}
-
-		// Delete volume
-		v.Delete(tx)
-
-		return nil
-	})
-
-	return err
+	return v.saveDeleteVolume(db, brick_entries)
 }
-
 
 func (v *VolumeEntry) expandVolumeComponents(db wdb.DB,
 	allocator Allocator,
