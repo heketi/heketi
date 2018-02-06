@@ -502,35 +502,12 @@ func (v *VolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error {
 	return err
 }
 
-func (v *VolumeEntry) Expand(db wdb.DB,
-	executor executors.Executor,
+
+func (v *VolumeEntry) expandVolumeComponents(db wdb.DB,
 	allocator Allocator,
-	sizeGB int) (e error) {
+	sizeGB int) (brick_entries []*BrickEntry, e error) {
 
-	var brick_entries []*BrickEntry
-	origSize := v.Info.Size
-	// Setup cleanup function
-	defer func() {
-		if e != nil {
-			logger.Debug("Error detected, cleaning up")
-			DestroyBricks(db, executor, brick_entries)
-
-			// Remove from db
-			db.Update(func(tx *bolt.Tx) error {
-				for _, brick := range brick_entries {
-					v.removeBrickFromDb(tx, brick)
-				}
-				v.Info.Size = origSize
-				err := v.Save(tx)
-				godbc.Check(err == nil)
-
-				return nil
-			})
-		}
-	}()
-
-	// Save volume entry
-	err := db.Update(func(tx *bolt.Tx) error {
+	e = db.Update(func(tx *bolt.Tx) error {
 		// Allocate new bricks in the cluster
 		txdb := wdb.WrapTx(tx)
 		var err error
@@ -552,12 +529,36 @@ func (v *VolumeEntry) Expand(db wdb.DB,
 
 		return v.Save(tx)
 	})
-	if err != nil {
-		return err
-	}
+	return
+}
+
+func (v *VolumeEntry) cleanupExpandVolume(db wdb.DB,
+	executor executors.Executor,
+	brick_entries []*BrickEntry,
+	origSize int) (e error) {
+
+	logger.Debug("Error detected, cleaning up")
+	DestroyBricks(db, executor, brick_entries)
+
+	// Remove from db
+	return db.Update(func(tx *bolt.Tx) error {
+		for _, brick := range brick_entries {
+			v.removeBrickFromDb(tx, brick)
+		}
+		v.Info.Size = origSize
+		err := v.Save(tx)
+		godbc.Check(err == nil)
+
+		return nil
+	})
+}
+
+func (v *VolumeEntry) expandVolumeExec(db wdb.DB,
+	executor executors.Executor,
+	brick_entries []*BrickEntry) (e error) {
 
 	// Create bricks
-	err = CreateBricks(db, executor, brick_entries)
+	err := CreateBricks(db, executor, brick_entries)
 	if err != nil {
 		return err
 	}
@@ -576,7 +577,28 @@ func (v *VolumeEntry) Expand(db wdb.DB,
 	}
 
 	return err
+}
 
+func (v *VolumeEntry) Expand(db wdb.DB,
+	executor executors.Executor,
+	allocator Allocator,
+	sizeGB int) (e error) {
+
+	var brick_entries []*BrickEntry
+	origSize := v.Info.Size
+	// Setup cleanup function
+	defer func() {
+		if e != nil {
+			v.cleanupExpandVolume(db, executor, brick_entries, origSize)
+		}
+	}()
+
+	brick_entries, e = v.expandVolumeComponents(db, allocator, sizeGB)
+	if e != nil {
+		return
+	}
+
+	return v.expandVolumeExec(db, executor, brick_entries)
 }
 
 func (v *VolumeEntry) BricksIds() sort.StringSlice {
