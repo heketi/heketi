@@ -131,6 +131,119 @@ func (vc *VolumeCreateOperation) Rollback(executor executors.Executor) error {
 	return err
 }
 
+type VolumeExpandOperation struct {
+	OperationManager
+	vol *VolumeEntry
+
+	// modification values
+	ExpandSize int
+}
+
+func NewVolumeExpandOperation(
+	vol *VolumeEntry, db wdb.DB, sizeGB int) *VolumeExpandOperation {
+
+	return &VolumeExpandOperation{
+		OperationManager: OperationManager{
+			db: db,
+			op: NewPendingOperationEntry(NEW_ID),
+		},
+		vol:        vol,
+		ExpandSize: sizeGB,
+	}
+}
+
+func (ve *VolumeExpandOperation) Label() string {
+	return "Expand Volume"
+}
+
+func (ve *VolumeExpandOperation) ResourceUrl() string {
+	return fmt.Sprintf("/volumes/%v", ve.vol.Info.Id)
+}
+
+func (ve *VolumeExpandOperation) Build(allocator Allocator) error {
+	return ve.db.Update(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
+		brick_entries, err := ve.vol.expandVolumeComponents(
+			txdb, allocator, ve.ExpandSize, false)
+		if err != nil {
+			return err
+		}
+		for _, brick := range brick_entries {
+			ve.op.RecordAddBrick(brick)
+			if e := brick.Save(tx); e != nil {
+				return e
+			}
+		}
+		ve.op.RecordExpandVolume(ve.vol, ve.ExpandSize)
+		if e := ve.op.Save(tx); e != nil {
+			return e
+		}
+		return nil
+	})
+}
+
+func (ve *VolumeExpandOperation) Exec(executor executors.Executor) error {
+	brick_entries, err := bricksFromOp(ve.db, ve.op, ve.vol.Info.Gid)
+	if err != nil {
+		logger.LogError("Failed to get bricks from op: %v", err)
+		return err
+	}
+	err = ve.vol.expandVolumeExec(ve.db, executor, brick_entries)
+	if err != nil {
+		logger.LogError("Error executing expand volume: %v", err)
+	}
+	return err
+}
+
+func (ve *VolumeExpandOperation) Rollback(executor executors.Executor) error {
+	// TODO make this into one transaction too
+	brick_entries, err := bricksFromOp(ve.db, ve.op, ve.vol.Info.Gid)
+	if err != nil {
+		logger.LogError("Failed to get bricks from op: %v", err)
+		return err
+	}
+	err = ve.vol.cleanupExpandVolume(
+		ve.db, executor, brick_entries, ve.vol.Info.Size)
+	if err != nil {
+		logger.LogError("Error on create volume rollback: %v", err)
+		return err
+	}
+	err = ve.db.Update(func(tx *bolt.Tx) error {
+		return ve.op.Delete(tx)
+	})
+	return err
+}
+
+func (ve *VolumeExpandOperation) Finalize() error {
+	return ve.db.Update(func(tx *bolt.Tx) error {
+		brick_entries, err := bricksFromOp(wdb.WrapTx(tx), ve.op, ve.vol.Info.Gid)
+		if err != nil {
+			logger.LogError("Failed to get bricks from op: %v", err)
+			return err
+		}
+		sizeDelta, err := expandSizeFromOp(wdb.WrapTx(tx), ve.op)
+		if err != nil {
+			logger.LogError("Failed to get expansion size from op: %v", err)
+			return err
+		}
+
+		for _, brick := range brick_entries {
+			ve.op.FinalizeBrick(brick)
+			if e := brick.Save(tx); e != nil {
+				return e
+			}
+		}
+		ve.vol.Info.Size += sizeDelta
+		ve.op.FinalizeVolume(ve.vol)
+		if e := ve.vol.Save(tx); e != nil {
+			return e
+		}
+
+		ve.op.Delete(tx)
+		return nil
+	})
+}
+
 func bricksFromOp(db wdb.RODB,
 	op *PendingOperationEntry, gid int64) ([]*BrickEntry, error) {
 
