@@ -517,6 +517,7 @@ func (v *VolumeEntry) Expand(db wdb.DB,
 	defer func() {
 		if e != nil {
 			logger.Debug("Error detected, cleaning up")
+			DestroyBricks(db, executor, brick_entries)
 
 			// Remove from db
 			db.Update(func(tx *bolt.Tx) error {
@@ -536,14 +537,6 @@ func (v *VolumeEntry) Expand(db wdb.DB,
 	if err != nil {
 		return err
 	}
-
-	// Setup cleanup function
-	defer func() {
-		if e != nil {
-			logger.Debug("Error detected, cleaning up")
-			DestroyBricks(db, executor, brick_entries)
-		}
-	}()
 
 	// Create a volume request to send to executor
 	// so that it can add the new bricks
