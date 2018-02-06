@@ -154,6 +154,25 @@ func bricksFromOp(db wdb.RODB,
 	return brick_entries, err
 }
 
+func expandSizeFromOp(db wdb.RODB,
+	op *PendingOperationEntry) (sizeGB int, e error) {
+	err := db.View(func(tx *bolt.Tx) error {
+		for _, a := range op.Actions {
+			if a.Change == OpExpandVolume {
+				sizeGB, e = a.ExpandSize()
+				return nil
+			}
+		}
+		e = fmt.Errorf("no OpExpandVolume action in pending op: %v",
+			op.Id)
+		return nil
+	})
+	if err != nil && e == nil {
+		e = err
+	}
+	return
+}
+
 func AsyncHttpOperation(app *App,
 	w http.ResponseWriter,
 	r *http.Request,
