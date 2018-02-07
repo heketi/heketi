@@ -55,5 +55,9 @@ func loadConfiguration(configIo io.Reader) *GlusterFSConfig {
 	if env != "" {
 		config.GlusterFS.Executor = env
 	}
+	env = os.Getenv("HEKETI_GLUSTERAPP_LOGLEVEL")
+	if env != "" {
+		config.GlusterFS.Loglevel = env
+	}
 	return &config.GlusterFS
 }
