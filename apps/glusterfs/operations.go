@@ -244,6 +244,93 @@ func (ve *VolumeExpandOperation) Finalize() error {
 	})
 }
 
+type VolumeDeleteOperation struct {
+	OperationManager
+	vol *VolumeEntry
+}
+
+func NewVolumeDeleteOperation(
+	vol *VolumeEntry, db wdb.DB) *VolumeDeleteOperation {
+
+	return &VolumeDeleteOperation{
+		OperationManager: OperationManager{
+			db: db,
+			op: NewPendingOperationEntry(NEW_ID),
+		},
+		vol: vol,
+	}
+}
+
+func (vdel *VolumeDeleteOperation) Label() string {
+	return "Delete Volume"
+}
+
+func (vdel *VolumeDeleteOperation) ResourceUrl() string {
+	return ""
+}
+
+func (vdel *VolumeDeleteOperation) Build(allocator Allocator) error {
+	return vdel.db.Update(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
+		brick_entries, err := vdel.vol.deleteVolumeComponents(txdb)
+		if err != nil {
+			return err
+		}
+		for _, brick := range brick_entries {
+			vdel.op.RecordDeleteBrick(brick)
+			if e := brick.Save(tx); e != nil {
+				return e
+			}
+		}
+		vdel.op.RecordDeleteVolume(vdel.vol)
+		if e := vdel.op.Save(tx); e != nil {
+			return e
+		}
+		return nil
+	})
+}
+
+func (vdel *VolumeDeleteOperation) Exec(executor executors.Executor) error {
+	brick_entries, err := bricksFromOp(vdel.db, vdel.op, vdel.vol.Info.Gid)
+	if err != nil {
+		logger.LogError("Failed to get bricks from op: %v", err)
+		return err
+	}
+	sshhost, err := vdel.vol.manageHostFromBricks(vdel.db, brick_entries)
+	if err != nil {
+		return err
+	}
+	err = vdel.vol.deleteVolumeExec(vdel.db, executor, brick_entries, sshhost)
+	if err != nil {
+		logger.LogError("Error executing expand volume: %v", err)
+	}
+	return err
+}
+
+func (vdel *VolumeDeleteOperation) Rollback(executor executors.Executor) error {
+	// currently rollback does nothing for delete volume, leaving the
+	// db in the same state as it was before an exec failure
+	// TODO: revisit
+	return nil
+}
+
+func (vdel *VolumeDeleteOperation) Finalize() error {
+	return vdel.db.Update(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
+		brick_entries, err := bricksFromOp(txdb, vdel.op, vdel.vol.Info.Gid)
+		if err != nil {
+			logger.LogError("Failed to get bricks from op: %v", err)
+			return err
+		}
+		if err := vdel.vol.saveDeleteVolume(txdb, brick_entries); err != nil {
+			return err
+		}
+
+		vdel.op.Delete(tx)
+		return nil
+	})
+}
+
 func bricksFromOp(db wdb.RODB,
 	op *PendingOperationEntry, gid int64) ([]*BrickEntry, error) {
 
