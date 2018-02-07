@@ -500,23 +500,31 @@ func (v *VolumeEntry) manageHostFromBricks(db wdb.DB,
 	return
 }
 
+func (v *VolumeEntry) deleteVolumeComponents(
+	db wdb.RODB) (brick_entries []*BrickEntry, e error) {
+
+	e = db.View(func(tx *bolt.Tx) error {
+		for _, id := range v.BricksIds() {
+			brick, err := NewBrickEntryFromId(tx, id)
+			if err != nil {
+				logger.LogError("Brick %v not found in db: %v", id, err)
+				return err
+			}
+			brick_entries = append(brick_entries, brick)
+		}
+		return nil
+	})
+	return
+}
+
 func (v *VolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error {
 	logger.Info("Destroying volume %v", v.Info.Id)
 
 	// Get the entries from the database
-	brick_entries := make([]*BrickEntry, len(v.Bricks))
-	var sshhost string
-	db.View(func(tx *bolt.Tx) error {
-		for index, id := range v.BricksIds() {
-			brick, err := NewBrickEntryFromId(tx, id)
-			if err != nil {
-				logger.LogError("Brick %v not found in db: %v", id, err)
-				continue
-			}
-			brick_entries[index] = brick
-		}
-		return nil
-	})
+	brick_entries, err := v.deleteVolumeComponents(db)
+	if err != nil {
+		return err
+	}
 
 	sshhost, err := v.manageHostFromBricks(db, brick_entries)
 	if err != nil {
