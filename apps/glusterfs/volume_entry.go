@@ -483,6 +483,23 @@ func (v *VolumeEntry) saveDeleteVolume(db wdb.DB,
 	})
 }
 
+func (v *VolumeEntry) manageHostFromBricks(db wdb.DB,
+	brick_entries []*BrickEntry) (sshhost string, err error) {
+
+	err = db.View(func(tx *bolt.Tx) error {
+		for _, brick := range brick_entries {
+			node, err := NewNodeEntryFromId(tx, brick.Info.NodeId)
+			if err != nil {
+				return err
+			}
+			sshhost = node.ManageHostName()
+			return nil
+		}
+		return fmt.Errorf("Unable to get management host from bricks")
+	})
+	return
+}
+
 func (v *VolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error {
 	logger.Info("Destroying volume %v", v.Info.Id)
 
@@ -497,21 +514,16 @@ func (v *VolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error {
 				continue
 			}
 			brick_entries[index] = brick
-
-			// Set ssh host to send volume commands
-			if sshhost == "" {
-				node, err := NewNodeEntryFromId(tx, brick.Info.NodeId)
-				if err != nil {
-					logger.LogError("Unable to determine brick node: %v", err)
-					return err
-				}
-				sshhost = node.ManageHostName()
-			}
 		}
 		return nil
 	})
 
-	err := v.deleteVolumeExec(db, executor, brick_entries, sshhost)
+	sshhost, err := v.manageHostFromBricks(db, brick_entries)
+	if err != nil {
+		return err
+	}
+
+	err = v.deleteVolumeExec(db, executor, brick_entries, sshhost)
 	if err != nil {
 		return err
 	}
