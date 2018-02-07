@@ -520,23 +520,17 @@ func (v *VolumeEntry) deleteVolumeComponents(
 func (v *VolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error {
 	logger.Info("Destroying volume %v", v.Info.Id)
 
-	// Get the entries from the database
-	brick_entries, err := v.deleteVolumeComponents(db)
-	if err != nil {
-		return err
+	ve := NewVolumeDeleteOperation(v, db)
+	if e := ve.Build(nil); e != nil {
+		return e
 	}
-
-	sshhost, err := v.manageHostFromBricks(db, brick_entries)
-	if err != nil {
-		return err
+	if e := ve.Exec(executor); e != nil {
+		if rerr := ve.Rollback(executor); rerr != nil {
+			logger.LogError("Destroy volume - Rollback error: %v", rerr)
+		}
+		return e
 	}
-
-	err = v.deleteVolumeExec(db, executor, brick_entries, sshhost)
-	if err != nil {
-		return err
-	}
-
-	return v.saveDeleteVolume(db, brick_entries)
+	return ve.Finalize()
 }
 
 func (v *VolumeEntry) expandVolumeComponents(db wdb.DB,
