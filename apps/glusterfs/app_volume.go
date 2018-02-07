@@ -265,25 +265,13 @@ func (a *App) VolumeDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
-
-		// Actually destroy the Volume here
-		err := volume.Destroy(a.db, a.executor)
-
-		// If it fails for some reason, we will need to add to the DB again
-		// or hold state on the entry "DELETING"
-
-		// Show that the key has been deleted
-		if err != nil {
-			logger.LogError("Failed to delete volume %v: %v", volume.Info.Id, err)
-			return "", err
-		}
-
-		logger.Info("Deleted volume [%s]", id)
-		return "", nil
-
-	})
-
+	vdel := NewVolumeDeleteOperation(volume, a.db)
+	if err := AsyncHttpOperation(a, w, r, vdel); err != nil {
+		http.Error(w,
+			fmt.Sprintf("Failed to set up volume delete: %v", err),
+			http.StatusInternalServerError)
+		return
+	}
 }
 
 func (a *App) VolumeExpand(w http.ResponseWriter, r *http.Request) {
