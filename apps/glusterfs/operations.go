@@ -402,3 +402,36 @@ func AsyncHttpOperation(app *App,
 	})
 	return nil
 }
+
+// RunOperation performs all steps of an Operation and returns
+// an error if any of those steps fail. This function is meant to
+// make it easy to run an operation outside of the rest endpoints
+// and should only be used in test code.
+func RunOperation(o Operation,
+	allocator Allocator,
+	executor executors.Executor) (err error) {
+
+	label := o.Label()
+	defer func() {
+		if err != nil {
+			logger.LogError("Error in %v: %v", label, err)
+		}
+	}()
+
+	logger.Info("Running %v", o.Label())
+	if err := o.Build(allocator); err != nil {
+		logger.LogError("%v Build Failed: %v", label, err)
+		return err
+	}
+	if err := o.Exec(executor); err != nil {
+		if rerr := o.Rollback(executor); rerr != nil {
+			logger.LogError("%v Rollback error: %v", label, rerr)
+		}
+		logger.LogError("%v Failed: %v", label, err)
+		return err
+	}
+	if err := o.Finalize(); err != nil {
+		return err
+	}
+	return nil
+}
