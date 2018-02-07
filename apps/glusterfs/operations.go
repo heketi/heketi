@@ -250,7 +250,7 @@ func bricksFromOp(db wdb.RODB,
 	brick_entries := []*BrickEntry{}
 	err := db.View(func(tx *bolt.Tx) error {
 		for _, a := range op.Actions {
-			if a.Change == OpAddBrick {
+			if a.Change == OpAddBrick || a.Change == OpDeleteBrick {
 				brick, err := NewBrickEntryFromId(tx, a.Id)
 				if err != nil {
 					return err
