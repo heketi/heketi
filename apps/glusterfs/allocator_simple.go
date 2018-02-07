@@ -29,62 +29,63 @@ func NewSimpleAllocator() *SimpleAllocator {
 	return s
 }
 
+func (s *SimpleAllocator) loadRingFromDB(tx *bolt.Tx) error {
+	clusters, err := ClusterList(tx)
+	if err != nil {
+		return err
+	}
+
+	for _, clusterId := range clusters {
+		cluster, err := NewClusterEntryFromId(tx, clusterId)
+		if err != nil {
+			return err
+		}
+
+		// Add Cluster to ring
+		if err = s.addCluster(cluster.Info.Id); err != nil {
+			return err
+		}
+
+		for _, nodeId := range cluster.Info.Nodes {
+			node, err := NewNodeEntryFromId(tx, nodeId)
+			if err != nil {
+				return err
+			}
+
+			// Check node is online
+			if !node.isOnline() {
+				continue
+			}
+
+			for _, deviceId := range node.Devices {
+				device, err := NewDeviceEntryFromId(tx, deviceId)
+				if err != nil {
+					return err
+				}
+
+				// Check device is online
+				if !device.isOnline() {
+					continue
+				}
+
+				// Add device to ring
+				err = s.addDevice(cluster, node, device)
+				if err != nil {
+					return err
+				}
+
+			}
+		}
+	}
+	return nil
+}
+
 // Create a new simple allocator and initialize it with data from the db
 func NewSimpleAllocatorFromDb(db wdb.RODB) *SimpleAllocator {
 
 	s := NewSimpleAllocator()
 
-	err := db.View(func(tx *bolt.Tx) error {
-		clusters, err := ClusterList(tx)
-		if err != nil {
-			return err
-		}
-
-		for _, clusterId := range clusters {
-			cluster, err := NewClusterEntryFromId(tx, clusterId)
-			if err != nil {
-				return err
-			}
-
-			// Add Cluster to ring
-			if err = s.addCluster(cluster.Info.Id); err != nil {
-				return err
-			}
-
-			for _, nodeId := range cluster.Info.Nodes {
-				node, err := NewNodeEntryFromId(tx, nodeId)
-				if err != nil {
-					return err
-				}
-
-				// Check node is online
-				if !node.isOnline() {
-					continue
-				}
-
-				for _, deviceId := range node.Devices {
-					device, err := NewDeviceEntryFromId(tx, deviceId)
-					if err != nil {
-						return err
-					}
-
-					// Check device is online
-					if !device.isOnline() {
-						continue
-					}
-
-					// Add device to ring
-					err = s.addDevice(cluster, node, device)
-					if err != nil {
-						return err
-					}
-
-				}
-			}
-		}
-		return nil
-	})
-	if err != nil {
+	if err := db.View(s.loadRingFromDB); err != nil {
 		return nil
 	}
 
