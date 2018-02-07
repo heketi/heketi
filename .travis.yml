@@ -22,6 +22,5 @@ matrix:
     env: COVERAGE="true"
 script:
 - make
-- if [[ -z "$COVERAGE" ]]; then make test TESTOPTIONS=-v ; fi
-- if [[ -n "$COVERAGE" ]]; then make test TESTOPTIONS=-vcstdout && bash .travis-coverage; fi
+- if [[ -z "$COVERAGE" ]]; then make test TESTOPTIONS=-v ; else make test TESTOPTIONS=-vcstdout && bash .travis-coverage; fi
 - make release
