@@ -234,24 +234,10 @@ func (v *VolumeEntry) Create(db wdb.DB,
 	executor executors.Executor,
 	allocator Allocator) (e error) {
 
-	// OLD STYLE
-	// return v.createOneShot(db, executor, allocator)
-	defer func() {
-		if e != nil {
-			logger.LogError("Create volume failed: %v", e)
-		}
-	}()
-	vc := NewVolumeCreateOperation(v, db)
-	if e := vc.Build(allocator); e != nil {
-		return e
-	}
-	if e := vc.Exec(executor); e != nil {
-		if rerr := vc.Rollback(executor); rerr != nil {
-			logger.LogError("Create volume - Rollback error: %v", rerr)
-		}
-		return e
-	}
-	return vc.Finalize()
+	return RunOperation(
+		NewVolumeCreateOperation(v, db),
+		allocator,
+		executor)
 }
 
 func (v *VolumeEntry) tryAllocateBricks(
@@ -520,17 +506,10 @@ func (v *VolumeEntry) deleteVolumeComponents(
 func (v *VolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error {
 	logger.Info("Destroying volume %v", v.Info.Id)
 
-	ve := NewVolumeDeleteOperation(v, db)
-	if e := ve.Build(nil); e != nil {
-		return e
-	}
-	if e := ve.Exec(executor); e != nil {
-		if rerr := ve.Rollback(executor); rerr != nil {
-			logger.LogError("Destroy volume - Rollback error: %v", rerr)
-		}
-		return e
-	}
-	return ve.Finalize()
+	return RunOperation(
+		NewVolumeDeleteOperation(v, db),
+		nil,
+		executor)
 }
 
 func (v *VolumeEntry) expandVolumeComponents(db wdb.DB,
@@ -617,22 +596,10 @@ func (v *VolumeEntry) Expand(db wdb.DB,
 	allocator Allocator,
 	sizeGB int) (e error) {
 
-	defer func() {
-		if e != nil {
-			logger.LogError("Expand volume failed: %v", e)
-		}
-	}()
-	ve := NewVolumeExpandOperation(v, db, sizeGB)
-	if e := ve.Build(allocator); e != nil {
-		return e
-	}
-	if e := ve.Exec(executor); e != nil {
-		if rerr := ve.Rollback(executor); rerr != nil {
-			logger.LogError("Expand volume - Rollback error: %v", rerr)
-		}
-		return e
-	}
-	return ve.Finalize()
+	return RunOperation(
+		NewVolumeExpandOperation(v, db, sizeGB),
+		allocator,
+		executor)
 }
 
 func (v *VolumeEntry) BricksIds() sort.StringSlice {
