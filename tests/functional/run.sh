@@ -89,7 +89,8 @@ rm -f heketi-server > /dev/null 2>&1
 teardown_all
 
 # Check each dir for tests
-results=0
+tpassed=()
+tfailed=()
 for testDir in "${TESTS[@]}" ; do
     if [ -x "$testDir/run.sh" ] ; then
         println "TEST $testDir"
@@ -103,9 +104,10 @@ for testDir in "${TESTS[@]}" ; do
             println "FAILED $testDir"
             println "TEARDOWN $testDir"
             teardown.sh
-            results=1
+            tfailed+=("${testDir}")
         else
             println "PASSED $testDir"
+            tpassed+=("${testDir}")
         fi
 
         cd ..
@@ -115,9 +117,11 @@ done
 # Summary
 println "Started $starttime"
 println "Ended $(date)"
-if [ $results -eq 0 ] ; then
+println "-- Passing Tests: ${tpassed[*]}"
+if [[ ${#tfailed[@]} -eq 0 ]] ; then
     println "PASSED"
 else
+    println "-- Failing Tests: ${tfailed[*]}"
     println "FAILED"
 fi
 
