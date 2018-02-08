@@ -525,10 +525,6 @@ func TestNodeSetStateFailed(t *testing.T) {
 		return nil
 	})
 
-	// Check ring
-	tests.Assert(t, app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
-		n.Info.Id, d.Info.Id))
-
 	// Set failed
 	err := n.SetState(app.db, app.executor, app.Allocator(), api.EntryStateFailed)
 	tests.Assert(t, n.State == api.EntryStateOnline)
@@ -539,10 +535,6 @@ func TestNodeSetStateFailed(t *testing.T) {
 	tests.Assert(t, n.State == api.EntryStateOffline)
 	tests.Assert(t, err == nil)
 
-	// Check it was removed from ring
-	tests.Assert(t, !app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
-		n.Info.Id, d.Info.Id))
-
 	// Set failed
 	err = n.SetState(app.db, app.executor, app.Allocator(), api.EntryStateFailed)
 	tests.Assert(t, n.State == api.EntryStateFailed)
@@ -552,15 +544,11 @@ func TestNodeSetStateFailed(t *testing.T) {
 	err = n.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
 	tests.Assert(t, n.State == api.EntryStateFailed)
 	tests.Assert(t, err != nil)
-	tests.Assert(t, !app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
-		n.Info.Id, d.Info.Id))
 
 	// Set online
 	err = n.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOnline)
 	tests.Assert(t, n.State == api.EntryStateFailed)
 	tests.Assert(t, err != nil)
-	tests.Assert(t, !app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
-		n.Info.Id, d.Info.Id))
 }
 
 func TestNodeSetStateOfflineOnline(t *testing.T) {
@@ -607,18 +595,10 @@ func TestNodeSetStateOfflineOnline(t *testing.T) {
 		return nil
 	})
 
-	// Check ring
-	tests.Assert(t, app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
-		n.Info.Id, d.Info.Id))
-
 	// Set offline
 	err := n.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
 	tests.Assert(t, n.State == api.EntryStateOffline)
 	tests.Assert(t, err == nil)
-
-	// Check it was removed from ring
-	tests.Assert(t, !app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
-		n.Info.Id, d.Info.Id))
 
 	// Set offline again
 	err = n.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
@@ -629,8 +609,6 @@ func TestNodeSetStateOfflineOnline(t *testing.T) {
 	err = n.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOnline)
 	tests.Assert(t, n.State == api.EntryStateOnline)
 	tests.Assert(t, err == nil)
-	tests.Assert(t, app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
-		n.Info.Id, d.Info.Id))
 }
 
 func TestGetVerifiedManageHostname(t *testing.T) {
