@@ -28,15 +28,33 @@ func TestNewSimpleAllocator(t *testing.T) {
 }
 
 func TestSimpleAllocatorGetNodesEmpty(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Setup database
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	// Create large cluster
+	err := setupSampleDbWithTopology(app,
+		0, // clusters
+		0, // nodes_per_cluster
+		0, // devices_per_node,
+		0, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
 	a := NewSimpleAllocator()
 	tests.Assert(t, a != nil)
 
-	ch, _, errc := a.GetNodes(utils.GenUUID(), utils.GenUUID())
+	ch, done, errc := a.GetNodes(app.db, utils.GenUUID(), utils.GenUUID())
+	defer func() { close(done) }()
+
 	for d := range ch {
 		tests.Assert(t, false,
 			"Ring should be empty, but we got a device id:", d)
 	}
-	err := <-errc
+	err = <-errc
 	tests.Assert(t, err == ErrNotFound)
 }
 
@@ -100,11 +118,12 @@ func TestSimpleAllocatorInitFromDb(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Create an allocator and initialize it from the DB
-	a := NewSimpleAllocatorFromDb(app.db)
+	a := NewSimpleAllocator()
 	tests.Assert(t, a != nil)
 
 	// Get the nodes from the ring
-	ch, _, errc := a.GetNodes(clusterId, utils.GenUUID())
+	ch, done, errc := a.GetNodes(app.db, clusterId, utils.GenUUID())
+	defer func() { close(done) }()
 
 	var devices int
 	for d := range ch {
@@ -166,11 +185,12 @@ func TestSimpleAllocatorInitFromDbWithOfflineDevices(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Create an allocator and initialize it from the DB
-	a := NewSimpleAllocatorFromDb(app.db)
+	a := NewSimpleAllocator()
 	tests.Assert(t, a != nil)
 
 	// Get the nodes from the ring
-	ch, _, errc := a.GetNodes(clusterId, utils.GenUUID())
+	ch, done, errc := a.GetNodes(app.db, clusterId, utils.GenUUID())
+	defer func() { close(done) }()
 
 	var devices int
 	for d := range ch {
