@@ -1411,10 +1411,6 @@ func TestNodeInfoAfterDelete(t *testing.T) {
 		}
 	}
 
-	// Check it was removed from the ring
-	tests.Assert(t, !app.Allocator().HasNode(cluster.Id, node.Zone,
-		node.Id))
-
 	// Get node info
 	node, err = c.NodeInfo(node.Id)
 	tests.Assert(t, err == nil)
