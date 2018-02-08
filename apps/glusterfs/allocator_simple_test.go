@@ -38,6 +38,11 @@ func TestSimpleAllocatorEmpty(t *testing.T) {
 
 	err = a.removeCluster("aaa")
 	tests.Assert(t, err == ErrNotFound)
+}
+
+func TestSimpleAllocatorGetNodesEmpty(t *testing.T) {
+	a := NewSimpleAllocator()
+	tests.Assert(t, a != nil)
 
 	ch, _, errc := a.GetNodes(utils.GenUUID(), utils.GenUUID())
 	for d := range ch {
