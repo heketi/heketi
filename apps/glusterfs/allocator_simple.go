@@ -47,7 +47,7 @@ func NewSimpleAllocatorFromDb(db wdb.RODB) *SimpleAllocator {
 			}
 
 			// Add Cluster to ring
-			if err = s.AddCluster(cluster.Info.Id); err != nil {
+			if err = s.addCluster(cluster.Info.Id); err != nil {
 				return err
 			}
 
@@ -74,7 +74,7 @@ func NewSimpleAllocatorFromDb(db wdb.RODB) *SimpleAllocator {
 					}
 
 					// Add device to ring
-					err = s.AddDevice(cluster, node, device)
+					err = s.addDevice(cluster, node, device)
 					if err != nil {
 						return err
 					}
@@ -92,7 +92,7 @@ func NewSimpleAllocatorFromDb(db wdb.RODB) *SimpleAllocator {
 
 }
 
-func (s *SimpleAllocator) AddDevice(cluster *ClusterEntry,
+func (s *SimpleAllocator) addDevice(cluster *ClusterEntry,
 	node *NodeEntry,
 	device *DeviceEntry) error {
 
@@ -116,7 +116,7 @@ func (s *SimpleAllocator) AddDevice(cluster *ClusterEntry,
 
 }
 
-func (s *SimpleAllocator) RemoveDevice(cluster *ClusterEntry,
+func (s *SimpleAllocator) removeDevice(cluster *ClusterEntry,
 	node *NodeEntry,
 	device *DeviceEntry) error {
 
@@ -140,9 +140,9 @@ func (s *SimpleAllocator) RemoveDevice(cluster *ClusterEntry,
 	return nil
 }
 
-// AddCluster adds an entry to the rings map. Must be called before AddDevice so
+// addCluster adds an entry to the rings map. Must be called before addDevice so
 // that the entry exists.
-func (s *SimpleAllocator) AddCluster(clusterId string) error {
+func (s *SimpleAllocator) addCluster(clusterId string) error {
 
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -158,7 +158,7 @@ func (s *SimpleAllocator) AddCluster(clusterId string) error {
 	return nil
 }
 
-func (s *SimpleAllocator) RemoveCluster(clusterId string) error {
+func (s *SimpleAllocator) removeCluster(clusterId string) error {
 
 	s.lock.Lock()
 	defer s.lock.Unlock()

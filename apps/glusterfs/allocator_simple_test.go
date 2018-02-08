@@ -31,12 +31,12 @@ func TestSimpleAllocatorEmpty(t *testing.T) {
 	a := NewSimpleAllocator()
 	tests.Assert(t, a != nil)
 
-	err := a.RemoveDevice(createSampleClusterEntry(),
+	err := a.removeDevice(createSampleClusterEntry(),
 		createSampleNodeEntry(),
 		createSampleDeviceEntry("aaa", 10))
 	tests.Assert(t, err == ErrNotFound)
 
-	err = a.RemoveCluster("aaa")
+	err = a.removeCluster("aaa")
 	tests.Assert(t, err == ErrNotFound)
 
 	ch, _, errc := a.GetNodes(utils.GenUUID(), utils.GenUUID())
@@ -57,8 +57,8 @@ func TestSimpleAllocatorAddRemoveDevice(t *testing.T) {
 	device := createSampleDeviceEntry(node.Info.Id, 10000)
 
 	tests.Assert(t, len(a.rings) == 0)
-	tests.Assert(t, a.AddCluster(cluster.Info.Id) == nil)
-	err := a.AddDevice(cluster, node, device)
+	tests.Assert(t, a.addCluster(cluster.Info.Id) == nil)
+	err := a.addDevice(cluster, node, device)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, len(a.rings) == 1)
 	tests.Assert(t, a.rings[cluster.Info.Id] != nil)
@@ -76,7 +76,7 @@ func TestSimpleAllocatorAddRemoveDevice(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Now remove the device
-	err = a.RemoveDevice(cluster, node, device)
+	err = a.removeDevice(cluster, node, device)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, len(a.rings) == 1)
 
