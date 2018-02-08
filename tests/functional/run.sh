@@ -40,6 +40,7 @@ if [[ "${#TESTS[@]}" -eq 0 ]]; then
 	TESTS+=("TestVolumeNotDeletedWhenNodeIsDown")
 	TESTS+=("TestVolumeSnapshotBehavior")
 	TESTS+=("TestManyBricksVolume")
+	TESTS+=("TestUpgrade")
 fi
 
 # install glide
