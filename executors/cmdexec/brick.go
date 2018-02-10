@@ -66,13 +66,13 @@ func (s *CmdExecutor) BrickCreate(host string,
 		fmt.Sprintf("mkfs.xfs -i size=512 -n size=8192 %v", devnode),
 
 		// Fstab
-		fmt.Sprintf("echo \"%v %v xfs rw,inode64,noatime,nouuid 1 2\" | tee -a %v > /dev/null ",
+		fmt.Sprintf("echo \"%v %v xfs %mountopts 1 2\" | tee -a %v > /dev/null ",
 			devnode,
 			mountPath,
 			s.Fstab),
 
 		// Mount
-		fmt.Sprintf("mount -o rw,inode64,noatime,nouuid %v %v", devnode, mountPath),
+		fmt.Sprintf("mount -o %mountopts %v %v", devnode, mountPath),
 
 		// Create a directory inside the formated volume for GlusterFS
 		fmt.Sprintf("mkdir %v", brickPath),
