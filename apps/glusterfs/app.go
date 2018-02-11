@@ -135,6 +135,25 @@ func NewApp(configIo io.Reader) *App {
 		}
 	}
 
+	// Abort the application if there are pending operations in the db.
+	// In the immediate future we need to prevent incomplete operations
+	// from piling up in the db. If there are any pending ops in the db
+	// (meaning heketi was uncleanly terminated during the op) we are
+	// simply going to refuse to start and provide offline tooling to
+	// repair the situation. In the long term we may gain the ability to
+	// auto-rollback or even try to resume some operations.
+	if HasPendingOperations(app.db) {
+		e := errors.New(
+			"Heketi terminated while performing one or more operations." +
+				" Server will not start as long as pending operations are" +
+				" present in the db.")
+		logger.Err(e)
+		logger.Info(
+			"Please refer to the Heketi troubleshooting documentation for more" +
+				" information on how to resolve this issue.")
+		panic(e)
+	}
+
 	// Set values mentioned in environmental variable
 	app.setFromEnvironmentalVariable()
 
