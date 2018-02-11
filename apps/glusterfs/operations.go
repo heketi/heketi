@@ -1,3 +1,12 @@
+//
+// Copyright (c) 2018 The heketi Authors
+//
+// This file is licensed to you under your choice of the GNU Lesser
+// General Public License, version 3 or any later version (LGPLv3 or
+// later), or the GNU General Public License, version 2 (GPLv2), in all
+// cases as published by the Free Software Foundation.
+//
+
 package glusterfs
 
 import (
@@ -10,6 +19,20 @@ import (
 	"github.com/boltdb/bolt"
 )
 
+// The operations.go file is meant to provide a common approach to planning,
+// executing, and completing changes to the storage clusters under heketi
+// management as well as accurately reflecting these changes in the heketi db.
+//
+// We define the Operation interface and helper functions that use the
+// interface to create a uniform style for making high-level changes to the
+// system. We also provide various concrete operation structs such as for
+// volume create or volume delete to actually perform the actions.
+
+// Operation is an interface meant to encapsulate any high-level action
+// where we need to build and store data structures that reflect our
+// pending state, execute actions to apply our configuration to the
+// managed cluster(s), and then either record the data structures as final
+// or roll back to the previous state on error.
 type Operation interface {
 	Label() string
 	ResourceUrl() string
@@ -19,20 +42,28 @@ type Operation interface {
 	Finalize() error
 }
 
+// OperationManager is an embeddable struct meant to be used within any
+// operation that tracks changes with a pending operation entry.
 type OperationManager struct {
 	db wdb.DB
 	op *PendingOperationEntry
 }
 
+// Id returns the id of this operation's pending operation entry.
 func (om *OperationManager) Id() string {
 	return om.op.Id
 }
 
+// VolumeCreateOperation implements the operation functions used to
+// create a new volume.
 type VolumeCreateOperation struct {
 	OperationManager
 	vol *VolumeEntry
 }
 
+// NewVolumeCreateOperation returns a new VolumeCreateOperation populated
+// with the given volume entry and db connection and allocates a new
+// pending operation entry.
 func NewVolumeCreateOperation(
 	vol *VolumeEntry, db wdb.DB) *VolumeCreateOperation {
 
@@ -53,6 +84,8 @@ func (vc *VolumeCreateOperation) ResourceUrl() string {
 	return fmt.Sprintf("/volumes/%v", vc.vol.Info.Id)
 }
 
+// Build allocates and saves new volume and brick entries (tagged as pending)
+// in the db.
 func (vc *VolumeCreateOperation) Build(allocator Allocator) error {
 	return vc.db.Update(func(tx *bolt.Tx) error {
 		txdb := wdb.WrapTx(tx)
@@ -77,6 +110,7 @@ func (vc *VolumeCreateOperation) Build(allocator Allocator) error {
 	})
 }
 
+// Exec creates new bricks and volume on the underlying glusterfs storage system.
 func (vc *VolumeCreateOperation) Exec(executor executors.Executor) error {
 	brick_entries, err := bricksFromOp(vc.db, vc.op, vc.vol.Info.Gid)
 	if err != nil {
@@ -90,6 +124,7 @@ func (vc *VolumeCreateOperation) Exec(executor executors.Executor) error {
 	return err
 }
 
+// Finalize marks our new volume and brick db entries as no longer pending.
 func (vc *VolumeCreateOperation) Finalize() error {
 	return vc.db.Update(func(tx *bolt.Tx) error {
 		brick_entries, err := bricksFromOp(wdb.WrapTx(tx), vc.op, vc.vol.Info.Gid)
@@ -113,6 +148,9 @@ func (vc *VolumeCreateOperation) Finalize() error {
 	})
 }
 
+// Rollback removes any dangling volume and bricks from the underlying storage
+// systems and removes the corresponding pending volume and brick entries from
+// the db.
 func (vc *VolumeCreateOperation) Rollback(executor executors.Executor) error {
 	// TODO make this into one transaction too
 	brick_entries, err := bricksFromOp(vc.db, vc.op, vc.vol.Info.Gid)
@@ -131,6 +169,8 @@ func (vc *VolumeCreateOperation) Rollback(executor executors.Executor) error {
 	return err
 }
 
+// VolumeExpandOperation implements the operation functions used to
+// expand an existing volume.
 type VolumeExpandOperation struct {
 	OperationManager
 	vol *VolumeEntry
@@ -139,6 +179,9 @@ type VolumeExpandOperation struct {
 	ExpandSize int
 }
 
+// NewVolumeCreateOperation creates a new VolumeExpandOperation populated
+// with the given volume entry, db connection and size (in GB) that the
+// volume is to be expanded by.
 func NewVolumeExpandOperation(
 	vol *VolumeEntry, db wdb.DB, sizeGB int) *VolumeExpandOperation {
 
@@ -160,6 +203,8 @@ func (ve *VolumeExpandOperation) ResourceUrl() string {
 	return fmt.Sprintf("/volumes/%v", ve.vol.Info.Id)
 }
 
+// Build determines what new bricks needs to be created to satisfy the
+// new volume size. It marks new bricks as pending in the db.
 func (ve *VolumeExpandOperation) Build(allocator Allocator) error {
 	return ve.db.Update(func(tx *bolt.Tx) error {
 		txdb := wdb.WrapTx(tx)
@@ -182,6 +227,7 @@ func (ve *VolumeExpandOperation) Build(allocator Allocator) error {
 	})
 }
 
+// Exec creates new bricks on the underlying storage systems.
 func (ve *VolumeExpandOperation) Exec(executor executors.Executor) error {
 	brick_entries, err := bricksFromOp(ve.db, ve.op, ve.vol.Info.Gid)
 	if err != nil {
@@ -195,6 +241,8 @@ func (ve *VolumeExpandOperation) Exec(executor executors.Executor) error {
 	return err
 }
 
+// Rollback cancels the volume expansion and remove pending brick entries
+// from the db.
 func (ve *VolumeExpandOperation) Rollback(executor executors.Executor) error {
 	// TODO make this into one transaction too
 	brick_entries, err := bricksFromOp(ve.db, ve.op, ve.vol.Info.Gid)
@@ -214,6 +262,8 @@ func (ve *VolumeExpandOperation) Rollback(executor executors.Executor) error {
 	return err
 }
 
+// Finalize marks new bricks as no longer pending and updates the size
+// of the existing volume entry.
 func (ve *VolumeExpandOperation) Finalize() error {
 	return ve.db.Update(func(tx *bolt.Tx) error {
 		brick_entries, err := bricksFromOp(wdb.WrapTx(tx), ve.op, ve.vol.Info.Gid)
@@ -244,6 +294,8 @@ func (ve *VolumeExpandOperation) Finalize() error {
 	})
 }
 
+// VolumeDeleteOperation implements the operation functions used to
+// delete an existing volume.
 type VolumeDeleteOperation struct {
 	OperationManager
 	vol *VolumeEntry
@@ -269,6 +321,8 @@ func (vdel *VolumeDeleteOperation) ResourceUrl() string {
 	return ""
 }
 
+// Build determines what volumes and bricks need to be deleted and
+// marks the db entries as such.
 func (vdel *VolumeDeleteOperation) Build(allocator Allocator) error {
 	return vdel.db.Update(func(tx *bolt.Tx) error {
 		txdb := wdb.WrapTx(tx)
@@ -290,6 +344,7 @@ func (vdel *VolumeDeleteOperation) Build(allocator Allocator) error {
 	})
 }
 
+// Exec performs the volume and brick deletions on the storage systems.
 func (vdel *VolumeDeleteOperation) Exec(executor executors.Executor) error {
 	brick_entries, err := bricksFromOp(vdel.db, vdel.op, vdel.vol.Info.Gid)
 	if err != nil {
@@ -314,6 +369,8 @@ func (vdel *VolumeDeleteOperation) Rollback(executor executors.Executor) error {
 	return nil
 }
 
+// Finalize marks all brick and volume entries for this operation as
+// fully deleted.
 func (vdel *VolumeDeleteOperation) Finalize() error {
 	return vdel.db.Update(func(tx *bolt.Tx) error {
 		txdb := wdb.WrapTx(tx)
@@ -331,6 +388,9 @@ func (vdel *VolumeDeleteOperation) Finalize() error {
 	})
 }
 
+// bricksFromOp returns pending brick entry objects from the db corresponding
+// to the given pending operation entry. The gid of the volume must also be
+// provided as the db does not store this metadata on the brick entries.
 func bricksFromOp(db wdb.RODB,
 	op *PendingOperationEntry, gid int64) ([]*BrickEntry, error) {
 
@@ -354,6 +414,9 @@ func bricksFromOp(db wdb.RODB,
 	return brick_entries, err
 }
 
+// expandSizeFromOp returns the size of a volume expand operation assuming
+// the given pending operation entry includes a volume expand change item.
+// If the operation is of the wrong type error will be non-nil.
 func expandSizeFromOp(db wdb.RODB,
 	op *PendingOperationEntry) (sizeGB int, e error) {
 	err := db.View(func(tx *bolt.Tx) error {
@@ -373,6 +436,12 @@ func expandSizeFromOp(db wdb.RODB,
 	return
 }
 
+// AsyncHttpOperation runs all the steps of an operation with the long-running
+// parts wrapped in an async http function. If AsyncHttpOperation returns nil
+// then it has started the async function and the caller should respond to the
+// client with success - otherwise an error object is returned. In the async
+// function the Exec and Finalize or Rollback steps of the operation will be
+// performed.
 func AsyncHttpOperation(app *App,
 	w http.ResponseWriter,
 	r *http.Request,
