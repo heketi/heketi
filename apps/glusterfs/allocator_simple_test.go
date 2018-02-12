@@ -27,19 +27,6 @@ func TestNewSimpleAllocator(t *testing.T) {
 
 }
 
-func TestSimpleAllocatorEmpty(t *testing.T) {
-	a := NewSimpleAllocator()
-	tests.Assert(t, a != nil)
-
-	err := a.removeDevice(createSampleClusterEntry(),
-		createSampleNodeEntry(),
-		createSampleDeviceEntry("aaa", 10))
-	tests.Assert(t, err == ErrNotFound)
-
-	err = a.removeCluster("aaa")
-	tests.Assert(t, err == ErrNotFound)
-}
-
 func TestSimpleAllocatorGetNodesEmpty(t *testing.T) {
 	a := NewSimpleAllocator()
 	tests.Assert(t, a != nil)
@@ -48,11 +35,11 @@ func TestSimpleAllocatorGetNodesEmpty(t *testing.T) {
 	for d := range ch {
 		tests.Assert(t, false, d)
 	}
-	err = <-errc
+	err := <-errc
 	tests.Assert(t, err == ErrNotFound)
 }
 
-func TestSimpleAllocatorAddRemoveDevice(t *testing.T) {
+func TestSimpleAllocatorAddDevice(t *testing.T) {
 	a := NewSimpleAllocator()
 	tests.Assert(t, a != nil)
 
@@ -79,24 +66,6 @@ func TestSimpleAllocatorAddRemoveDevice(t *testing.T) {
 	err = <-errc
 	tests.Assert(t, devices == 1)
 	tests.Assert(t, err == nil)
-
-	// Now remove the device
-	err = a.removeDevice(cluster, node, device)
-	tests.Assert(t, err == nil)
-	tests.Assert(t, len(a.rings) == 1)
-
-	// Get the nodes from the ring
-	ch, _, errc = a.GetNodes(cluster.Info.Id, utils.GenUUID())
-
-	devices = 0
-	for d := range ch {
-		devices++
-		tests.Assert(t, false, d)
-	}
-	err = <-errc
-	tests.Assert(t, devices == 0)
-	tests.Assert(t, err == nil)
-
 }
 
 func TestSimpleAllocatorInitFromDb(t *testing.T) {

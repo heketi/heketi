@@ -116,30 +116,6 @@ func (s *SimpleAllocator) addDevice(cluster *ClusterEntry,
 
 }
 
-func (s *SimpleAllocator) removeDevice(cluster *ClusterEntry,
-	node *NodeEntry,
-	device *DeviceEntry) error {
-
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	// Check the cluster id is in the map
-	clusterId := cluster.Info.Id
-	if _, ok := s.rings[clusterId]; !ok {
-		logger.LogError("Unknown cluster id requested: %v", clusterId)
-		return ErrNotFound
-	}
-
-	// Remove device from ring
-	s.rings[clusterId].Remove(&SimpleDevice{
-		zone:     node.Info.Zone,
-		nodeId:   node.Info.Id,
-		deviceId: device.Info.Id,
-	})
-
-	return nil
-}
-
 // addCluster adds an entry to the rings map. Must be called before addDevice so
 // that the entry exists.
 func (s *SimpleAllocator) addCluster(clusterId string) error {
@@ -154,23 +130,6 @@ func (s *SimpleAllocator) addCluster(clusterId string) error {
 
 	// Add cluster to map
 	s.rings[clusterId] = NewSimpleAllocatorRing()
-
-	return nil
-}
-
-func (s *SimpleAllocator) removeCluster(clusterId string) error {
-
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	// Check the cluster id is in the map
-	if _, ok := s.rings[clusterId]; !ok {
-		logger.LogError("Unknown cluster id requested: %v", clusterId)
-		return ErrNotFound
-	}
-
-	// Remove cluster from map
-	delete(s.rings, clusterId)
 
 	return nil
 }
