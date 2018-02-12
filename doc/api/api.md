@@ -511,6 +511,12 @@ These APIs inform Heketi to create a network file system of a certain size avail
     ]
 }
 ```
+Note:
+The volume size created depends upon the underlying brick size.
+For example, for a 2 way/3 way replica volume, the minimum volume size is 1GiB as the
+underlying minimum brick size is constrained to 1GiB.
+
+So, it is not possible create a volume of size less than 1GiB.
 
 
 ### Volume Information

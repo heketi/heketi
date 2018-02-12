@@ -57,6 +57,13 @@ OPTIONS
 	snapshot storage, then snapshot-factor would be set to 1.5.  If the
 	value is set to 1, then snapshots will not be enabled for this volume (default 1)
 
+Note:
+The volume size created depends upon the underlying brick size.
+For example, for a 2 way/3 way replica volume, the minimum volume size is 1GiB as the
+underlying minimum brick size is constrained to 1GiB.
+
+So, it is not possible create a volume of size less than 1GiB.
+
 EXAMPLES
   * Create a 100GiB replica 3 volume:
       $ heketi-cli volume create -size=100
