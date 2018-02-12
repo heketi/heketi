@@ -251,3 +251,36 @@ func TestAppBlockSettings(t *testing.T) {
 	tests.Assert(t, CreateBlockHostingVolumes == true)
 	tests.Assert(t, BlockHostingVolumeSize == 500)
 }
+
+func TestCannotStartWhenPendingOperations(t *testing.T) {
+	dbfile := tests.Tempfile()
+	defer os.Remove(dbfile)
+
+	// create a app that will only be used to set up the test
+	app := NewTestApp(dbfile)
+	tests.Assert(t, app != nil)
+
+	// populate the db with a "dummy" pending op entry. this should
+	// trigger a panic the next time an app is instantiated
+	err := app.db.Update(func(tx *bolt.Tx) error {
+		op := NewPendingOperationEntry(NEW_ID)
+		op.Save(tx)
+		return nil
+	})
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	app.Close()
+
+	defer func() {
+		// check that we (a) panicked (b) had the right error message
+		r := recover()
+		tests.Assert(t, r != nil, "expected r != nil, got:", r)
+		tests.Assert(t,
+			strings.Contains(r.(error).Error(), "pending operations are present"),
+			`expected "pending operations are present" in r.Error(), got:`,
+			r.(error).Error())
+	}()
+	// now creating a new app should panic
+	app = NewTestApp(dbfile)
+
+	t.Fatalf("Test should not reach this line")
+}
