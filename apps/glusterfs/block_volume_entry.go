@@ -269,14 +269,6 @@ func (v *BlockVolumeEntry) Create(db wdb.DB,
 
 	logger.Debug("Using block hosting volume id[%v]", blockHostingVolume)
 
-	defer func() {
-		if e != nil {
-			db.Update(func(tx *bolt.Tx) error {
-				// removal of stuff that was created in the db
-				return nil
-			})
-		}
-	}()
 	// Create the block volume on the block hosting volume specified
 	err := v.createBlockVolume(db, executor, blockHostingVolume)
 	if err != nil {
