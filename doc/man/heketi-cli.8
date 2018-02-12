@@ -416,6 +416,14 @@ For example if a 10TiB volume requires 5TiB of snapshot storage, then snapshot\-
 If the value is set to 1, then snapshots will not be enabled for this volume.
 .RE
 .PP
+\fBNote:\fP
+The volume size created depends upon the underlying brick size.
+For example, for a 2 way/3 way replica volume, the minimum volume size is 1GiB as the
+underlying minimum brick size is constrained to 1GiB.
+So, it is not possible create a volume of size less than 1GiB.
+.RS
+.RE
+.PP
 \fBExamples\fP
 .RS
 .PP
