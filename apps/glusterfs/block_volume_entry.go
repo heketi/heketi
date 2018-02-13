@@ -331,20 +331,8 @@ func (v *BlockVolumeEntry) deleteBlockVolumeExec(db wdb.RODB,
 	return nil
 }
 
-func (v *BlockVolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error {
-	logger.Info("Destroying volume %v", v.Info.Id)
-
-	hvname, err:= v.blockHostingVolumeName(db)
-	if err != nil {
-		return err
-	}
-	logger.Debug("Using blockosting volume name[%v]", hvname)
-
-	if e := v.deleteBlockVolumeExec(db, hvname, executor); e != nil {
-		return e
-	}
-
-	err = db.Update(func(tx *bolt.Tx) error {
+func (v *BlockVolumeEntry) removeComponents(db wdb.DB) error {
+	return db.Update(func(tx *bolt.Tx) error {
 		// Remove volume from cluster
 		cluster, err := NewClusterEntryFromId(tx, v.Info.Cluster)
 		if err != nil {
@@ -381,8 +369,22 @@ func (v *BlockVolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error
 
 		return nil
 	})
+}
 
-	return err
+func (v *BlockVolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error {
+	logger.Info("Destroying volume %v", v.Info.Id)
+
+	hvname, err:= v.blockHostingVolumeName(db)
+	if err != nil {
+		return err
+	}
+	logger.Debug("Using blockosting volume name[%v]", hvname)
+
+	if e := v.deleteBlockVolumeExec(db, hvname, executor); e != nil {
+		return e
+	}
+
+	return v.removeComponents(db)
 }
 
 // canHostBlockVolume returns true if the existing volume entry object
