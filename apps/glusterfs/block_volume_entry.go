@@ -35,11 +35,8 @@ func BlockVolumeList(tx *bolt.Tx) ([]string, error) {
 	return list, nil
 }
 
-// Creates a File volume to host block volumes
-func CreateBlockHostingVolume(db wdb.DB, executor executors.Executor, allocator Allocator, clusters []string) (*VolumeEntry, error) {
+func NewVolumeEntryForBlockHosting(clusters []string) (*VolumeEntry, error) {
 	var msg api.VolumeCreateRequest
-	var err error
-
 	msg.Clusters = clusters
 	msg.Durability.Type = api.DurabilityReplicate
 	msg.Size = BlockHostingVolumeSize
@@ -53,6 +50,16 @@ func CreateBlockHostingVolume(db wdb.DB, executor executors.Executor, allocator 
 		return nil, fmt.Errorf("Requested volume size (%v GB) is "+
 			"smaller than the minimum supported volume size (%v)",
 			msg.Size, vol.Durability.MinVolumeSize())
+	}
+	return vol, nil
+}
+
+// Creates a File volume to host block volumes
+func CreateBlockHostingVolume(db wdb.DB, executor executors.Executor, allocator Allocator, clusters []string) (*VolumeEntry, error) {
+
+	vol, err := NewVolumeEntryForBlockHosting(clusters)
+	if err != nil {
+		return nil, err
 	}
 
 	err = vol.Create(db, executor, allocator)
