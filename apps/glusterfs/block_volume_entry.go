@@ -283,10 +283,14 @@ func (v *BlockVolumeEntry) Create(db wdb.DB,
 		}
 	}()
 
-	err = db.Update(func(tx *bolt.Tx) error {
-		v.Info.BlockHostingVolume = blockHostingVolume
+	v.Info.BlockHostingVolume = blockHostingVolume
+	return v.saveCreateBlockVolume(db)
+}
 
-		err = v.Save(tx)
+func (v *BlockVolumeEntry) saveCreateBlockVolume(db wdb.DB) error {
+	return db.Update(func(tx *bolt.Tx) error {
+
+		err := v.Save(tx)
 		if err != nil {
 			return err
 		}
@@ -303,7 +307,7 @@ func (v *BlockVolumeEntry) Create(db wdb.DB,
 			return err
 		}
 
-		volume, err := NewVolumeEntryFromId(tx, blockHostingVolume)
+		volume, err := NewVolumeEntryFromId(tx, v.Info.BlockHostingVolume)
 		if err != nil {
 			return err
 		}
@@ -318,11 +322,6 @@ func (v *BlockVolumeEntry) Create(db wdb.DB,
 
 		return err
 	})
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (v *BlockVolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error {
