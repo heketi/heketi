@@ -173,19 +173,11 @@ func (a *App) BlockVolumeDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
-
-		err := blockVolume.Destroy(a.db, a.executor)
-
-		// TODO: If it fails for some reason, we will need to add to the DB again
-		// or hold state on the entry "DELETING"
-
-		if err != nil {
-			logger.LogError("Failed to delete volume %v: %v", blockVolume.Info.Id, err)
-			return "", err
-		}
-
-		logger.Info("Deleted volume [%s]", id)
-		return "", nil
-	})
+	vdel := NewBlockVolumeDeleteOperation(blockVolume, a.db)
+	if err := AsyncHttpOperation(a, w, r, vdel); err != nil {
+		http.Error(w,
+			fmt.Sprintf("Failed to set up block volume delete: %v", err),
+			http.StatusInternalServerError)
+		return
+	}
 }
