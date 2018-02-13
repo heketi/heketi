@@ -98,7 +98,7 @@ func (a *App) BlockVolumeList(w http.ResponseWriter, r *http.Request) {
 	err := a.db.View(func(tx *bolt.Tx) error {
 		var err error
 
-		list.BlockVolumes, err = BlockVolumeList(tx)
+		list.BlockVolumes, err = ListCompleteBlockVolumes(tx)
 		if err != nil {
 			return err
 		}
@@ -129,9 +129,9 @@ func (a *App) BlockVolumeInfo(w http.ResponseWriter, r *http.Request) {
 	var info *api.BlockVolumeInfoResponse
 	err := a.db.View(func(tx *bolt.Tx) error {
 		entry, err := NewBlockVolumeEntryFromId(tx, id)
-		if err == ErrNotFound {
+		if err == ErrNotFound || !entry.Visible() {
 			http.Error(w, "Id not found", http.StatusNotFound)
-			return err
+			return ErrNotFound
 		} else if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return err
