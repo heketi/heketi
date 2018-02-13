@@ -68,6 +68,7 @@ func init() {
 		3,
 		"\n\tOptional: Replica value for durability type 'replicate'."+
 			"\n\tDefault is 3")
+	setupHeketiStorageCommand.SilenceUsage = true
 }
 
 func saveJson(i interface{}, filename string) error {
