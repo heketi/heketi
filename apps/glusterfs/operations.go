@@ -414,6 +414,25 @@ func bricksFromOp(db wdb.RODB,
 	return brick_entries, err
 }
 
+func volumesFromOp(db wdb.RODB,
+	op *PendingOperationEntry) ([]*VolumeEntry, error) {
+
+	volume_entries := []*VolumeEntry{}
+	err := db.View(func(tx *bolt.Tx) error {
+		for _, a := range op.Actions {
+			if a.Change == OpAddVolume {
+				brick, err := NewVolumeEntryFromId(tx, a.Id)
+				if err != nil {
+					return err
+				}
+				volume_entries = append(volume_entries, brick)
+			}
+		}
+		return nil
+	})
+	return volume_entries, err
+}
+
 // expandSizeFromOp returns the size of a volume expand operation assuming
 // the given pending operation entry includes a volume expand change item.
 // If the operation is of the wrong type error will be non-nil.
