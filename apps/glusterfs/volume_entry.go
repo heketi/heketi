@@ -328,7 +328,8 @@ func (v *VolumeEntry) createVolumeComponents(db wdb.DB,
 		possibleClusters = v.Info.Clusters
 	}
 
-	possibleClusters, err := eligibleClusters(db, v, possibleClusters)
+	cr := ClusterReq{v.Info.Block, v.Info.Name}
+	possibleClusters, err := eligibleClusters(db, cr, possibleClusters)
 	if err != nil {
 		return brick_entries, err
 	}
@@ -614,7 +615,12 @@ func (v *VolumeEntry) Visible() bool {
 	return true
 }
 
-func eligibleClusters(db wdb.RODB, v *VolumeEntry,
+type ClusterReq struct {
+	Block bool
+	Name  string
+}
+
+func eligibleClusters(db wdb.RODB, req ClusterReq,
 	possibleClusters []string) ([]string, error) {
 	//
 	// If the request carries the Block flag, consider only
@@ -632,8 +638,8 @@ func eligibleClusters(db wdb.RODB, v *VolumeEntry,
 				return err
 			}
 			switch {
-			case v.Info.Block && c.Info.Block:
-			case !v.Info.Block && c.Info.File:
+			case req.Block && c.Info.Block:
+			case !req.Block && c.Info.File:
 			case !(c.Info.Block || c.Info.File):
 				// possibly bad cluster config
 				logger.Info("Cluster %v lacks both block and file flags",
@@ -647,9 +653,9 @@ func eligibleClusters(db wdb.RODB, v *VolumeEntry,
 				if err != nil {
 					return err
 				}
-				if v.Info.Name == volume.Info.Name {
+				if req.Name == volume.Info.Name {
 					logger.LogError("Name %v already in use in cluster %v",
-						v.Info.Name, clusterId)
+						req.Name, clusterId)
 					continue CLUSTERS
 				}
 			}
