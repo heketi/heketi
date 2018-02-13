@@ -158,22 +158,9 @@ func (v *BlockVolumeEntry) Unmarshal(buffer []byte) error {
 	return nil
 }
 
-func (v *BlockVolumeEntry) Create(db wdb.DB,
-	executor executors.Executor,
-	allocator Allocator) (e error) {
+func (v *BlockVolumeEntry) eligibleClustersAndVolumes(db wdb.RODB) (
+	possibleClusters []string, volumes []string, e error) {
 
-	// On any error, remove the volume
-	defer func() {
-		if e != nil {
-			db.Update(func(tx *bolt.Tx) error {
-				v.Delete(tx)
-
-				return nil
-			})
-		}
-	}()
-
-	var possibleClusters []string
 	if len(v.Info.Clusters) == 0 {
 		err := db.View(func(tx *bolt.Tx) error {
 			var err error
@@ -181,7 +168,8 @@ func (v *BlockVolumeEntry) Create(db wdb.DB,
 			return err
 		})
 		if err != nil {
-			return err
+			e = err
+			return
 		}
 	} else {
 		possibleClusters = v.Info.Clusters
@@ -191,11 +179,12 @@ func (v *BlockVolumeEntry) Create(db wdb.DB,
 	cr := ClusterReq{Block: true}
 	possibleClusters, e = eligibleClusters(db, cr, possibleClusters)
 	if e != nil {
-		return e
+		return
 	}
 	if len(possibleClusters) == 0 {
 		logger.LogError("No clusters eligible to satisfy create block volume request")
-		return ErrNoSpace
+		e = ErrNoSpace
+		return
 	}
 	logger.Debug("Using the following clusters: %+v", possibleClusters)
 
@@ -216,13 +205,13 @@ func (v *BlockVolumeEntry) Create(db wdb.DB,
 			return err
 		})
 		if err != nil {
-			return err
+			e = err
+			return
 		}
 	}
 
 	logger.Debug("Using the following possible block hosting volumes: %+v", possibleVolumes)
 
-	var volumes []string
 	for _, vol := range possibleVolumes {
 		err := db.View(func(tx *bolt.Tx) error {
 			volEntry, err := NewVolumeEntryFromId(tx, vol)
@@ -237,8 +226,31 @@ func (v *BlockVolumeEntry) Create(db wdb.DB,
 			return nil
 		})
 		if err != nil {
-			return err
+			e = err
+			return
 		}
+	}
+	return
+}
+
+func (v *BlockVolumeEntry) Create(db wdb.DB,
+	executor executors.Executor,
+	allocator Allocator) (e error) {
+
+	// On any error, remove the volume
+	defer func() {
+		if e != nil {
+			db.Update(func(tx *bolt.Tx) error {
+				v.Delete(tx)
+
+				return nil
+			})
+		}
+	}()
+
+	_, volumes, e := v.eligibleClustersAndVolumes(db)
+	if e != nil {
+		return
 	}
 
 	var blockHostingVolume string
