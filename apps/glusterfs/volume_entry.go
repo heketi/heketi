@@ -648,8 +648,7 @@ func (v *VolumeEntry) BlockVolumeDelete(id string) {
 // Visible returns true if this volume is meant to be visible to
 // API calls.
 func (v *VolumeEntry) Visible() bool {
-	// right now volumes are always visible, this won't always be true
-	return true
+	return v.Pending.Id == ""
 }
 
 func volumeNameExistsInCluster(tx *bolt.Tx, cluster *ClusterEntry,
