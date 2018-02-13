@@ -11,6 +11,7 @@ package glusterfs
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/boltdb/bolt"
@@ -75,20 +76,13 @@ func (a *App) BlockVolumeCreate(w http.ResponseWriter, r *http.Request) {
 
 	blockVolume := NewBlockVolumeEntryFromRequest(&msg)
 
-	// Add device in an asynchronous function
-	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
-
-		logger.Info("Creating block volume %v", blockVolume.Info.Id)
-		err := blockVolume.Create(a.db, a.executor, a.Allocator())
-		if err != nil {
-			logger.LogError("Failed to create block volume: %v", err)
-			return "", err
-		}
-
-		logger.Info("Created block volume %v", blockVolume.Info.Id)
-
-		return "/blockvolumes/" + blockVolume.Info.Id, nil
-	})
+	bvc := NewBlockVolumeCreateOperation(blockVolume, a.db)
+	if err := AsyncHttpOperation(a, w, r, bvc); err != nil {
+		http.Error(w,
+			fmt.Sprintf("Failed to allocate new block volume: %v", err),
+			http.StatusInternalServerError)
+		return
+	}
 }
 
 func (a *App) BlockVolumeList(w http.ResponseWriter, r *http.Request) {

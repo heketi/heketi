@@ -204,22 +204,9 @@ func TestBlockVolumeLargerThanBlockHostingVolume(t *testing.T) {
     }`)
 	r, err = http.Post(ts.URL+"/blockvolumes", "application/json", bytes.NewBuffer(request))
 	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusAccepted)
-	location, err = r.Location()
-	tests.Assert(t, err == nil)
-
-	for {
-		r, err = http.Get(location.String())
-		tests.Assert(t, err == nil)
-		if r.Header.Get("X-Pending") == "true" {
-			tests.Assert(t, r.StatusCode == http.StatusOK)
-			time.Sleep(time.Millisecond * 10)
-		} else {
-			tests.Assert(t, r.StatusCode == http.StatusInternalServerError, "got", r.StatusCode)
-			break
-		}
-	}
-
+	// NOTE: as of the pending operations work this now fails faster with
+	// an out of space error on the submission, not in the async reply
+	tests.Assert(t, r.StatusCode == http.StatusInternalServerError)
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, r.ContentLength))
 	tests.Assert(t, err == nil)
 	r.Body.Close()
