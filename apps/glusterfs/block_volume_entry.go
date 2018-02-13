@@ -240,6 +240,18 @@ func (v *BlockVolumeEntry) eligibleClustersAndVolumes(db wdb.RODB) (
 	return
 }
 
+func (v *BlockVolumeEntry) cleanupBlockVolumeCreate(db wdb.DB,
+	executor executors.Executor) error {
+
+	if e := v.Destroy(db, executor); e != nil {
+		return e
+	}
+	return db.Update(func(tx *bolt.Tx) error {
+		v.Delete(tx)
+		return nil
+	})
+}
+
 func (v *BlockVolumeEntry) Create(db wdb.DB,
 	executor executors.Executor,
 	allocator Allocator) (e error) {
