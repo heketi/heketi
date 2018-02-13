@@ -388,6 +388,219 @@ func (vdel *VolumeDeleteOperation) Finalize() error {
 	})
 }
 
+// BlockVolumeCreateOperation  implements the operation functions used to
+// create a new volume.
+type BlockVolumeCreateOperation struct {
+	OperationManager
+	bvol *BlockVolumeEntry
+	//vol *VolumeEntry
+}
+
+// NewBlockVolumeCreateOperation  returns a new BlockVolumeCreateOperation  populated
+// with the given volume entry and db connection and allocates a new
+// pending operation entry.
+func NewBlockVolumeCreateOperation(
+	bv *BlockVolumeEntry, db wdb.DB) *BlockVolumeCreateOperation {
+
+	return &BlockVolumeCreateOperation{
+		OperationManager: OperationManager{
+			db: db,
+			op: NewPendingOperationEntry(NEW_ID),
+		},
+		bvol: bv,
+	}
+}
+
+func (bvc *BlockVolumeCreateOperation) Label() string {
+	return "Create Block Volume"
+}
+
+func (bvc *BlockVolumeCreateOperation) ResourceUrl() string {
+	return fmt.Sprintf("/blockvolumes/%v", bvc.bvol.Info.Id)
+}
+
+// Build allocates and saves new volume and brick entries (tagged as pending)
+// in the db.
+func (bvc *BlockVolumeCreateOperation) Build(allocator Allocator) error {
+	return bvc.db.Update(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
+		clusters, volumes, err := bvc.bvol.eligibleClustersAndVolumes(txdb)
+		if err != nil {
+			return err
+		}
+
+		if len(volumes) > 0 {
+			bvc.bvol.Info.BlockHostingVolume = volumes[0]
+		} else {
+			vol, err := NewVolumeEntryForBlockHosting(clusters)
+			if err != nil {
+				return err
+			}
+			brick_entries, err := vol.createVolumeComponents(txdb, allocator)
+			if err != nil {
+				return err
+			}
+			// we just allocated a new volume and bricks, we need to record
+			// these in the op
+			for _, brick := range brick_entries {
+				bvc.op.RecordAddBrick(brick)
+				if e := brick.Save(tx); e != nil {
+					return e
+				}
+			}
+			bvc.op.RecordAddHostingVolume(vol)
+			if e := bvc.bvol.Save(tx); e != nil {
+				return e
+			}
+			bvc.bvol.Info.BlockHostingVolume = vol.Info.Id
+		}
+
+		// we've figured out what block-volume, hosting volume, and bricks we
+		// will be using for the next phase of the operation, save our pending sate
+		bvc.op.RecordAddBlockVolume(bvc.bvol)
+		if e := bvc.bvol.Save(tx); e != nil {
+			return e
+		}
+
+		if e := bvc.op.Save(tx); e != nil {
+			return e
+		}
+		return nil
+	})
+}
+
+func (bvc *BlockVolumeCreateOperation) volAndBricks(db wdb.RODB) (
+	vol *VolumeEntry, brick_entries []*BrickEntry, err error) {
+
+	// NOTE: It is perfectly fine and normal for there to be no bricks or volumes
+	// on the op. However if there are bricks there must be volumes (and vice versa).
+	vol = nil
+	volume_entries, err := volumesFromOp(db, bvc.op)
+	if err != nil {
+		logger.LogError("Failed to get volumes from op: %v", err)
+		return
+	}
+	// try to get gid now even though we haven't done any sanity checks
+	// yet. Otherwise we have to go to the db for bricks twice
+	brickGid := int64(0)
+	if len(volume_entries) == 1 {
+		brickGid = volume_entries[0].Info.Gid
+	}
+	brick_entries, err = bricksFromOp(db, bvc.op, brickGid)
+	if err != nil {
+		logger.LogError("Failed to get bricks from op: %v", err)
+		return
+	}
+
+	if len(volume_entries) > 1 {
+		err = logger.LogError("Unexpected number of new volume entries (%v)",
+			len(volume_entries))
+		return
+	}
+	if len(volume_entries) > 0 && len(brick_entries) == 0 {
+		err = logger.LogError("Cannot create a new block hosting volume without bricks")
+		return
+	}
+	if len(volume_entries) == 0 && len(brick_entries) > 0 {
+		err = logger.LogError("Cannot create bricks without a hosting volume")
+		return
+	}
+
+	if len(volume_entries) == 1 {
+		vol = volume_entries[0]
+	}
+	return
+}
+
+// Exec creates new bricks and volume on the underlying glusterfs storage system.
+func (bvc *BlockVolumeCreateOperation) Exec(executor executors.Executor) error {
+	vol, brick_entries, err := bvc.volAndBricks(bvc.db)
+	if err != nil {
+		return err
+	}
+
+	if vol != nil {
+		err = vol.createVolumeExec(bvc.db, executor, brick_entries)
+		if err != nil {
+			logger.LogError("Error executing create volume: %v", err)
+			return err
+		}
+	}
+	// NOTE: unlike regular volume create this function does update attributes
+	// of the block volume entry with values that come back from the exec commands.
+	// this doesn't break the Operation model but does mean this is non trivially
+	// resumeable if we ever add resume support to normal volume create.
+	err = bvc.bvol.createBlockVolume(bvc.db, executor, bvc.bvol.Info.BlockHostingVolume)
+	if err != nil {
+		logger.LogError("Error executing create block volume: %v", err)
+	}
+	return err
+}
+
+// Finalize marks our new volume and brick db entries as no longer pending.
+func (bvc *BlockVolumeCreateOperation) Finalize() error {
+	return bvc.db.Update(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
+		vol, brick_entries, err := bvc.volAndBricks(txdb)
+		if err != nil {
+			return err
+		}
+		if vol != nil {
+			for _, brick := range brick_entries {
+				bvc.op.FinalizeBrick(brick)
+				if e := brick.Save(tx); e != nil {
+					return e
+				}
+			}
+			bvc.op.FinalizeVolume(vol)
+			if e := vol.Save(tx); e != nil {
+				return e
+			}
+		}
+
+		// traditionally (that is before operations existed) the block volumes
+		// were updating most of their metadata after exec. This is only
+		// noteworthy because it is different from regular volumes which
+		// do most of those updates upfront.
+		if e := bvc.bvol.saveCreateBlockVolume(txdb); e != nil {
+			return e
+		}
+
+		bvc.op.FinalizeBlockVolume(bvc.bvol)
+		if e := bvc.bvol.Save(tx); e != nil {
+			return e
+		}
+
+		bvc.op.Delete(tx)
+		return nil
+	})
+}
+
+// Rollback removes any dangling volume and bricks from the underlying storage
+// systems and removes the corresponding pending volume and brick entries from
+// the db.
+func (bvc *BlockVolumeCreateOperation) Rollback(executor executors.Executor) error {
+	// TODO make this into one transaction too
+	vol, brick_entries, err := bvc.volAndBricks(bvc.db)
+	if err != nil {
+		return err
+	}
+	if e := bvc.bvol.cleanupBlockVolumeCreate(bvc.db, executor); e != nil {
+		return e
+	}
+	if vol != nil {
+		err = vol.cleanupCreateVolume(bvc.db, executor, brick_entries)
+		if err != nil {
+			logger.LogError("Error on create volume rollback: %v", err)
+			return err
+		}
+	}
+	err = bvc.db.Update(func(tx *bolt.Tx) error {
+		return bvc.op.Delete(tx)
+	})
+	return err
+}
+
 // bricksFromOp returns pending brick entry objects from the db corresponding
 // to the given pending operation entry. The gid of the volume must also be
 // provided as the db does not store this metadata on the brick entries.
