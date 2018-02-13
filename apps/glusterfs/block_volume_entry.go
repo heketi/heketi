@@ -299,26 +299,22 @@ func (v *BlockVolumeEntry) saveCreateBlockVolume(db wdb.DB) error {
 	})
 }
 
-func (v *BlockVolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error {
-	logger.Info("Destroying volume %v", v.Info.Id)
-
-	var blockHostingVolumeName string
-	var err error
-
-	db.View(func(tx *bolt.Tx) error {
+func (v *BlockVolumeEntry) blockHostingVolumeName(db wdb.RODB) (name string, e error) {
+	e = db.View(func(tx *bolt.Tx) error {
 		volume, err := NewVolumeEntryFromId(tx, v.Info.BlockHostingVolume)
 		if err != nil {
 			logger.LogError("Unable to load block hosting volume: %v", err)
 			return err
 		}
-		blockHostingVolumeName = volume.Info.Name
+		name = volume.Info.Name
 		return nil
 	})
-	if err != nil {
-		return err
-	}
+	return
+}
 
-	logger.Debug("Using blockosting volume name[%v]", blockHostingVolumeName)
+func (v *BlockVolumeEntry) deleteBlockVolumeExec(db wdb.RODB,
+	hvname string,
+	executor executors.Executor) error {
 
 	executorhost, err := GetVerifiedManageHostname(db, executor, v.Info.Cluster)
 	if err != nil {
@@ -327,13 +323,26 @@ func (v *BlockVolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error
 
 	logger.Debug("Using executor host [%v]", executorhost)
 
-	err = executor.BlockVolumeDestroy(executorhost, blockHostingVolumeName, v.Info.Name)
+	err = executor.BlockVolumeDestroy(executorhost, hvname, v.Info.Name)
 	if err != nil {
 		logger.LogError("Unable to delete volume: %v", err)
 		return err
 	}
+	return nil
+}
 
-	logger.Debug("Destroyed backend volume")
+func (v *BlockVolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error {
+	logger.Info("Destroying volume %v", v.Info.Id)
+
+	hvname, err:= v.blockHostingVolumeName(db)
+	if err != nil {
+		return err
+	}
+	logger.Debug("Using blockosting volume name[%v]", hvname)
+
+	if e := v.deleteBlockVolumeExec(db, hvname, executor); e != nil {
+		return e
+	}
 
 	err = db.Update(func(tx *bolt.Tx) error {
 		// Remove volume from cluster
