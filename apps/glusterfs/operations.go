@@ -601,6 +601,76 @@ func (bvc *BlockVolumeCreateOperation) Rollback(executor executors.Executor) err
 	return err
 }
 
+// BlockVolumeDeleteOperation implements the operation functions used to
+// delete an existing volume.
+type BlockVolumeDeleteOperation struct {
+	OperationManager
+	bvol *BlockVolumeEntry
+}
+
+func NewBlockVolumeDeleteOperation(
+	bvol *BlockVolumeEntry, db wdb.DB) *BlockVolumeDeleteOperation {
+
+	return &BlockVolumeDeleteOperation{
+		OperationManager: OperationManager{
+			db: db,
+			op: NewPendingOperationEntry(NEW_ID),
+		},
+		bvol: bvol,
+	}
+}
+
+func (vdel *BlockVolumeDeleteOperation) Label() string {
+	return "Delete Block Volume"
+}
+
+func (vdel *BlockVolumeDeleteOperation) ResourceUrl() string {
+	return ""
+}
+
+// Build determines what volumes and bricks need to be deleted and
+// marks the db entries as such.
+func (vdel *BlockVolumeDeleteOperation) Build(allocator Allocator) error {
+	return vdel.db.Update(func(tx *bolt.Tx) error {
+		vdel.op.RecordDeleteBlockVolume(vdel.bvol)
+		if e := vdel.op.Save(tx); e != nil {
+			return e
+		}
+		return nil
+	})
+}
+
+// Exec performs the volume and brick deletions on the storage systems.
+func (vdel *BlockVolumeDeleteOperation) Exec(executor executors.Executor) error {
+	hvname, err := vdel.bvol.blockHostingVolumeName(vdel.db)
+	if err != nil {
+		return err
+	}
+	return vdel.bvol.deleteBlockVolumeExec(vdel.db, hvname, executor)
+}
+
+func (vdel *BlockVolumeDeleteOperation) Rollback(executor executors.Executor) error {
+	// currently rollback does nothing for delete volume, leaving the
+	// db in the same state as it was before an exec failure
+	// TODO: revisit
+	return nil
+}
+
+// Finalize marks all brick and volume entries for this operation as
+// fully deleted.
+func (vdel *BlockVolumeDeleteOperation) Finalize() error {
+	return vdel.db.Update(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
+		if e := vdel.bvol.removeComponents(txdb); e != nil {
+			logger.LogError("Failed to remove block volume from db")
+			return e
+		}
+
+		vdel.op.Delete(tx)
+		return nil
+	})
+}
+
 // bricksFromOp returns pending brick entry objects from the db corresponding
 // to the given pending operation entry. The gid of the volume must also be
 // provided as the db does not store this metadata on the brick entries.
