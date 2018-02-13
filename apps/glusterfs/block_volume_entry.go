@@ -243,13 +243,15 @@ func (v *BlockVolumeEntry) eligibleClustersAndVolumes(db wdb.RODB) (
 func (v *BlockVolumeEntry) cleanupBlockVolumeCreate(db wdb.DB,
 	executor executors.Executor) error {
 
-	if e := v.Destroy(db, executor); e != nil {
-		return e
+	hvname, err := v.blockHostingVolumeName(db)
+	if err != nil {
+		return err
 	}
-	return db.Update(func(tx *bolt.Tx) error {
-		v.Delete(tx)
-		return nil
-	})
+
+	// best effort removal of anything on system
+	v.deleteBlockVolumeExec(db, hvname, executor)
+
+	return v.removeComponents(db)
 }
 
 func (v *BlockVolumeEntry) Create(db wdb.DB,
