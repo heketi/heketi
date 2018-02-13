@@ -117,8 +117,7 @@ func (v *BlockVolumeEntry) BucketName() string {
 }
 
 func (v *BlockVolumeEntry) Visible() bool {
-	// currently all block volumes are always visible
-	return true
+	return v.Pending.Id == ""
 }
 
 func (v *BlockVolumeEntry) Save(tx *bolt.Tx) error {
