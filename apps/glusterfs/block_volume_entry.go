@@ -108,6 +108,11 @@ func (v *BlockVolumeEntry) BucketName() string {
 	return BOLTDB_BUCKET_BLOCKVOLUME
 }
 
+func (v *BlockVolumeEntry) Visible() bool {
+	// currently all block volumes are always visible
+	return true
+}
+
 func (v *BlockVolumeEntry) Save(tx *bolt.Tx) error {
 	godbc.Require(tx != nil)
 	godbc.Require(len(v.Info.Id) > 0)
