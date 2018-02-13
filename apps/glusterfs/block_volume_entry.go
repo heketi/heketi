@@ -376,17 +376,10 @@ func (v *BlockVolumeEntry) removeComponents(db wdb.DB) error {
 func (v *BlockVolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error {
 	logger.Info("Destroying volume %v", v.Info.Id)
 
-	hvname, err:= v.blockHostingVolumeName(db)
-	if err != nil {
-		return err
-	}
-	logger.Debug("Using blockosting volume name[%v]", hvname)
-
-	if e := v.deleteBlockVolumeExec(db, hvname, executor); e != nil {
-		return e
-	}
-
-	return v.removeComponents(db)
+	return RunOperation(
+		NewBlockVolumeDeleteOperation(v, db),
+		nil,
+		executor)
 }
 
 // canHostBlockVolume returns true if the existing volume entry object
