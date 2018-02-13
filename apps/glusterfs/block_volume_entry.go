@@ -256,54 +256,10 @@ func (v *BlockVolumeEntry) Create(db wdb.DB,
 	executor executors.Executor,
 	allocator Allocator) (e error) {
 
-	// On any error, remove the volume
-	defer func() {
-		if e != nil {
-			db.Update(func(tx *bolt.Tx) error {
-				v.Delete(tx)
-
-				return nil
-			})
-		}
-	}()
-
-	_, volumes, e := v.eligibleClustersAndVolumes(db)
-	if e != nil {
-		return
-	}
-
-	var blockHostingVolume string
-	if len(volumes) == 0 {
-		logger.Info("No block hosting volumes found in the cluster list")
-		if !CreateBlockHostingVolumes {
-			return fmt.Errorf("Block Hosting Volume Creation is Disabled. Create a Block hosting volume and try again.")
-		}
-		// Create block hosting volume to host block volumes
-		bhvol, err := CreateBlockHostingVolume(db, executor, allocator, v.Info.Clusters)
-		if err != nil {
-			return err
-		}
-		blockHostingVolume = bhvol.Info.Id
-	} else {
-		blockHostingVolume = volumes[0]
-	}
-
-	logger.Debug("Using block hosting volume id[%v]", blockHostingVolume)
-
-	// Create the block volume on the block hosting volume specified
-	err := v.createBlockVolume(db, executor, blockHostingVolume)
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		if e != nil {
-			v.Destroy(db, executor)
-		}
-	}()
-
-	v.Info.BlockHostingVolume = blockHostingVolume
-	return v.saveCreateBlockVolume(db)
+	return RunOperation(
+		NewBlockVolumeCreateOperation(v, db),
+		allocator,
+		executor)
 }
 
 func (v *BlockVolumeEntry) saveCreateBlockVolume(db wdb.DB) error {
