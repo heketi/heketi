@@ -398,6 +398,8 @@ func (d *DeviceEntry) Remove(db wdb.DB,
 	executor executors.Executor,
 	allocator Allocator) (e error) {
 
+	var errBrickWithEmptyPath error = fmt.Errorf("Brick has no path")
+
 	// If the device has no bricks, just change the state and we are done
 	if d.IsDeleteOk() {
 		d.State = api.EntryStateFailed
@@ -423,6 +425,11 @@ func (d *DeviceEntry) Remove(db wdb.DB,
 			if err != nil {
 				return err
 			}
+			// Handle the special error case when brick has no path
+			// we skip the brick and continue
+			if brickEntry.Info.Path == "" {
+				return errBrickWithEmptyPath
+			}
 			volumeEntry, err = NewVolumeEntryFromId(tx, brickEntry.Info.VolumeId)
 			if err != nil {
 				return err
@@ -430,6 +437,10 @@ func (d *DeviceEntry) Remove(db wdb.DB,
 			return nil
 		})
 		if err != nil {
+			if err == errBrickWithEmptyPath {
+				logger.Warning("Skipping brick with empty path, brickID: %v, volumeID: %v, error: %v", brickEntry.Info.Id, brickEntry.Info.VolumeId, err)
+				continue
+			}
 			return err
 		}
 		logger.Info("Replacing brick %v on device %v on node %v", brickEntry.Id(), d.Id(), d.NodeId)
