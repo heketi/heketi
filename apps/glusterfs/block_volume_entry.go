@@ -229,25 +229,15 @@ func (v *BlockVolumeEntry) Create(db wdb.DB,
 			if err != nil {
 				return err
 			}
-			if volEntry.Info.BlockInfo.FreeSize >= v.Info.Size {
-				for _, blockvol := range volEntry.Info.BlockInfo.BlockVolumes {
-					bv, err := NewBlockVolumeEntryFromId(tx, blockvol)
-					if err != nil {
-						return err
-					}
-					if v.Info.Name == bv.Info.Name {
-						return fmt.Errorf("Name %v already in use in file volume %v",
-							v.Info.Name, volEntry.Info.Name)
-					}
-				}
+			if ok, err := canHostBlockVolume(tx, v, volEntry); ok {
 				volumes = append(volumes, vol)
-			} else {
-				return fmt.Errorf("Free size is lesser than the block volume requested")
+			} else if err != nil {
+				return err
 			}
 			return nil
 		})
 		if err != nil {
-			logger.Warning("%v", err.Error())
+			return err
 		}
 	}
 
@@ -398,4 +388,27 @@ func (v *BlockVolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error
 	})
 
 	return err
+}
+
+// canHostBlockVolume returns true if the existing volume entry object
+// can host the incoming block volume. It returns false (and nil error) if
+// the volume is incompatible. It returns false, and an error if the
+// database operation fails.
+func canHostBlockVolume(tx *bolt.Tx, bv *BlockVolumeEntry, vol *VolumeEntry) (bool, error) {
+	if vol.Info.BlockInfo.FreeSize >= bv.Info.Size {
+		for _, blockvol := range vol.Info.BlockInfo.BlockVolumes {
+			existingbv, err := NewBlockVolumeEntryFromId(tx, blockvol)
+			if err != nil {
+				return false, err
+			}
+			if bv.Info.Name == existingbv.Info.Name {
+				logger.Warning("Name %v already in use in file volume %v",
+					bv.Info.Name, vol.Info.Name)
+				return false, nil
+			}
+			return true, nil
+		}
+	}
+	logger.Warning("Free size is lesser than the block volume requested")
+	return false, nil
 }
