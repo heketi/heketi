@@ -186,32 +186,12 @@ func (v *BlockVolumeEntry) Create(db wdb.DB,
 		possibleClusters = v.Info.Clusters
 	}
 
-	//
-	// If there are any clusters marked with the Block
-	// flag, then only consider those. Otherwise consider
-	// all clusters.
-	//
-	var blockClusters []string
-	for _, clusterId := range possibleClusters {
-		err := db.View(func(tx *bolt.Tx) error {
-			var err error
-			c, err := NewClusterEntryFromId(tx, clusterId)
-			if err != nil {
-				return err
-			}
-			if c.Info.Block {
-				blockClusters = append(blockClusters, clusterId)
-			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
+	// find clusters that support block volumes
+	cr := ClusterReq{Block: true}
+	possibleClusters, e = eligibleClusters(db, cr, possibleClusters)
+	if e != nil {
+		return e
 	}
-	if blockClusters != nil {
-		possibleClusters = blockClusters
-	}
-
 	if len(possibleClusters) == 0 {
 		logger.LogError("BlockVolume being ask to be created, but there are no clusters configured")
 		return ErrNoSpace
