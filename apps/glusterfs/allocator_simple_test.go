@@ -27,27 +27,19 @@ func TestNewSimpleAllocator(t *testing.T) {
 
 }
 
-func TestSimpleAllocatorEmpty(t *testing.T) {
+func TestSimpleAllocatorGetNodesEmpty(t *testing.T) {
 	a := NewSimpleAllocator()
 	tests.Assert(t, a != nil)
-
-	err := a.RemoveDevice(createSampleClusterEntry(),
-		createSampleNodeEntry(),
-		createSampleDeviceEntry("aaa", 10))
-	tests.Assert(t, err == ErrNotFound)
-
-	err = a.RemoveCluster("aaa")
-	tests.Assert(t, err == ErrNotFound)
 
 	ch, _, errc := a.GetNodes(utils.GenUUID(), utils.GenUUID())
 	for d := range ch {
 		tests.Assert(t, false, d)
 	}
-	err = <-errc
+	err := <-errc
 	tests.Assert(t, err == ErrNotFound)
 }
 
-func TestSimpleAllocatorAddRemoveDevice(t *testing.T) {
+func TestSimpleAllocatorAddDevice(t *testing.T) {
 	a := NewSimpleAllocator()
 	tests.Assert(t, a != nil)
 
@@ -57,8 +49,8 @@ func TestSimpleAllocatorAddRemoveDevice(t *testing.T) {
 	device := createSampleDeviceEntry(node.Info.Id, 10000)
 
 	tests.Assert(t, len(a.rings) == 0)
-	tests.Assert(t, a.AddCluster(cluster.Info.Id) == nil)
-	err := a.AddDevice(cluster, node, device)
+	tests.Assert(t, a.addCluster(cluster.Info.Id) == nil)
+	err := a.addDevice(cluster, node, device)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, len(a.rings) == 1)
 	tests.Assert(t, a.rings[cluster.Info.Id] != nil)
@@ -74,24 +66,6 @@ func TestSimpleAllocatorAddRemoveDevice(t *testing.T) {
 	err = <-errc
 	tests.Assert(t, devices == 1)
 	tests.Assert(t, err == nil)
-
-	// Now remove the device
-	err = a.RemoveDevice(cluster, node, device)
-	tests.Assert(t, err == nil)
-	tests.Assert(t, len(a.rings) == 1)
-
-	// Get the nodes from the ring
-	ch, _, errc = a.GetNodes(cluster.Info.Id, utils.GenUUID())
-
-	devices = 0
-	for d := range ch {
-		devices++
-		tests.Assert(t, false, d)
-	}
-	err = <-errc
-	tests.Assert(t, devices == 0)
-	tests.Assert(t, err == nil)
-
 }
 
 func TestSimpleAllocatorInitFromDb(t *testing.T) {

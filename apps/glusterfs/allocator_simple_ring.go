@@ -90,30 +90,6 @@ func (s *SimpleAllocatorRing) Add(d *SimpleDevice) {
 	s.balancedList = nil
 }
 
-// Remove device from the ring map
-func (s *SimpleAllocatorRing) Remove(d *SimpleDevice) {
-
-	if nodes, ok := s.ring[d.zone]; ok {
-		if devices, ok := nodes[d.nodeId]; ok {
-			for index, device := range devices {
-				if device.deviceId == d.deviceId {
-					// Found device, now delete it from the ring map
-					nodes[d.nodeId] = append(nodes[d.nodeId][:index], nodes[d.nodeId][index+1:]...)
-
-					if len(nodes[d.nodeId]) == 0 {
-						delete(nodes, d.nodeId)
-					}
-					if len(s.ring[d.zone]) == 0 {
-						delete(s.ring, d.zone)
-					}
-				}
-			}
-		}
-	}
-
-	s.balancedList = nil
-}
-
 // Rebalance the ring and place the rebalanced list
 // into balancedList.
 // The idea is to setup an array/slice where each continguous SimpleDevice
@@ -189,39 +165,4 @@ func (s *SimpleAllocatorRing) GetDeviceList(uuid string) SimpleDevices {
 	// Return a list according to the position in the list
 	return append(devices[index:], devices[:index]...)
 
-}
-
-func (s *SimpleAllocatorRing) HasNode(zone int, nodeId string) bool {
-	nodes, ok := s.ring[zone]
-	if !ok {
-		return false
-	}
-
-	if _, ok := nodes[nodeId]; !ok {
-		return false
-	}
-
-	return true
-}
-
-func (s *SimpleAllocatorRing) HasDevice(zone int,
-	nodeId, deviceId string) bool {
-
-	nodes, ok := s.ring[zone]
-	if !ok {
-		return false
-	}
-
-	devices, ok := nodes[nodeId]
-	if !ok {
-		return false
-	}
-
-	for _, device := range devices {
-		if device.deviceId == deviceId {
-			return true
-		}
-	}
-
-	return false
 }
