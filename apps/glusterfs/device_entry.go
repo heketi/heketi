@@ -424,7 +424,10 @@ func (d *DeviceEntry) Remove(db wdb.DB,
 		return ErrConflict
 	}
 
-	return d.removeBricksFromDevice(db, executor, allocator)
+	if err := d.removeBricksFromDevice(db, executor, allocator); err != nil {
+		return err
+	}
+	return markDeviceFailed(db, d.Info.Id, true)
 }
 
 func (d *DeviceEntry) removeBricksFromDevice(db wdb.DB,
@@ -465,25 +468,6 @@ func (d *DeviceEntry) removeBricksFromDevice(db wdb.DB,
 		if err != nil {
 			return logger.Err(fmt.Errorf("Failed to remove device, error: %v", err))
 		}
-	}
-
-	// Set device state to failed
-	// Get new entry for the device because db would have changed
-	// replaceBrickInVolume calls functions that change device state in db
-	err := db.Update(func(tx *bolt.Tx) error {
-		newDeviceEntry, err := NewDeviceEntryFromId(tx, d.Id())
-		if err != nil {
-			return err
-		}
-		newDeviceEntry.State = api.EntryStateFailed
-		err = newDeviceEntry.Save(tx)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		return err
 	}
 	return nil
 }
