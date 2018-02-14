@@ -189,6 +189,31 @@ func (d *DeviceEntry) SetState(db wdb.DB,
 	a Allocator,
 	s api.EntryState) error {
 
+	if e := d.stateCheck(s); e != nil {
+		return e
+	}
+	if d.State == s {
+		return nil
+	}
+
+	switch s {
+	case api.EntryStateOffline, api.EntryStateOnline:
+		// simply update the state and move on
+		if err := d.modifyState(db, s); err != nil {
+			return err
+		}
+	case api.EntryStateFailed:
+		if err := d.Remove(db, e, a); err != nil {
+			if err == ErrNoReplacement {
+				return logger.LogError("Unable to delete device [%v] as no device was found to replace it", d.Id())
+			}
+			return err
+		}
+	}
+	return nil
+}
+
+func (d *DeviceEntry) stateCheck(s api.EntryState) error {
 	// Check current state
 	switch d.State {
 
@@ -211,9 +236,7 @@ func (d *DeviceEntry) SetState(db wdb.DB,
 		case api.EntryStateOnline:
 			return nil
 		case api.EntryStateOffline:
-			if err := d.modifyState(db, s); err != nil {
-				return err
-			}
+			return nil
 		case api.EntryStateFailed:
 			return fmt.Errorf("Device must be offline before remove operation is performed, device:%v", d.Id())
 		default:
@@ -226,19 +249,9 @@ func (d *DeviceEntry) SetState(db wdb.DB,
 		case api.EntryStateOffline:
 			return nil
 		case api.EntryStateOnline:
-			// Add disk back
-			if err := d.modifyState(db, s); err != nil {
-				return err
-			}
+			return nil
 		case api.EntryStateFailed:
-
-			err := d.Remove(db, e, a)
-			if err != nil {
-				if err == ErrNoReplacement {
-					return logger.LogError("Unable to delete device [%v] as no device was found to replace it", d.Id())
-				}
-				return err
-			}
+			return nil
 		default:
 			return fmt.Errorf("Unknown state type: %v", s)
 		}
