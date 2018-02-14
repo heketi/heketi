@@ -404,6 +404,15 @@ func (d *DeviceEntry) Remove(db wdb.DB,
 	}
 	// if we're here markFailed couldn't apply due to conflicts
 
+	if p, err := PendingOperationsOnDevice(db, d.Info.Id); err != nil {
+		return err
+	} else if p {
+		logger.LogError("Found operations still pending on device." +
+			" Can not remove device %v at this time.",
+			d.Info.Id)
+		return ErrConflict
+	}
+
 	for _, brickId := range d.Bricks {
 		var brickEntry *BrickEntry
 		var volumeEntry *VolumeEntry
@@ -461,6 +470,33 @@ func (d *DeviceEntry) Remove(db wdb.DB,
 
 func DeviceEntryUpgrade(tx *bolt.Tx) error {
 	return nil
+}
+
+// PendingOperationsOnDevice returns true if there are any pending operations
+// whose bricks are linked to the given device. The error e will be non-nil
+// if any db errors were encountered.
+func PendingOperationsOnDevice(db wdb.RODB, deviceId string) (pdev bool, e error) {
+
+	e = db.View(func(tx *bolt.Tx) error {
+		pb, err := MapPendingBricks(tx)
+		if err != nil {
+			return err
+		}
+		for brickId, opId := range pb {
+			b, err := NewBrickEntryFromId(tx, brickId)
+			if err != nil {
+				return err
+			}
+			if b.Info.DeviceId == deviceId {
+				logger.Warning("Device %v used on pending brick %v in operation %v",
+					deviceId, brickId, opId)
+				pdev = true
+				return nil
+			}
+		}
+		return nil
+	})
+	return
 }
 
 func (d *DeviceEntry) markFailed(db wdb.DB) error {
