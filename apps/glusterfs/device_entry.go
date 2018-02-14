@@ -395,20 +395,14 @@ func (d *DeviceEntry) Remove(db wdb.DB,
 	var errBrickWithEmptyPath error = fmt.Errorf("Brick has no path")
 
 	// If the device has no bricks, just change the state and we are done
-	if d.IsDeleteOk() {
-		d.State = api.EntryStateFailed
-		// Save new state
-		err := db.Update(func(tx *bolt.Tx) error {
-			err := d.Save(tx)
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
+	if err := d.markFailed(db); err == nil {
+		// device was empty and is now marked failed
+		return nil
+	} else if err != ErrConflict {
+		// we hit some sort of unexpected error
+		return err
 	}
+	// if we're here markFailed couldn't apply due to conflicts
 
 	for _, brickId := range d.Bricks {
 		var brickEntry *BrickEntry
@@ -467,4 +461,35 @@ func (d *DeviceEntry) Remove(db wdb.DB,
 
 func DeviceEntryUpgrade(tx *bolt.Tx) error {
 	return nil
+}
+
+func (d *DeviceEntry) markFailed(db wdb.DB) error {
+	// this is done on the ID in order to force a full fetch-check
+	// inside one transaction
+	err := markEmptyDeviceFailed(db, d.Info.Id)
+	if err == nil {
+		// update the in-memory device state to match
+		// that in the db
+		d.State = api.EntryStateFailed
+	}
+	return err
+}
+
+// markEmptyDeviceFailed takes a device id and, in one single
+// transaction, checks if the device is valid for delete and
+// if so marks it failed. If the change was applied the function
+// returns nil. If ErrConflict is returned the device was not
+// empty. Any other error is a database failure.
+func markEmptyDeviceFailed(db wdb.DB, id string) error {
+	return db.Update(func(tx *bolt.Tx) error {
+		d, err := NewDeviceEntryFromId(tx, id)
+		if err != nil {
+			return err
+		}
+		if !d.IsDeleteOk() {
+			return ErrConflict
+		}
+		d.State = api.EntryStateFailed
+		return d.Save(tx)
+	})
 }
