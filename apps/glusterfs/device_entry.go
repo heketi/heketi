@@ -405,29 +405,23 @@ func (d *DeviceEntry) Remove(db wdb.DB,
 	executor executors.Executor,
 	allocator Allocator) (e error) {
 
-	// If the device has no bricks, just change the state and we are done
-	if err := d.markFailed(db); err == nil {
-		// device was empty and is now marked failed
+	if e = RunOperation(
+		NewDeviceRemoveOperation(d.Info.Id, allocator, db),
+		allocator,
+		executor); e != nil {
+		return e
+	}
+	// tests currently expect d to be updated to match db state
+	// this is another fairly ugly hack
+	return db.View(func(tx *bolt.Tx) error {
+		dbdev, err := NewDeviceEntryFromId(tx, d.Info.Id)
+		if err != nil {
+			return err
+		}
+		d.State = dbdev.State
 		return nil
-	} else if err != ErrConflict {
-		// we hit some sort of unexpected error
-		return err
-	}
-	// if we're here markFailed couldn't apply due to conflicts
+	})
 
-	if p, err := PendingOperationsOnDevice(db, d.Info.Id); err != nil {
-		return err
-	} else if p {
-		logger.LogError("Found operations still pending on device." +
-			" Can not remove device %v at this time.",
-			d.Info.Id)
-		return ErrConflict
-	}
-
-	if err := d.removeBricksFromDevice(db, executor, allocator); err != nil {
-		return err
-	}
-	return markDeviceFailed(db, d.Info.Id, true)
 }
 
 func (d *DeviceEntry) removeBricksFromDevice(db wdb.DB,
