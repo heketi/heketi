@@ -172,6 +172,18 @@ func (d *DeviceEntry) Delete(tx *bolt.Tx) error {
 	return EntryDelete(tx, d, d.Info.Id)
 }
 
+func (d *DeviceEntry) modifyState(db wdb.DB, s api.EntryState) error {
+	return db.Update(func(tx *bolt.Tx) error {
+		// Save state
+		d.State = s
+		// Save new state
+		if err := d.Save(tx); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
 func (d *DeviceEntry) SetState(db wdb.DB,
 	e executors.Executor,
 	a Allocator,
@@ -199,17 +211,7 @@ func (d *DeviceEntry) SetState(db wdb.DB,
 		case api.EntryStateOnline:
 			return nil
 		case api.EntryStateOffline:
-			err := db.Update(func(tx *bolt.Tx) error {
-				// Save state
-				d.State = s
-				// Save new state
-				err := d.Save(tx)
-				if err != nil {
-					return err
-				}
-				return nil
-			})
-			if err != nil {
+			if err := d.modifyState(db, s); err != nil {
 				return err
 			}
 		case api.EntryStateFailed:
@@ -225,15 +227,7 @@ func (d *DeviceEntry) SetState(db wdb.DB,
 			return nil
 		case api.EntryStateOnline:
 			// Add disk back
-			err := db.Update(func(tx *bolt.Tx) error {
-				d.State = s
-				err := d.Save(tx)
-				if err != nil {
-					return err
-				}
-				return nil
-			})
-			if err != nil {
+			if err := d.modifyState(db, s); err != nil {
 				return err
 			}
 		case api.EntryStateFailed:
