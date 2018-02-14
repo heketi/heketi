@@ -150,6 +150,10 @@ func (a *App) ClusterInfo(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
+		err = UpdateClusterInfoComplete(tx, info)
+		if err != nil {
+			return err
+		}
 
 		return nil
 	})
