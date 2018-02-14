@@ -537,12 +537,22 @@ func (d *DeviceEntry) markFailed(db wdb.DB) error {
 // returns nil. If ErrConflict is returned the device was not
 // empty. Any other error is a database failure.
 func markEmptyDeviceFailed(db wdb.DB, id string) error {
+	return markDeviceFailed(db, id, false)
+}
+
+// markDeviceFailed takes a device id and a force flag,
+// and in one transaction, checks the status of the device
+// and if ready or force is set, sets the failed flag.
+// If the change was applied the function
+// returns nil. If ErrConflict is returned the device was not
+// empty. Any other error is a database failure.
+func markDeviceFailed(db wdb.DB, id string, force bool) error {
 	return db.Update(func(tx *bolt.Tx) error {
 		d, err := NewDeviceEntryFromId(tx, id)
 		if err != nil {
 			return err
 		}
-		if !d.IsDeleteOk() {
+		if !force && !d.IsDeleteOk() {
 			return ErrConflict
 		}
 		d.State = api.EntryStateFailed
