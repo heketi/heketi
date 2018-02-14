@@ -405,8 +405,6 @@ func (d *DeviceEntry) Remove(db wdb.DB,
 	executor executors.Executor,
 	allocator Allocator) (e error) {
 
-	var errBrickWithEmptyPath error = fmt.Errorf("Brick has no path")
-
 	// If the device has no bricks, just change the state and we are done
 	if err := d.markFailed(db); err == nil {
 		// device was empty and is now marked failed
@@ -425,6 +423,15 @@ func (d *DeviceEntry) Remove(db wdb.DB,
 			d.Info.Id)
 		return ErrConflict
 	}
+
+	return d.removeBricksFromDevice(db, executor, allocator)
+}
+
+func (d *DeviceEntry) removeBricksFromDevice(db wdb.DB,
+	executor executors.Executor,
+	allocator Allocator) (e error) {
+
+	var errBrickWithEmptyPath error = fmt.Errorf("Brick has no path")
 
 	for _, brickId := range d.Bricks {
 		var brickEntry *BrickEntry
