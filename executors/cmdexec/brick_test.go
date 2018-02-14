@@ -63,10 +63,10 @@ func TestSshExecBrickCreate(t *testing.T) {
 
 			case 3:
 				tests.Assert(t,
-					cmd == "echo \"/dev/mapper/vg_xvgid-brick_id "+
+					cmd == "awk \"BEGIN {print \\\"/dev/mapper/vg_xvgid-brick_id "+
 						"/var/lib/heketi/mounts/vg_xvgid/brick_id "+
-						"xfs rw,inode64,noatime,nouuid 1 2\" | "+
-						"tee -a /my/fstab > /dev/null", cmd)
+						"xfs rw,inode64,noatime,nouuid 1 2\\\" "+
+						">> \\\"/my/fstab\\\"}\"", cmd)
 
 			case 4:
 				tests.Assert(t,
@@ -136,10 +136,10 @@ func TestSshExecBrickCreateWithGid(t *testing.T) {
 
 			case 3:
 				tests.Assert(t,
-					cmd == "echo \"/dev/mapper/vg_xvgid-brick_id "+
+					cmd == "awk \"BEGIN {print \\\"/dev/mapper/vg_xvgid-brick_id "+
 						"/var/lib/heketi/mounts/vg_xvgid/brick_id "+
-						"xfs rw,inode64,noatime,nouuid 1 2\" | "+
-						"tee -a /my/fstab > /dev/null", cmd)
+						"xfs rw,inode64,noatime,nouuid 1 2\\\" "+
+						">> \\\"/my/fstab\\\"}\"", cmd)
 
 			case 4:
 				tests.Assert(t,
@@ -220,10 +220,10 @@ func TestSshExecBrickCreateSudo(t *testing.T) {
 
 			case 3:
 				tests.Assert(t,
-					cmd == "echo \"/dev/mapper/vg_xvgid-brick_id "+
+					cmd == "awk \"BEGIN {print \\\"/dev/mapper/vg_xvgid-brick_id "+
 						"/var/lib/heketi/mounts/vg_xvgid/brick_id "+
-						"xfs rw,inode64,noatime,nouuid 1 2\" | "+
-						"tee -a /my/fstab > /dev/null", cmd)
+						"xfs rw,inode64,noatime,nouuid 1 2\\\" "+
+						">> \\\"/my/fstab\\\"}\"", cmd)
 
 			case 4:
 				tests.Assert(t,
