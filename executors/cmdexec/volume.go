@@ -195,7 +195,9 @@ func (s *CmdExecutor) createAddBrickCommands(volume *executors.VolumeRequest,
 	}
 
 	// Add the last add-brick command to the command list
-	commands = append(commands, cmd)
+	if cmd != "" {
+		commands = append(commands, cmd)
+	}
 
 	return commands
 }

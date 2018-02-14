@@ -633,23 +633,15 @@ func TestDeviceSetStateFailed(t *testing.T) {
 		return nil
 	})
 
-	// Check ring
-	tests.Assert(t, app.Allocator().HasDevice(c.Info.Id,
-		n.Info.Zone, n.Info.Id, d.Info.Id))
-
 	// Set offline
 	err := d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
 	tests.Assert(t, d.State == api.EntryStateOffline)
 	tests.Assert(t, err == nil, err)
-	tests.Assert(t, !app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
-		n.Info.Id, d.Info.Id))
 
 	// Set failed, Note: this requires the current state to be offline
 	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateFailed)
 	tests.Assert(t, d.State == api.EntryStateFailed)
 	tests.Assert(t, err == nil)
-	tests.Assert(t, !app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
-		n.Info.Id, d.Info.Id))
 
 	// Set failed again
 	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateFailed)
@@ -660,15 +652,11 @@ func TestDeviceSetStateFailed(t *testing.T) {
 	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
 	tests.Assert(t, d.State == api.EntryStateFailed)
 	tests.Assert(t, err != nil)
-	tests.Assert(t, !app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
-		n.Info.Id, d.Info.Id))
 
 	// Set online
 	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOnline)
 	tests.Assert(t, d.State == api.EntryStateFailed)
 	tests.Assert(t, err != nil)
-	tests.Assert(t, !app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
-		n.Info.Id, d.Info.Id))
 }
 
 func TestDeviceSetStateOfflineOnline(t *testing.T) {
@@ -716,18 +704,10 @@ func TestDeviceSetStateOfflineOnline(t *testing.T) {
 		return nil
 	})
 
-	// Check ring
-	tests.Assert(t, app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
-		n.Info.Id, d.Info.Id))
-
 	// Set offline
 	err := d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
 	tests.Assert(t, d.State == api.EntryStateOffline)
 	tests.Assert(t, err == nil)
-
-	// Check it was removed from ring
-	tests.Assert(t, !app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
-		n.Info.Id, d.Info.Id))
 
 	// Set offline again
 	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
@@ -738,6 +718,4 @@ func TestDeviceSetStateOfflineOnline(t *testing.T) {
 	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOnline)
 	tests.Assert(t, d.State == api.EntryStateOnline)
 	tests.Assert(t, err == nil)
-	tests.Assert(t, app.Allocator().HasDevice(c.Info.Id, n.Info.Zone,
-		n.Info.Id, d.Info.Id))
 }

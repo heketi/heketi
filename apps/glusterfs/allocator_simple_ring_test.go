@@ -22,7 +22,7 @@ func TestNewSimpleAllocatorRing(t *testing.T) {
 	tests.Assert(t, r.ring != nil)
 }
 
-func TestSimpleAllocatorRingAddRemove(t *testing.T) {
+func TestSimpleAllocatorRingAdd(t *testing.T) {
 	r := NewSimpleAllocatorRing()
 	tests.Assert(t, r != nil)
 
@@ -72,35 +72,6 @@ func TestSimpleAllocatorRingAddRemove(t *testing.T) {
 	tests.Assert(t, r.ring[sd2.zone][sd3.nodeId][1] == sd4)
 	tests.Assert(t, len(r.ring[sd2.zone][sd3.nodeId]) == 2)
 	tests.Assert(t, r.balancedList == nil)
-
-	// Remove sd4
-	r.Remove(sd4)
-	tests.Assert(t, r.ring[sd.zone][sd.nodeId][0] == sd)
-	tests.Assert(t, r.ring[sd2.zone][sd2.nodeId][0] == sd2)
-	tests.Assert(t, r.ring[sd2.zone][sd3.nodeId][0] == sd3)
-	tests.Assert(t, len(r.ring[sd2.zone][sd3.nodeId]) == 1)
-	tests.Assert(t, len(r.ring[sd2.zone]) == 2)
-	tests.Assert(t, r.balancedList == nil)
-
-	// Remove sd3
-	r.Remove(sd3)
-	tests.Assert(t, r.ring[sd.zone][sd.nodeId][0] == sd)
-	tests.Assert(t, r.ring[sd2.zone][sd2.nodeId][0] == sd2)
-	tests.Assert(t, len(r.ring[sd2.zone]) == 1)
-	tests.Assert(t, len(r.ring) == 2)
-	tests.Assert(t, r.balancedList == nil)
-
-	// Remove sd2
-	r.Remove(sd2)
-	tests.Assert(t, r.ring[sd.zone][sd.nodeId][0] == sd)
-	tests.Assert(t, len(r.ring) == 1)
-	tests.Assert(t, r.balancedList == nil)
-
-	// Remove sd
-	r.Remove(sd)
-	tests.Assert(t, len(r.ring) == 0)
-	tests.Assert(t, r.balancedList == nil)
-
 }
 
 func TestSimpleAllocatorCreateZoneLists(t *testing.T) {
