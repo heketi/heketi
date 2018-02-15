@@ -10,11 +10,14 @@
 package glusterfs
 
 import (
+	"fmt"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/boltdb/bolt"
+	"github.com/heketi/heketi/executors"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
@@ -718,4 +721,213 @@ func TestDeviceSetStateOfflineOnline(t *testing.T) {
 	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOnline)
 	tests.Assert(t, d.State == api.EntryStateOnline)
 	tests.Assert(t, err == nil)
+}
+
+func TestDeviceSetStateFailedWithBricks(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		3,    // devices_per_node,
+		5*TB, // disksize
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	vreq := &api.VolumeCreateRequest{}
+	vreq.Size = 100
+	vreq.Durability.Type = api.DurabilityReplicate
+	vreq.Durability.Replicate.Replica = 3
+	// create a few volumes
+	for i := 0; i < 5; i++ {
+		v := NewVolumeEntryFromRequest(vreq)
+		err = v.Create(app.db, app.executor, app.Allocator())
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	}
+
+	// grab a device that has bricks
+	var d *DeviceEntry
+	err = app.db.View(func(tx *bolt.Tx) error {
+		dl, err := DeviceList(tx)
+		if err != nil {
+			return err
+		}
+		for _, id := range dl {
+			d, err = NewDeviceEntryFromId(tx, id)
+			if err != nil {
+				return err
+			}
+			if len(d.Bricks) > 0 {
+				return nil
+			}
+		}
+		t.Fatalf("should have at least one device with bricks")
+		return nil
+	})
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, d.State == api.EntryStateOffline)
+
+	// update d from db
+	err = app.db.View(func(tx *bolt.Tx) error {
+		d, err = NewDeviceEntryFromId(tx, d.Info.Id)
+		return err
+	})
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, d.State == api.EntryStateOffline)
+	tests.Assert(t, len(d.Bricks) > 0,
+		"expected len(d.Bricks) > 0, got:", len(d.Bricks))
+
+	app.xo.MockVolumeInfo = func(host string, volume string) (*executors.Volume, error) {
+		return mockVolumeInfoFromDb(app.db, volume)
+	}
+	app.xo.MockHealInfo = func(host string, volume string) (*executors.HealInfo, error) {
+		return mockHealStatusFromDb(app.db, volume)
+	}
+
+	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateFailed)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	// update d from db
+	err = app.db.View(func(tx *bolt.Tx) error {
+		d, err = NewDeviceEntryFromId(tx, d.Info.Id)
+		return err
+	})
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, d.State == api.EntryStateFailed)
+	tests.Assert(t, len(d.Bricks) == 0,
+		"expected len(d.Bricks) == 0, got:", len(d.Bricks))
+}
+
+func TestDeviceSetStateFailedTooFewDevices(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		1,    // devices_per_node,
+		5*TB, // disksize
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	vreq := &api.VolumeCreateRequest{}
+	vreq.Size = 100
+	vreq.Durability.Type = api.DurabilityReplicate
+	vreq.Durability.Replicate.Replica = 3
+	// create a few volumes
+	for i := 0; i < 5; i++ {
+		v := NewVolumeEntryFromRequest(vreq)
+		err = v.Create(app.db, app.executor, app.Allocator())
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	}
+
+	// grab a device that has bricks
+	var d *DeviceEntry
+	err = app.db.View(func(tx *bolt.Tx) error {
+		dl, err := DeviceList(tx)
+		if err != nil {
+			return err
+		}
+		for _, id := range dl {
+			d, err = NewDeviceEntryFromId(tx, id)
+			if err != nil {
+				return err
+			}
+			if len(d.Bricks) > 0 {
+				return nil
+			}
+		}
+		t.Fatalf("should have at least one device with bricks")
+		return nil
+	})
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, d.State == api.EntryStateOffline)
+
+	// update d from db
+	err = app.db.View(func(tx *bolt.Tx) error {
+		d, err = NewDeviceEntryFromId(tx, d.Info.Id)
+		return err
+	})
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, d.State == api.EntryStateOffline)
+	tests.Assert(t, len(d.Bricks) > 0,
+		"expected len(d.Bricks) > 0, got:", len(d.Bricks))
+
+	app.xo.MockVolumeInfo = func(host string, volume string) (*executors.Volume, error) {
+		return mockVolumeInfoFromDb(app.db, volume)
+	}
+	app.xo.MockHealInfo = func(host string, volume string) (*executors.HealInfo, error) {
+		return mockHealStatusFromDb(app.db, volume)
+	}
+
+	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateFailed)
+	tests.Assert(t, strings.Contains(err.Error(), ErrNoReplacement.Error()),
+		"expected strings.Contains(err.Error(), ErrNoReplacement.Error()), got:",
+		err.Error())
+}
+
+func mockVolumeInfoFromDb(db *bolt.DB, volume string) (*executors.Volume, error) {
+	volume = volume[4:]
+	vi := &executors.Volume{}
+	db.View(func(tx *bolt.Tx) error {
+		bl, _ := BrickList(tx)
+		for _, id := range bl {
+			b, err := NewBrickEntryFromId(tx, id)
+			if err != err {
+				return err
+			}
+			if b.Info.VolumeId != volume {
+				continue
+			}
+			n, err := NewNodeEntryFromId(tx, b.Info.NodeId)
+			if err != err {
+				return err
+			}
+			vi.Bricks.BrickList = append(vi.Bricks.BrickList, executors.Brick{
+				Name: fmt.Sprintf("%v:%v", n.Info.Hostnames.Storage[0], b.Info.Path),
+			})
+		}
+		return nil
+	})
+	return vi, nil
+}
+
+func mockHealStatusFromDb(db *bolt.DB, volume string) (*executors.HealInfo, error) {
+	hi := &executors.HealInfo{}
+	volume = volume[4:]
+	db.View(func(tx *bolt.Tx) error {
+		bl, _ := BrickList(tx)
+		for _, id := range bl {
+			b, err := NewBrickEntryFromId(tx, id)
+			if err != err {
+				return err
+			}
+			if b.Info.VolumeId != volume {
+				continue
+			}
+			n, err := NewNodeEntryFromId(tx, b.Info.NodeId)
+			if err != err {
+				return err
+			}
+			hi.Bricks.BrickList = append(hi.Bricks.BrickList, executors.BrickHealStatus{
+				Name:            fmt.Sprintf("%v:%v", n.Info.Hostnames.Storage[0], b.Info.Path),
+				NumberOfEntries: "0",
+			})
+		}
+		return nil
+	})
+	return hi, nil
 }
