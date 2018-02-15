@@ -648,15 +648,17 @@ func eligibleClusters(db wdb.RODB, req ClusterReq,
 			default:
 				continue CLUSTERS
 			}
-			for _, volumeId := range c.Info.Volumes {
-				volume, err := NewVolumeEntryFromId(tx, volumeId)
-				if err != nil {
-					return err
-				}
-				if req.Name == volume.Info.Name {
-					logger.LogError("Name %v already in use in cluster %v",
-						req.Name, clusterId)
-					continue CLUSTERS
+			if req.Name != "" {
+				for _, volumeId := range c.Info.Volumes {
+					volume, err := NewVolumeEntryFromId(tx, volumeId)
+					if err != nil {
+						return err
+					}
+					if req.Name == volume.Info.Name {
+						logger.LogError("Name %v already in use in cluster %v",
+							req.Name, clusterId)
+						continue CLUSTERS
+					}
 				}
 			}
 			candidateClusters = append(candidateClusters, clusterId)
