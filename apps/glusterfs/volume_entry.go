@@ -615,6 +615,22 @@ func (v *VolumeEntry) Visible() bool {
 	return true
 }
 
+func volumeNameExistsInCluster(tx *bolt.Tx, cluster *ClusterEntry,
+	name string) (found bool, e error) {
+	for _, volumeId := range cluster.Info.Volumes {
+		volume, err := NewVolumeEntryFromId(tx, volumeId)
+		if err != nil {
+			return false, err
+		}
+		if name == volume.Info.Name {
+			found = true
+			return
+		}
+	}
+
+	return
+}
+
 type ClusterReq struct {
 	Block bool
 	Name  string
@@ -631,7 +647,6 @@ func eligibleClusters(db wdb.RODB, req ClusterReq,
 	//
 	candidateClusters := []string{}
 	err := db.View(func(tx *bolt.Tx) error {
-	CLUSTERS:
 		for _, clusterId := range possibleClusters {
 			c, err := NewClusterEntryFromId(tx, clusterId)
 			if err != nil {
@@ -644,21 +659,19 @@ func eligibleClusters(db wdb.RODB, req ClusterReq,
 				// possibly bad cluster config
 				logger.Info("Cluster %v lacks both block and file flags",
 					clusterId)
-				continue CLUSTERS
+				continue
 			default:
-				continue CLUSTERS
+				continue
 			}
 			if req.Name != "" {
-				for _, volumeId := range c.Info.Volumes {
-					volume, err := NewVolumeEntryFromId(tx, volumeId)
-					if err != nil {
-						return err
-					}
-					if req.Name == volume.Info.Name {
-						logger.LogError("Name %v already in use in cluster %v",
-							req.Name, clusterId)
-						continue CLUSTERS
-					}
+				found, err := volumeNameExistsInCluster(tx, c, req.Name)
+				if err != nil {
+					return err
+				}
+				if found {
+					logger.LogError("Name %v already in use in cluster %v",
+						req.Name, clusterId)
+					continue
 				}
 			}
 			candidateClusters = append(candidateClusters, clusterId)
