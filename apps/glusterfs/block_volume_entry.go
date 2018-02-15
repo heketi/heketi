@@ -193,7 +193,7 @@ func (v *BlockVolumeEntry) Create(db wdb.DB,
 		return e
 	}
 	if len(possibleClusters) == 0 {
-		logger.LogError("BlockVolume being ask to be created, but there are no clusters configured")
+		logger.LogError("No clusters eligible to satisfy create block volume request")
 		return ErrNoSpace
 	}
 	logger.Debug("Using the following clusters: %+v", possibleClusters)
