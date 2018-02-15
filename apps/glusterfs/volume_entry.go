@@ -328,7 +328,8 @@ func (v *VolumeEntry) createVolumeComponents(db wdb.DB,
 		possibleClusters = v.Info.Clusters
 	}
 
-	possibleClusters, err := eligibleClusters(db, v, possibleClusters)
+	cr := ClusterReq{v.Info.Block, v.Info.Name}
+	possibleClusters, err := eligibleClusters(db, cr, possibleClusters)
 	if err != nil {
 		return brick_entries, err
 	}
@@ -614,7 +615,28 @@ func (v *VolumeEntry) Visible() bool {
 	return true
 }
 
-func eligibleClusters(db wdb.RODB, v *VolumeEntry,
+func volumeNameExistsInCluster(tx *bolt.Tx, cluster *ClusterEntry,
+	name string) (found bool, e error) {
+	for _, volumeId := range cluster.Info.Volumes {
+		volume, err := NewVolumeEntryFromId(tx, volumeId)
+		if err != nil {
+			return false, err
+		}
+		if name == volume.Info.Name {
+			found = true
+			return
+		}
+	}
+
+	return
+}
+
+type ClusterReq struct {
+	Block bool
+	Name  string
+}
+
+func eligibleClusters(db wdb.RODB, req ClusterReq,
 	possibleClusters []string) ([]string, error) {
 	//
 	// If the request carries the Block flag, consider only
@@ -625,32 +647,31 @@ func eligibleClusters(db wdb.RODB, v *VolumeEntry,
 	//
 	candidateClusters := []string{}
 	err := db.View(func(tx *bolt.Tx) error {
-	CLUSTERS:
 		for _, clusterId := range possibleClusters {
 			c, err := NewClusterEntryFromId(tx, clusterId)
 			if err != nil {
 				return err
 			}
 			switch {
-			case v.Info.Block && c.Info.Block:
-			case !v.Info.Block && c.Info.File:
+			case req.Block && c.Info.Block:
+			case !req.Block && c.Info.File:
 			case !(c.Info.Block || c.Info.File):
 				// possibly bad cluster config
 				logger.Info("Cluster %v lacks both block and file flags",
 					clusterId)
-				continue CLUSTERS
+				continue
 			default:
-				continue CLUSTERS
+				continue
 			}
-			for _, volumeId := range c.Info.Volumes {
-				volume, err := NewVolumeEntryFromId(tx, volumeId)
+			if req.Name != "" {
+				found, err := volumeNameExistsInCluster(tx, c, req.Name)
 				if err != nil {
 					return err
 				}
-				if v.Info.Name == volume.Info.Name {
+				if found {
 					logger.LogError("Name %v already in use in cluster %v",
-						v.Info.Name, clusterId)
-					continue CLUSTERS
+						req.Name, clusterId)
+					continue
 				}
 			}
 			candidateClusters = append(candidateClusters, clusterId)
