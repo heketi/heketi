@@ -243,6 +243,13 @@ func (p *PendingOperationEntry) RecordDeleteBlockVolume(bv *BlockVolumeEntry) {
 	bv.Pending.Id = p.Id
 }
 
+// RecordRemoveDevice adds tracking metadata for a long-running device
+// removal operation.
+func (p *PendingOperationEntry) RecordRemoveDevice(d *DeviceEntry) {
+	p.recordChange(OpRemoveDevice, d.Info.Id)
+	p.Type = OperationRemoveDevice
+}
+
 // PendingOperationUpgrade updates the heketi db with metadata needed to
 // support pending operation entries.
 func PendingOperationUpgrade(tx *bolt.Tx) error {
