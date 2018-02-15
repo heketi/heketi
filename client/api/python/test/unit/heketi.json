@@ -34,6 +34,8 @@
       "user": "sshuser"
     },
 
+    "loglevel" : "debug",
+
     "_db_comment": "Database file name",
     "db": "heketi.db"
   }
