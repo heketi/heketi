@@ -88,6 +88,14 @@ func MapPendingBlockVolumes(tx *bolt.Tx) (map[string]string, error) {
 	})
 }
 
+// MapPendingBricks returns a map of brick-id to pending-op-id or
+// an error if the db cannot be read.
+func MapPendingBricks(tx *bolt.Tx) (map[string]string, error) {
+	return mapPendingItems(tx, func(op *PendingOperationEntry, a PendingOperationAction) bool {
+		return (a.Change == OpAddBrick)
+	})
+}
+
 func mapPendingItems(tx *bolt.Tx,
 	pred func(op *PendingOperationEntry, a PendingOperationAction) bool) (
 	items map[string]string, e error) {
