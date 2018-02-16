@@ -240,6 +240,52 @@ func (v *VolumeEntry) getBrickEntryfromBrickName(db wdb.RODB, brickname string) 
 	return nil, ErrNotFound
 }
 
+func (v *VolumeEntry) getBrickSetForBrickId(db wdb.DB,
+	executor executors.Executor,
+	oldBrickId string, node string) ([]*BrickEntry, error) {
+
+	setlist := make([]*BrickEntry, 0)
+
+	// Determine the setlist by getting data from Gluster
+	vinfo, err := executor.VolumeInfo(node, v.Info.Name)
+	if err != nil {
+		logger.LogError("Unable to get volume info from gluster node %v for volume %v: %v", node, v.Info.Name, err)
+		return setlist, err
+	}
+
+	var slicestartindex int
+	var foundbrickset bool
+	var brick executors.Brick
+	// BrickList in volume info is a slice of all bricks in volume
+	// We loop over the slice in steps of BricksInSet()
+	// If brick to be replaced is found in an iteration, other bricks in that slice form the setlist
+	for slicestartindex = 0; slicestartindex <= len(vinfo.Bricks.BrickList)-v.Durability.BricksInSet(); slicestartindex = slicestartindex + v.Durability.BricksInSet() {
+		setlist = make([]*BrickEntry, 0)
+		for _, brick = range vinfo.Bricks.BrickList[slicestartindex : slicestartindex+v.Durability.BricksInSet()] {
+			brickentry, err := v.getBrickEntryfromBrickName(db, brick.Name)
+			if err != nil {
+				logger.LogError("Unable to create brick entry using brick name:%v, error: %v", brick.Name, err)
+				return setlist, err
+			}
+			if brickentry.Id() == oldBrickId {
+				foundbrickset = true
+			} else {
+				setlist = append(setlist, brickentry)
+			}
+		}
+		if foundbrickset {
+			break
+		}
+	}
+
+	if !foundbrickset {
+		logger.LogError("Unable to find brick set for brick %v, db is possibly corrupt", oldBrickId)
+		return setlist, ErrNotFound
+	}
+
+	return setlist, nil
+}
+
 func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executor,
 	allocator Allocator,
 	oldBrickId string) (e error) {
@@ -285,36 +331,9 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 		}
 	}
 
-	// Determine the setlist by getting data from Gluster
-	vinfo, err := executor.VolumeInfo(node, v.Info.Name)
-	var slicestartindex int
-	var foundbrickset bool
-	var brick executors.Brick
-	setlist := make([]*BrickEntry, 0)
-	// BrickList in volume info is a slice of all bricks in volume
-	// We loop over the slice in steps of BricksInSet()
-	// If brick to be replaced is found in an iteration, other bricks in that slice form the setlist
-	for slicestartindex = 0; slicestartindex <= len(vinfo.Bricks.BrickList)-v.Durability.BricksInSet(); slicestartindex = slicestartindex + v.Durability.BricksInSet() {
-		setlist = make([]*BrickEntry, 0)
-		for _, brick = range vinfo.Bricks.BrickList[slicestartindex : slicestartindex+v.Durability.BricksInSet()] {
-			brickentry, err := v.getBrickEntryfromBrickName(db, brick.Name)
-			if err != nil {
-				logger.LogError("Unable to create brick entry using brick name:%v, error: %v", brick.Name, err)
-				return err
-			}
-			if brickentry.Id() == oldBrickId {
-				foundbrickset = true
-			} else {
-				setlist = append(setlist, brickentry)
-			}
-		}
-		if foundbrickset {
-			break
-		}
-	}
-	if !foundbrickset {
-		logger.LogError("Unable to find brick set for brick %v, db is possibly corrupt", oldBrickEntry.Id())
-		return ErrNotFound
+	setlist, err := v.getBrickSetForBrickId(db, executor, oldBrickId, node)
+	if err != nil {
+		return err
 	}
 
 	// Get self heal status for this brick's volume
