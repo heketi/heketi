@@ -931,3 +931,101 @@ func mockHealStatusFromDb(db *bolt.DB, volume string) (*executors.HealInfo, erro
 	})
 	return hi, nil
 }
+
+func TestDeviceSetStateFailedWithEmptyPathBricks(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		3,    // devices_per_node,
+		5*TB, // disksize
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	vreq := &api.VolumeCreateRequest{}
+	vreq.Size = 100
+	vreq.Durability.Type = api.DurabilityReplicate
+	vreq.Durability.Replicate.Replica = 3
+	// create a few volumes
+	for i := 0; i < 5; i++ {
+		v := NewVolumeEntryFromRequest(vreq)
+		err = v.Create(app.db, app.executor, app.Allocator())
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	}
+
+	// grab a device that has bricks
+	// and a brick to create copy of it
+	var d *DeviceEntry
+	var newbrick *BrickEntry
+	err = app.db.View(func(tx *bolt.Tx) error {
+		dl, err := DeviceList(tx)
+		if err != nil {
+			return err
+		}
+		for _, id := range dl {
+			d, err = NewDeviceEntryFromId(tx, id)
+			if err != nil {
+				return err
+			}
+			if len(d.Bricks) > 0 {
+				return nil
+			}
+		}
+		t.Fatalf("should have at least one device with bricks")
+		return nil
+	})
+
+	// create a brick in a device
+	// make the path empty
+	// save device and brick to db
+	newbrick = d.NewBrickEntry(102400, 1, 2000, utils.GenUUID())
+	newbrick.Info.Path = ""
+	d.BrickAdd(newbrick.Id())
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		err = d.Save(tx)
+		tests.Assert(t, err == nil)
+		return newbrick.Save(tx)
+	})
+	tests.Assert(t, err == nil)
+
+	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, d.State == api.EntryStateOffline)
+
+	// update d from db
+	err = app.db.View(func(tx *bolt.Tx) error {
+		d, err = NewDeviceEntryFromId(tx, d.Info.Id)
+		return err
+	})
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, d.State == api.EntryStateOffline)
+	tests.Assert(t, len(d.Bricks) > 0,
+		"expected len(d.Bricks) > 0, got:", len(d.Bricks))
+
+	app.xo.MockVolumeInfo = func(host string, volume string) (*executors.Volume, error) {
+		return mockVolumeInfoFromDb(app.db, volume)
+	}
+	app.xo.MockHealInfo = func(host string, volume string) (*executors.HealInfo, error) {
+		return mockHealStatusFromDb(app.db, volume)
+	}
+
+	// Fail the device, it should go through
+	// however, we would skipped on brick and that should remain in the device
+	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateFailed)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	// update d from db
+	err = app.db.View(func(tx *bolt.Tx) error {
+		d, err = NewDeviceEntryFromId(tx, d.Info.Id)
+		return err
+	})
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, d.State == api.EntryStateFailed)
+	tests.Assert(t, len(d.Bricks) == 1,
+		"expected len(d.Bricks) == 1, got:", len(d.Bricks))
+}
