@@ -18,18 +18,80 @@ import (
 // ListCompleteVolumes returns a list of volume ID strings for volumes
 // that are not pending.
 func ListCompleteVolumes(tx *bolt.Tx) ([]string, error) {
-	return VolumeList(tx)
+	p, err := MapPendingVolumes(tx)
+	if err != nil {
+		return []string{}, err
+	}
+	v, err := VolumeList(tx)
+	if err != nil {
+		return []string{}, err
+	}
+	if len(p) == 0 {
+		// avoid extra copy loop
+		return v, nil
+	}
+	return removeKeysFromList(v, p), nil
 }
 
 // ListCompleteBlockVolumes returns a list of block volume ID strings for bricks
 // that are not pending.
 func ListCompleteBlockVolumes(tx *bolt.Tx) ([]string, error) {
-	return BlockVolumeList(tx)
+	p, err := MapPendingBlockVolumes(tx)
+	if err != nil {
+		return []string{}, err
+	}
+	v, err := BlockVolumeList(tx)
+	if err != nil {
+		return []string{}, err
+	}
+	if len(p) == 0 {
+		// avoid extra copy loop
+		return v, nil
+	}
+	return removeKeysFromList(v, p), nil
 }
 
 // UpdateClusterInfoComplete updates the given ClusterInfoResponse object so
 // that it only contains references to complete volumes, etc.
 func UpdateClusterInfoComplete(tx *bolt.Tx, ci *api.ClusterInfoResponse) error {
-	// currently this is a no-op because we have nothing to filter out
+	pvol, err := MapPendingVolumes(tx)
+	if err != nil {
+		return err
+	}
+	pblk, err := MapPendingBlockVolumes(tx)
+	if err != nil {
+		return err
+	}
+
+	if len(pvol) > 0 {
+		ci.Volumes = removeKeysFromList(ci.Volumes, pvol)
+	}
+	if len(pblk) > 0 {
+		ci.BlockVolumes = removeKeysFromList(ci.BlockVolumes, pblk)
+	}
 	return nil
+}
+
+// MapPendingVolumes returns a map of volume-id to pending-op-id or
+// an error if the db cannot be read.
+func MapPendingVolumes(tx *bolt.Tx) (map[string]string, error) {
+	return map[string]string{}, nil
+}
+
+// MapPendingBlockVolumes returns a map of block-volume-id to pending-op-id or
+// an error if the db cannot be read.
+func MapPendingBlockVolumes(tx *bolt.Tx) (map[string]string, error) {
+	return map[string]string{}, nil
+}
+
+// removeKeysFromList returns a new list of strings where all strings
+// found as a key in map m are removed from the output list.
+func removeKeysFromList(l []string, m map[string]string) []string {
+	out := []string{}
+	for _, v := range l {
+		if _, has := m[v]; !has {
+			out = append(out, v)
+		}
+	}
+	return out
 }
