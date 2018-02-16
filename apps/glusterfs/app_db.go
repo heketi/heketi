@@ -23,13 +23,14 @@ import (
 )
 
 type Db struct {
-	Clusters     map[string]ClusterEntry     `json:"clusterentries"`
-	Volumes      map[string]VolumeEntry      `json:"volumeentries"`
-	Bricks       map[string]BrickEntry       `json:"brickentries"`
-	Nodes        map[string]NodeEntry        `json:"nodeentries"`
-	Devices      map[string]DeviceEntry      `json:"deviceentries"`
-	BlockVolumes map[string]BlockVolumeEntry `json:"blockvolumeentries"`
-	DbAttributes map[string]DbAttributeEntry `json:"dbattributeentries"`
+	Clusters          map[string]ClusterEntry          `json:"clusterentries"`
+	Volumes           map[string]VolumeEntry           `json:"volumeentries"`
+	Bricks            map[string]BrickEntry            `json:"brickentries"`
+	Nodes             map[string]NodeEntry             `json:"nodeentries"`
+	Devices           map[string]DeviceEntry           `json:"deviceentries"`
+	BlockVolumes      map[string]BlockVolumeEntry      `json:"blockvolumeentries"`
+	DbAttributes      map[string]DbAttributeEntry      `json:"dbattributeentries"`
+	PendingOperations map[string]PendingOperationEntry `json:"pendingoperations"`
 }
 
 func dbDumpInternal(db *bolt.DB) (Db, error) {
@@ -41,6 +42,7 @@ func dbDumpInternal(db *bolt.DB) (Db, error) {
 	deviceEntryList := make(map[string]DeviceEntry, 0)
 	blockvolEntryList := make(map[string]BlockVolumeEntry, 0)
 	dbattributeEntryList := make(map[string]DbAttributeEntry, 0)
+	pendingOpEntryList := make(map[string]PendingOperationEntry, 0)
 
 	err := db.View(func(tx *bolt.Tx) error {
 
@@ -172,6 +174,19 @@ func dbDumpInternal(db *bolt.DB) (Db, error) {
 			dbattributeEntryList[dbattributeEntry.Key] = *dbattributeEntry
 		}
 
+		pendingops, err := PendingOperationList(tx)
+		if err != nil {
+			return err
+		}
+
+		for _, opid := range pendingops {
+			entry, err := NewPendingOperationEntryFromId(tx, opid)
+			if err != nil {
+				return err
+			}
+			pendingOpEntryList[opid] = *entry
+		}
+
 		return nil
 	})
 	if err != nil {
@@ -185,6 +200,7 @@ func dbDumpInternal(db *bolt.DB) (Db, error) {
 	dump.Devices = deviceEntryList
 	dump.BlockVolumes = blockvolEntryList
 	dump.DbAttributes = dbattributeEntryList
+	dump.PendingOperations = pendingOpEntryList
 
 	return dump, nil
 }
@@ -357,6 +373,13 @@ func DbCreate(jsonfile string, dbfile string, debug bool) error {
 			err := dbattribute.Save(tx)
 			if err != nil {
 				return fmt.Errorf("Could not save dbattribute bucket: %v", err.Error())
+			}
+		}
+		for _, pendingop := range dump.PendingOperations {
+			logger.Debug("adding pending operation entry %v", pendingop.Id)
+			err := pendingop.Save(tx)
+			if err != nil {
+				return fmt.Errorf("Could not save pending operation bucket: %v", err.Error())
 			}
 		}
 		return nil
