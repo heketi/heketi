@@ -286,6 +286,59 @@ func (v *VolumeEntry) getBrickSetForBrickId(db wdb.DB,
 	return setlist, nil
 }
 
+// canReplaceBrickInBrickSet
+// check if a BrickSet is in a state where it's possible
+// to replace a given one of its bricks:
+// - no heals going on on the brick to be replaced
+// - enough bricks of the set are up
+func (v *VolumeEntry) canReplaceBrickInBrickSet(db wdb.DB,
+	executor executors.Executor,
+	brick *BrickEntry,
+	node string,
+	setlist []*BrickEntry) error {
+
+	// Get self heal status for this brick's volume
+	healinfo, err := executor.HealInfo(node, v.Info.Name)
+	if err != nil {
+		return err
+	}
+
+	var onlinePeerBrickCount = 0
+	for _, brickHealStatus := range healinfo.Bricks.BrickList {
+		// Gluster has a bug that it does not send Name for bricks that are down.
+		// Skip such bricks; it is safe because it is not source if it is down
+		if brickHealStatus.Name == "information not available" {
+			continue
+		}
+		iBrickEntry, err := v.getBrickEntryfromBrickName(db, brickHealStatus.Name)
+		if err != nil {
+			return fmt.Errorf("Unable to determine heal status of brick")
+		}
+		if iBrickEntry.Id() == brick.Id() {
+			// If we are here, it means the brick to be replaced is
+			// up and running. We need to ensure that it is not a
+			// source for any files.
+			if brickHealStatus.NumberOfEntries != "-" &&
+				brickHealStatus.NumberOfEntries != "0" {
+				return fmt.Errorf("Cannot replace brick %v as it is source brick for data to be healed", iBrickEntry.Id())
+			}
+		}
+		for _, brickInSet := range setlist {
+			if brickInSet.Id() == iBrickEntry.Id() {
+				onlinePeerBrickCount++
+			}
+		}
+	}
+	if onlinePeerBrickCount < v.Durability.QuorumBrickCount() {
+		return fmt.Errorf("Cannot replace brick %v as only %v of %v "+
+			"required peer bricks are online",
+			brick.Id(), onlinePeerBrickCount,
+			v.Durability.QuorumBrickCount())
+	}
+
+	return nil
+}
+
 func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executor,
 	allocator Allocator,
 	oldBrickId string) (e error) {
@@ -336,42 +389,9 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 		return err
 	}
 
-	// Get self heal status for this brick's volume
-	healinfo, err := executor.HealInfo(node, v.Info.Name)
+	err = v.canReplaceBrickInBrickSet(db, executor, oldBrickEntry, node, setlist)
 	if err != nil {
 		return err
-	}
-	var onlinePeerBrickCount = 0
-	for _, brickHealStatus := range healinfo.Bricks.BrickList {
-		// Gluster has a bug that it does not send Name for bricks that are down.
-		// Skip such bricks; it is safe because it is not source if it is down
-		if brickHealStatus.Name == "information not available" {
-			continue
-		}
-		iBrickEntry, err := v.getBrickEntryfromBrickName(db, brickHealStatus.Name)
-		if err != nil {
-			return fmt.Errorf("Unable to determine heal status of brick")
-		}
-		if iBrickEntry.Id() == oldBrickEntry.Id() {
-			// If we are here, it means the brick to be replaced is
-			// up and running. We need to ensure that it is not a
-			// source for any files.
-			if brickHealStatus.NumberOfEntries != "-" &&
-				brickHealStatus.NumberOfEntries != "0" {
-				return fmt.Errorf("Cannot replace brick %v as it is source brick for data to be healed", iBrickEntry.Id())
-			}
-		}
-		for _, brickInSet := range setlist {
-			if brickInSet.Id() == iBrickEntry.Id() {
-				onlinePeerBrickCount++
-			}
-		}
-	}
-	if onlinePeerBrickCount < v.Durability.QuorumBrickCount() {
-		return fmt.Errorf("Cannot replace brick %v as only %v of %v "+
-			"required peer bricks are online",
-			oldBrickEntry.Id(), onlinePeerBrickCount,
-			v.Durability.QuorumBrickCount())
 	}
 
 	//Create an Id for new brick
