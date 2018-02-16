@@ -9,7 +9,7 @@ cd "${SCRIPT_DIR}/functional/TestDbExportImport" || exit 1
 
 require_heketi_binaries() {
 	if [ ! -x heketi-server ] || [ ! -x heketi-cli ] ; then
-		make -C ../../../  &> /dev/null
+		(cd ../../../ && make)
 		cp ../../../heketi heketi-server
 		cp ../../../client/cli/go/heketi-cli heketi-cli
 	fi
@@ -82,7 +82,7 @@ kill_server
 # test one cycle of export and import
 ./heketi-server db export --jsonfile db.json.original --dbfile heketi.db &> /dev/null
 ./heketi-server db import --jsonfile db.json.original --dbfile heketi.db.new &> /dev/null
-./heketi-server db export --jsonfile db.json.new --dbfile heketi.db.new &> /dev/null
+./heketi-server db export --jsonfile db.json.new --dbfile heketi.db.new
 diff db.json.original db.json.new &> /dev/null
 
 # existing json file should not be overwritten
@@ -102,3 +102,35 @@ fi
 restart_server
 ./heketi-cli --server "http://127.0.0.1:8080" topology info > topologyinfo.new
 diff topologyinfo.original topologyinfo.new &> /dev/null
+
+# Generate "special" db contents
+go test -timeout=1h -tags dbexamples -v
+
+# can we dump dbs with pending operations
+./heketi-server db export --jsonfile db.json.TestLeakPendingVolumeCreate \
+    --dbfile heketi.db.TestLeakPendingVolumeCreate &> /dev/null
+python <<EOF
+import json
+j = json.load(open("db.json.TestLeakPendingVolumeCreate"))
+
+# check basic key presence
+assert "pendingoperations" in j
+assert "nonsense" not in j
+
+# check expected numbers of items
+assert len(j["pendingoperations"]) == 1
+assert len(j["volumeentries"]) == 1
+
+# check that pending operations match pending ids
+vol = list(j["volumeentries"].values())[0]
+op = list(j["pendingoperations"].values())[0]
+assert vol["Pending"]["Id"] == op["Id"]
+for b in j["brickentries"].values():
+    assert b["Pending"]["Id"] == op["Id"]
+EOF
+# round trip it
+./heketi-server db import --jsonfile db.json.TestLeakPendingVolumeCreate \
+    --dbfile heketi.db.TestLeakPendingVolumeCreate_2 &> /dev/null
+./heketi-server db export --jsonfile db.json.TestLeakPendingVolumeCreate_2 \
+     --dbfile heketi.db.TestLeakPendingVolumeCreate_2 &> /dev/null
+diff db.json.TestLeakPendingVolumeCreate db.json.TestLeakPendingVolumeCreate_2 &> /dev/null
