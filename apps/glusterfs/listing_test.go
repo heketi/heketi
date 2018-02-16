@@ -108,3 +108,23 @@ func TestListCompleteBlockVolumes(t *testing.T) {
 		return nil
 	})
 }
+
+func TestListingRemoveKeysFromList(t *testing.T) {
+	r := removeKeysFromList(
+		[]string{"foo"},
+		map[string]string{"foo": "a"})
+	tests.Assert(t, len(r) == 0, "expected len(r) == 0, got:", len(r))
+
+	r = removeKeysFromList(
+		[]string{"foo", "bar"},
+		map[string]string{"foo": "a"})
+	tests.Assert(t, len(r) == 1, "expected len(r) == 1, got:", len(r))
+	tests.Assert(t, r[0] == "bar", "expected r[0] == \"bar\", got:", r)
+
+	r = removeKeysFromList(
+		[]string{"foo", "bar"},
+		map[string]string{"baz": "a"})
+	tests.Assert(t, len(r) == 2, "expected len(r) == 2, got:", len(r))
+	tests.Assert(t, r[0] == "foo", "expected r[0] == \"foo\", got:", r)
+	tests.Assert(t, r[1] == "bar", "expected r[1] == \"bar\", got:", r)
+}
