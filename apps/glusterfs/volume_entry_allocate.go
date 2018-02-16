@@ -291,7 +291,6 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 	var foundbrickset bool
 	var brick executors.Brick
 	setlist := make([]*BrickEntry, 0)
-	var onlinePeerBrickCount = 0
 	// BrickList in volume info is a slice of all bricks in volume
 	// We loop over the slice in steps of BricksInSet()
 	// If brick to be replaced is found in an iteration, other bricks in that slice form the setlist
@@ -323,6 +322,7 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 	if err != nil {
 		return err
 	}
+	var onlinePeerBrickCount = 0
 	for _, brickHealStatus := range healinfo.Bricks.BrickList {
 		// Gluster has a bug that it does not send Name for bricks that are down.
 		// Skip such bricks; it is safe because it is not source if it is down
