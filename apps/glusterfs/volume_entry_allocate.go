@@ -98,26 +98,26 @@ func allocateBricks(
 						float64(v.Info.Snapshot.Factor),
 						v.Info.Gid, v.Info.Id)
 
-					// Determine if it was successful
-					if brick != nil {
-
-						// If the first in the set, the reset the id
-						if i == 0 {
-							brick.SetId(brickId)
-						}
-
-						// Save the brick entry to create later
-						r.Bricks = append(r.Bricks, brick)
-						r.Devices = append(r.Devices, device)
-
-						// Add to set list
-						setlist = append(setlist, brick)
-
-						// Add brick to device
-						device.BrickAdd(brick.Id())
-
-						return nil
+					if brick == nil {
+						continue
 					}
+
+					// If the first in the set, the reset the id
+					if i == 0 {
+						brick.SetId(brickId)
+					}
+
+					// Save the brick entry to create later
+					r.Bricks = append(r.Bricks, brick)
+					r.Devices = append(r.Devices, device)
+
+					// Add to set list
+					setlist = append(setlist, brick)
+
+					// Add brick to device
+					device.BrickAdd(brick.Id())
+
+					return nil
 				}
 
 				// Check if allocator returned an error
