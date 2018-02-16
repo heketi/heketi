@@ -61,5 +61,11 @@ func initializeBuckets(tx *bolt.Tx) error {
 		return err
 	}
 
+	_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_PENDING_OPS))
+	if err != nil {
+		logger.LogError("Unable to create pending ops bucket in DB")
+		return err
+	}
+
 	return nil
 }

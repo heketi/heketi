@@ -200,6 +200,12 @@ func (a *App) Upgrade(tx *bolt.Tx) error {
 		return err
 	}
 
+	err = PendingOperationUpgrade(tx)
+	if err != nil {
+		logger.LogError("Failed to upgrade db for pending operations: %v", err)
+		return err
+	}
+
 	return nil
 }
 
