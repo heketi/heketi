@@ -16,7 +16,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
+	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/apps"
 	"github.com/heketi/heketi/apps/glusterfs"
@@ -35,12 +37,13 @@ type Config struct {
 }
 
 var (
-	HEKETI_VERSION = "(dev)"
-	configfile     string
-	showVersion    bool
-	jsonFile       string
-	dbFile         string
-	debugOutput    bool
+	HEKETI_VERSION               = "(dev)"
+	configfile                   string
+	showVersion                  bool
+	jsonFile                     string
+	dbFile                       string
+	debugOutput                  bool
+	deleteAllBricksWithEmptyPath bool
 )
 
 var RootCmd = &cobra.Command{
@@ -118,22 +121,82 @@ var exportdbCmd = &cobra.Command{
 	},
 }
 
+var deleteBricksWithEmptyPath = &cobra.Command{
+	Use:     "delete-bricks-with-empty-path",
+	Short:   "removes brick entries from db that have empty path",
+	Long:    "removes brick entries from db that have empty path",
+	Example: "heketi db delete-bricks-with-empty-path --dbfile=/db/file/path/",
+	Run: func(cmd *cobra.Command, args []string) {
+		var clusterlist []string
+		var nodelist []string
+		var devicelist []string
+
+		clusterlist, err := cmd.Flags().GetStringSlice("clusters")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to get flags %v\n", err)
+			os.Exit(1)
+		}
+		nodelist, err = cmd.Flags().GetStringSlice("nodes")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to get flags %v\n", err)
+			os.Exit(1)
+		}
+		devicelist, err = cmd.Flags().GetStringSlice("devices")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to get flags %v\n", err)
+			os.Exit(1)
+		}
+
+		if len(clusterlist) == 0 &&
+			len(nodelist) == 0 &&
+			len(devicelist) == 0 &&
+			deleteAllBricksWithEmptyPath == false {
+			fmt.Fprintf(os.Stderr, "neither --all flag nor list of clusters/nodes/devices is given\n")
+			os.Exit(1)
+		}
+		db, err := bolt.Open(dbFile, 0600, &bolt.Options{Timeout: 3 * time.Second})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to open database: %v\n", err)
+			os.Exit(1)
+		}
+		err = glusterfs.DeleteBricksWithEmptyPath(db, deleteAllBricksWithEmptyPath, clusterlist, nodelist, devicelist, debugOutput)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to delete bricks with empty path: %v\n", err.Error())
+			os.Exit(1)
+		}
+		fmt.Fprintln(os.Stderr, "bricks with empty path removed", jsonFile)
+		os.Exit(0)
+	},
+}
+
 func init() {
 	RootCmd.Flags().StringVar(&configfile, "config", "", "Configuration file")
 	RootCmd.Flags().BoolVarP(&showVersion, "version", "v", false, "Show version")
 	RootCmd.SilenceUsage = true
+
 	RootCmd.AddCommand(dbCmd)
 	dbCmd.SilenceUsage = true
+
 	dbCmd.AddCommand(importdbCmd)
 	importdbCmd.Flags().StringVar(&jsonFile, "jsonfile", "", "Input file with data in JSON format")
 	importdbCmd.Flags().StringVar(&dbFile, "dbfile", "", "File path for db to be created")
 	importdbCmd.Flags().BoolVar(&debugOutput, "debug", false, "Show debug logs on stdout")
 	importdbCmd.SilenceUsage = true
+
 	dbCmd.AddCommand(exportdbCmd)
 	exportdbCmd.Flags().StringVar(&dbFile, "dbfile", "", "File path for db to be exported")
 	exportdbCmd.Flags().StringVar(&jsonFile, "jsonfile", "", "File path for JSON file to be created")
 	exportdbCmd.Flags().BoolVar(&debugOutput, "debug", false, "Show debug logs on stdout")
 	exportdbCmd.SilenceUsage = true
+
+	dbCmd.AddCommand(deleteBricksWithEmptyPath)
+	deleteBricksWithEmptyPath.Flags().StringVar(&dbFile, "dbfile", "", "File path for db to operate on")
+	deleteBricksWithEmptyPath.Flags().BoolVar(&debugOutput, "debug", false, "Show debug logs on stdout")
+	deleteBricksWithEmptyPath.Flags().BoolVar(&deleteAllBricksWithEmptyPath, "all", false, "if set true, then all bricks with empty path are removed")
+	deleteBricksWithEmptyPath.Flags().StringSlice("clusters", []string{}, "comma separated list of cluster IDs")
+	deleteBricksWithEmptyPath.Flags().StringSlice("nodes", []string{}, "comma separated list of node IDs")
+	deleteBricksWithEmptyPath.Flags().StringSlice("devices", []string{}, "comma separated list of device IDs")
+	deleteBricksWithEmptyPath.SilenceUsage = true
 }
 
 func setWithEnvVariables(options *Config) {

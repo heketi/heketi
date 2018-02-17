@@ -456,3 +456,19 @@ func NodeList(tx *bolt.Tx) ([]string, error) {
 	}
 	return list, nil
 }
+
+func (n *NodeEntry) DeleteBricksWithEmptyPath(tx *bolt.Tx) error {
+
+	for _, deviceid := range n.Devices {
+		device, err := NewDeviceEntryFromId(tx, deviceid)
+		if err != nil {
+			return err
+		}
+
+		err = device.DeleteBricksWithEmptyPath(tx)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}

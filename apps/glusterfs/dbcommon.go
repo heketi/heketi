@@ -11,6 +11,7 @@ package glusterfs
 
 import (
 	"github.com/boltdb/bolt"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 )
 
@@ -141,4 +142,88 @@ func recordNewDBGenerationID(tx *bolt.Tx) error {
 	entry.Key = DB_GENERATION_ID
 	entry.Value = utils.GenUUID()
 	return entry.Save(tx)
+}
+
+func DeleteBricksWithEmptyPath(db *bolt.DB, all bool, clusterIDs []string, nodeIDs []string, deviceIDs []string, debug bool) error {
+
+	if debug {
+		logger.SetLevel(utils.LEVEL_DEBUG)
+	}
+
+	for _, id := range clusterIDs {
+		if err := api.ValidateUUID(id); err != nil {
+			return err
+		}
+	}
+	for _, id := range nodeIDs {
+		if err := api.ValidateUUID(id); err != nil {
+			return err
+		}
+	}
+	for _, id := range deviceIDs {
+		if err := api.ValidateUUID(id); err != nil {
+			return err
+		}
+	}
+
+	err := db.Update(func(tx *bolt.Tx) error {
+		if true == all {
+			logger.Debug("deleting all bricks with empty path")
+			clusters, err := ClusterList(tx)
+			if err != nil {
+				return err
+			}
+			for _, cluster := range clusters {
+				clusterEntry, err := NewClusterEntryFromId(tx, cluster)
+				if err != nil {
+					return err
+				}
+				logger.Debug("deleting bricks with empty path in cluster %v", clusterEntry.Info.Id)
+				err = clusterEntry.DeleteBricksWithEmptyPath(tx)
+				if err != nil {
+					return err
+				}
+			}
+			// no need to look at other IDs as we cleaned all bricks
+			return nil
+		}
+		for _, cluster := range clusterIDs {
+			clusterEntry, err := NewClusterEntryFromId(tx, cluster)
+			if err != nil {
+				return err
+			}
+			logger.Debug("deleting bricks with empty path in cluster %v from given list of clusters", clusterEntry.Info.Id)
+			err = clusterEntry.DeleteBricksWithEmptyPath(tx)
+			if err != nil {
+				return err
+			}
+		}
+		for _, node := range nodeIDs {
+			nodeEntry, err := NewNodeEntryFromId(tx, node)
+			if err != nil {
+				return err
+			}
+			logger.Debug("deleting bricks with empty path in node %v from given list of nodes", nodeEntry.Info.Id)
+			err = nodeEntry.DeleteBricksWithEmptyPath(tx)
+			if err != nil {
+				return err
+			}
+		}
+		for _, device := range deviceIDs {
+			deviceEntry, err := NewDeviceEntryFromId(tx, device)
+			if err != nil {
+				return err
+			}
+			logger.Debug("deleting bricks with empty path in device %v from given list of devices", deviceEntry.Info.Id)
+			err = deviceEntry.DeleteBricksWithEmptyPath(tx)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }
