@@ -27,11 +27,6 @@ import (
 	"github.com/heketi/tests"
 )
 
-func init() {
-	// turn off logging
-	logger.SetLevel(utils.LEVEL_NOLOG)
-}
-
 func TestDeviceAddBadRequests(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)

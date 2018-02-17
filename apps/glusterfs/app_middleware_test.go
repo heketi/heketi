@@ -20,13 +20,8 @@ import (
 
 	//"github.com/boltdb/bolt"
 	wdb "github.com/heketi/heketi/pkg/db"
-	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
 )
-
-func init() {
-	logger.SetLevel(utils.LEVEL_NOLOG)
-}
 
 func TestBackupToKubeSecretMaxSize(t *testing.T) {
 	tmpfile := tests.Tempfile()
