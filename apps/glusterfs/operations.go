@@ -363,10 +363,31 @@ func (vdel *VolumeDeleteOperation) Exec(executor executors.Executor) error {
 }
 
 func (vdel *VolumeDeleteOperation) Rollback(executor executors.Executor) error {
-	// currently rollback does nothing for delete volume, leaving the
-	// db in the same state as it was before an exec failure
-	// TODO: revisit
-	return nil
+	// currently rollback only removes the pending operation for delete volume,
+	// leaving the db in the same state as it was before an exec failure.
+	// In the future we should make this operation resume-able
+	return vdel.db.Update(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
+		brick_entries, err := bricksFromOp(txdb, vdel.op, vdel.vol.Info.Gid)
+		if err != nil {
+			logger.LogError("Failed to get bricks from op: %v", err)
+			return err
+		}
+
+		for _, brick := range brick_entries {
+			vdel.op.FinalizeBrick(brick)
+			if e := brick.Save(tx); e != nil {
+				return e
+			}
+		}
+		vdel.op.FinalizeVolume(vdel.vol)
+		if e := vdel.vol.Save(tx); e != nil {
+			return err
+		}
+
+		vdel.op.Delete(tx)
+		return nil
+	})
 }
 
 // Finalize marks all brick and volume entries for this operation as
