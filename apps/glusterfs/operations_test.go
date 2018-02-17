@@ -1541,3 +1541,45 @@ func testAsyncHttpOperation(t *testing.T,
 
 	testFunc(t, ts.URL)
 }
+
+func TestRunOperationRollbackFailure(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+	app := NewTestApp(tmpfile)
+
+	o := &testOperation{}
+	o.rurl = "/myresource"
+	o.exec = func() error {
+		return fmt.Errorf("execfail")
+	}
+	rollback_cc := 0
+	o.rollback = func() error {
+		rollback_cc++
+		return fmt.Errorf("rollbackfail")
+	}
+	e := RunOperation(o, app.Allocator(), app.executor)
+	// even if rollback fails we expect the error from Exec
+	tests.Assert(t, strings.Contains(e.Error(), "execfail"),
+		`expected strings.Contains(e.Error(), "execfail"), got:`, e)
+	// check that rollback got called
+	tests.Assert(t, rollback_cc == 1,
+		"expected rollback_cc == 1, got:", rollback_cc)
+}
+
+func TestRunOperationFinalizeFailure(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+	app := NewTestApp(tmpfile)
+
+	o := &testOperation{}
+	o.label = "Funky Fresh"
+	o.rurl = "/myresource"
+	o.finalize = func() error {
+		return fmt.Errorf("finfail")
+	}
+
+	e := RunOperation(o, app.Allocator(), app.executor)
+	// check error from finalize
+	tests.Assert(t, strings.Contains(e.Error(), "finfail"),
+		`expected strings.Contains(e.Error(), "finfail"), got:`, e)
+}
