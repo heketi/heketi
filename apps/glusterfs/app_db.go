@@ -10,7 +10,6 @@
 package glusterfs
 
 import (
-	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -242,16 +241,6 @@ func DbCreate(jsonfile string, dbfile string, debug bool) error {
 	if debug {
 		logger.SetLevel(utils.LEVEL_DEBUG)
 	}
-
-	// we use gob package to serialize entries before writing to db
-	// to serialize an interface type, it needs to be registered with gob.
-	// this should ideally be done during volume bucket creation
-	// but it is done during first VolumeEntry creation in current code
-	// TODO: create wrapper for volume bucket creation and type registration
-	gob.Register(&NoneDurability{})
-	gob.Register(&VolumeReplicaDurability{})
-	gob.Register(&VolumeDisperseDurability{})
-	logger.Debug("interface type registration complete")
 
 	var dump Db
 
