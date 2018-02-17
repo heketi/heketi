@@ -1865,3 +1865,26 @@ func TestRunOperationFinalizeFailure(t *testing.T) {
 	tests.Assert(t, strings.Contains(e.Error(), "finfail"),
 		`expected strings.Contains(e.Error(), "finfail"), got:`, e)
 }
+
+func TestExpandSizeFromOp(t *testing.T) {
+	op := NewPendingOperationEntry("jjjj")
+	op.Actions = append(op.Actions, PendingOperationAction{
+		Change: OpExpandVolume,
+		Id:     "foofoofoo",
+		Delta:  495,
+	})
+	// this op lacks the expand metadata, should return error
+	v, e := expandSizeFromOp(op)
+	tests.Assert(t, e == nil, "expected e == nil, got:", e)
+	tests.Assert(t, v == 495, "expected v == 495, got:", v)
+}
+
+func TestExpandSizeFromOpErrorHandling(t *testing.T) {
+	op := NewPendingOperationEntry("jjjj")
+	// this op lacks the expand metadata, should return error
+	_, e := expandSizeFromOp(op)
+	tests.Assert(t, e != nil, "expected e != nil, got:", e)
+	tests.Assert(t, strings.Contains(e.Error(), "no OpExpandVolume action"),
+		`expected strings.Contains(e.Error(), "no OpExpandVolume action"), got:`,
+		e)
+}
