@@ -54,25 +54,6 @@ func NewVolumeEntryForBlockHosting(clusters []string) (*VolumeEntry, error) {
 	return vol, nil
 }
 
-// Creates a File volume to host block volumes
-func CreateBlockHostingVolume(db wdb.DB, executor executors.Executor, allocator Allocator, clusters []string) (*VolumeEntry, error) {
-
-	vol, err := NewVolumeEntryForBlockHosting(clusters)
-	if err != nil {
-		return nil, err
-	}
-
-	err = vol.Create(db, executor, allocator)
-	if err != nil {
-		logger.LogError("Failed to create Block Hosting Volume: %v", err)
-		return nil, err
-	}
-
-	logger.Info("Block Hosting Volume created (name[%v] id[%v] ", vol.Info.Name, vol.Info.Id)
-
-	return vol, err
-}
-
 func NewBlockVolumeEntry() *BlockVolumeEntry {
 	entry := &BlockVolumeEntry{}
 
