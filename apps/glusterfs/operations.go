@@ -271,7 +271,7 @@ func (ve *VolumeExpandOperation) Finalize() error {
 			logger.LogError("Failed to get bricks from op: %v", err)
 			return err
 		}
-		sizeDelta, err := expandSizeFromOp(wdb.WrapTx(tx), ve.op)
+		sizeDelta, err := expandSizeFromOp(ve.op)
 		if err != nil {
 			logger.LogError("Failed to get expansion size from op: %v", err)
 			return err
@@ -719,22 +719,15 @@ func volumesFromOp(db wdb.RODB,
 // expandSizeFromOp returns the size of a volume expand operation assuming
 // the given pending operation entry includes a volume expand change item.
 // If the operation is of the wrong type error will be non-nil.
-func expandSizeFromOp(db wdb.RODB,
-	op *PendingOperationEntry) (sizeGB int, e error) {
-	err := db.View(func(tx *bolt.Tx) error {
-		for _, a := range op.Actions {
-			if a.Change == OpExpandVolume {
-				sizeGB, e = a.ExpandSize()
-				return nil
-			}
+func expandSizeFromOp(op *PendingOperationEntry) (sizeGB int, e error) {
+	for _, a := range op.Actions {
+		if a.Change == OpExpandVolume {
+			sizeGB, e = a.ExpandSize()
+			return
 		}
-		e = fmt.Errorf("no OpExpandVolume action in pending op: %v",
-			op.Id)
-		return nil
-	})
-	if err != nil && e == nil {
-		e = err
 	}
+	e = fmt.Errorf("no OpExpandVolume action in pending op: %v",
+		op.Id)
 	return
 }
 
