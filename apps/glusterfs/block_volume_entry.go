@@ -397,8 +397,8 @@ func canHostBlockVolume(tx *bolt.Tx, bv *BlockVolumeEntry, vol *VolumeEntry) (bo
 					bv.Info.Name, vol.Info.Name)
 				return false, nil
 			}
-			return true, nil
 		}
+		return true, nil
 	}
 	logger.Warning("Free size is lesser than the block volume requested")
 	return false, nil
