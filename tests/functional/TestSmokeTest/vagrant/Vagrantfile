@@ -17,9 +17,6 @@ Vagrant.configure("2") do |config|
         #vagrant-libvirt/vagrant-libvirt#667
         v.cpu_mode = 'host-passthrough'
     end
-    config.vm.provider :virtualbox do |v|
-        config.vm.box = "bento/centos-7.1"
-    end
 
     # Make the glusterfs cluster, each with DISKS number of drives
     (0..NODES-1).each do |i|
