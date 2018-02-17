@@ -213,3 +213,19 @@ func addBlockFileFlagsInClusterEntry(tx *bolt.Tx) error {
 	entry.Value = "yes"
 	return entry.Save(tx)
 }
+
+func (c *ClusterEntry) DeleteBricksWithEmptyPath(tx *bolt.Tx) error {
+
+	for _, nodeid := range c.Info.Nodes {
+		node, err := NewNodeEntryFromId(tx, nodeid)
+		if err != nil {
+			return err
+		}
+
+		err = node.DeleteBricksWithEmptyPath(tx)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}

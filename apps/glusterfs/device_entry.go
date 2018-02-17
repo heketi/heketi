@@ -537,3 +537,32 @@ func markDeviceFailed(db wdb.DB, id string, force bool) error {
 		return d.Save(tx)
 	})
 }
+
+func (d *DeviceEntry) DeleteBricksWithEmptyPath(tx *bolt.Tx) error {
+	godbc.Require(tx != nil)
+	var bricksToDelete []*BrickEntry
+
+	for _, id := range d.Bricks {
+		brick, err := NewBrickEntryFromId(tx, id)
+		if err != nil {
+			return err
+		}
+		if brick.Info.Path == "" {
+			bricksToDelete = append(bricksToDelete, brick)
+		}
+	}
+	for _, brick := range bricksToDelete {
+		err := brick.Delete(tx)
+		if err != nil {
+			return logger.LogError("Unable to remove brick %v: %v", brick.Info.Id, err)
+		}
+		d.StorageFree(brick.TotalSize())
+		d.BrickDelete(brick.Info.Id)
+		err = d.Save(tx)
+		if err != nil {
+			logger.LogError("Unable to save device %v: %v", d.Info.Id, err)
+			return err
+		}
+	}
+	return nil
+}
