@@ -1,15 +1,22 @@
 package glusterfs
 
 import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/heketi/heketi/executors"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/tests"
+
+	"github.com/gorilla/mux"
 )
 
 func TestVolumeCreatePendingCreatedCleared(t *testing.T) {
@@ -1247,4 +1254,290 @@ func TestDeviceRemoveOperationOtherPendingOps(t *testing.T) {
 		tests.Assert(t, len(l) == 1, "expected len(l) == 1, got:", len(l))
 		return nil
 	})
+}
+
+type testOperation struct {
+	label    string
+	rurl     string
+	build    func() error
+	exec     func() error
+	finalize func() error
+	rollback func() error
+}
+
+func (o *testOperation) Label() string {
+	return o.label
+}
+
+func (o *testOperation) ResourceUrl() string {
+	return o.rurl
+}
+
+func (o *testOperation) Build(allocator Allocator) error {
+	if o.build == nil {
+		return nil
+	}
+	return o.build()
+}
+
+func (o *testOperation) Exec(executor executors.Executor) error {
+	if o.exec == nil {
+		return nil
+	}
+	return o.exec()
+}
+
+func (o *testOperation) Rollback(executor executors.Executor) error {
+	if o.rollback == nil {
+		return nil
+	}
+	return o.rollback()
+}
+
+func (o *testOperation) Finalize() error {
+	if o.finalize == nil {
+		return nil
+	}
+	return o.finalize()
+}
+
+func TestAsyncHttpOperationOK(t *testing.T) {
+	o := &testOperation{}
+	o.rurl = "/myresource"
+	testAsyncHttpOperation(t, o, func(t *testing.T, url string) {
+		client := &http.Client{
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		}
+		r, err := client.Get(url + "/app")
+		tests.Assert(t, r.StatusCode == http.StatusAccepted)
+		tests.Assert(t, err == nil)
+		location, err := r.Location()
+		tests.Assert(t, err == nil)
+
+		for done := false; !done; {
+			time.Sleep(time.Millisecond)
+			r, err = client.Get(location.String())
+			tests.Assert(t, err == nil, "expected err == nil, got", err)
+			switch r.StatusCode {
+			case http.StatusSeeOther:
+				location, err = r.Location()
+				tests.Assert(t, err == nil, "expected err == nil, got", err)
+				tests.Assert(t, strings.Contains(location.String(), "/myresource"),
+					`expected trings.Contains(location.String(), "/myresource") got:`,
+					location.String())
+			case http.StatusOK:
+				if r.ContentLength > 0 {
+					body, err := ioutil.ReadAll(r.Body)
+					r.Body.Close()
+					tests.Assert(t, err == nil)
+					tests.Assert(t, string(body) == "HelloWorld")
+					done = true
+				} else {
+					t.Fatalf("unexpected content length %v", r.ContentLength)
+				}
+			default:
+				t.Fatalf("unexpected http return code %v", r.StatusCode)
+			}
+		}
+	})
+}
+
+func TestAsyncHttpOperationBuildFailure(t *testing.T) {
+	o := &testOperation{}
+	o.rurl = "/myresource"
+	o.build = func() error {
+		return fmt.Errorf("buildfail")
+	}
+	testAsyncHttpOperation(t, o, func(t *testing.T, url string) {
+		client := &http.Client{
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		}
+		r, err := client.Get(url + "/app")
+		tests.Assert(t, err == nil, "expected err == nil, got", err)
+		tests.Assert(t, r.StatusCode == http.StatusInternalServerError)
+	})
+}
+
+func TestAsyncHttpOperationExecFailure(t *testing.T) {
+	o := &testOperation{}
+	o.rurl = "/myresource"
+	o.exec = func() error {
+		return fmt.Errorf("execfail")
+	}
+	testAsyncHttpOperation(t, o, func(t *testing.T, url string) {
+		client := &http.Client{
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		}
+		r, err := client.Get(url + "/app")
+		tests.Assert(t, err == nil, "expected err == nil, got", err)
+		tests.Assert(t, r.StatusCode == http.StatusAccepted)
+		location, err := r.Location()
+		tests.Assert(t, err == nil)
+
+		for done := false; !done; {
+			time.Sleep(time.Millisecond)
+			r, err = client.Get(location.String())
+			tests.Assert(t, err == nil, "expected err == nil, got", err)
+			switch r.StatusCode {
+			case http.StatusSeeOther:
+				location, err = r.Location()
+				tests.Assert(t, err == nil, "expected err == nil, got", err)
+				tests.Assert(t, strings.Contains(location.String(), "/myresource"),
+					`expected trings.Contains(location.String(), "/myresource") got:`,
+					location.String())
+			case http.StatusInternalServerError:
+				if r.ContentLength > 0 {
+					body, err := ioutil.ReadAll(r.Body)
+					r.Body.Close()
+					tests.Assert(t, err == nil)
+					s := string(body)
+					tests.Assert(t, strings.Contains(s, "execfail"),
+						`expected strings.Contains(s, "execfail"), got:`, s)
+					done = true
+				} else {
+					t.Fatalf("unexpected content length %v", r.ContentLength)
+				}
+			default:
+				t.Fatalf("unexpected http return code %v", r.StatusCode)
+			}
+		}
+	})
+}
+
+func TestAsyncHttpOperationRollbackFailure(t *testing.T) {
+	o := &testOperation{}
+	o.rurl = "/myresource"
+	o.exec = func() error {
+		return fmt.Errorf("execfail")
+	}
+	rollback_cc := 0
+	o.rollback = func() error {
+		rollback_cc++
+		return fmt.Errorf("rollbackfail")
+	}
+	testAsyncHttpOperation(t, o, func(t *testing.T, url string) {
+		client := &http.Client{
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		}
+		r, err := client.Get(url + "/app")
+		tests.Assert(t, err == nil, "expected err == nil, got", err)
+		tests.Assert(t, r.StatusCode == http.StatusAccepted)
+		location, err := r.Location()
+		tests.Assert(t, err == nil)
+
+		for done := false; !done; {
+			time.Sleep(time.Millisecond)
+			r, err = client.Get(location.String())
+			tests.Assert(t, err == nil, "expected err == nil, got", err)
+			switch r.StatusCode {
+			case http.StatusSeeOther:
+				location, err = r.Location()
+				tests.Assert(t, err == nil, "expected err == nil, got", err)
+				tests.Assert(t, strings.Contains(location.String(), "/myresource"),
+					`expected trings.Contains(location.String(), "/myresource") got:`,
+					location.String())
+			case http.StatusInternalServerError:
+				if r.ContentLength > 0 {
+					body, err := ioutil.ReadAll(r.Body)
+					r.Body.Close()
+					tests.Assert(t, err == nil)
+					s := string(body)
+					tests.Assert(t, strings.Contains(s, "execfail"),
+						`expected strings.Contains(s, "execfail"), got:`, s)
+					done = true
+				} else {
+					t.Fatalf("unexpected content length %v", r.ContentLength)
+				}
+			default:
+				t.Fatalf("unexpected http return code %v", r.StatusCode)
+			}
+		}
+	})
+	tests.Assert(t, rollback_cc == 1, "expected rollback_cc == 1, got:", rollback_cc)
+}
+
+func TestAsyncHttpOperationFinalizeFailure(t *testing.T) {
+	o := &testOperation{}
+	o.rurl = "/myresource"
+	o.finalize = func() error {
+		return fmt.Errorf("finfail")
+	}
+	testAsyncHttpOperation(t, o, func(t *testing.T, url string) {
+		client := &http.Client{
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		}
+		r, err := client.Get(url + "/app")
+		tests.Assert(t, err == nil, "expected err == nil, got", err)
+		tests.Assert(t, r.StatusCode == http.StatusAccepted)
+		location, err := r.Location()
+		tests.Assert(t, err == nil)
+
+		for done := false; !done; {
+			time.Sleep(time.Millisecond)
+			r, err = client.Get(location.String())
+			tests.Assert(t, err == nil, "expected err == nil, got", err)
+			switch r.StatusCode {
+			case http.StatusSeeOther:
+				location, err = r.Location()
+				tests.Assert(t, err == nil, "expected err == nil, got", err)
+				tests.Assert(t, strings.Contains(location.String(), "/myresource"),
+					`expected trings.Contains(location.String(), "/myresource") got:`,
+					location.String())
+			case http.StatusInternalServerError:
+				if r.ContentLength > 0 {
+					body, err := ioutil.ReadAll(r.Body)
+					r.Body.Close()
+					tests.Assert(t, err == nil)
+					s := string(body)
+					tests.Assert(t, strings.Contains(s, "finfail"),
+						`expected strings.Contains(s, "finfail"), got:`, s)
+					done = true
+				} else {
+					t.Fatalf("unexpected content length %v", r.ContentLength)
+				}
+			default:
+				t.Fatalf("unexpected http return code %v", r.StatusCode)
+			}
+		}
+	})
+}
+
+func testAsyncHttpOperation(t *testing.T,
+	o Operation,
+	testFunc func(*testing.T, string)) {
+
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+	app := NewTestApp(tmpfile)
+
+	// Setup the route
+	router := mux.NewRouter()
+	router.HandleFunc("/queue/{id}", app.asyncManager.HandlerStatus).Methods("GET")
+	router.HandleFunc("/myresource", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "HelloWorld")
+	}).Methods("GET")
+
+	router.HandleFunc("/app", func(w http.ResponseWriter, r *http.Request) {
+		if x := AsyncHttpOperation(app, w, r, o); x != nil {
+			http.Error(w, x.Error(), http.StatusInternalServerError)
+		}
+	}).Methods("GET")
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	testFunc(t, ts.URL)
 }
