@@ -671,10 +671,20 @@ func (vdel *BlockVolumeDeleteOperation) Exec(executor executors.Executor) error 
 }
 
 func (vdel *BlockVolumeDeleteOperation) Rollback(executor executors.Executor) error {
-	// currently rollback does nothing for delete volume, leaving the
-	// db in the same state as it was before an exec failure
-	// TODO: revisit
-	return nil
+	// currently rollback only removes the pending operation for delete block volume,
+	// leaving the db in the same state as it was before an exec failure.
+	// In the future we should make this operation resume-able
+	return vdel.db.Update(func(tx *bolt.Tx) error {
+		// REMINDER: Block volume delete and create are not symmetric in regards to
+		// removing vs. creating the block hosting volume
+		vdel.op.FinalizeBlockVolume(vdel.bvol)
+		if e := vdel.bvol.Save(tx); e != nil {
+			return e
+		}
+
+		vdel.op.Delete(tx)
+		return nil
+	})
 }
 
 // Finalize marks all brick and volume entries for this operation as
