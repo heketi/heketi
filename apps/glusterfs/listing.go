@@ -75,13 +75,41 @@ func UpdateClusterInfoComplete(tx *bolt.Tx, ci *api.ClusterInfoResponse) error {
 // MapPendingVolumes returns a map of volume-id to pending-op-id or
 // an error if the db cannot be read.
 func MapPendingVolumes(tx *bolt.Tx) (map[string]string, error) {
-	return map[string]string{}, nil
+	return mapPendingItems(tx, func(op *PendingOperationEntry, a PendingOperationAction) bool {
+		return (op.Type == OperationCreateVolume && a.Change == OpAddVolume)
+	})
 }
 
 // MapPendingBlockVolumes returns a map of block-volume-id to pending-op-id or
 // an error if the db cannot be read.
 func MapPendingBlockVolumes(tx *bolt.Tx) (map[string]string, error) {
-	return map[string]string{}, nil
+	return mapPendingItems(tx, func(op *PendingOperationEntry, a PendingOperationAction) bool {
+		return (op.Type == OperationCreateBlockVolume && a.Change == OpAddBlockVolume)
+	})
+}
+
+func mapPendingItems(tx *bolt.Tx,
+	pred func(op *PendingOperationEntry, a PendingOperationAction) bool) (
+	items map[string]string, e error) {
+
+	items = map[string]string{}
+	ids, e := PendingOperationList(tx)
+	if e != nil {
+		return
+	}
+	for _, opId := range ids {
+		op, err := NewPendingOperationEntryFromId(tx, opId)
+		if err != nil {
+			e = err
+			return
+		}
+		for _, a := range op.Actions {
+			if pred(op, a) {
+				items[a.Id] = op.Id
+			}
+		}
+	}
+	return
 }
 
 // removeKeysFromList returns a new list of strings where all strings

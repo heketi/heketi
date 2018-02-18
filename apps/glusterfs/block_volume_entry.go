@@ -23,7 +23,8 @@ import (
 )
 
 type BlockVolumeEntry struct {
-	Info api.BlockVolumeInfo
+	Info    api.BlockVolumeInfo
+	Pending PendingItem
 }
 
 func BlockVolumeList(tx *bolt.Tx) ([]string, error) {
