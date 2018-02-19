@@ -19,6 +19,29 @@ import (
 	"github.com/heketi/heketi/pkg/utils"
 )
 
+func tryAllocateBrickOnDevice(v *VolumeEntry, device *DeviceEntry,
+	setlist []*BrickEntry, brick_size uint64) *BrickEntry {
+
+	// Do not allow a device from the same node to be in the set
+	deviceOk := true
+	for _, brickInSet := range setlist {
+		if brickInSet.Info.NodeId == device.NodeId {
+			deviceOk = false
+		}
+	}
+
+	if !deviceOk {
+		return nil
+	}
+
+	// Try to allocate a brick on this device
+	brick := device.NewBrickEntry(brick_size,
+		float64(v.Info.Snapshot.Factor),
+		v.Info.Gid, v.Info.Id)
+
+	return brick
+}
+
 type BrickAllocation struct {
 	Bricks  []*BrickEntry
 	Devices []*DeviceEntry
@@ -80,24 +103,7 @@ func allocateBricks(
 						devcache[deviceId] = device
 					}
 
-					// Do not allow a device from the same node to be
-					// in the set
-					deviceOk := true
-					for _, brickInSet := range setlist {
-						if brickInSet.Info.NodeId == device.NodeId {
-							deviceOk = false
-						}
-					}
-
-					if !deviceOk {
-						continue
-					}
-
-					// Try to allocate a brick on this device
-					brick := device.NewBrickEntry(brick_size,
-						float64(v.Info.Snapshot.Factor),
-						v.Info.Gid, v.Info.Id)
-
+					brick := tryAllocateBrickOnDevice(v, device, setlist, brick_size)
 					if brick == nil {
 						continue
 					}
