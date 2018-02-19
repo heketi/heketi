@@ -795,7 +795,7 @@ func (dro *DeviceRemoveOperation) Exec(executor executors.Executor) error {
 	}
 
 	var d *DeviceEntry
-	if e := dro.db.Update(func(tx *bolt.Tx) error {
+	if e := dro.db.View(func(tx *bolt.Tx) error {
 		d, err = NewDeviceEntryFromId(tx, id)
 		return err
 	}); e != nil {
