@@ -367,20 +367,22 @@ func (v *BlockVolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error
 // the volume is incompatible. It returns false, and an error if the
 // database operation fails.
 func canHostBlockVolume(tx *bolt.Tx, bv *BlockVolumeEntry, vol *VolumeEntry) (bool, error) {
-	if vol.Info.BlockInfo.FreeSize >= bv.Info.Size {
-		for _, blockvol := range vol.Info.BlockInfo.BlockVolumes {
-			existingbv, err := NewBlockVolumeEntryFromId(tx, blockvol)
-			if err != nil {
-				return false, err
-			}
-			if bv.Info.Name == existingbv.Info.Name {
-				logger.Warning("Name %v already in use in file volume %v",
-					bv.Info.Name, vol.Info.Name)
-				return false, nil
-			}
-		}
-		return true, nil
+	if vol.Info.BlockInfo.FreeSize < bv.Info.Size {
+		logger.Warning("Free size is less than the block volume requested")
+		return false, nil
 	}
-	logger.Warning("Free size is less than the block volume requested")
-	return false, nil
+
+	for _, blockvol := range vol.Info.BlockInfo.BlockVolumes {
+		existingbv, err := NewBlockVolumeEntryFromId(tx, blockvol)
+		if err != nil {
+			return false, err
+		}
+		if bv.Info.Name == existingbv.Info.Name {
+			logger.Warning("Name %v already in use in file volume %v",
+				bv.Info.Name, vol.Info.Name)
+			return false, nil
+		}
+	}
+
+	return true, nil
 }
