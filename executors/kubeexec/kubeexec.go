@@ -146,11 +146,6 @@ func NewKubeExecutor(config *KubeConfig) (*KubeExecutor, error) {
 		return nil, fmt.Errorf("Unable to create a client set")
 	}
 
-	// Show experimental settings
-	if k.config.RebalanceOnExpansion {
-		logger.Warning("Rebalance on volume expansion has been enabled.  This is an EXPERIMENTAL feature")
-	}
-
 	godbc.Ensure(k != nil)
 	godbc.Ensure(k.Fstab != "")
 
