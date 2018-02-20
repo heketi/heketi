@@ -163,9 +163,16 @@ func (d *DeviceEntry) ConflictString() string {
 func (d *DeviceEntry) Delete(tx *bolt.Tx) error {
 	godbc.Require(tx != nil)
 
+	// Don't delete device unless it is in failed state
+	if d.State != api.EntryStateFailed {
+		return logger.LogError("device: %v is not in failed state", d.Info.Id)
+	}
+
 	// Check if the device still has bricks
+	// Ideally, if the device is in failed state it should have no bricks
+	// This is just for bricks with empty paths
 	if d.HasBricks() {
-		logger.Warning(d.ConflictString())
+		logger.LogError(d.ConflictString())
 		return ErrConflict
 	}
 
