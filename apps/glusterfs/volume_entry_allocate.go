@@ -108,7 +108,7 @@ func allocateBricks(
 						continue
 					}
 
-					// If the first in the set, the reset the id
+					// If the first in the set, then reset the id
 					if i == 0 {
 						brick.SetId(brickId)
 					}
