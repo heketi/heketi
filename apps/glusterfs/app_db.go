@@ -143,35 +143,43 @@ func dbDumpInternal(db *bolt.DB) (Db, error) {
 			}
 		}
 
-		// BlockVolume Bucket
-		logger.Debug("blockvolume bucket")
-		blockvolumes, err := BlockVolumeList(tx)
-		if err != nil {
-			return err
-		}
-
-		for _, blockvolume := range blockvolumes {
-			logger.Debug("adding blockvolume entry %v", blockvolume)
-			blockvolEntry, err := NewBlockVolumeEntryFromId(tx, blockvolume)
+		if b := tx.Bucket([]byte(BOLTDB_BUCKET_BLOCKVOLUME)); b == nil {
+			logger.Warning("unable to find block volume bucket... skipping")
+		} else {
+			// BlockVolume Bucket
+			logger.Debug("blockvolume bucket")
+			blockvolumes, err := BlockVolumeList(tx)
 			if err != nil {
 				return err
 			}
-			blockvolEntryList[blockvolEntry.Info.Id] = *blockvolEntry
+
+			for _, blockvolume := range blockvolumes {
+				logger.Debug("adding blockvolume entry %v", blockvolume)
+				blockvolEntry, err := NewBlockVolumeEntryFromId(tx, blockvolume)
+				if err != nil {
+					return err
+				}
+				blockvolEntryList[blockvolEntry.Info.Id] = *blockvolEntry
+			}
 		}
 
-		// DbAttributes Bucket
-		dbattributes, err := DbAttributeList(tx)
-		if err != nil {
-			return err
-		}
-
-		for _, dbattribute := range dbattributes {
-			logger.Debug("adding dbattribute entry %v", dbattribute)
-			dbattributeEntry, err := NewDbAttributeEntryFromKey(tx, dbattribute)
+		if b := tx.Bucket([]byte(BOLTDB_BUCKET_DBATTRIBUTE)); b == nil {
+			logger.Warning("unable to find dbattribute bucket... skipping")
+		} else {
+			// DbAttributes Bucket
+			dbattributes, err := DbAttributeList(tx)
 			if err != nil {
 				return err
 			}
-			dbattributeEntryList[dbattributeEntry.Key] = *dbattributeEntry
+
+			for _, dbattribute := range dbattributes {
+				logger.Debug("adding dbattribute entry %v", dbattribute)
+				dbattributeEntry, err := NewDbAttributeEntryFromKey(tx, dbattribute)
+				if err != nil {
+					return err
+				}
+				dbattributeEntryList[dbattributeEntry.Key] = *dbattributeEntry
+			}
 		}
 
 		pendingops, err := PendingOperationList(tx)
