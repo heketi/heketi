@@ -33,7 +33,8 @@ func TestSimpleAllocatorGetNodesEmpty(t *testing.T) {
 
 	ch, _, errc := a.GetNodes(utils.GenUUID(), utils.GenUUID())
 	for d := range ch {
-		tests.Assert(t, false, d)
+		tests.Assert(t, false,
+			"Ring should be empty, but we got a device id:", d)
 	}
 	err := <-errc
 	tests.Assert(t, err == ErrNotFound)
