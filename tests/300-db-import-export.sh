@@ -40,7 +40,7 @@ kill_server() {
 show_err() {
         if [[ $? -ne 0 ]]
         then
-                echo "failure/error on line $1"
+                echo -e "\nFAIL: error on line $1"
         fi
 }
 
