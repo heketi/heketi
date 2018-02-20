@@ -651,15 +651,20 @@ func TestDeviceSetStateFailed(t *testing.T) {
 	tests.Assert(t, d.State == api.EntryStateFailed)
 	tests.Assert(t, err == nil)
 
-	// Set offline
-	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
-	tests.Assert(t, d.State == api.EntryStateFailed)
-	tests.Assert(t, err != nil)
-
-	// Set online
+	// Set online from failed, this should fail
 	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOnline)
 	tests.Assert(t, d.State == api.EntryStateFailed)
 	tests.Assert(t, err != nil)
+
+	// Set offline
+	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
+	tests.Assert(t, d.State == api.EntryStateOffline)
+	tests.Assert(t, err == nil)
+
+	// Set online from offline, this should pass
+	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOnline)
+	tests.Assert(t, d.State == api.EntryStateOnline)
+	tests.Assert(t, err == nil)
 }
 
 func TestDeviceSetStateOfflineOnline(t *testing.T) {
