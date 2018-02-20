@@ -117,10 +117,8 @@ func allocateBricks(
 					r.Bricks = append(r.Bricks, brick)
 					r.Devices = append(r.Devices, device)
 
-					// Add to set list
 					setlist = append(setlist, brick)
 
-					// Add brick to device
 					device.BrickAdd(brick.Id())
 
 					return nil
