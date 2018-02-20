@@ -143,48 +143,63 @@ func dbDumpInternal(db *bolt.DB) (Db, error) {
 			}
 		}
 
-		// BlockVolume Bucket
-		logger.Debug("blockvolume bucket")
-		blockvolumes, err := BlockVolumeList(tx)
-		if err != nil {
-			return err
-		}
-
-		for _, blockvolume := range blockvolumes {
-			logger.Debug("adding blockvolume entry %v", blockvolume)
-			blockvolEntry, err := NewBlockVolumeEntryFromId(tx, blockvolume)
+		if b := tx.Bucket([]byte(BOLTDB_BUCKET_BLOCKVOLUME)); b == nil {
+			logger.Warning("unable to find block volume bucket... skipping")
+		} else {
+			// BlockVolume Bucket
+			logger.Debug("blockvolume bucket")
+			blockvolumes, err := BlockVolumeList(tx)
 			if err != nil {
 				return err
 			}
-			blockvolEntryList[blockvolEntry.Info.Id] = *blockvolEntry
+
+			for _, blockvolume := range blockvolumes {
+				logger.Debug("adding blockvolume entry %v", blockvolume)
+				blockvolEntry, err := NewBlockVolumeEntryFromId(tx, blockvolume)
+				if err != nil {
+					return err
+				}
+				blockvolEntryList[blockvolEntry.Info.Id] = *blockvolEntry
+			}
 		}
 
-		// DbAttributes Bucket
-		dbattributes, err := DbAttributeList(tx)
-		if err != nil {
-			return err
-		}
+		has_pendingops := false
 
-		for _, dbattribute := range dbattributes {
-			logger.Debug("adding dbattribute entry %v", dbattribute)
-			dbattributeEntry, err := NewDbAttributeEntryFromKey(tx, dbattribute)
+		if b := tx.Bucket([]byte(BOLTDB_BUCKET_DBATTRIBUTE)); b == nil {
+			logger.Warning("unable to find dbattribute bucket... skipping")
+		} else {
+			// DbAttributes Bucket
+			dbattributes, err := DbAttributeList(tx)
 			if err != nil {
 				return err
 			}
-			dbattributeEntryList[dbattributeEntry.Key] = *dbattributeEntry
+
+			for _, dbattribute := range dbattributes {
+				logger.Debug("adding dbattribute entry %v", dbattribute)
+				dbattributeEntry, err := NewDbAttributeEntryFromKey(tx, dbattribute)
+				if err != nil {
+					return err
+				}
+				dbattributeEntryList[dbattributeEntry.Key] = *dbattributeEntry
+				has_pendingops = (has_pendingops ||
+					(dbattributeEntry.Key == DB_HAS_PENDING_OPS_BUCKET &&
+						dbattributeEntry.Value == "yes"))
+			}
 		}
 
-		pendingops, err := PendingOperationList(tx)
-		if err != nil {
-			return err
-		}
-
-		for _, opid := range pendingops {
-			entry, err := NewPendingOperationEntryFromId(tx, opid)
+		if has_pendingops {
+			pendingops, err := PendingOperationList(tx)
 			if err != nil {
 				return err
 			}
-			pendingOpEntryList[opid] = *entry
+
+			for _, opid := range pendingops {
+				entry, err := NewPendingOperationEntryFromId(tx, opid)
+				if err != nil {
+					return err
+				}
+				pendingOpEntryList[opid] = *entry
+			}
 		}
 
 		return nil
@@ -381,6 +396,12 @@ func DbCreate(jsonfile string, dbfile string, debug bool) error {
 			if err != nil {
 				return fmt.Errorf("Could not save pending operation bucket: %v", err.Error())
 			}
+		}
+		// always record a new generation id on db import as the db contents
+		// were no longer fully under heketi's control
+		logger.Debug("recording new DB generation ID")
+		if err := recordNewDBGenerationID(tx); err != nil {
+			return fmt.Errorf("Could not record DB generation ID: %v", err.Error())
 		}
 		return nil
 	})

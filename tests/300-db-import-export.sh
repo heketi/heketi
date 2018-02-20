@@ -40,7 +40,7 @@ kill_server() {
 show_err() {
         if [[ $? -ne 0 ]]
         then
-                echo "failure/error on line $1"
+                echo -e "\nFAIL: error on line $1"
         fi
 }
 
@@ -54,6 +54,22 @@ cleanup() {
 	rm -f topologyinfo.* &> /dev/null
 }
 
+reset_gen_id() {
+python <<EOF
+path="$1"
+
+import json
+
+with open(path) as fh:
+    j = json.load(fh)
+
+if j['dbattributeentries'].get('DB_GENERATION_ID'):
+    j['dbattributeentries']['DB_GENERATION_ID']['Value'] = 'x-fake-id'
+
+with open(path, 'w') as fh:
+    json.dump(j, fh)
+EOF
+}
 
 require_heketi_binaries
 start_server
@@ -81,8 +97,30 @@ kill_server
 
 # test one cycle of export and import
 ./heketi-server db export --jsonfile db.json.original --dbfile heketi.db &> /dev/null
+
+# verify that the dump contains a db gen id
+python <<EOF
+path="db.json.original"
+
+import json
+
+with open(path) as fh:
+    j = json.load(fh)
+
+assert 'dbattributeentries' in j
+assert 'DB_GENERATION_ID' in j['dbattributeentries']
+assert 'Key' in j['dbattributeentries']['DB_GENERATION_ID']
+assert j['dbattributeentries']['DB_GENERATION_ID']['Key'] == 'DB_GENERATION_ID'
+assert 'Value' in j['dbattributeentries']['DB_GENERATION_ID']
+assert len(j['dbattributeentries']['DB_GENERATION_ID']['Value']) == 32
+EOF
+
 ./heketi-server db import --jsonfile db.json.original --dbfile heketi.db.new &> /dev/null
 ./heketi-server db export --jsonfile db.json.new --dbfile heketi.db.new
+
+# reset the db generation id to a dummy value, otherwise all dumps are unique
+reset_gen_id db.json.original
+reset_gen_id db.json.new
 diff db.json.original db.json.new &> /dev/null
 
 # existing json file should not be overwritten
@@ -120,6 +158,7 @@ assert "nonsense" not in j
 # check expected numbers of items
 assert len(j["pendingoperations"]) == 1
 assert len(j["volumeentries"]) == 1
+assert "DB_HAS_PENDING_OPS_BUCKET" in j["dbattributeentries"]
 
 # check that pending operations match pending ids
 vol = list(j["volumeentries"].values())[0]
@@ -133,4 +172,7 @@ EOF
     --dbfile heketi.db.TestLeakPendingVolumeCreate_2 &> /dev/null
 ./heketi-server db export --jsonfile db.json.TestLeakPendingVolumeCreate_2 \
      --dbfile heketi.db.TestLeakPendingVolumeCreate_2 &> /dev/null
+
+reset_gen_id db.json.TestLeakPendingVolumeCreate
+reset_gen_id db.json.TestLeakPendingVolumeCreate_2
 diff db.json.TestLeakPendingVolumeCreate db.json.TestLeakPendingVolumeCreate_2 &> /dev/null
