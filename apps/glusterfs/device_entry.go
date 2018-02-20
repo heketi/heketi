@@ -149,7 +149,6 @@ func (d *DeviceEntry) Save(tx *bolt.Tx) error {
 }
 
 func (d *DeviceEntry) HasBricks() bool {
-	// Check if the nodes still has drives
 	if len(d.Bricks) > 0 {
 		return true
 	}
