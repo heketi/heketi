@@ -69,3 +69,46 @@ func initializeBuckets(tx *bolt.Tx) error {
 
 	return nil
 }
+
+// UpgradeDB runs all upgrade routines in order to to update the DB
+// to the latest "schemas" and data.
+func UpgradeDB(tx *bolt.Tx) error {
+
+	err := ClusterEntryUpgrade(tx)
+	if err != nil {
+		logger.LogError("Failed to upgrade db for cluster entries")
+		return err
+	}
+
+	err = NodeEntryUpgrade(tx)
+	if err != nil {
+		logger.LogError("Failed to upgrade db for node entries")
+		return err
+	}
+
+	err = VolumeEntryUpgrade(tx)
+	if err != nil {
+		logger.LogError("Failed to upgrade db for volume entries")
+		return err
+	}
+
+	err = DeviceEntryUpgrade(tx)
+	if err != nil {
+		logger.LogError("Failed to upgrade db for device entries")
+		return err
+	}
+
+	err = BrickEntryUpgrade(tx)
+	if err != nil {
+		logger.LogError("Failed to upgrade db for brick entries: %v", err)
+		return err
+	}
+
+	err = PendingOperationUpgrade(tx)
+	if err != nil {
+		logger.LogError("Failed to upgrade db for pending operations: %v", err)
+		return err
+	}
+
+	return nil
+}
