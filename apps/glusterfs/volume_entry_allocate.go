@@ -84,8 +84,6 @@ func allocateBricks(
 		for i := 0; i < v.Durability.BricksInSet(); i++ {
 			logger.Debug("%v / %v", i, v.Durability.BricksInSet())
 
-			// Do the work in the database context so that the cluster
-			// data does not change while determining brick location
 			err := db.View(func(tx *bolt.Tx) error {
 
 				// Check the ring for devices to place the brick
