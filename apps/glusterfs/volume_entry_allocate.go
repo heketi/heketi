@@ -42,6 +42,45 @@ func tryAllocateBrickOnDevice(v *VolumeEntry, device *DeviceEntry,
 	return brick
 }
 
+func findDeviceAndBrickForSet(tx *bolt.Tx, v *VolumeEntry,
+	devcache map[string](*DeviceEntry),
+	deviceCh <-chan string,
+	errc <-chan error,
+	setlist []*BrickEntry,
+	brick_size uint64) (*BrickEntry, *DeviceEntry, error) {
+
+	// Check the ring for devices to place the brick
+	for deviceId := range deviceCh {
+
+		// Get device entry from cache if possible
+		device, ok := devcache[deviceId]
+		if !ok {
+			// Get device entry from db otherwise
+			var err error
+			device, err = NewDeviceEntryFromId(tx, deviceId)
+			if err != nil {
+				return nil, nil, err
+			}
+			devcache[deviceId] = device
+		}
+
+		brick := tryAllocateBrickOnDevice(v, device, setlist, brick_size)
+		if brick == nil {
+			continue
+		}
+
+		return brick, device, nil
+	}
+
+	// Check if allocator returned an error
+	if err := <-errc; err != nil {
+		return nil, nil, err
+	}
+
+	// No devices found
+	return nil, nil, ErrNoSpace
+}
+
 type BrickAllocation struct {
 	Bricks  []*BrickEntry
 	Devices []*DeviceEntry
@@ -86,50 +125,27 @@ func allocateBricks(
 
 			err := db.View(func(tx *bolt.Tx) error {
 
-				// Check the ring for devices to place the brick
-				for deviceId := range deviceCh {
-
-					// Get device entry from cache if possible
-					device, ok := devcache[deviceId]
-					if !ok {
-						// Get device entry from db otherwise
-						var err error
-						device, err = NewDeviceEntryFromId(tx, deviceId)
-						if err != nil {
-							return err
-						}
-						devcache[deviceId] = device
-					}
-
-					brick := tryAllocateBrickOnDevice(v, device, setlist, brick_size)
-					if brick == nil {
-						continue
-					}
-
-					// If the first in the set, then reset the id
-					if i == 0 {
-						brick.SetId(brickId)
-					}
-
-					// Save the brick entry to create later
-					r.Bricks = append(r.Bricks, brick)
-					r.Devices = append(r.Devices, device)
-
-					setlist = append(setlist, brick)
-
-					device.BrickAdd(brick.Id())
-
-					return nil
-				}
-
-				// Check if allocator returned an error
-				if err := <-errc; err != nil {
+				brick, device, err := findDeviceAndBrickForSet(tx,
+					v, devcache, deviceCh, errc, setlist,
+					brick_size)
+				if err != nil {
 					return err
 				}
 
-				// No devices found
-				return ErrNoSpace
+				// If the first in the set, then reset the id
+				if i == 0 {
+					brick.SetId(brickId)
+				}
 
+				// Save the brick entry to create later
+				r.Bricks = append(r.Bricks, brick)
+				r.Devices = append(r.Devices, device)
+
+				setlist = append(setlist, brick)
+
+				device.BrickAdd(brick.Id())
+
+				return nil
 			})
 			if err != nil {
 				return r, err
