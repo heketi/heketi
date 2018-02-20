@@ -163,6 +163,8 @@ func dbDumpInternal(db *bolt.DB) (Db, error) {
 			}
 		}
 
+		has_pendingops := false
+
 		if b := tx.Bucket([]byte(BOLTDB_BUCKET_DBATTRIBUTE)); b == nil {
 			logger.Warning("unable to find dbattribute bucket... skipping")
 		} else {
@@ -179,20 +181,25 @@ func dbDumpInternal(db *bolt.DB) (Db, error) {
 					return err
 				}
 				dbattributeEntryList[dbattributeEntry.Key] = *dbattributeEntry
+				has_pendingops = (has_pendingops ||
+					(dbattributeEntry.Key == DB_HAS_PENDING_OPS_BUCKET &&
+						dbattributeEntry.Value == "yes"))
 			}
 		}
 
-		pendingops, err := PendingOperationList(tx)
-		if err != nil {
-			return err
-		}
-
-		for _, opid := range pendingops {
-			entry, err := NewPendingOperationEntryFromId(tx, opid)
+		if has_pendingops {
+			pendingops, err := PendingOperationList(tx)
 			if err != nil {
 				return err
 			}
-			pendingOpEntryList[opid] = *entry
+
+			for _, opid := range pendingops {
+				entry, err := NewPendingOperationEntryFromId(tx, opid)
+				if err != nil {
+					return err
+				}
+				pendingOpEntryList[opid] = *entry
+			}
 		}
 
 		return nil
