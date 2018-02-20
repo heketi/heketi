@@ -267,6 +267,5 @@ func PendingOperationUpgrade(tx *bolt.Tx) error {
 
 	// there are no data changes related to enabling Pending Ops in the db
 	// so simply save the entry to record that this db now has them
-	//return entry.Save(tx)
-	return nil // disable it for now
+	return entry.Save(tx)
 }
