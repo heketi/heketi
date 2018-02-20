@@ -82,19 +82,6 @@ func (s *SimpleAllocator) loadRingFromDB(tx *bolt.Tx) error {
 	return nil
 }
 
-// Create a new simple allocator and initialize it with data from the db
-func NewSimpleAllocatorFromDb(db wdb.RODB) *SimpleAllocator {
-
-	s := NewSimpleAllocator()
-
-	if err := db.View(s.loadRingFromDB); err != nil {
-		return nil
-	}
-
-	return s
-
-}
-
 func (s *SimpleAllocator) addDevice(cluster *ClusterEntry,
 	node *NodeEntry,
 	device *DeviceEntry) error {
