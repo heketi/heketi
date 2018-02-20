@@ -19,6 +19,68 @@ import (
 	"github.com/heketi/heketi/pkg/utils"
 )
 
+func tryAllocateBrickOnDevice(v *VolumeEntry, device *DeviceEntry,
+	setlist []*BrickEntry, brick_size uint64) *BrickEntry {
+
+	// Do not allow a device from the same node to be in the set
+	deviceOk := true
+	for _, brickInSet := range setlist {
+		if brickInSet.Info.NodeId == device.NodeId {
+			deviceOk = false
+		}
+	}
+
+	if !deviceOk {
+		return nil
+	}
+
+	// Try to allocate a brick on this device
+	brick := device.NewBrickEntry(brick_size,
+		float64(v.Info.Snapshot.Factor),
+		v.Info.Gid, v.Info.Id)
+
+	return brick
+}
+
+func findDeviceAndBrickForSet(tx *bolt.Tx, v *VolumeEntry,
+	devcache map[string](*DeviceEntry),
+	deviceCh <-chan string,
+	errc <-chan error,
+	setlist []*BrickEntry,
+	brick_size uint64) (*BrickEntry, *DeviceEntry, error) {
+
+	// Check the ring for devices to place the brick
+	for deviceId := range deviceCh {
+
+		// Get device entry from cache if possible
+		device, ok := devcache[deviceId]
+		if !ok {
+			// Get device entry from db otherwise
+			var err error
+			device, err = NewDeviceEntryFromId(tx, deviceId)
+			if err != nil {
+				return nil, nil, err
+			}
+			devcache[deviceId] = device
+		}
+
+		brick := tryAllocateBrickOnDevice(v, device, setlist, brick_size)
+		if brick == nil {
+			continue
+		}
+
+		return brick, device, nil
+	}
+
+	// Check if allocator returned an error
+	if err := <-errc; err != nil {
+		return nil, nil, err
+	}
+
+	// No devices found
+	return nil, nil, ErrNoSpace
+}
+
 type BrickAllocation struct {
 	Bricks  []*BrickEntry
 	Devices []*DeviceEntry
@@ -39,100 +101,56 @@ func allocateBricks(
 
 	devcache := map[string](*DeviceEntry){}
 
-	// Determine allocation for each brick required for this volume
-	for brick_num := 0; brick_num < bricksets; brick_num++ {
-		logger.Info("brick_num: %v", brick_num)
+	err := db.View(func(tx *bolt.Tx) error {
 
-		// Create a brick set list to later make sure that the
-		// proposed bricks and devices are acceptable
-		setlist := make([]*BrickEntry, 0)
+		// Determine allocation for each brick required for this volume
+		for brick_num := 0; brick_num < bricksets; brick_num++ {
+			logger.Info("brick_num: %v", brick_num)
 
-		// Generate an id for the brick
-		brickId := utils.GenUUID()
+			// Create a brick set list to later make sure that the
+			// proposed bricks and devices are acceptable
+			setlist := make([]*BrickEntry, 0)
 
-		// Get allocator generator
-		// The same generator should be used for the brick and its replicas
-		deviceCh, done, errc := allocator.GetNodes(cluster, brickId)
-		defer func() {
-			close(done)
-		}()
+			// Generate an id for the brick
+			brickId := utils.GenUUID()
 
-		// Check location has space for each brick and its replicas
-		for i := 0; i < v.Durability.BricksInSet(); i++ {
-			logger.Debug("%v / %v", i, v.Durability.BricksInSet())
+			// Get allocator generator
+			// The same generator should be used for the brick and its replicas
+			deviceCh, done, errc := allocator.GetNodes(cluster, brickId)
+			defer func() {
+				close(done)
+			}()
 
-			// Do the work in the database context so that the cluster
-			// data does not change while determining brick location
-			err := db.View(func(tx *bolt.Tx) error {
+			// Check location has space for each brick and its replicas
+			for i := 0; i < v.Durability.BricksInSet(); i++ {
+				logger.Debug("%v / %v", i, v.Durability.BricksInSet())
 
-				// Check the ring for devices to place the brick
-				for deviceId := range deviceCh {
-
-					// Get device entry from cache if possible
-					device, ok := devcache[deviceId]
-					if !ok {
-						// Get device entry from db otherwise
-						var err error
-						device, err = NewDeviceEntryFromId(tx, deviceId)
-						if err != nil {
-							return err
-						}
-						devcache[deviceId] = device
-					}
-
-					// Do not allow a device from the same node to be
-					// in the set
-					deviceOk := true
-					for _, brickInSet := range setlist {
-						if brickInSet.Info.NodeId == device.NodeId {
-							deviceOk = false
-						}
-					}
-
-					if !deviceOk {
-						continue
-					}
-
-					// Try to allocate a brick on this device
-					brick := device.NewBrickEntry(brick_size,
-						float64(v.Info.Snapshot.Factor),
-						v.Info.Gid, v.Info.Id)
-
-					// Determine if it was successful
-					if brick != nil {
-
-						// If the first in the set, the reset the id
-						if i == 0 {
-							brick.SetId(brickId)
-						}
-
-						// Save the brick entry to create later
-						r.Bricks = append(r.Bricks, brick)
-						r.Devices = append(r.Devices, device)
-
-						// Add to set list
-						setlist = append(setlist, brick)
-
-						// Add brick to device
-						device.BrickAdd(brick.Id())
-
-						return nil
-					}
-				}
-
-				// Check if allocator returned an error
-				if err := <-errc; err != nil {
+				brick, device, err := findDeviceAndBrickForSet(tx,
+					v, devcache, deviceCh, errc, setlist,
+					brick_size)
+				if err != nil {
 					return err
 				}
 
-				// No devices found
-				return ErrNoSpace
+				// If the first in the set, then reset the id
+				if i == 0 {
+					brick.SetId(brickId)
+				}
 
-			})
-			if err != nil {
-				return r, err
+				// Save the brick entry to create later
+				r.Bricks = append(r.Bricks, brick)
+				r.Devices = append(r.Devices, device)
+
+				setlist = append(setlist, brick)
+
+				device.BrickAdd(brick.Id())
 			}
 		}
+
+		return nil
+	})
+	if err != nil {
+		return r, err
 	}
 
 	// Only assign bricks to the volume object on success
@@ -222,6 +240,105 @@ func (v *VolumeEntry) getBrickEntryfromBrickName(db wdb.RODB, brickname string) 
 	return nil, ErrNotFound
 }
 
+func (v *VolumeEntry) getBrickSetForBrickId(db wdb.DB,
+	executor executors.Executor,
+	oldBrickId string, node string) ([]*BrickEntry, error) {
+
+	setlist := make([]*BrickEntry, 0)
+
+	// Determine the setlist by getting data from Gluster
+	vinfo, err := executor.VolumeInfo(node, v.Info.Name)
+	if err != nil {
+		logger.LogError("Unable to get volume info from gluster node %v for volume %v: %v", node, v.Info.Name, err)
+		return setlist, err
+	}
+
+	var slicestartindex int
+	var foundbrickset bool
+	var brick executors.Brick
+	// BrickList in volume info is a slice of all bricks in volume
+	// We loop over the slice in steps of BricksInSet()
+	// If brick to be replaced is found in an iteration, other bricks in that slice form the setlist
+	for slicestartindex = 0; slicestartindex <= len(vinfo.Bricks.BrickList)-v.Durability.BricksInSet(); slicestartindex = slicestartindex + v.Durability.BricksInSet() {
+		setlist = make([]*BrickEntry, 0)
+		for _, brick = range vinfo.Bricks.BrickList[slicestartindex : slicestartindex+v.Durability.BricksInSet()] {
+			brickentry, err := v.getBrickEntryfromBrickName(db, brick.Name)
+			if err != nil {
+				logger.LogError("Unable to create brick entry using brick name:%v, error: %v", brick.Name, err)
+				return setlist, err
+			}
+			if brickentry.Id() == oldBrickId {
+				foundbrickset = true
+			} else {
+				setlist = append(setlist, brickentry)
+			}
+		}
+		if foundbrickset {
+			break
+		}
+	}
+
+	if !foundbrickset {
+		logger.LogError("Unable to find brick set for brick %v, db is possibly corrupt", oldBrickId)
+		return setlist, ErrNotFound
+	}
+
+	return setlist, nil
+}
+
+// canReplaceBrickInBrickSet
+// check if a BrickSet is in a state where it's possible
+// to replace a given one of its bricks:
+// - no heals going on on the brick to be replaced
+// - enough bricks of the set are up
+func (v *VolumeEntry) canReplaceBrickInBrickSet(db wdb.DB,
+	executor executors.Executor,
+	brick *BrickEntry,
+	node string,
+	setlist []*BrickEntry) error {
+
+	// Get self heal status for this brick's volume
+	healinfo, err := executor.HealInfo(node, v.Info.Name)
+	if err != nil {
+		return err
+	}
+
+	var onlinePeerBrickCount = 0
+	for _, brickHealStatus := range healinfo.Bricks.BrickList {
+		// Gluster has a bug that it does not send Name for bricks that are down.
+		// Skip such bricks; it is safe because it is not source if it is down
+		if brickHealStatus.Name == "information not available" {
+			continue
+		}
+		iBrickEntry, err := v.getBrickEntryfromBrickName(db, brickHealStatus.Name)
+		if err != nil {
+			return fmt.Errorf("Unable to determine heal status of brick")
+		}
+		if iBrickEntry.Id() == brick.Id() {
+			// If we are here, it means the brick to be replaced is
+			// up and running. We need to ensure that it is not a
+			// source for any files.
+			if brickHealStatus.NumberOfEntries != "-" &&
+				brickHealStatus.NumberOfEntries != "0" {
+				return fmt.Errorf("Cannot replace brick %v as it is source brick for data to be healed", iBrickEntry.Id())
+			}
+		}
+		for _, brickInSet := range setlist {
+			if brickInSet.Id() == iBrickEntry.Id() {
+				onlinePeerBrickCount++
+			}
+		}
+	}
+	if onlinePeerBrickCount < v.Durability.QuorumBrickCount() {
+		return fmt.Errorf("Cannot replace brick %v as only %v of %v "+
+			"required peer bricks are online",
+			brick.Id(), onlinePeerBrickCount,
+			v.Durability.QuorumBrickCount())
+	}
+
+	return nil
+}
+
 func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executor,
 	allocator Allocator,
 	oldBrickId string) (e error) {
@@ -267,74 +384,14 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 		}
 	}
 
-	// Determine the setlist by getting data from Gluster
-	vinfo, err := executor.VolumeInfo(node, v.Info.Name)
-	var slicestartindex int
-	var foundbrickset bool
-	var brick executors.Brick
-	setlist := make([]*BrickEntry, 0)
-	var onlinePeerBrickCount = 0
-	// BrickList in volume info is a slice of all bricks in volume
-	// We loop over the slice in steps of BricksInSet()
-	// If brick to be replaced is found in an iteration, other bricks in that slice form the setlist
-	for slicestartindex = 0; slicestartindex <= len(vinfo.Bricks.BrickList)-v.Durability.BricksInSet(); slicestartindex = slicestartindex + v.Durability.BricksInSet() {
-		setlist = make([]*BrickEntry, 0)
-		for _, brick = range vinfo.Bricks.BrickList[slicestartindex : slicestartindex+v.Durability.BricksInSet()] {
-			brickentry, err := v.getBrickEntryfromBrickName(db, brick.Name)
-			if err != nil {
-				logger.LogError("Unable to create brick entry using brick name:%v, error: %v", brick.Name, err)
-				return err
-			}
-			if brickentry.Id() == oldBrickId {
-				foundbrickset = true
-			} else {
-				setlist = append(setlist, brickentry)
-			}
-		}
-		if foundbrickset {
-			break
-		}
-	}
-	if !foundbrickset {
-		logger.LogError("Unable to find brick set for brick %v, db is possibly corrupt", oldBrickEntry.Id())
-		return ErrNotFound
-	}
-
-	// Get self heal status for this brick's volume
-	healinfo, err := executor.HealInfo(node, v.Info.Name)
+	setlist, err := v.getBrickSetForBrickId(db, executor, oldBrickId, node)
 	if err != nil {
 		return err
 	}
-	for _, brickHealStatus := range healinfo.Bricks.BrickList {
-		// Gluster has a bug that it does not send Name for bricks that are down.
-		// Skip such bricks; it is safe because it is not source if it is down
-		if brickHealStatus.Name == "information not available" {
-			continue
-		}
-		iBrickEntry, err := v.getBrickEntryfromBrickName(db, brickHealStatus.Name)
-		if err != nil {
-			return fmt.Errorf("Unable to determine heal status of brick")
-		}
-		if iBrickEntry.Id() == oldBrickEntry.Id() {
-			// If we are here, it means the brick to be replaced is
-			// up and running. We need to ensure that it is not a
-			// source for any files.
-			if brickHealStatus.NumberOfEntries != "-" &&
-				brickHealStatus.NumberOfEntries != "0" {
-				return fmt.Errorf("Cannot replace brick %v as it is source brick for data to be healed", iBrickEntry.Id())
-			}
-		}
-		for _, brickInSet := range setlist {
-			if brickInSet.Id() == iBrickEntry.Id() {
-				onlinePeerBrickCount++
-			}
-		}
-	}
-	if onlinePeerBrickCount < v.Durability.QuorumBrickCount() {
-		return fmt.Errorf("Cannot replace brick %v as only %v of %v "+
-			"required peer bricks are online",
-			oldBrickEntry.Id(), onlinePeerBrickCount,
-			v.Durability.QuorumBrickCount())
+
+	err = v.canReplaceBrickInBrickSet(db, executor, oldBrickEntry, node, setlist)
+	if err != nil {
+		return err
 	}
 
 	//Create an Id for new brick
