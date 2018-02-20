@@ -11,6 +11,11 @@ package glusterfs
 
 import (
 	"github.com/boltdb/bolt"
+	"github.com/heketi/heketi/pkg/utils"
+)
+
+const (
+	DB_GENERATION_ID = "DB_GENERATION_ID"
 )
 
 func initializeBuckets(tx *bolt.Tx) error {
@@ -68,4 +73,72 @@ func initializeBuckets(tx *bolt.Tx) error {
 	}
 
 	return nil
+}
+
+// UpgradeDB runs all upgrade routines in order to to update the DB
+// to the latest "schemas" and data.
+func UpgradeDB(tx *bolt.Tx) error {
+
+	err := ClusterEntryUpgrade(tx)
+	if err != nil {
+		logger.LogError("Failed to upgrade db for cluster entries")
+		return err
+	}
+
+	err = NodeEntryUpgrade(tx)
+	if err != nil {
+		logger.LogError("Failed to upgrade db for node entries")
+		return err
+	}
+
+	err = VolumeEntryUpgrade(tx)
+	if err != nil {
+		logger.LogError("Failed to upgrade db for volume entries")
+		return err
+	}
+
+	err = DeviceEntryUpgrade(tx)
+	if err != nil {
+		logger.LogError("Failed to upgrade db for device entries")
+		return err
+	}
+
+	err = BrickEntryUpgrade(tx)
+	if err != nil {
+		logger.LogError("Failed to upgrade db for brick entries: %v", err)
+		return err
+	}
+
+	err = PendingOperationUpgrade(tx)
+	if err != nil {
+		logger.LogError("Failed to upgrade db for pending operations: %v", err)
+		return err
+	}
+
+	err = upgradeDBGenerationID(tx)
+	if err != nil {
+		logger.LogError("Failed to record DB Generation ID: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func upgradeDBGenerationID(tx *bolt.Tx) error {
+	_, err := NewDbAttributeEntryFromKey(tx, DB_GENERATION_ID)
+	switch err {
+	case ErrNotFound:
+		return recordNewDBGenerationID(tx)
+	case nil:
+		return nil
+	default:
+		return err
+	}
+}
+
+func recordNewDBGenerationID(tx *bolt.Tx) error {
+	entry := NewDbAttributeEntry()
+	entry.Key = DB_GENERATION_ID
+	entry.Value = utils.GenUUID()
+	return entry.Save(tx)
 }
