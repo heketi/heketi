@@ -262,6 +262,73 @@ func TestDeviceAddDelete(t *testing.T) {
 	})
 	tests.Assert(t, err == nil)
 
+	// Set offline
+	request = []byte(`{
+				"state" : "offline"
+				}`)
+	r, err = http.Post(ts.URL+"/devices/"+fakeid+"/state",
+		"application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+
+	location, err = r.Location()
+	tests.Assert(t, err == nil)
+	// Query queue until finished
+	for {
+		r, err = http.Get(location.String())
+		tests.Assert(t, err == nil)
+		if r.Header.Get("X-Pending") == "true" {
+			tests.Assert(t, r.StatusCode == http.StatusOK)
+			time.Sleep(time.Millisecond * 10)
+		} else {
+			tests.Assert(t, r.StatusCode == http.StatusNoContent)
+			break
+		}
+	}
+	// Get Device Info
+	r, err = http.Get(ts.URL + "/devices/" + fakeid)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusOK)
+	tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
+
+	var info api.DeviceInfoResponse
+	err = utils.GetJsonFromResponse(r, &info)
+	tests.Assert(t, info.Id == fakeid)
+	tests.Assert(t, info.State == "offline")
+
+	// Set failed
+	request = []byte(`{
+				"state" : "failed"
+				}`)
+	r, err = http.Post(ts.URL+"/devices/"+fakeid+"/state",
+		"application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+
+	location, err = r.Location()
+	tests.Assert(t, err == nil)
+	// Query queue until finished
+	for {
+		r, err = http.Get(location.String())
+		tests.Assert(t, err == nil)
+		if r.Header.Get("X-Pending") == "true" {
+			tests.Assert(t, r.StatusCode == http.StatusOK)
+			time.Sleep(time.Millisecond * 10)
+		} else {
+			tests.Assert(t, r.StatusCode == http.StatusNoContent)
+			break
+		}
+	}
+	// Get Device Info
+	r, err = http.Get(ts.URL + "/devices/" + fakeid)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusOK)
+	tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
+
+	err = utils.GetJsonFromResponse(r, &info)
+	tests.Assert(t, info.Id == fakeid)
+	tests.Assert(t, info.State == "failed")
+
 	// Delete device
 	req, err = http.NewRequest("DELETE", ts.URL+"/devices/"+fakeid, nil)
 	tests.Assert(t, err == nil)
