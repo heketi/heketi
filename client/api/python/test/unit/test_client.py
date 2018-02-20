@@ -325,7 +325,10 @@ class test_heketi(unittest.TestCase):
 
             # Delete all devices
             for device in nodeInfo['devices']:
-                device_delete = c.device_delete(device['id'])
+                devid = device['id']
+                self.assertTrue(c.device_state(devid, {'state': 'offline'}))
+                self.assertTrue(c.device_state(devid, {'state': 'failed'}))
+                device_delete = c.device_delete(devid)
                 self.assertTrue(device_delete)
 
             # Delete node
