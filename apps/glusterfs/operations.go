@@ -357,7 +357,7 @@ func (vdel *VolumeDeleteOperation) Exec(executor executors.Executor) error {
 	}
 	err = vdel.vol.deleteVolumeExec(vdel.db, executor, brick_entries, sshhost)
 	if err != nil {
-		logger.LogError("Error executing expand volume: %v", err)
+		logger.LogError("Error executing delete volume: %v", err)
 	}
 	return err
 }
