@@ -158,6 +158,7 @@ assert "nonsense" not in j
 # check expected numbers of items
 assert len(j["pendingoperations"]) == 1
 assert len(j["volumeentries"]) == 1
+assert "DB_HAS_PENDING_OPS_BUCKET" in j["dbattributeentries"]
 
 # check that pending operations match pending ids
 vol = list(j["volumeentries"].values())[0]
