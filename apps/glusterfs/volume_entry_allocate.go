@@ -101,29 +101,29 @@ func allocateBricks(
 
 	devcache := map[string](*DeviceEntry){}
 
-	// Determine allocation for each brick required for this volume
-	for brick_num := 0; brick_num < bricksets; brick_num++ {
-		logger.Info("brick_num: %v", brick_num)
+	err := db.View(func(tx *bolt.Tx) error {
 
-		// Create a brick set list to later make sure that the
-		// proposed bricks and devices are acceptable
-		setlist := make([]*BrickEntry, 0)
+		// Determine allocation for each brick required for this volume
+		for brick_num := 0; brick_num < bricksets; brick_num++ {
+			logger.Info("brick_num: %v", brick_num)
 
-		// Generate an id for the brick
-		brickId := utils.GenUUID()
+			// Create a brick set list to later make sure that the
+			// proposed bricks and devices are acceptable
+			setlist := make([]*BrickEntry, 0)
 
-		// Get allocator generator
-		// The same generator should be used for the brick and its replicas
-		deviceCh, done, errc := allocator.GetNodes(cluster, brickId)
-		defer func() {
-			close(done)
-		}()
+			// Generate an id for the brick
+			brickId := utils.GenUUID()
 
-		// Check location has space for each brick and its replicas
-		for i := 0; i < v.Durability.BricksInSet(); i++ {
-			logger.Debug("%v / %v", i, v.Durability.BricksInSet())
+			// Get allocator generator
+			// The same generator should be used for the brick and its replicas
+			deviceCh, done, errc := allocator.GetNodes(cluster, brickId)
+			defer func() {
+				close(done)
+			}()
 
-			err := db.View(func(tx *bolt.Tx) error {
+			// Check location has space for each brick and its replicas
+			for i := 0; i < v.Durability.BricksInSet(); i++ {
+				logger.Debug("%v / %v", i, v.Durability.BricksInSet())
 
 				brick, device, err := findDeviceAndBrickForSet(tx,
 					v, devcache, deviceCh, errc, setlist,
@@ -144,13 +144,13 @@ func allocateBricks(
 				setlist = append(setlist, brick)
 
 				device.BrickAdd(brick.Id())
-
-				return nil
-			})
-			if err != nil {
-				return r, err
 			}
 		}
+
+		return nil
+	})
+	if err != nil {
+		return r, err
 	}
 
 	// Only assign bricks to the volume object on success
