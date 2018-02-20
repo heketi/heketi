@@ -225,7 +225,7 @@ func (d *DeviceEntry) stateCheck(s api.EntryState) error {
 		case api.EntryStateOnline:
 			return fmt.Errorf("Cannot move a failed/removed device to online state")
 		case api.EntryStateOffline:
-			return fmt.Errorf("Cannot move a failed/removed device to offline state")
+			return nil
 		default:
 			return fmt.Errorf("Unknown state type: %v", s)
 		}
