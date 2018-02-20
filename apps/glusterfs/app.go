@@ -476,7 +476,7 @@ func (a *App) newAllocator() Allocator {
 	switch {
 	case a.conf.Allocator == "simple" || a.conf.Allocator == "":
 		a.conf.Allocator = "simple"
-		if r := NewSimpleAllocatorFromDb(a.db); r != nil {
+		if r := NewSimpleAllocator(); r != nil {
 			alloc = r
 		} else {
 			panic(errors.New("failed to set up simple allocator"))
