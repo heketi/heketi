@@ -56,16 +56,15 @@ func TestSimpleAllocatorAddDevice(t *testing.T) {
 	tests.Assert(t, a.rings[cluster.Info.Id] != nil)
 
 	// Get the nodes from the ring
-	ch, _, errc := a.GetNodes(cluster.Info.Id, utils.GenUUID())
+	devicelist, err := a.getDeviceList(cluster.Info.Id, utils.GenUUID())
+	tests.Assert(t, err == nil)
 
 	var devices int
-	for d := range ch {
+	for _, d := range devicelist {
 		devices++
-		tests.Assert(t, d == device.Info.Id)
+		tests.Assert(t, d.deviceId == device.Info.Id)
 	}
-	err = <-errc
 	tests.Assert(t, devices == 1)
-	tests.Assert(t, err == nil)
 }
 
 func TestSimpleAllocatorInitFromDb(t *testing.T) {
