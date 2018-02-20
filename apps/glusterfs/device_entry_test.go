@@ -227,6 +227,16 @@ func TestDeviceEntryRegister(t *testing.T) {
 	})
 	tests.Assert(t, err == nil)
 
+	// Set offline
+	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
+	tests.Assert(t, d.State == api.EntryStateOffline)
+	tests.Assert(t, err == nil, err)
+
+	// Set failed
+	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateFailed)
+	tests.Assert(t, d.State == api.EntryStateFailed)
+	tests.Assert(t, err == nil, err)
+
 	// Remove d
 	err = app.db.Update(func(tx *bolt.Tx) error {
 		err := d.Deregister(tx)
@@ -282,6 +292,16 @@ func TestDeviceEntryRegisterStaleRegistration(t *testing.T) {
 		return d.Register(tx)
 	})
 	tests.Assert(t, err != nil)
+
+	// Set offline
+	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
+	tests.Assert(t, d.State == api.EntryStateOffline)
+	tests.Assert(t, err == nil, err)
+
+	// Set failed
+	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateFailed)
+	tests.Assert(t, d.State == api.EntryStateFailed)
+	tests.Assert(t, err == nil, err)
 
 	// Remove d
 	err = app.db.Update(func(tx *bolt.Tx) error {
@@ -382,7 +402,7 @@ func TestNewDeviceEntrySaveDelete(t *testing.T) {
 	tests.Assert(t, err == nil)
 	tests.Assert(t, reflect.DeepEqual(device, d))
 
-	// Delete entry which has devices
+	// Delete device which has bricks
 	err = app.db.Update(func(tx *bolt.Tx) error {
 		var err error
 		device, err = NewDeviceEntryFromId(tx, d.Info.Id)
@@ -398,9 +418,9 @@ func TestNewDeviceEntrySaveDelete(t *testing.T) {
 		return nil
 
 	})
-	tests.Assert(t, err == ErrConflict)
+	tests.Assert(t, strings.Contains(err.Error(), "is not in failed state"), err)
 
-	// Delete devices in device
+	// Delete bricks in device
 	device.BrickDelete("abc")
 	device.BrickDelete("def")
 	tests.Assert(t, len(device.Bricks) == 0)
@@ -408,6 +428,16 @@ func TestNewDeviceEntrySaveDelete(t *testing.T) {
 		return device.Save(tx)
 	})
 	tests.Assert(t, err == nil)
+
+	// Set offline
+	err = device.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
+	tests.Assert(t, device.State == api.EntryStateOffline)
+	tests.Assert(t, err == nil, err)
+
+	// Set failed
+	err = device.SetState(app.db, app.executor, app.Allocator(), api.EntryStateFailed)
+	tests.Assert(t, device.State == api.EntryStateFailed, device.State)
+	tests.Assert(t, err == nil, err)
 
 	// Now try to delete the device
 	err = app.db.Update(func(tx *bolt.Tx) error {

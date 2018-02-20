@@ -215,6 +215,16 @@ class test_heketi(unittest.TestCase):
         with self.assertRaises(requests.exceptions.HTTPError):
             c.node_delete("badid")
 
+        # Set device to offline
+        state = {}
+        state['state'] = 'offline'
+        self.assertTrue(c.device_state(device_id, state))
+
+        # Set device to failed
+        state = {}
+        state['state'] = 'failed'
+        self.assertTrue(c.device_state(device_id, state))
+
         # Delete device
         device_delete = c.device_delete(device_info['id'])
         self.assertTrue(device_delete)
