@@ -11,6 +11,11 @@ package glusterfs
 
 import (
 	"github.com/boltdb/bolt"
+	"github.com/heketi/heketi/pkg/utils"
+)
+
+const (
+	DB_GENERATION_ID = "DB_GENERATION_ID"
 )
 
 func initializeBuckets(tx *bolt.Tx) error {
@@ -110,5 +115,30 @@ func UpgradeDB(tx *bolt.Tx) error {
 		return err
 	}
 
+	err = upgradeDBGenerationID(tx)
+	if err != nil {
+		logger.LogError("Failed to record DB Generation ID: %v", err)
+		return err
+	}
+
 	return nil
+}
+
+func upgradeDBGenerationID(tx *bolt.Tx) error {
+	_, err := NewDbAttributeEntryFromKey(tx, DB_GENERATION_ID)
+	switch err {
+	case ErrNotFound:
+		return recordNewDBGenerationID(tx)
+	case nil:
+		return nil
+	default:
+		return err
+	}
+}
+
+func recordNewDBGenerationID(tx *bolt.Tx) error {
+	entry := NewDbAttributeEntry()
+	entry.Key = DB_GENERATION_ID
+	entry.Value = utils.GenUUID()
+	return entry.Save(tx)
 }
