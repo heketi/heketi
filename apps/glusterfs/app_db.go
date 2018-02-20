@@ -382,6 +382,12 @@ func DbCreate(jsonfile string, dbfile string, debug bool) error {
 				return fmt.Errorf("Could not save pending operation bucket: %v", err.Error())
 			}
 		}
+		// always record a new generation id on db import as the db contents
+		// were no longer fully under heketi's control
+		logger.Debug("recording new DB generation ID")
+		if err := recordNewDBGenerationID(tx); err != nil {
+			return fmt.Errorf("Could not record DB generation ID: %v", err.Error())
+		}
 		return nil
 	})
 	if err != nil {
