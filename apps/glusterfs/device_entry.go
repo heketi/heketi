@@ -148,12 +148,12 @@ func (d *DeviceEntry) Save(tx *bolt.Tx) error {
 
 }
 
-func (d *DeviceEntry) IsDeleteOk() bool {
+func (d *DeviceEntry) HasBricks() bool {
 	// Check if the nodes still has drives
 	if len(d.Bricks) > 0 {
-		return false
+		return true
 	}
-	return true
+	return false
 }
 
 func (d *DeviceEntry) ConflictString() string {
@@ -163,8 +163,8 @@ func (d *DeviceEntry) ConflictString() string {
 func (d *DeviceEntry) Delete(tx *bolt.Tx) error {
 	godbc.Require(tx != nil)
 
-	// Check if the devices still has drives
-	if !d.IsDeleteOk() {
+	// Check if the device still has bricks
+	if d.HasBricks() {
 		logger.Warning(d.ConflictString())
 		return ErrConflict
 	}
@@ -530,7 +530,7 @@ func markDeviceFailed(db wdb.DB, id string, force bool) error {
 		if err != nil {
 			return err
 		}
-		if !force && !d.IsDeleteOk() {
+		if !force && d.HasBricks() {
 			return ErrConflict
 		}
 		d.State = api.EntryStateFailed
