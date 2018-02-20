@@ -128,3 +128,203 @@ func TestListingRemoveKeysFromList(t *testing.T) {
 	tests.Assert(t, r[0] == "foo", "expected r[0] == \"foo\", got:", r)
 	tests.Assert(t, r[1] == "bar", "expected r[1] == \"bar\", got:", r)
 }
+
+func TestListCompleteVolumesFakedPending(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		4,    // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	req := &api.VolumeCreateRequest{}
+	req.Size = 1024
+	req.Durability.Type = api.DurabilityReplicate
+	req.Durability.Replicate.Replica = 3
+
+	vol := NewVolumeEntryFromRequest(req)
+	err = vol.Create(app.db, app.executor, app.Allocator())
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	app.db.View(func(tx *bolt.Tx) error {
+		vols, err := ListCompleteVolumes(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(vols) == 1, "expected len(vols) == 1, got:", len(vols))
+		return nil
+	})
+
+	// set up a fake pending op
+	app.db.Update(func(tx *bolt.Tx) error {
+		vols, err := VolumeList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		po := NewPendingOperationEntry(NEW_ID)
+		po.Type = OperationCreateVolume
+		po.Actions = append(po.Actions, PendingOperationAction{
+			Change: OpAddVolume,
+			Id:     vols[0],
+		})
+		err = po.Save(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		return nil
+	})
+
+	app.db.View(func(tx *bolt.Tx) error {
+		vols, err := ListCompleteVolumes(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(vols) == 0, "expected len(vols) == 0, got:", len(vols))
+		return nil
+	})
+}
+
+func TestListCompleteBlockVolumesFakedPending(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		4,    // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	req := &api.BlockVolumeCreateRequest{}
+	req.Size = 1024
+
+	vol := NewBlockVolumeEntryFromRequest(req)
+	err = vol.Create(app.db, app.executor, app.Allocator())
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	app.db.View(func(tx *bolt.Tx) error {
+		bvols, err := ListCompleteBlockVolumes(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(bvols) == 1, "expected len(bvols) == 1, got:", len(bvols))
+		return nil
+	})
+
+	// set up a fake pending op
+	app.db.Update(func(tx *bolt.Tx) error {
+		bvols, err := BlockVolumeList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		po := NewPendingOperationEntry(NEW_ID)
+		po.Type = OperationCreateBlockVolume
+		po.Actions = append(po.Actions, PendingOperationAction{
+			Change: OpAddBlockVolume,
+			Id:     bvols[0],
+		})
+		err = po.Save(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		return nil
+	})
+
+	app.db.View(func(tx *bolt.Tx) error {
+		bvols, err := ListCompleteBlockVolumes(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(bvols) == 0, "expected len(bvols) == 0, got:", len(bvols))
+		return nil
+	})
+}
+
+func TestUpdateClusterInfoCompleteFakedPending(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		4,    // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	vreq := &api.VolumeCreateRequest{}
+	vreq.Size = 1024
+	vreq.Durability.Type = api.DurabilityReplicate
+	vreq.Durability.Replicate.Replica = 3
+
+	vol := NewVolumeEntryFromRequest(vreq)
+	err = vol.Create(app.db, app.executor, app.Allocator())
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	breq := &api.BlockVolumeCreateRequest{}
+	breq.Size = 1024
+
+	bvol := NewBlockVolumeEntryFromRequest(breq)
+	err = bvol.Create(app.db, app.executor, app.Allocator())
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	app.db.View(func(tx *bolt.Tx) error {
+		vols, err := ListCompleteVolumes(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(vols) == 2, "expected len(vols) == 2, got:", len(vols))
+		bvols, err := ListCompleteBlockVolumes(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(bvols) == 1, "expected len(bvols) == 1, got:", len(bvols))
+		return nil
+	})
+
+	// set up fake pending ops
+	app.db.Update(func(tx *bolt.Tx) error {
+		vols, err := VolumeList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		po := NewPendingOperationEntry(NEW_ID)
+		po.Type = OperationCreateVolume
+		po.Actions = append(po.Actions, PendingOperationAction{
+			Change: OpAddVolume,
+			Id:     vols[0],
+		})
+		err = po.Save(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+		bvols, err := BlockVolumeList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		po = NewPendingOperationEntry(NEW_ID)
+		po.Type = OperationCreateBlockVolume
+		po.Actions = append(po.Actions, PendingOperationAction{
+			Change: OpAddBlockVolume,
+			Id:     bvols[0],
+		})
+		err = po.Save(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		return nil
+	})
+
+	app.db.View(func(tx *bolt.Tx) error {
+		cids, err := ClusterList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(cids) == 1, "expected len(cids) == 1, got:", len(cids))
+
+		ce, err := NewClusterEntryFromId(tx, cids[0])
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		info, err := ce.NewClusterInfoResponse(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(info.Volumes) == 2,
+			"expected len(info.Volumes) == 2, got:", len(info.Volumes))
+		tests.Assert(t, len(info.BlockVolumes) == 1,
+			"expected len(info.BlockVolumes) == 1, got:", len(info.BlockVolumes))
+
+		err = UpdateClusterInfoComplete(tx, info)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(info.Volumes) == 1,
+			"expected len(info.Volumes) == 1, got:", len(info.Volumes))
+		tests.Assert(t, len(info.BlockVolumes) == 0,
+			"expected len(info.BlockVolumes) == 0, got:", len(info.BlockVolumes))
+		return nil
+	})
+}
