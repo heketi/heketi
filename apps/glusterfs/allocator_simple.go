@@ -30,6 +30,8 @@ func NewSimpleAllocator() *SimpleAllocator {
 }
 
 func (s *SimpleAllocator) loadRingFromDB(tx *bolt.Tx) error {
+	s.rings = map[string]*SimpleAllocatorRing{}
+
 	clusters, err := ClusterList(tx)
 	if err != nil {
 		return err
