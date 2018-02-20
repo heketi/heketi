@@ -449,7 +449,7 @@ func (a *App) Allocator() Allocator {
 	return a._allocator
 }
 
-// SetAllocator manually sets the allocator for thie app.
+// SetAllocator manually sets the allocator for this app.
 // The specified allocator will be cached on the app and
 // subsequent calls to Allocator will return the same object.
 // Generally this should only be used in test code.
@@ -476,7 +476,7 @@ func (a *App) newAllocator() Allocator {
 	switch {
 	case a.conf.Allocator == "simple" || a.conf.Allocator == "":
 		a.conf.Allocator = "simple"
-		if r := NewSimpleAllocatorFromDb(a.db); r != nil {
+		if r := NewSimpleAllocator(); r != nil {
 			alloc = r
 		} else {
 			panic(errors.New("failed to set up simple allocator"))

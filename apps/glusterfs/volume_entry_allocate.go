@@ -102,6 +102,7 @@ func allocateBricks(
 	devcache := map[string](*DeviceEntry){}
 
 	err := db.View(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
 
 		// Determine allocation for each brick required for this volume
 		for brick_num := 0; brick_num < bricksets; brick_num++ {
@@ -116,7 +117,7 @@ func allocateBricks(
 
 			// Get allocator generator
 			// The same generator should be used for the brick and its replicas
-			deviceCh, done, errc := allocator.GetNodes(cluster, brickId)
+			deviceCh, done, errc := allocator.GetNodes(txdb, cluster, brickId)
 			defer func() {
 				close(done)
 			}()
@@ -398,7 +399,7 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 	newBrickId := utils.GenUUID()
 
 	// Check the ring for devices to place the brick
-	deviceCh, done, errc := allocator.GetNodes(v.Info.Cluster, newBrickId)
+	deviceCh, done, errc := allocator.GetNodes(db, v.Info.Cluster, newBrickId)
 	defer func() {
 		close(done)
 	}()
