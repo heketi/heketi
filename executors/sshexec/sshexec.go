@@ -115,11 +115,6 @@ func NewSshExecutor(config *SshConfig) (*SshExecutor, error) {
 	// Save the configuration
 	s.config = config
 
-	// Show experimental settings
-	if s.config.RebalanceOnExpansion {
-		s.Logger().Warning("Rebalance on volume expansion has been enabled.  This is an EXPERIMENTAL feature")
-	}
-
 	// Setup key
 	var err error
 	s.exec, err = sshNew(s.Logger(), s.user, s.private_keyfile)
