@@ -197,6 +197,18 @@ $ heketi-cli device remove 886a86a868711bef83001
 .fi
 .RE
 .RE
+.PP
+\fBheketi\-cli device resync <DEVICE-ID>\fP
+.RS
+Resync storage information about the device with operation system
+.PP
+\fBExample\fP
+.RS
+.nf
+$ heketi-cli device resync 886a86a868711bef83001
+.fi
+.RE
+.RE
 .SS "Node Commands"
 .PP
 \fBheketi\-cli node add \-\-zone=<ZONE-NUMBER> \-\-cluster=<CLUSTER-ID> \-\-management\-host\-name=<MANAGEMENT-HOSTNAME> \-\-storage-host-name=<STORAGE-HOSTNAME>\fP
