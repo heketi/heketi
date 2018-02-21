@@ -223,6 +223,8 @@ func main() {
 			fmt.Fprint(w, "Hello from Heketi")
 		})
 
+	router.Methods("GET").Path("/metrics").Name("Metrics").HandlerFunc(app.Metrics())
+
 	// Create a router and do not allow any routes
 	// unless defined.
 	heketiRouter := mux.NewRouter().StrictSlash(true)

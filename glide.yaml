@@ -24,3 +24,5 @@ import:
   version: v3.0.0-beta.0
 - package: github.com/go-ozzo/ozzo-validation
   version: v3.3
+- package: github.com/prometheus/client_golang
+  version: v0.8.0

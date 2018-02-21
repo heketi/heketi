@@ -16,6 +16,7 @@ import (
 
 type Application interface {
 	SetRoutes(router *mux.Router) error
+	Metrics() http.HandlerFunc
 	Close()
 	Auth(w http.ResponseWriter, r *http.Request, next http.HandlerFunc)
 }
