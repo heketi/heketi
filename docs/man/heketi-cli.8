@@ -185,6 +185,18 @@ $ heketi-cli device info 886a86a868711bef83001
 .fi
 .RE
 .RE
+.PP
+\fBheketi\-cli device remove  <DEVICE-ID>\fP
+.RS
+Moves a device to removed/failed state, replacing all its bricks by bricks on other devices. This requires the device to be brought to disabled/offline state first.
+.PP
+\fBExample\fP
+.RS
+.nf
+$ heketi-cli device remove 886a86a868711bef83001
+.fi
+.RE
+.RE
 .SS "Node Commands"
 .PP
 \fBheketi\-cli node add \-\-zone=<ZONE-NUMBER> \-\-cluster=<CLUSTER-ID> \-\-management\-host\-name=<MANAGEMENT-HOSTNAME> \-\-storage-host-name=<STORAGE-HOSTNAME>\fP
