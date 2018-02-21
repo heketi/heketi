@@ -178,7 +178,22 @@ func teardownCluster(t *testing.T) {
 				go func(id string) {
 					defer sg.Done()
 
-					err := heketi.DeviceDelete(id)
+					stateReq := &api.StateRequest{}
+					stateReq.State = api.EntryStateOffline
+					err := heketi.DeviceState(id, stateReq)
+					if err != nil {
+						sg.Err(err)
+						return
+					}
+
+					stateReq.State = api.EntryStateFailed
+					err = heketi.DeviceState(id, stateReq)
+					if err != nil {
+						sg.Err(err)
+						return
+					}
+
+					err = heketi.DeviceDelete(id)
 					sg.Err(err)
 
 				}(device.Id)
