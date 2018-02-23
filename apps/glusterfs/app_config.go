@@ -34,6 +34,9 @@ type GlusterFSConfig struct {
 	//block settings
 	CreateBlockHostingVolumes bool `json:"auto_create_block_hosting_volume"`
 	BlockHostingVolumeSize    int  `json:"block_hosting_volume_size"`
+
+	// server behaviors
+	IgnoreStaleOperations bool `json:"ignore_stale_operations"`
 }
 
 type ConfigFile struct {
@@ -58,6 +61,10 @@ func loadConfiguration(configIo io.Reader) *GlusterFSConfig {
 	env = os.Getenv("HEKETI_GLUSTERAPP_LOGLEVEL")
 	if env != "" {
 		config.GlusterFS.Loglevel = env
+	}
+	env = os.Getenv("HEKETI_IGNORE_STALE_OPERATIONS")
+	if env != "" {
+		config.GlusterFS.IgnoreStaleOperations = true
 	}
 	return &config.GlusterFS
 }
