@@ -1,12 +1,15 @@
-package glusterfs
+package metrics
 
 import (
-	"github.com/boltdb/bolt"
-	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/apps"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http"
 )
+
+type Metrics struct {
+	app apps.Application
+}
 
 const (
 	namespace = "gluster"
@@ -61,7 +64,7 @@ var (
 )
 
 // Describe all the metrics exported by Heketi exporter. It implements prometheus.Collector.
-func (a *App) Describe(ch chan<- *prometheus.Desc) {
+func (m *Metrics) Describe(ch chan<- *prometheus.Desc) {
 	ch <- clusterCount // done
 	ch <- volumesCount // done
 	ch <- nodesCount   // done
@@ -73,150 +76,9 @@ func (a *App) Describe(ch chan<- *prometheus.Desc) {
 
 }
 
-func (a *App) clusterList() (*api.ClusterListResponse, error) {
-	list := &api.ClusterListResponse{}
-
-	// Get all the cluster ids from the DB
-	err := a.db.View(func(tx *bolt.Tx) error {
-		var err error
-
-		list.Clusters, err = ClusterList(tx)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
-
-	return list, err
-}
-
-func (a *App) clusterInfo(id string) (*api.ClusterInfoResponse, error) {
-	// Get info from db
-	var info *api.ClusterInfoResponse
-	err := a.db.View(func(tx *bolt.Tx) error {
-
-		// Create a db entry from the id
-		entry, err := NewClusterEntryFromId(tx, id)
-		if err == ErrNotFound {
-			return err
-		} else if err != nil {
-			return err
-		}
-
-		// Create a response from the db entry
-		info, err = entry.NewClusterInfoResponse(tx)
-		if err != nil {
-			return err
-		}
-		err = UpdateClusterInfoComplete(tx, info)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
-
-	return info, err
-}
-
-func (a *App) volumeInfo(id string) (*api.VolumeInfoResponse, error) {
-	var info *api.VolumeInfoResponse
-	err := a.db.View(func(tx *bolt.Tx) error {
-		entry, err := NewVolumeEntryFromId(tx, id)
-		if err == ErrNotFound || !entry.Visible() {
-			return ErrNotFound
-		} else if err != nil {
-			return err
-		}
-
-		info, err = entry.NewInfoResponse(tx)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
-
-	return info, err
-}
-
-func (a *App) nodeInfo(id string) (*api.NodeInfoResponse, error) {
-	// Get Node information
-	var info *api.NodeInfoResponse
-	err := a.db.View(func(tx *bolt.Tx) error {
-		entry, err := NewNodeEntryFromId(tx, id)
-		if err == ErrNotFound {
-			return err
-		} else if err != nil {
-			return err
-		}
-
-		info, err = entry.NewInfoReponse(tx)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
-
-	return info, err
-}
-
-func (a *App) topologyInfo() (*api.TopologyInfoResponse, error) {
-	topo := &api.TopologyInfoResponse{
-		ClusterList: make([]api.Cluster, 0),
-	}
-	clusterlist, err := a.clusterList()
-	if err != nil {
-		return nil, err
-	}
-	for _, cluster := range clusterlist.Clusters {
-		clusteri, err := a.clusterInfo(cluster)
-		if err != nil {
-			return nil, err
-		}
-		cluster := api.Cluster{
-			Id:      clusteri.Id,
-			Volumes: make([]api.VolumeInfoResponse, 0),
-			Nodes:   make([]api.NodeInfoResponse, 0),
-			ClusterFlags: api.ClusterFlags{
-				Block: clusteri.Block,
-				File:  clusteri.File,
-			},
-		}
-		cluster.Id = clusteri.Id
-
-		// Iterate over the volume list in the cluster
-		for _, volumes := range clusteri.Volumes {
-			volumesi, err := a.volumeInfo(volumes)
-			if err != nil {
-				return nil, err
-			}
-			if volumesi.Cluster == cluster.Id {
-				cluster.Volumes = append(cluster.Volumes, *volumesi)
-			}
-		}
-
-		// Iterate over the nodes in the cluster
-		for _, node := range clusteri.Nodes {
-			nodei, err := a.nodeInfo(string(node))
-			if err != nil {
-				return nil, err
-			}
-			cluster.Nodes = append(cluster.Nodes, *nodei)
-		}
-		topo.ClusterList = append(topo.ClusterList, cluster)
-	}
-	return topo, nil
-
-}
-
-// Collect collects all the metrics
-func (a *App) Collect(ch chan<- prometheus.Metric) {
-	// Collect metrics from volume info
-	topinfo, err := a.topologyInfo()
-	// Couldn't parse xml, so something is really wrong and up=0
+// Collect metrics from heketi app
+func (m *Metrics) Collect(ch chan<- prometheus.Metric) {
+	topinfo, err := m.app.TopologyInfo()
 	if err != nil {
 		ch <- prometheus.MustNewConstMetric(
 			up, prometheus.GaugeValue, 0.0,
@@ -236,9 +98,6 @@ func (a *App) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(
 			nodesCount, prometheus.GaugeValue, float64(len(cluster.Nodes)), cluster.Id,
 		)
-		//	for _, volumes := range cluster.Volumes {
-		//			// Not Using for now
-		//	}
 		for _, nodes := range cluster.Nodes {
 			ch <- prometheus.MustNewConstMetric(
 				deviceCount, prometheus.GaugeValue, float64(len(nodes.DevicesInfo)), cluster.Id, nodes.Hostnames.Manage[0],
@@ -261,8 +120,11 @@ func (a *App) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
-func (a *App) Metrics() http.HandlerFunc {
-	prometheus.MustRegister(a)
+func NewMetricsHandler(app apps.Application) http.HandlerFunc {
+	m := &Metrics{
+		app: app,
+	}
+	prometheus.MustRegister(m)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		promhttp.Handler().ServeHTTP(w, r)
 	})
