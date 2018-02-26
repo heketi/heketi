@@ -148,12 +148,11 @@ func (d *DeviceEntry) Save(tx *bolt.Tx) error {
 
 }
 
-func (d *DeviceEntry) IsDeleteOk() bool {
-	// Check if the nodes still has drives
+func (d *DeviceEntry) HasBricks() bool {
 	if len(d.Bricks) > 0 {
-		return false
+		return true
 	}
-	return true
+	return false
 }
 
 func (d *DeviceEntry) ConflictString() string {
@@ -163,9 +162,16 @@ func (d *DeviceEntry) ConflictString() string {
 func (d *DeviceEntry) Delete(tx *bolt.Tx) error {
 	godbc.Require(tx != nil)
 
-	// Check if the devices still has drives
-	if !d.IsDeleteOk() {
-		logger.Warning(d.ConflictString())
+	// Don't delete device unless it is in failed state
+	if d.State != api.EntryStateFailed {
+		return logger.LogError("device: %v is not in failed state", d.Info.Id)
+	}
+
+	// Check if the device still has bricks
+	// Ideally, if the device is in failed state it should have no bricks
+	// This is just for bricks with empty paths
+	if d.HasBricks() {
+		logger.LogError(d.ConflictString())
 		return ErrConflict
 	}
 
@@ -225,7 +231,7 @@ func (d *DeviceEntry) stateCheck(s api.EntryState) error {
 		case api.EntryStateOnline:
 			return fmt.Errorf("Cannot move a failed/removed device to online state")
 		case api.EntryStateOffline:
-			return fmt.Errorf("Cannot move a failed/removed device to offline state")
+			return nil
 		default:
 			return fmt.Errorf("Unknown state type: %v", s)
 		}
@@ -530,10 +536,39 @@ func markDeviceFailed(db wdb.DB, id string, force bool) error {
 		if err != nil {
 			return err
 		}
-		if !force && !d.IsDeleteOk() {
+		if !force && d.HasBricks() {
 			return ErrConflict
 		}
 		d.State = api.EntryStateFailed
 		return d.Save(tx)
 	})
+}
+
+func (d *DeviceEntry) DeleteBricksWithEmptyPath(tx *bolt.Tx) error {
+	godbc.Require(tx != nil)
+	var bricksToDelete []*BrickEntry
+
+	for _, id := range d.Bricks {
+		brick, err := NewBrickEntryFromId(tx, id)
+		if err != nil {
+			return err
+		}
+		if brick.Info.Path == "" {
+			bricksToDelete = append(bricksToDelete, brick)
+		}
+	}
+	for _, brick := range bricksToDelete {
+		err := brick.Delete(tx)
+		if err != nil {
+			return logger.LogError("Unable to remove brick %v: %v", brick.Info.Id, err)
+		}
+		d.StorageFree(brick.TotalSize())
+		d.BrickDelete(brick.Info.Id)
+		err = d.Save(tx)
+		if err != nil {
+			logger.LogError("Unable to save device %v: %v", d.Info.Id, err)
+			return err
+		}
+	}
+	return nil
 }

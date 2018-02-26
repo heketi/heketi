@@ -12,11 +12,12 @@ package functional
 
 import (
 	"fmt"
+	"testing"
+
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
-	"testing"
 )
 
 // These are the settings for the vagrant file
@@ -170,7 +171,24 @@ func teardownCluster(t *testing.T) {
 					go func(id string) {
 						defer deviceSg.Done()
 
-						err := heketi.DeviceDelete(id)
+						stateReq := &api.StateRequest{}
+						stateReq.State = api.EntryStateOffline
+						err := heketi.DeviceState(id, stateReq)
+						if err != nil {
+							logger.Err(err)
+							deviceSg.Err(err)
+							return
+						}
+
+						stateReq.State = api.EntryStateFailed
+						err = heketi.DeviceState(id, stateReq)
+						if err != nil {
+							logger.Err(err)
+							deviceSg.Err(err)
+							return
+						}
+
+						err = heketi.DeviceDelete(id)
 						if err != nil {
 							logger.Err(err)
 							deviceSg.Err(err)

@@ -18,7 +18,7 @@ or by cloning this repository.
 # Documentation
 
 Heketi's official documentation is located in the
-[doc/ directory](https://github.com/heketi/heketi/tree/master/doc/)
+[docs/ directory](https://github.com/heketi/heketi/tree/master/docs/)
 within the repo.
 
 # Demo

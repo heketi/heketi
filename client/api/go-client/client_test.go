@@ -202,8 +202,32 @@ func TestTopology(t *testing.T) {
 		}
 		tests.Assert(t, found == true)
 
-		// Delete all devices
+		// Change device state to offline
 		sg := utils.NewStatusGroup()
+		for index := range nodeInfo.DevicesInfo {
+			sg.Add(1)
+			go func(i int) {
+				defer sg.Done()
+				sg.Err(c.DeviceState(nodeInfo.DevicesInfo[i].Id, &api.StateRequest{State: api.EntryStateOffline}))
+			}(index)
+		}
+		err = sg.Result()
+		tests.Assert(t, err == nil, err)
+
+		// Change device state to failed
+		sg = utils.NewStatusGroup()
+		for index := range nodeInfo.DevicesInfo {
+			sg.Add(1)
+			go func(i int) {
+				defer sg.Done()
+				sg.Err(c.DeviceState(nodeInfo.DevicesInfo[i].Id, &api.StateRequest{State: api.EntryStateFailed}))
+			}(index)
+		}
+		err = sg.Result()
+		tests.Assert(t, err == nil, err)
+
+		// Delete all devices
+		sg = utils.NewStatusGroup()
 		for index := range nodeInfo.DevicesInfo {
 			sg.Add(1)
 			go func(i int) {
@@ -498,6 +522,13 @@ func TestClientDevice(t *testing.T) {
 	err = c.DeviceDelete("badid")
 	tests.Assert(t, err != nil)
 
+	// Offline Device
+	err = c.DeviceState(deviceInfo.Id, &api.StateRequest{State: api.EntryStateOffline})
+	tests.Assert(t, err == nil)
+	// Fail Device
+	err = c.DeviceState(deviceInfo.Id, &api.StateRequest{State: api.EntryStateFailed})
+	tests.Assert(t, err == nil)
+
 	// Delete device
 	err = c.DeviceDelete(deviceInfo.Id)
 	tests.Assert(t, err == nil)
@@ -622,8 +653,32 @@ func TestClientVolume(t *testing.T) {
 		nodeInfo, err := c.NodeInfo(nodeid)
 		tests.Assert(t, err == nil)
 
-		// Delete all devices
+		// Change device state to offline
 		sg := utils.NewStatusGroup()
+		for index := range nodeInfo.DevicesInfo {
+			sg.Add(1)
+			go func(i int) {
+				defer sg.Done()
+				sg.Err(c.DeviceState(nodeInfo.DevicesInfo[i].Id, &api.StateRequest{State: api.EntryStateOffline}))
+			}(index)
+		}
+		err = sg.Result()
+		tests.Assert(t, err == nil, err)
+
+		// Change device state to failed
+		sg = utils.NewStatusGroup()
+		for index := range nodeInfo.DevicesInfo {
+			sg.Add(1)
+			go func(i int) {
+				defer sg.Done()
+				sg.Err(c.DeviceState(nodeInfo.DevicesInfo[i].Id, &api.StateRequest{State: api.EntryStateFailed}))
+			}(index)
+		}
+		err = sg.Result()
+		tests.Assert(t, err == nil, err)
+
+		// Delete all devices
+		sg = utils.NewStatusGroup()
 		for index := range nodeInfo.DevicesInfo {
 			sg.Add(1)
 			go func(i int) {

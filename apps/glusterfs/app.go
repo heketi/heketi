@@ -120,7 +120,7 @@ func NewApp(configIo io.Reader) *App {
 			}
 
 			// Handle Upgrade Changes
-			err = app.Upgrade(tx)
+			err = UpgradeDB(tx)
 			if err != nil {
 				logger.LogError("Unable to Upgrade Changes")
 				return err
@@ -184,48 +184,6 @@ func (a *App) setLogLevel(level string) {
 	case "debug":
 		logger.SetLevel(utils.LEVEL_DEBUG)
 	}
-}
-
-// Upgrade Path to update all the values for new API entries
-func (a *App) Upgrade(tx *bolt.Tx) error {
-
-	err := ClusterEntryUpgrade(tx)
-	if err != nil {
-		logger.LogError("Failed to upgrade db for cluster entries")
-		return err
-	}
-
-	err = NodeEntryUpgrade(tx)
-	if err != nil {
-		logger.LogError("Failed to upgrade db for node entries")
-		return err
-	}
-
-	err = VolumeEntryUpgrade(tx)
-	if err != nil {
-		logger.LogError("Failed to upgrade db for volume entries")
-		return err
-	}
-
-	err = DeviceEntryUpgrade(tx)
-	if err != nil {
-		logger.LogError("Failed to upgrade db for device entries")
-		return err
-	}
-
-	err = BrickEntryUpgrade(tx)
-	if err != nil {
-		logger.LogError("Failed to upgrade db for brick entries: %v", err)
-		return err
-	}
-
-	err = PendingOperationUpgrade(tx)
-	if err != nil {
-		logger.LogError("Failed to upgrade db for pending operations: %v", err)
-		return err
-	}
-
-	return nil
 }
 
 func (a *App) setFromEnvironmentalVariable() {
@@ -491,7 +449,7 @@ func (a *App) Allocator() Allocator {
 	return a._allocator
 }
 
-// SetAllocator manually sets the allocator for thie app.
+// SetAllocator manually sets the allocator for this app.
 // The specified allocator will be cached on the app and
 // subsequent calls to Allocator will return the same object.
 // Generally this should only be used in test code.
@@ -518,7 +476,7 @@ func (a *App) newAllocator() Allocator {
 	switch {
 	case a.conf.Allocator == "simple" || a.conf.Allocator == "":
 		a.conf.Allocator = "simple"
-		if r := NewSimpleAllocatorFromDb(a.db); r != nil {
+		if r := NewSimpleAllocator(); r != nil {
 			alloc = r
 		} else {
 			panic(errors.New("failed to set up simple allocator"))
