@@ -118,7 +118,7 @@ func (v *VolumeEntry) getBrickSetForBrickId(db wdb.DB,
 		return setlist, err
 	}
 	ssize := v.Durability.BricksInSet()
-	for slicestartindex = 0; slicestartindex <= len(vinfo.Bricks.BrickList)-ssize; slicestartindex = slicestartindex + ssize {
+	for slicestartindex = 0; slicestartindex <= len(vinfo.Bricks.BrickList)-ssize; slicestartindex += ssize {
 		setlist = make([]*BrickEntry, 0)
 		for _, brick = range vinfo.Bricks.BrickList[slicestartindex : slicestartindex+ssize] {
 			brickentry, found := bmap[brick.Name]
