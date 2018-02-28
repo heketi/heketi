@@ -153,7 +153,7 @@ func allocateBricks(
 	allocator Allocator,
 	cluster string,
 	v *VolumeEntry,
-	bricksets int,
+	numBrickSets int,
 	brick_size uint64) (*BrickAllocation, error) {
 
 	r := &BrickAllocation{
@@ -167,7 +167,7 @@ func allocateBricks(
 		txdb := wdb.WrapTx(tx)
 
 		// Determine allocation for each brick required for this volume
-		for brick_num := 0; brick_num < bricksets; brick_num++ {
+		for brick_num := 0; brick_num < numBrickSets; brick_num++ {
 			logger.Info("brick_num: %v", brick_num)
 
 			// Generate an id for the brick
