@@ -47,15 +47,14 @@ func TestSimpleAllocatorGetNodesEmpty(t *testing.T) {
 	a := NewSimpleAllocator()
 	tests.Assert(t, a != nil)
 
-	ch, done, errc := a.GetNodes(app.db, utils.GenUUID(), utils.GenUUID())
+	ch, done, err := a.GetNodes(app.db, utils.GenUUID(), utils.GenUUID())
 	defer func() { close(done) }()
+	tests.Assert(t, err == ErrNotFound)
 
 	for d := range ch {
 		tests.Assert(t, false,
 			"Ring should be empty, but we got a device id:", d)
 	}
-	err = <-errc
-	tests.Assert(t, err == ErrNotFound)
 }
 
 func TestSimpleAllocatorAddDevice(t *testing.T) {
@@ -122,17 +121,16 @@ func TestSimpleAllocatorInitFromDb(t *testing.T) {
 	tests.Assert(t, a != nil)
 
 	// Get the nodes from the ring
-	ch, done, errc := a.GetNodes(app.db, clusterId, utils.GenUUID())
+	ch, done, err := a.GetNodes(app.db, clusterId, utils.GenUUID())
 	defer func() { close(done) }()
+	tests.Assert(t, err == nil)
 
 	var devices int
 	for d := range ch {
 		devices++
 		tests.Assert(t, d != "")
 	}
-	err = <-errc
 	tests.Assert(t, devices == 10*20)
-	tests.Assert(t, err == nil)
 
 }
 
@@ -189,16 +187,15 @@ func TestSimpleAllocatorInitFromDbWithOfflineDevices(t *testing.T) {
 	tests.Assert(t, a != nil)
 
 	// Get the nodes from the ring
-	ch, done, errc := a.GetNodes(app.db, clusterId, utils.GenUUID())
+	ch, done, err := a.GetNodes(app.db, clusterId, utils.GenUUID())
 	defer func() { close(done) }()
+	tests.Assert(t, err == nil)
 
 	var devices int
 	for d := range ch {
 		devices++
 		tests.Assert(t, d != "")
 	}
-	err = <-errc
-	tests.Assert(t, err == nil)
 
 	// Only three online devices should be in the list
 	tests.Assert(t, devices == 3, devices)

@@ -47,7 +47,6 @@ func tryAllocateBrickOnDevice(v *VolumeEntry, device *DeviceEntry,
 func findDeviceAndBrickForSet(tx *bolt.Tx, v *VolumeEntry,
 	devcache map[string](*DeviceEntry),
 	deviceCh <-chan string,
-	errc <-chan error,
 	setlist []*BrickEntry,
 	brick_size uint64) (*BrickEntry, *DeviceEntry, error) {
 
@@ -72,11 +71,6 @@ func findDeviceAndBrickForSet(tx *bolt.Tx, v *VolumeEntry,
 		}
 
 		return brick, device, nil
-	}
-
-	// Check if allocator returned an error
-	if err := <-errc; err != nil {
-		return nil, nil, err
 	}
 
 	// No devices found
@@ -114,17 +108,20 @@ func allocateBricks(
 
 			// Get allocator generator
 			// The same generator should be used for the brick and its replicas
-			deviceCh, done, errc := allocator.GetNodes(txdb, cluster, brickId)
+			deviceCh, done, err := allocator.GetNodes(txdb, cluster, brickId)
 			defer func() {
 				close(done)
 			}()
+			if err != nil {
+				return err
+			}
 
 			// Check location has space for each brick and its replicas
 			for i := 0; i < v.Durability.BricksInSet(); i++ {
 				logger.Debug("%v / %v", i, v.Durability.BricksInSet())
 
 				brick, device, err := findDeviceAndBrickForSet(tx,
-					v, devcache, deviceCh, errc, setlist,
+					v, devcache, deviceCh, setlist,
 					brick_size)
 				if err != nil {
 					return err

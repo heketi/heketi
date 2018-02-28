@@ -255,10 +255,13 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 	newBrickId := utils.GenUUID()
 
 	// Check the ring for devices to place the brick
-	deviceCh, done, errc := allocator.GetNodes(db, v.Info.Cluster, newBrickId)
+	deviceCh, done, err := allocator.GetNodes(db, v.Info.Cluster, newBrickId)
 	defer func() {
 		close(done)
 	}()
+	if err != nil {
+		return err
+	}
 
 	for deviceId := range deviceCh {
 
@@ -418,10 +421,6 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 			newBrickEntry.Id(), newBrickEntry.Info.NodeId, newBrickEntry.Info.Path)
 
 		return nil
-	}
-	// Check if allocator returned an error
-	if err := <-errc; err != nil {
-		return err
 	}
 
 	// No device found
