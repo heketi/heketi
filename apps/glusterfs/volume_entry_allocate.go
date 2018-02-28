@@ -68,33 +68,30 @@ func (v *VolumeEntry) allocBricksInCluster(db wdb.DB,
 	}
 }
 
-func (v *VolumeEntry) getBrickEntryfromBrickName(db wdb.RODB, brickname string) (brickEntry *BrickEntry, e error) {
+func (v *VolumeEntry) brickNameMap(db wdb.RODB) (
+	map[string]*BrickEntry, error) {
 
-	var nodeEntry *NodeEntry
-	for _, brickid := range v.BricksIds() {
+	bmap := map[string]*BrickEntry{}
 
-		err := db.View(func(tx *bolt.Tx) error {
-			var err error
-			brickEntry, err = NewBrickEntryFromId(tx, brickid)
+	err := db.View(func(tx *bolt.Tx) error {
+		for _, brickid := range v.BricksIds() {
+			brickEntry, err := NewBrickEntryFromId(tx, brickid)
 			if err != nil {
 				return err
 			}
-			nodeEntry, err = NewNodeEntryFromId(tx, brickEntry.Info.NodeId)
+			nodeEntry, err := NewNodeEntryFromId(tx, brickEntry.Info.NodeId)
 			if err != nil {
 				return err
 			}
-			return nil
-		})
-		if err != nil {
-			return nil, err
-		}
 
-		if brickname == fmt.Sprintf("%v:%v", nodeEntry.Info.Hostnames.Storage[0], brickEntry.Info.Path) {
-			return brickEntry, nil
+			bname := fmt.Sprintf("%v:%v",
+				nodeEntry.Info.Hostnames.Storage[0],
+				brickEntry.Info.Path)
+			bmap[bname] = brickEntry
 		}
-	}
-
-	return nil, ErrNotFound
+		return nil
+	})
+	return bmap, err
 }
 
 func (v *VolumeEntry) getBrickSetForBrickId(db wdb.DB,
@@ -116,13 +113,18 @@ func (v *VolumeEntry) getBrickSetForBrickId(db wdb.DB,
 	// BrickList in volume info is a slice of all bricks in volume
 	// We loop over the slice in steps of BricksInSet()
 	// If brick to be replaced is found in an iteration, other bricks in that slice form the setlist
+	bmap, err := v.brickNameMap(db)
+	if err != nil {
+		return setlist, err
+	}
 	for slicestartindex = 0; slicestartindex <= len(vinfo.Bricks.BrickList)-v.Durability.BricksInSet(); slicestartindex = slicestartindex + v.Durability.BricksInSet() {
 		setlist = make([]*BrickEntry, 0)
 		for _, brick = range vinfo.Bricks.BrickList[slicestartindex : slicestartindex+v.Durability.BricksInSet()] {
-			brickentry, err := v.getBrickEntryfromBrickName(db, brick.Name)
-			if err != nil {
-				logger.LogError("Unable to create brick entry using brick name:%v, error: %v", brick.Name, err)
-				return setlist, err
+			brickentry, found := bmap[brick.Name]
+			if !found {
+				logger.LogError("Unable to create brick entry using brick name:%v",
+					brick.Name)
+				return setlist, ErrNotFound
 			}
 			if brickentry.Id() == oldBrickId {
 				foundbrickset = true
@@ -161,14 +163,18 @@ func (v *VolumeEntry) canReplaceBrickInBrickSet(db wdb.DB,
 	}
 
 	var onlinePeerBrickCount = 0
+	bmap, err := v.brickNameMap(db)
+	if err != nil {
+		return err
+	}
 	for _, brickHealStatus := range healinfo.Bricks.BrickList {
 		// Gluster has a bug that it does not send Name for bricks that are down.
 		// Skip such bricks; it is safe because it is not source if it is down
 		if brickHealStatus.Name == "information not available" {
 			continue
 		}
-		iBrickEntry, err := v.getBrickEntryfromBrickName(db, brickHealStatus.Name)
-		if err != nil {
+		iBrickEntry, found := bmap[brickHealStatus.Name]
+		if !found {
 			return fmt.Errorf("Unable to determine heal status of brick")
 		}
 		if iBrickEntry.Id() == brick.Id() {
