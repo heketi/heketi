@@ -117,9 +117,10 @@ func (v *VolumeEntry) getBrickSetForBrickId(db wdb.DB,
 	if err != nil {
 		return setlist, err
 	}
-	for slicestartindex = 0; slicestartindex <= len(vinfo.Bricks.BrickList)-v.Durability.BricksInSet(); slicestartindex = slicestartindex + v.Durability.BricksInSet() {
+	ssize := v.Durability.BricksInSet()
+	for slicestartindex = 0; slicestartindex <= len(vinfo.Bricks.BrickList)-ssize; slicestartindex = slicestartindex + ssize {
 		setlist = make([]*BrickEntry, 0)
-		for _, brick = range vinfo.Bricks.BrickList[slicestartindex : slicestartindex+v.Durability.BricksInSet()] {
+		for _, brick = range vinfo.Bricks.BrickList[slicestartindex : slicestartindex+ssize] {
 			brickentry, found := bmap[brick.Name]
 			if !found {
 				logger.LogError("Unable to create brick entry using brick name:%v",
