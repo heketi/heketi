@@ -454,19 +454,24 @@ func (v *VolumeEntry) allocBricks(
 		if e != nil {
 			return e
 		}
-		for _, x := range r.Bricks {
-			err := x.Save(tx)
-			if err != nil {
-				return err
+		brick_entries = []*BrickEntry{}
+		for _, bs := range r.BrickSets {
+			for _, x := range bs.Bricks {
+				brick_entries = append(brick_entries, x)
+				err := x.Save(tx)
+				if err != nil {
+					return err
+				}
 			}
 		}
-		for _, x := range r.Devices {
-			err := x.Save(tx)
-			if err != nil {
-				return err
+		for _, ds := range r.DeviceSets {
+			for _, x := range ds.Devices {
+				err := x.Save(tx)
+				if err != nil {
+					return err
+				}
 			}
 		}
-		brick_entries = r.Bricks
 		return nil
 	})
 	if err != nil {
