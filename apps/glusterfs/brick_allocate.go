@@ -114,6 +114,43 @@ func findDeviceAndBrickForSet(tx *bolt.Tx, v *VolumeEntry,
 	return nil, nil, ErrNoSpace
 }
 
+func populateBrickSet(tx *bolt.Tx,
+	v *VolumeEntry,
+	devcache map[string]*DeviceEntry,
+	deviceCh <-chan string,
+	setlist []*BrickEntry,
+	initId string,
+	brick_size uint64,
+	ssize int) (*BrickSet, *DeviceSet, error) {
+
+	bs := NewBrickSet(ssize)
+	ds := NewDeviceSet(ssize)
+	for i := 0; i < ssize; i++ {
+		logger.Debug("%v / %v", i, ssize)
+
+		brick, device, err := findDeviceAndBrickForSet(tx,
+			v, devcache, deviceCh, setlist,
+			brick_size)
+		if err != nil {
+			return bs, ds, err
+		}
+
+		// If the first in the set, then reset the id
+		if i == 0 {
+			brick.SetId(initId)
+		}
+
+		// Save the brick entry to create later
+		bs.Add(brick)
+		ds.Add(device)
+
+		setlist = append(setlist, brick)
+
+		device.BrickAdd(brick.Id())
+	}
+	return bs, ds, nil
+}
+
 func allocateBricks(
 	db wdb.RODB,
 	allocator Allocator,
@@ -151,32 +188,13 @@ func allocateBricks(
 				return err
 			}
 
-			// Check location has space for each brick and its replicas
-			ssize := v.Durability.BricksInSet()
-			bs := NewBrickSet(ssize)
-			ds := NewDeviceSet(ssize)
-			for i := 0; i < ssize; i++ {
-				logger.Debug("%v / %v", i, ssize)
-
-				brick, device, err := findDeviceAndBrickForSet(tx,
-					v, devcache, deviceCh, setlist,
-					brick_size)
-				if err != nil {
-					return err
-				}
-
-				// If the first in the set, then reset the id
-				if i == 0 {
-					brick.SetId(brickId)
-				}
-
-				// Save the brick entry to create later
-				bs.Add(brick)
-				ds.Add(device)
-
-				setlist = append(setlist, brick)
-
-				device.BrickAdd(brick.Id())
+			// Fill in a complete set of bricks/devices. If not possible
+			// err will be non-nil
+			bs, ds, err := populateBrickSet(tx,
+				v, devcache, deviceCh, setlist, brickId,
+				brick_size, v.Durability.BricksInSet())
+			if err != nil {
+				return err
 			}
 			r.BrickSets = append(r.BrickSets, bs)
 			r.DeviceSets = append(r.DeviceSets, ds)
