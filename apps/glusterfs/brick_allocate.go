@@ -16,6 +16,40 @@ import (
 	"github.com/heketi/heketi/pkg/utils"
 )
 
+type BrickSet struct {
+	SetSize int
+	Bricks  []*BrickEntry
+}
+
+func NewBrickSet(s int) *BrickSet {
+	return &BrickSet{SetSize: s, Bricks: []*BrickEntry{}}
+}
+
+func (bs *BrickSet) Add(b *BrickEntry) {
+	bs.Bricks = append(bs.Bricks, b)
+}
+
+func (bs *BrickSet) Full() bool {
+	return len(bs.Bricks) == bs.SetSize
+}
+
+type DeviceSet struct {
+	SetSize int
+	Devices []*DeviceEntry
+}
+
+func NewDeviceSet(s int) *DeviceSet {
+	return &DeviceSet{SetSize: s, Devices: []*DeviceEntry{}}
+}
+
+func (ds *DeviceSet) Add(d *DeviceEntry) {
+	ds.Devices = append(ds.Devices, d)
+}
+
+func (ds *DeviceSet) Full() bool {
+	return len(ds.Devices) == ds.SetSize
+}
+
 type BrickAllocation struct {
 	Bricks  []*BrickEntry
 	Devices []*DeviceEntry
