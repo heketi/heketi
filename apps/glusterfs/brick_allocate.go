@@ -195,17 +195,5 @@ func allocateBricks(
 
 		return nil
 	})
-	if err != nil {
-		return r, err
-	}
-
-	// Only assign bricks to the volume object on success
-	for _, bs := range r.BrickSets {
-		for _, brick := range bs.Bricks {
-			logger.Debug("Adding brick %v to volume %v", brick.Id(), v.Info.Id)
-			v.BrickAdd(brick.Id())
-		}
-	}
-
-	return r, nil
+	return r, err
 }

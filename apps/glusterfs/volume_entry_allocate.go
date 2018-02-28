@@ -462,6 +462,8 @@ func (v *VolumeEntry) allocBricks(
 				if err != nil {
 					return err
 				}
+				logger.Debug("Adding brick %v to volume %v", x.Id(), v.Info.Id)
+				v.BrickAdd(x.Id())
 			}
 		}
 		for _, ds := range r.DeviceSets {
