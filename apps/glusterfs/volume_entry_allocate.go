@@ -314,115 +314,114 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 		if err != nil {
 			return err
 		}
-
-		// Determine if it was successful
-		if newBrickEntry == nil {
-			continue
+		if newBrickEntry != nil {
+			break
 		}
-
-		defer func() {
-			if e != nil {
-				db.Update(func(tx *bolt.Tx) error {
-					newDeviceEntry, err = NewDeviceEntryFromId(tx, newBrickEntry.Info.DeviceId)
-					if err != nil {
-						return err
-					}
-					newDeviceEntry.StorageFree(newBrickEntry.TotalSize())
-					newDeviceEntry.Save(tx)
-					return nil
-				})
-			}
-		}()
-
-		err = db.View(func(tx *bolt.Tx) error {
-			newBrickNodeEntry, err = NewNodeEntryFromId(tx, newBrickEntry.Info.NodeId)
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-
-		newBrickEntry.SetId(newBrickId)
-		var brickEntries []*BrickEntry
-		brickEntries = append(brickEntries, newBrickEntry)
-		err = CreateBricks(db, executor, brickEntries)
-		if err != nil {
-			return err
-		}
-
-		defer func() {
-			if e != nil {
-				DestroyBricks(db, executor, brickEntries)
-			}
-		}()
-
-		var oldBrick executors.BrickInfo
-		var newBrick executors.BrickInfo
-
-		oldBrick.Path = oldBrickEntry.Info.Path
-		oldBrick.Host = oldBrickNodeEntry.StorageHostName()
-		newBrick.Path = newBrickEntry.Info.Path
-		newBrick.Host = newBrickNodeEntry.StorageHostName()
-
-		err = executor.VolumeReplaceBrick(node, v.Info.Name, &oldBrick, &newBrick)
-		if err != nil {
-			return err
-		}
-
-		// After this point we should not call any defer func()
-		// We don't have a *revert* of replace brick operation
-
-		_ = oldBrickEntry.Destroy(db, executor)
-
-		// We must read entries from db again as state on disk might
-		// have changed
-
-		err = db.Update(func(tx *bolt.Tx) error {
-			err = newBrickEntry.Save(tx)
-			if err != nil {
-				return err
-			}
-			reReadNewDeviceEntry, err := NewDeviceEntryFromId(tx, newBrickEntry.Info.DeviceId)
-			if err != nil {
-				return err
-			}
-			reReadNewDeviceEntry.BrickAdd(newBrickEntry.Id())
-			err = reReadNewDeviceEntry.Save(tx)
-			if err != nil {
-				return err
-			}
-
-			reReadVolEntry, err := NewVolumeEntryFromId(tx, newBrickEntry.Info.VolumeId)
-			if err != nil {
-				return err
-			}
-			reReadVolEntry.BrickAdd(newBrickEntry.Id())
-			err = reReadVolEntry.removeBrickFromDb(tx, oldBrickEntry)
-			if err != nil {
-				return err
-			}
-			err = reReadVolEntry.Save(tx)
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-		if err != nil {
-			logger.Err(err)
-		}
-
-		logger.Info("replaced brick:%v on node:%v at path:%v with brick:%v on node:%v at path:%v",
-			oldBrickEntry.Id(), oldBrickEntry.Info.NodeId, oldBrickEntry.Info.Path,
-			newBrickEntry.Id(), newBrickEntry.Info.NodeId, newBrickEntry.Info.Path)
-
-		return nil
 	}
 
-	// No device found
-	return ErrNoReplacement
+	// Determine if it was successful
+	if newBrickEntry == nil {
+		return ErrNoReplacement
+	}
+
+	defer func() {
+		if e != nil {
+			db.Update(func(tx *bolt.Tx) error {
+				newDeviceEntry, err = NewDeviceEntryFromId(tx, newBrickEntry.Info.DeviceId)
+				if err != nil {
+					return err
+				}
+				newDeviceEntry.StorageFree(newBrickEntry.TotalSize())
+				newDeviceEntry.Save(tx)
+				return nil
+			})
+		}
+	}()
+
+	err = db.View(func(tx *bolt.Tx) error {
+		newBrickNodeEntry, err = NewNodeEntryFromId(tx, newBrickEntry.Info.NodeId)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	newBrickEntry.SetId(newBrickId)
+	var brickEntries []*BrickEntry
+	brickEntries = append(brickEntries, newBrickEntry)
+	err = CreateBricks(db, executor, brickEntries)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if e != nil {
+			DestroyBricks(db, executor, brickEntries)
+		}
+	}()
+
+	var oldBrick executors.BrickInfo
+	var newBrick executors.BrickInfo
+
+	oldBrick.Path = oldBrickEntry.Info.Path
+	oldBrick.Host = oldBrickNodeEntry.StorageHostName()
+	newBrick.Path = newBrickEntry.Info.Path
+	newBrick.Host = newBrickNodeEntry.StorageHostName()
+
+	err = executor.VolumeReplaceBrick(node, v.Info.Name, &oldBrick, &newBrick)
+	if err != nil {
+		return err
+	}
+
+	// After this point we should not call any defer func()
+	// We don't have a *revert* of replace brick operation
+
+	_ = oldBrickEntry.Destroy(db, executor)
+
+	// We must read entries from db again as state on disk might
+	// have changed
+
+	err = db.Update(func(tx *bolt.Tx) error {
+		err = newBrickEntry.Save(tx)
+		if err != nil {
+			return err
+		}
+		reReadNewDeviceEntry, err := NewDeviceEntryFromId(tx, newBrickEntry.Info.DeviceId)
+		if err != nil {
+			return err
+		}
+		reReadNewDeviceEntry.BrickAdd(newBrickEntry.Id())
+		err = reReadNewDeviceEntry.Save(tx)
+		if err != nil {
+			return err
+		}
+
+		reReadVolEntry, err := NewVolumeEntryFromId(tx, newBrickEntry.Info.VolumeId)
+		if err != nil {
+			return err
+		}
+		reReadVolEntry.BrickAdd(newBrickEntry.Id())
+		err = reReadVolEntry.removeBrickFromDb(tx, oldBrickEntry)
+		if err != nil {
+			return err
+		}
+		err = reReadVolEntry.Save(tx)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		logger.Err(err)
+	}
+
+	logger.Info("replaced brick:%v on node:%v at path:%v with brick:%v on node:%v at path:%v",
+		oldBrickEntry.Id(), oldBrickEntry.Info.NodeId, oldBrickEntry.Info.Path,
+		newBrickEntry.Id(), newBrickEntry.Info.NodeId, newBrickEntry.Info.Path)
+	return nil
 }
 
 func (v *VolumeEntry) allocBricks(
