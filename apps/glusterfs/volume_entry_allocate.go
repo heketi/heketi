@@ -256,9 +256,7 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 
 	// Check the ring for devices to place the brick
 	deviceCh, done, err := allocator.GetNodes(db, v.Info.Cluster, newBrickId)
-	defer func() {
-		close(done)
-	}()
+	defer close(done)
 	if err != nil {
 		return err
 	}

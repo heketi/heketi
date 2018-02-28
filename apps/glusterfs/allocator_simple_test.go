@@ -48,7 +48,7 @@ func TestSimpleAllocatorGetNodesEmpty(t *testing.T) {
 	tests.Assert(t, a != nil)
 
 	ch, done, err := a.GetNodes(app.db, utils.GenUUID(), utils.GenUUID())
-	defer func() { close(done) }()
+	defer close(done)
 	tests.Assert(t, err == ErrNotFound)
 
 	for d := range ch {
@@ -122,7 +122,7 @@ func TestSimpleAllocatorInitFromDb(t *testing.T) {
 
 	// Get the nodes from the ring
 	ch, done, err := a.GetNodes(app.db, clusterId, utils.GenUUID())
-	defer func() { close(done) }()
+	defer close(done)
 	tests.Assert(t, err == nil)
 
 	var devices int
@@ -188,7 +188,7 @@ func TestSimpleAllocatorInitFromDbWithOfflineDevices(t *testing.T) {
 
 	// Get the nodes from the ring
 	ch, done, err := a.GetNodes(app.db, clusterId, utils.GenUUID())
-	defer func() { close(done) }()
+	defer close(done)
 	tests.Assert(t, err == nil)
 
 	var devices int
