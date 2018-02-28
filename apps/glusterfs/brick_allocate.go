@@ -167,8 +167,8 @@ func allocateBricks(
 		txdb := wdb.WrapTx(tx)
 
 		// Determine allocation for each brick required for this volume
-		for brick_num := 0; brick_num < numBrickSets; brick_num++ {
-			logger.Info("brick_num: %v", brick_num)
+		for sn := 0; sn < numBrickSets; sn++ {
+			logger.Info("Allocating brick set #%v", sn)
 
 			// Generate an id for the brick
 			brickId := utils.GenUUID()
