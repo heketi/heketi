@@ -96,54 +96,47 @@ func (v *VolumeEntry) brickNameMap(db wdb.RODB) (
 
 func (v *VolumeEntry) getBrickSetForBrickId(db wdb.DB,
 	executor executors.Executor,
-	oldBrickId string, node string) ([]*BrickEntry, error) {
+	oldBrickId string, node string) (*BrickSet, error) {
 
-	setlist := make([]*BrickEntry, 0)
-
-	// Determine the setlist by getting data from Gluster
+	// First gather the list of bricks from gluster which, unlike heketi,
+	// retains the brick order
 	vinfo, err := executor.VolumeInfo(node, v.Info.Name)
 	if err != nil {
 		logger.LogError("Unable to get volume info from gluster node %v for volume %v: %v", node, v.Info.Name, err)
-		return setlist, err
+		return nil, err
 	}
 
-	var slicestartindex int
 	var foundbrickset bool
-	var brick executors.Brick
 	// BrickList in volume info is a slice of all bricks in volume
 	// We loop over the slice in steps of BricksInSet()
-	// If brick to be replaced is found in an iteration, other bricks in that slice form the setlist
+	// If brick to be replaced is found in an iteration, other bricks in that slice form the Brick Set
 	bmap, err := v.brickNameMap(db)
 	if err != nil {
-		return setlist, err
+		return nil, err
 	}
 	ssize := v.Durability.BricksInSet()
-	for slicestartindex = 0; slicestartindex <= len(vinfo.Bricks.BrickList)-ssize; slicestartindex += ssize {
-		setlist = make([]*BrickEntry, 0)
-		for _, brick = range vinfo.Bricks.BrickList[slicestartindex : slicestartindex+ssize] {
+	for slicestartindex := 0; slicestartindex <= len(vinfo.Bricks.BrickList)-ssize; slicestartindex += ssize {
+		bs := NewBrickSet(ssize)
+		for _, brick := range vinfo.Bricks.BrickList[slicestartindex : slicestartindex+ssize] {
 			brickentry, found := bmap[brick.Name]
 			if !found {
 				logger.LogError("Unable to create brick entry using brick name:%v",
 					brick.Name)
-				return setlist, ErrNotFound
+				return nil, ErrNotFound
 			}
 			if brickentry.Id() == oldBrickId {
 				foundbrickset = true
 			} else {
-				setlist = append(setlist, brickentry)
+				bs.Bricks = append(bs.Bricks, brickentry)
 			}
 		}
 		if foundbrickset {
-			break
+			return bs, nil
 		}
 	}
 
-	if !foundbrickset {
-		logger.LogError("Unable to find brick set for brick %v, db is possibly corrupt", oldBrickId)
-		return setlist, ErrNotFound
-	}
-
-	return setlist, nil
+	logger.LogError("Unable to find brick set for brick %v, db is possibly corrupt", oldBrickId)
+	return nil, ErrNotFound
 }
 
 // canReplaceBrickInBrickSet
@@ -155,7 +148,7 @@ func (v *VolumeEntry) canReplaceBrickInBrickSet(db wdb.DB,
 	executor executors.Executor,
 	brick *BrickEntry,
 	node string,
-	setlist []*BrickEntry) error {
+	bs *BrickSet) error {
 
 	// Get self heal status for this brick's volume
 	healinfo, err := executor.HealInfo(node, v.Info.Name)
@@ -187,7 +180,7 @@ func (v *VolumeEntry) canReplaceBrickInBrickSet(db wdb.DB,
 				return fmt.Errorf("Cannot replace brick %v as it is source brick for data to be healed", iBrickEntry.Id())
 			}
 		}
-		for _, brickInSet := range setlist {
+		for _, brickInSet := range bs.Bricks {
 			if brickInSet.Id() == iBrickEntry.Id() {
 				onlinePeerBrickCount++
 			}
@@ -248,12 +241,12 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 		}
 	}
 
-	setlist, err := v.getBrickSetForBrickId(db, executor, oldBrickId, node)
+	bs, err := v.getBrickSetForBrickId(db, executor, oldBrickId, node)
 	if err != nil {
 		return err
 	}
 
-	err = v.canReplaceBrickInBrickSet(db, executor, oldBrickEntry, node, setlist)
+	err = v.canReplaceBrickInBrickSet(db, executor, oldBrickEntry, node, bs)
 	if err != nil {
 		return err
 	}
@@ -290,7 +283,7 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 		// Do not allow a device from the same node to be
 		// in the set
 		deviceOk := true
-		for _, brickInSet := range setlist {
+		for _, brickInSet := range bs.Bricks {
 			if brickInSet.Info.NodeId == newDeviceEntry.NodeId {
 				deviceOk = false
 			}
