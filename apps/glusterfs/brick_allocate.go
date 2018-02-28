@@ -109,9 +109,7 @@ func allocateBricks(
 			// Get allocator generator
 			// The same generator should be used for the brick and its replicas
 			deviceCh, done, err := allocator.GetNodes(txdb, cluster, brickId)
-			defer func() {
-				close(done)
-			}()
+			defer close(done)
 			if err != nil {
 				return err
 			}
