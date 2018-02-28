@@ -54,8 +54,8 @@ func (ds *DeviceSet) Full() bool {
 }
 
 type BrickAllocation struct {
-	Bricks  []*BrickEntry
-	Devices []*DeviceEntry
+	BrickSets  []*BrickSet
+	DeviceSets []*DeviceSet
 }
 
 func tryAllocateBrickOnDevice(v *VolumeEntry, device *DeviceEntry,
@@ -123,8 +123,8 @@ func allocateBricks(
 	brick_size uint64) (*BrickAllocation, error) {
 
 	r := &BrickAllocation{
-		Bricks:  []*BrickEntry{},
-		Devices: []*DeviceEntry{},
+		BrickSets:  []*BrickSet{},
+		DeviceSets: []*DeviceSet{},
 	}
 
 	devcache := map[string](*DeviceEntry){}
@@ -152,8 +152,11 @@ func allocateBricks(
 			}
 
 			// Check location has space for each brick and its replicas
-			for i := 0; i < v.Durability.BricksInSet(); i++ {
-				logger.Debug("%v / %v", i, v.Durability.BricksInSet())
+			ssize := v.Durability.BricksInSet()
+			bs := NewBrickSet(ssize)
+			ds := NewDeviceSet(ssize)
+			for i := 0; i < ssize; i++ {
+				logger.Debug("%v / %v", i, ssize)
 
 				brick, device, err := findDeviceAndBrickForSet(tx,
 					v, devcache, deviceCh, setlist,
@@ -168,13 +171,15 @@ func allocateBricks(
 				}
 
 				// Save the brick entry to create later
-				r.Bricks = append(r.Bricks, brick)
-				r.Devices = append(r.Devices, device)
+				bs.Add(brick)
+				ds.Add(device)
 
 				setlist = append(setlist, brick)
 
 				device.BrickAdd(brick.Id())
 			}
+			r.BrickSets = append(r.BrickSets, bs)
+			r.DeviceSets = append(r.DeviceSets, ds)
 		}
 
 		return nil
@@ -184,9 +189,11 @@ func allocateBricks(
 	}
 
 	// Only assign bricks to the volume object on success
-	for _, brick := range r.Bricks {
-		logger.Debug("Adding brick %v to volume %v", brick.Id(), v.Info.Id)
-		v.BrickAdd(brick.Id())
+	for _, bs := range r.BrickSets {
+		for _, brick := range bs.Bricks {
+			logger.Debug("Adding brick %v to volume %v", brick.Id(), v.Info.Id)
+			v.BrickAdd(brick.Id())
+		}
 	}
 
 	return r, nil
