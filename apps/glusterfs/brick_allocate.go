@@ -59,11 +59,11 @@ type BrickAllocation struct {
 }
 
 func tryAllocateBrickOnDevice(v *VolumeEntry, device *DeviceEntry,
-	setlist []*BrickEntry, brick_size uint64) *BrickEntry {
+	bs *BrickSet, brick_size uint64) *BrickEntry {
 
 	// Do not allow a device from the same node to be in the set
 	deviceOk := true
-	for _, brickInSet := range setlist {
+	for _, brickInSet := range bs.Bricks {
 		if brickInSet.Info.NodeId == device.NodeId {
 			deviceOk = false
 		}
@@ -84,7 +84,7 @@ func tryAllocateBrickOnDevice(v *VolumeEntry, device *DeviceEntry,
 func findDeviceAndBrickForSet(tx *bolt.Tx, v *VolumeEntry,
 	devcache map[string](*DeviceEntry),
 	deviceCh <-chan string,
-	setlist []*BrickEntry,
+	bs *BrickSet,
 	brick_size uint64) (*BrickEntry, *DeviceEntry, error) {
 
 	// Check the ring for devices to place the brick
@@ -102,7 +102,7 @@ func findDeviceAndBrickForSet(tx *bolt.Tx, v *VolumeEntry,
 			devcache[deviceId] = device
 		}
 
-		brick := tryAllocateBrickOnDevice(v, device, setlist, brick_size)
+		brick := tryAllocateBrickOnDevice(v, device, bs, brick_size)
 		if brick == nil {
 			continue
 		}
@@ -118,7 +118,6 @@ func populateBrickSet(tx *bolt.Tx,
 	v *VolumeEntry,
 	devcache map[string]*DeviceEntry,
 	deviceCh <-chan string,
-	setlist []*BrickEntry,
 	initId string,
 	brick_size uint64,
 	ssize int) (*BrickSet, *DeviceSet, error) {
@@ -129,7 +128,7 @@ func populateBrickSet(tx *bolt.Tx,
 		logger.Debug("%v / %v", i, ssize)
 
 		brick, device, err := findDeviceAndBrickForSet(tx,
-			v, devcache, deviceCh, setlist,
+			v, devcache, deviceCh, bs,
 			brick_size)
 		if err != nil {
 			return bs, ds, err
@@ -143,8 +142,6 @@ func populateBrickSet(tx *bolt.Tx,
 		// Save the brick entry to create later
 		bs.Add(brick)
 		ds.Add(device)
-
-		setlist = append(setlist, brick)
 
 		device.BrickAdd(brick.Id())
 	}
@@ -173,10 +170,6 @@ func allocateBricks(
 		for brick_num := 0; brick_num < bricksets; brick_num++ {
 			logger.Info("brick_num: %v", brick_num)
 
-			// Create a brick set list to later make sure that the
-			// proposed bricks and devices are acceptable
-			setlist := make([]*BrickEntry, 0)
-
 			// Generate an id for the brick
 			brickId := utils.GenUUID()
 
@@ -191,7 +184,7 @@ func allocateBricks(
 			// Fill in a complete set of bricks/devices. If not possible
 			// err will be non-nil
 			bs, ds, err := populateBrickSet(tx,
-				v, devcache, deviceCh, setlist, brickId,
+				v, devcache, deviceCh, brickId,
 				brick_size, v.Durability.BricksInSet())
 			if err != nil {
 				return err
