@@ -276,25 +276,11 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 				continue
 			}
 
-			// Do not allow a device from the same node to be
-			// in the set
-			deviceOk := true
-			for _, brickInSet := range bs.Bricks {
-				if brickInSet.Info.NodeId == newDeviceEntry.NodeId {
-					deviceOk = false
-				}
-			}
-
-			if !deviceOk {
-				continue
-			}
-
 			// Try to allocate a brick on this device
 			// NewBrickEntry will deduct storage from device entry
 			// if successful
-			newBrickEntry = newDeviceEntry.NewBrickEntry(oldBrickEntry.Info.Size,
-				float64(v.Info.Snapshot.Factor),
-				v.Info.Gid, v.Info.Id)
+			newBrickEntry = tryAllocateBrickOnDevice(v,
+				newDeviceEntry, bs, oldBrickEntry.Info.Size)
 			err = newDeviceEntry.Save(tx)
 			if err != nil {
 				return err
