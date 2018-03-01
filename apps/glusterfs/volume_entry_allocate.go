@@ -290,13 +290,8 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 			}
 
 			// Try to allocate a brick on this device
-			// NewBrickEntry would deduct storage from device entry
-			// which we will save to disk, hence reload the latest device
-			// entry to get latest storage state of device
-			newDeviceEntry, err := NewDeviceEntryFromId(tx, deviceId)
-			if err != nil {
-				return err
-			}
+			// NewBrickEntry will deduct storage from device entry
+			// if successful
 			newBrickEntry = newDeviceEntry.NewBrickEntry(oldBrickEntry.Info.Size,
 				float64(v.Info.Snapshot.Factor),
 				v.Info.Gid, v.Info.Id)
