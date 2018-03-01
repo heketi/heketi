@@ -58,6 +58,8 @@ type BrickAllocation struct {
 	DeviceSets []*DeviceSet
 }
 
+type deviceFetcher func(string) (*DeviceEntry, error)
+
 func tryAllocateBrickOnDevice(v *VolumeEntry, device *DeviceEntry,
 	bs *BrickSet, brick_size uint64) *BrickEntry {
 
@@ -81,8 +83,8 @@ func tryAllocateBrickOnDevice(v *VolumeEntry, device *DeviceEntry,
 	return brick
 }
 
-func findDeviceAndBrickForSet(tx *bolt.Tx, v *VolumeEntry,
-	devcache map[string](*DeviceEntry),
+func findDeviceAndBrickForSet(v *VolumeEntry,
+	fetchDevice deviceFetcher,
 	deviceCh <-chan string,
 	bs *BrickSet,
 	brick_size uint64) (*BrickEntry, *DeviceEntry, error) {
@@ -90,16 +92,9 @@ func findDeviceAndBrickForSet(tx *bolt.Tx, v *VolumeEntry,
 	// Check the ring for devices to place the brick
 	for deviceId := range deviceCh {
 
-		// Get device entry from cache if possible
-		device, ok := devcache[deviceId]
-		if !ok {
-			// Get device entry from db otherwise
-			var err error
-			device, err = NewDeviceEntryFromId(tx, deviceId)
-			if err != nil {
-				return nil, nil, err
-			}
-			devcache[deviceId] = device
+		device, err := fetchDevice(deviceId)
+		if err != nil {
+			return nil, nil, err
 		}
 
 		brick := tryAllocateBrickOnDevice(v, device, bs, brick_size)
@@ -114,9 +109,26 @@ func findDeviceAndBrickForSet(tx *bolt.Tx, v *VolumeEntry,
 	return nil, nil, ErrNoSpace
 }
 
-func populateBrickSet(tx *bolt.Tx,
-	v *VolumeEntry,
-	devcache map[string]*DeviceEntry,
+func getCachedDevice(devcache map[string](*DeviceEntry),
+	tx *bolt.Tx,
+	deviceId string) (*DeviceEntry, error) {
+
+	// Get device entry from cache if possible
+	device, ok := devcache[deviceId]
+	if !ok {
+		// Get device entry from db otherwise
+		var err error
+		device, err = NewDeviceEntryFromId(tx, deviceId)
+		if err != nil {
+			return nil, err
+		}
+		devcache[deviceId] = device
+	}
+	return device, nil
+}
+
+func populateBrickSet(v *VolumeEntry,
+	fetchDevice deviceFetcher,
 	deviceCh <-chan string,
 	initId string,
 	brick_size uint64,
@@ -127,8 +139,8 @@ func populateBrickSet(tx *bolt.Tx,
 	for i := 0; i < ssize; i++ {
 		logger.Debug("%v / %v", i, ssize)
 
-		brick, device, err := findDeviceAndBrickForSet(tx,
-			v, devcache, deviceCh, bs,
+		brick, device, err := findDeviceAndBrickForSet(
+			v, fetchDevice, deviceCh, bs,
 			brick_size)
 		if err != nil {
 			return bs, ds, err
@@ -165,6 +177,9 @@ func allocateBricks(
 
 	err := db.View(func(tx *bolt.Tx) error {
 		txdb := wdb.WrapTx(tx)
+		fetchDevice := func(id string) (*DeviceEntry, error) {
+			return getCachedDevice(devcache, tx, id)
+		}
 
 		// Determine allocation for each brick required for this volume
 		for sn := 0; sn < numBrickSets; sn++ {
@@ -183,8 +198,8 @@ func allocateBricks(
 
 			// Fill in a complete set of bricks/devices. If not possible
 			// err will be non-nil
-			bs, ds, err := populateBrickSet(tx,
-				v, devcache, deviceCh, brickId,
+			bs, ds, err := populateBrickSet(
+				v, fetchDevice, deviceCh, brickId,
 				brick_size, v.Durability.BricksInSet())
 			if err != nil {
 				return err
