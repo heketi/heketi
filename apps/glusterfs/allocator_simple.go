@@ -142,34 +142,27 @@ func (s *SimpleAllocator) getDeviceList(clusterId, brickId string) (SimpleDevice
 }
 
 func (s *SimpleAllocator) GetNodes(db wdb.RODB, clusterId,
-	brickId string) (<-chan string, chan<- struct{}, <-chan error) {
+	brickId string) (<-chan string, chan<- struct{}, error) {
 
 	// Initialize channels
 	device, done := make(chan string), make(chan struct{})
 
-	// Make sure to make a buffered channel for the error, so we can
-	// set it and return
-	errc := make(chan error, 1)
-
 	if err := db.View(s.loadRingFromDB); err != nil {
-		errc <- err
 		close(device)
-		return device, done, errc
+		return device, done, err
 	}
 
 	// Get the list of devices for this brick id
 	devicelist, err := s.getDeviceList(clusterId, brickId)
 
 	if err != nil {
-		errc <- err
 		close(device)
-		return device, done, errc
+		return device, done, err
 	}
 
 	// Start generator in a new goroutine
 	go func() {
 		defer func() {
-			errc <- nil
 			close(device)
 		}()
 
@@ -183,5 +176,5 @@ func (s *SimpleAllocator) GetNodes(db wdb.RODB, clusterId,
 
 	}()
 
-	return device, done, errc
+	return device, done, nil
 }

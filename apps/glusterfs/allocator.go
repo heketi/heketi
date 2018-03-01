@@ -20,5 +20,5 @@ type Allocator interface {
 	// of its replicas. The caller must close() the done channel when it no longer
 	// needs to read from the generator.
 	GetNodes(db wdb.RODB, clusterId, brickId string) (<-chan string,
-		chan<- struct{}, <-chan error)
+		chan<- struct{}, error)
 }
