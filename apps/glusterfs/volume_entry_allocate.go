@@ -313,8 +313,7 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 	}
 
 	newBrickEntry.SetId(newBrickId)
-	var brickEntries []*BrickEntry
-	brickEntries = append(brickEntries, newBrickEntry)
+	brickEntries := []*BrickEntry{newBrickEntry}
 	err = CreateBricks(db, executor, brickEntries)
 	if err != nil {
 		return err
