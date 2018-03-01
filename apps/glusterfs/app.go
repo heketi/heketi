@@ -135,6 +135,15 @@ func NewApp(configIo io.Reader) *App {
 		}
 	}
 
+	// Set values mentioned in environmental variable
+	app.setFromEnvironmentalVariable()
+
+	// Set advanced settings
+	app.setAdvSettings()
+
+	// Set block settings
+	app.setBlockSettings()
+
 	// Abort the application if there are pending operations in the db.
 	// In the immediate future we need to prevent incomplete operations
 	// from piling up in the db. If there are any pending ops in the db
@@ -153,15 +162,6 @@ func NewApp(configIo io.Reader) *App {
 				" information on how to resolve this issue.")
 		panic(e)
 	}
-
-	// Set values mentioned in environmental variable
-	app.setFromEnvironmentalVariable()
-
-	// Set advanced settings
-	app.setAdvSettings()
-
-	// Set block settings
-	app.setBlockSettings()
 
 	// Show application has loaded
 	logger.Info("GlusterFS Application Loaded")
