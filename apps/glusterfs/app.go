@@ -151,7 +151,7 @@ func NewApp(configIo io.Reader) *App {
 	// simply going to refuse to start and provide offline tooling to
 	// repair the situation. In the long term we may gain the ability to
 	// auto-rollback or even try to resume some operations.
-	if HasPendingOperations(app.db) {
+	if HasPendingOperations(app.db) && !app.conf.StartWhenPendingOpsExist {
 		e := errors.New(
 			"Heketi terminated while performing one or more operations." +
 				" Server will not start as long as pending operations are" +
