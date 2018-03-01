@@ -284,3 +284,29 @@ func TestCannotStartWhenPendingOperations(t *testing.T) {
 
 	t.Fatalf("Test should not reach this line")
 }
+
+func TestCanStartWhenPendingOperationsIgnored(t *testing.T) {
+	dbfile := tests.Tempfile()
+	defer os.Remove(dbfile)
+
+	// create a app that will only be used to set up the test
+	app := NewTestApp(dbfile)
+	tests.Assert(t, app != nil)
+
+	// populate the db with a "dummy" pending op entry.
+	// without the environment var we're setting later
+	// this would trigger a panic
+	err := app.db.Update(func(tx *bolt.Tx) error {
+		op := NewPendingOperationEntry(NEW_ID)
+		op.Save(tx)
+		return nil
+	})
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	app.Close()
+
+	// now creating a new app should NOT panic
+	os.Setenv("HEKETI_IGNORE_STALE_OPERATIONS", "1")
+	defer os.Unsetenv("HEKETI_IGNORE_STALE_OPERATIONS")
+	app = NewTestApp(dbfile)
+	tests.Assert(t, app != nil, "expected app != nil, got:", app)
+}

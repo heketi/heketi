@@ -144,14 +144,19 @@ func NewApp(configIo io.Reader) *App {
 	// auto-rollback or even try to resume some operations.
 	if HasPendingOperations(app.db) {
 		e := errors.New(
-			"Heketi terminated while performing one or more operations." +
-				" Server will not start as long as pending operations are" +
-				" present in the db.")
+			"Heketi was terminated while performing one or more operations." +
+				" Server may refuse to start as long as pending operations" +
+				" are present in the db.")
 		logger.Err(e)
 		logger.Info(
 			"Please refer to the Heketi troubleshooting documentation for more" +
 				" information on how to resolve this issue.")
-		panic(e)
+		if !app.conf.IgnoreStaleOperations {
+			logger.Warning("Server refusing to start.")
+			panic(e)
+		}
+		logger.Warning("Ignoring stale pending operations." +
+			"Server will be running with incomplete/inconsistent state in DB.")
 	}
 
 	// Set values mentioned in environmental variable

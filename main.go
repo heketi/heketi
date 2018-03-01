@@ -20,7 +20,6 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
-	"github.com/heketi/heketi/apps"
 	"github.com/heketi/heketi/apps/glusterfs"
 	"github.com/heketi/heketi/middleware"
 	"github.com/spf13/cobra"
@@ -226,6 +225,21 @@ func setWithEnvVariables(options *Config) {
 	}
 }
 
+func setupApp(fp *os.File) (a *glusterfs.App) {
+	defer func() {
+		err := recover()
+		if a == nil || err != nil {
+			fmt.Fprintln(os.Stderr, "ERROR: Unable to start application")
+			os.Exit(1)
+		}
+	}()
+
+	// Go to the beginning of the file when we pass it
+	// to the application
+	fp.Seek(0, os.SEEK_SET)
+	return glusterfs.NewApp(fp)
+}
+
 func main() {
 	if err := RootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -264,18 +278,8 @@ func main() {
 	// Negroni
 	n := negroni.New(negroni.NewRecovery(), negroni.NewLogger())
 
-	// Go to the beginning of the file when we pass it
-	// to the application
-	fp.Seek(0, os.SEEK_SET)
-
 	// Setup a new GlusterFS application
-	var app apps.Application
-	glusterfsApp := glusterfs.NewApp(fp)
-	if glusterfsApp == nil {
-		fmt.Fprintln(os.Stderr, "ERROR: Unable to start application")
-		os.Exit(1)
-	}
-	app = glusterfsApp
+	app := setupApp(fp)
 
 	// Add /hello router
 	router := mux.NewRouter()
@@ -317,7 +321,7 @@ func main() {
 		_, err = restclient.InClusterConfig()
 		if err == nil {
 			// Load middleware to backup database
-			n.UseFunc(glusterfsApp.BackupToKubernetesSecret)
+			n.UseFunc(app.BackupToKubernetesSecret)
 		}
 	}
 
