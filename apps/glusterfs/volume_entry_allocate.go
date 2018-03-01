@@ -254,50 +254,45 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 	//Create an Id for new brick
 	newBrickId := utils.GenUUID()
 
-	// Check the ring for devices to place the brick
-	deviceCh, done, err := allocator.GetNodes(db, v.Info.Cluster, newBrickId)
-	defer close(done)
-	if err != nil {
-		return err
-	}
-
-	for deviceId := range deviceCh {
-
-		// Get device entry
-		err = db.View(func(tx *bolt.Tx) error {
-			newDeviceEntry, err = NewDeviceEntryFromId(tx, deviceId)
-			if err != nil {
-				return err
-			}
-			return nil
-		})
+	err = db.Update(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
+		// Check the ring for devices to place the brick
+		deviceCh, done, err := allocator.GetNodes(txdb, v.Info.Cluster, newBrickId)
+		defer close(done)
 		if err != nil {
 			return err
 		}
 
-		// Skip same device
-		if oldDeviceEntry.Info.Id == newDeviceEntry.Info.Id {
-			continue
-		}
+		for deviceId := range deviceCh {
 
-		// Do not allow a device from the same node to be
-		// in the set
-		deviceOk := true
-		for _, brickInSet := range bs.Bricks {
-			if brickInSet.Info.NodeId == newDeviceEntry.NodeId {
-				deviceOk = false
+			// Get device entry
+			newDeviceEntry, err = NewDeviceEntryFromId(tx, deviceId)
+			if err != nil {
+				return err
 			}
-		}
 
-		if !deviceOk {
-			continue
-		}
+			// Skip same device
+			if oldDeviceEntry.Info.Id == newDeviceEntry.Info.Id {
+				continue
+			}
 
-		// Try to allocate a brick on this device
-		// NewBrickEntry would deduct storage from device entry
-		// which we will save to disk, hence reload the latest device
-		// entry to get latest storage state of device
-		err = db.Update(func(tx *bolt.Tx) error {
+			// Do not allow a device from the same node to be
+			// in the set
+			deviceOk := true
+			for _, brickInSet := range bs.Bricks {
+				if brickInSet.Info.NodeId == newDeviceEntry.NodeId {
+					deviceOk = false
+				}
+			}
+
+			if !deviceOk {
+				continue
+			}
+
+			// Try to allocate a brick on this device
+			// NewBrickEntry would deduct storage from device entry
+			// which we will save to disk, hence reload the latest device
+			// entry to get latest storage state of device
 			newDeviceEntry, err := NewDeviceEntryFromId(tx, deviceId)
 			if err != nil {
 				return err
@@ -309,14 +304,14 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 			if err != nil {
 				return err
 			}
-			return nil
-		})
-		if err != nil {
-			return err
+			if newBrickEntry != nil {
+				break
+			}
 		}
-		if newBrickEntry != nil {
-			break
-		}
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	// Determine if it was successful
