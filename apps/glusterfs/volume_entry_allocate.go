@@ -279,7 +279,7 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 			// Try to allocate a brick on this device
 			// NewBrickEntry will deduct storage from device entry
 			// if successful
-			newBrickEntry = tryAllocateBrickOnDevice(v,
+			newBrickEntry = tryAllocateBrickOnDevice(v, nil,
 				newDeviceEntry, bs, oldBrickEntry.Info.Size)
 			err = newDeviceEntry.Save(tx)
 			if err != nil {

@@ -58,9 +58,13 @@ type BrickAllocation struct {
 	DeviceSets []*DeviceSet
 }
 
+type deviceFilter func(*BrickSet, *DeviceEntry) bool
+
 type deviceFetcher func(string) (*DeviceEntry, error)
 
-func tryAllocateBrickOnDevice(v *VolumeEntry, device *DeviceEntry,
+func tryAllocateBrickOnDevice(v *VolumeEntry,
+	pred deviceFilter,
+	device *DeviceEntry,
 	bs *BrickSet, brick_size uint64) *BrickEntry {
 
 	// Do not allow a device from the same node to be in the set
@@ -74,6 +78,9 @@ func tryAllocateBrickOnDevice(v *VolumeEntry, device *DeviceEntry,
 	if !deviceOk {
 		return nil
 	}
+	if pred != nil && !pred(bs, device) {
+		return nil
+	}
 
 	// Try to allocate a brick on this device
 	brick := device.NewBrickEntry(brick_size,
@@ -85,6 +92,7 @@ func tryAllocateBrickOnDevice(v *VolumeEntry, device *DeviceEntry,
 
 func findDeviceAndBrickForSet(v *VolumeEntry,
 	fetchDevice deviceFetcher,
+	pred deviceFilter,
 	deviceCh <-chan string,
 	bs *BrickSet,
 	brick_size uint64) (*BrickEntry, *DeviceEntry, error) {
@@ -97,7 +105,7 @@ func findDeviceAndBrickForSet(v *VolumeEntry,
 			return nil, nil, err
 		}
 
-		brick := tryAllocateBrickOnDevice(v, device, bs, brick_size)
+		brick := tryAllocateBrickOnDevice(v, pred, device, bs, brick_size)
 		if brick == nil {
 			continue
 		}
@@ -129,6 +137,7 @@ func getCachedDevice(devcache map[string](*DeviceEntry),
 
 func populateBrickSet(v *VolumeEntry,
 	fetchDevice deviceFetcher,
+	pred deviceFilter,
 	deviceCh <-chan string,
 	initId string,
 	brick_size uint64,
@@ -140,7 +149,7 @@ func populateBrickSet(v *VolumeEntry,
 		logger.Debug("%v / %v", i, ssize)
 
 		brick, device, err := findDeviceAndBrickForSet(
-			v, fetchDevice, deviceCh, bs,
+			v, fetchDevice, pred, deviceCh, bs,
 			brick_size)
 		if err != nil {
 			return bs, ds, err
@@ -199,7 +208,7 @@ func allocateBricks(
 			// Fill in a complete set of bricks/devices. If not possible
 			// err will be non-nil
 			bs, ds, err := populateBrickSet(
-				v, fetchDevice, deviceCh, brickId,
+				v, fetchDevice, nil, deviceCh, brickId,
 				brick_size, v.Durability.BricksInSet())
 			if err != nil {
 				return err
