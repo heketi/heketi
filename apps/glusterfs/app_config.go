@@ -27,9 +27,10 @@ type GlusterFSConfig struct {
 	Loglevel   string              `json:"loglevel"`
 
 	// advanced settings
-	BrickMaxSize int `json:"brick_max_size_gb"`
-	BrickMinSize int `json:"brick_min_size_gb"`
-	BrickMaxNum  int `json:"max_bricks_per_volume"`
+	BrickMaxSize             int  `json:"brick_max_size_gb"`
+	BrickMinSize             int  `json:"brick_min_size_gb"`
+	BrickMaxNum              int  `json:"max_bricks_per_volume"`
+	StartWhenPendingOpsExist bool `json:"start_when_pending_ops_exist"`
 
 	//block settings
 	CreateBlockHostingVolumes bool `json:"auto_create_block_hosting_volume"`

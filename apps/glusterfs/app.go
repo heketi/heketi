@@ -135,6 +135,15 @@ func NewApp(configIo io.Reader) *App {
 		}
 	}
 
+	// Set values mentioned in environmental variable
+	app.setFromEnvironmentalVariable()
+
+	// Set advanced settings
+	app.setAdvSettings()
+
+	// Set block settings
+	app.setBlockSettings()
+
 	// Abort the application if there are pending operations in the db.
 	// In the immediate future we need to prevent incomplete operations
 	// from piling up in the db. If there are any pending ops in the db
@@ -142,7 +151,7 @@ func NewApp(configIo io.Reader) *App {
 	// simply going to refuse to start and provide offline tooling to
 	// repair the situation. In the long term we may gain the ability to
 	// auto-rollback or even try to resume some operations.
-	if HasPendingOperations(app.db) {
+	if HasPendingOperations(app.db) && !app.conf.StartWhenPendingOpsExist {
 		e := errors.New(
 			"Heketi terminated while performing one or more operations." +
 				" Server will not start as long as pending operations are" +
@@ -153,15 +162,6 @@ func NewApp(configIo io.Reader) *App {
 				" information on how to resolve this issue.")
 		panic(e)
 	}
-
-	// Set values mentioned in environmental variable
-	app.setFromEnvironmentalVariable()
-
-	// Set advanced settings
-	app.setAdvSettings()
-
-	// Set block settings
-	app.setBlockSettings()
 
 	// Show application has loaded
 	logger.Info("GlusterFS Application Loaded")
