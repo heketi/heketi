@@ -196,22 +196,22 @@ func (v *VolumeEntry) canReplaceBrickInBrickSet(db wdb.DB,
 	return nil
 }
 
-func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executor,
-	allocator Allocator,
-	oldBrickId string) (e error) {
+type replacementItems struct {
+	oldBrickEntry     *BrickEntry
+	oldDeviceEntry    *DeviceEntry
+	oldBrickNodeEntry *NodeEntry
+	bs                *BrickSet
+}
+
+func (v *VolumeEntry) prepForBrickReplacement(db wdb.DB,
+	executor executors.Executor,
+	oldBrickId string) (ri replacementItems, err error) {
 
 	var oldBrickEntry *BrickEntry
 	var oldDeviceEntry *DeviceEntry
-	var newDeviceEntry *DeviceEntry
 	var oldBrickNodeEntry *NodeEntry
-	var newBrickNodeEntry *NodeEntry
-	var newBrickEntry *BrickEntry
 
-	if api.DurabilityDistributeOnly == v.Info.Durability.Type {
-		return fmt.Errorf("replace brick is not supported for volume durability type %v", v.Info.Durability.Type)
-	}
-
-	err := db.View(func(tx *bolt.Tx) error {
+	err = db.View(func(tx *bolt.Tx) error {
 		var err error
 		oldBrickEntry, err = NewBrickEntryFromId(tx, oldBrickId)
 		if err != nil {
@@ -229,7 +229,7 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 		return nil
 	})
 	if err != nil {
-		return err
+		return
 	}
 
 	node := oldBrickNodeEntry.ManageHostName()
@@ -237,19 +237,35 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 	if err != nil {
 		node, err = GetVerifiedManageHostname(db, executor, oldBrickNodeEntry.Info.ClusterId)
 		if err != nil {
-			return err
+			return
 		}
 	}
 
 	bs, err := v.getBrickSetForBrickId(db, executor, oldBrickId, node)
 	if err != nil {
-		return err
+		return
 	}
 
 	err = v.canReplaceBrickInBrickSet(db, executor, oldBrickEntry, node, bs)
 	if err != nil {
-		return err
+		return
 	}
+
+	ri = replacementItems{
+		oldBrickEntry:     oldBrickEntry,
+		oldDeviceEntry:    oldDeviceEntry,
+		oldBrickNodeEntry: oldBrickNodeEntry,
+		bs:                bs,
+	}
+	return
+}
+
+func (v *VolumeEntry) allocBrickReplacement(db wdb.DB,
+	allocator Allocator,
+	oldBrickEntry *BrickEntry,
+	oldDeviceEntry *DeviceEntry,
+	bs *BrickSet) (newBrickEntry *BrickEntry,
+	newDeviceEntry *DeviceEntry, err error) {
 
 	//Create an Id for new brick
 	newBrickId := utils.GenUUID()
@@ -283,6 +299,34 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 		}
 		return nil
 	})
+
+	if err == nil {
+		newBrickEntry.SetId(newBrickId)
+	}
+	return
+}
+
+func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executor,
+	allocator Allocator,
+	oldBrickId string) (e error) {
+
+	if api.DurabilityDistributeOnly == v.Info.Durability.Type {
+		return fmt.Errorf("replace brick is not supported for volume durability type %v", v.Info.Durability.Type)
+	}
+
+	ri, err := v.prepForBrickReplacement(
+		db, executor, oldBrickId)
+	if err != nil {
+		return err
+	}
+	// unpack the struct so we don't have to mess w/ the lower half of
+	// this function
+	oldBrickEntry := ri.oldBrickEntry
+	oldDeviceEntry := ri.oldDeviceEntry
+	oldBrickNodeEntry := ri.oldBrickNodeEntry
+
+	newBrickEntry, newDeviceEntry, err := v.allocBrickReplacement(
+		db, allocator, oldBrickEntry, oldDeviceEntry, ri.bs)
 	if err != nil {
 		return err
 	}
@@ -301,6 +345,7 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 		}
 	}()
 
+	var newBrickNodeEntry *NodeEntry
 	err = db.View(func(tx *bolt.Tx) error {
 		newBrickNodeEntry, err = NewNodeEntryFromId(tx, newBrickEntry.Info.NodeId)
 		if err != nil {
@@ -312,7 +357,6 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 		return err
 	}
 
-	newBrickEntry.SetId(newBrickId)
 	brickEntries := []*BrickEntry{newBrickEntry}
 	err = CreateBricks(db, executor, brickEntries)
 	if err != nil {
@@ -333,6 +377,7 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 	newBrick.Path = newBrickEntry.Info.Path
 	newBrick.Host = newBrickNodeEntry.StorageHostName()
 
+	node := oldBrickNodeEntry.ManageHostName()
 	err = executor.VolumeReplaceBrick(node, v.Info.Name, &oldBrick, &newBrick)
 	if err != nil {
 		return err
