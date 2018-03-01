@@ -263,41 +263,28 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 			return err
 		}
 
-		for deviceId := range deviceCh {
+		// fetch device from db txn
+		fetchDevice := func(id string) (*DeviceEntry, error) {
+			return NewDeviceEntryFromId(tx, id)
+		}
+		// returns true if new device differs from old device
+		diffDevice := func(bs *BrickSet, d *DeviceEntry) bool {
+			return oldDeviceEntry.Info.Id != d.Info.Id
+		}
 
-			// Get device entry
-			newDeviceEntry, err = NewDeviceEntryFromId(tx, deviceId)
-			if err != nil {
-				return err
-			}
-
-			// Skip same device
-			if oldDeviceEntry.Info.Id == newDeviceEntry.Info.Id {
-				continue
-			}
-
-			// Try to allocate a brick on this device
-			// NewBrickEntry will deduct storage from device entry
-			// if successful
-			newBrickEntry = tryAllocateBrickOnDevice(v, nil,
-				newDeviceEntry, bs, oldBrickEntry.Info.Size)
-			err = newDeviceEntry.Save(tx)
-			if err != nil {
-				return err
-			}
-			if newBrickEntry != nil {
-				break
-			}
+		newBrickEntry, newDeviceEntry, err = findDeviceAndBrickForSet(
+			v, fetchDevice, diffDevice, deviceCh, bs,
+			oldBrickEntry.Info.Size)
+		if err == ErrNoSpace {
+			// swap error conditions to better match the intent
+			return ErrNoReplacement
+		} else if err != nil {
+			return err
 		}
 		return nil
 	})
 	if err != nil {
 		return err
-	}
-
-	// Determine if it was successful
-	if newBrickEntry == nil {
-		return ErrNoReplacement
 	}
 
 	defer func() {
