@@ -69,6 +69,9 @@ func NewApp(configIo io.Reader) *App {
 		return nil
 	}
 
+	// Set values mentioned in environmental variable
+	app.setFromEnvironmentalVariable()
+
 	// Setup loglevel
 	err = app.setLogLevel(app.conf.Loglevel)
 	if err != nil {
@@ -165,9 +168,6 @@ func NewApp(configIo io.Reader) *App {
 			"Server will be running with incomplete/inconsistent state in DB.")
 	}
 
-	// Set values mentioned in environmental variable
-	app.setFromEnvironmentalVariable()
-
 	// Set advanced settings
 	app.setAdvSettings()
 
@@ -202,7 +202,24 @@ func (a *App) setLogLevel(level string) error {
 
 func (a *App) setFromEnvironmentalVariable() {
 	var err error
-	env := os.Getenv("HEKETI_AUTO_CREATE_BLOCK_HOSTING_VOLUME")
+
+	// environment variable overrides file config
+	env := os.Getenv("HEKETI_EXECUTOR")
+	if env != "" {
+		a.conf.Executor = env
+	}
+
+	env = os.Getenv("HEKETI_GLUSTERAPP_LOGLEVEL")
+	if env != "" {
+		a.conf.Loglevel = env
+	}
+
+	env = os.Getenv("HEKETI_IGNORE_STALE_OPERATIONS")
+	if env != "" {
+		a.conf.IgnoreStaleOperations = true
+	}
+
+	env = os.Getenv("HEKETI_AUTO_CREATE_BLOCK_HOSTING_VOLUME")
 	if "" != env {
 		a.conf.CreateBlockHostingVolumes, err = strconv.ParseBool(env)
 		if err != nil {

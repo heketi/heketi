@@ -12,7 +12,6 @@ package glusterfs
 import (
 	"encoding/json"
 	"io"
-	"os"
 
 	"github.com/heketi/heketi/executors/kubeexec"
 	"github.com/heketi/heketi/executors/sshexec"
@@ -51,20 +50,6 @@ func loadConfiguration(configIo io.Reader) *GlusterFSConfig {
 		logger.LogError("Unable to parse config file: %v\n",
 			err.Error())
 		return nil
-	}
-
-	// Set environment variable to override configuration file
-	env := os.Getenv("HEKETI_EXECUTOR")
-	if env != "" {
-		config.GlusterFS.Executor = env
-	}
-	env = os.Getenv("HEKETI_GLUSTERAPP_LOGLEVEL")
-	if env != "" {
-		config.GlusterFS.Loglevel = env
-	}
-	env = os.Getenv("HEKETI_IGNORE_STALE_OPERATIONS")
-	if env != "" {
-		config.GlusterFS.IgnoreStaleOperations = true
 	}
 	return &config.GlusterFS
 }
