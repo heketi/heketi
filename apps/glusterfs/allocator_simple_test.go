@@ -23,7 +23,6 @@ func TestNewSimpleAllocator(t *testing.T) {
 
 	a := NewSimpleAllocator()
 	tests.Assert(t, a != nil)
-	tests.Assert(t, a.rings != nil)
 
 }
 
@@ -57,24 +56,21 @@ func TestSimpleAllocatorGetNodesEmpty(t *testing.T) {
 	}
 }
 
-func TestSimpleAllocatorAddDevice(t *testing.T) {
-	a := NewSimpleAllocator()
-	tests.Assert(t, a != nil)
+func TestSingleClusterRingAddDevice(t *testing.T) {
 
 	cluster := createSampleClusterEntry()
 	node := createSampleNodeEntry()
 	node.Info.ClusterId = cluster.Info.Id
 	device := createSampleDeviceEntry(node.Info.Id, 10000)
 
-	tests.Assert(t, len(a.rings) == 0)
-	tests.Assert(t, a.addCluster(cluster.Info.Id) == nil)
-	err := a.addDevice(cluster, node, device)
+	s := &singleClusterRing{clusterId: cluster.Info.Id}
+	tests.Assert(t, s.addCluster(cluster.Info.Id) == nil)
+	err := s.addDevice(cluster, node, device)
 	tests.Assert(t, err == nil)
-	tests.Assert(t, len(a.rings) == 1)
-	tests.Assert(t, a.rings[cluster.Info.Id] != nil)
+	tests.Assert(t, len(s.ring.ring) == 1)
 
 	// Get the nodes from the ring
-	devicelist, err := a.getDeviceList(cluster.Info.Id, utils.GenUUID())
+	devicelist, err := s.getDeviceList(utils.GenUUID())
 	tests.Assert(t, err == nil)
 
 	var devices int
