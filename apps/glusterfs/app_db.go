@@ -15,7 +15,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
@@ -233,7 +232,7 @@ func DbDump(jsonfile string, dbfile string, debug bool) error {
 	}
 	defer fp.Close()
 
-	db, err := bolt.Open(dbfile, 0600, &bolt.Options{Timeout: 3 * time.Second})
+	db, err := OpenDB(dbfile, false)
 	if err != nil {
 		return fmt.Errorf("Unable to open database: %v", err)
 	}
@@ -295,10 +294,8 @@ func DbCreate(jsonfile string, dbfile string, debug bool) error {
 		return fmt.Errorf("unable to stat path given for dbfile: %v", dbfile)
 	}
 
-	// Setup BoltDB database
-	dbhandle, err := bolt.Open(dbfile, 0600, &bolt.Options{Timeout: 3 * time.Second})
+	dbhandle, err := OpenDB(dbfile, false)
 	if err != nil {
-		logger.Debug("Unable to open database: %v", err)
 		return fmt.Errorf("Could not open db file: %v", err.Error())
 	}
 

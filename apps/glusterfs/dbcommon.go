@@ -10,6 +10,8 @@
 package glusterfs
 
 import (
+	"time"
+
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
@@ -226,4 +228,24 @@ func DeleteBricksWithEmptyPath(db *bolt.DB, all bool, clusterIDs []string, nodeI
 		return err
 	}
 	return nil
+}
+
+// OpenDB is a wrapper over bolt.Open. It takes a bool to decide whether it should be a read-only open.
+// Other bolt DB config options remain local to this function.
+func OpenDB(dbfilename string, ReadOnly bool) (dbhandle *bolt.DB, err error) {
+
+	if ReadOnly {
+		dbhandle, err = bolt.Open(dbfilename, 0666, &bolt.Options{ReadOnly: true})
+		if err != nil {
+			logger.LogError("Unable to open database in read only mode: %v", err)
+		}
+		return dbhandle, err
+	}
+
+	dbhandle, err = bolt.Open(dbfilename, 0600, &bolt.Options{Timeout: 3 * time.Second})
+	if err != nil {
+		logger.LogError("Unable to open database: %v", err)
+	}
+	return dbhandle, err
+
 }

@@ -16,9 +16,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
-	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/apps/glusterfs"
 	"github.com/heketi/heketi/middleware"
@@ -153,7 +151,7 @@ var deleteBricksWithEmptyPath = &cobra.Command{
 			fmt.Fprintf(os.Stderr, "neither --all flag nor list of clusters/nodes/devices is given\n")
 			os.Exit(1)
 		}
-		db, err := bolt.Open(dbFile, 0600, &bolt.Options{Timeout: 3 * time.Second})
+		db, err := glusterfs.OpenDB(dbFile, false)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Unable to open database: %v\n", err)
 			os.Exit(1)
