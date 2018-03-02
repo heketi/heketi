@@ -10,93 +10,76 @@
 package glusterfs
 
 import (
-	"sync"
-
 	"github.com/boltdb/bolt"
 	wdb "github.com/heketi/heketi/pkg/db"
 )
 
 // Simple allocator contains a map to rings of clusters
 type SimpleAllocator struct {
-	rings map[string]*SimpleAllocatorRing
-	lock  sync.Mutex
+}
+
+type singleClusterRing struct {
+	clusterId string
+	ring      *SimpleAllocatorRing
 }
 
 // Create a new simple allocator
 func NewSimpleAllocator() *SimpleAllocator {
 	s := &SimpleAllocator{}
-	s.rings = make(map[string]*SimpleAllocatorRing)
 	return s
 }
 
-func (s *SimpleAllocator) loadRingFromDB(tx *bolt.Tx) error {
-	s.rings = map[string]*SimpleAllocatorRing{}
+func (s *singleClusterRing) loadRingFromDB(tx *bolt.Tx) error {
+	s.ring = &SimpleAllocatorRing{}
 
-	clusters, err := ClusterList(tx)
+	cluster, err := NewClusterEntryFromId(tx, s.clusterId)
 	if err != nil {
 		return err
 	}
 
-	for _, clusterId := range clusters {
-		cluster, err := NewClusterEntryFromId(tx, clusterId)
+	// Add Cluster to ring
+	if err = s.addCluster(cluster.Info.Id); err != nil {
+		return err
+	}
+
+	for _, nodeId := range cluster.Info.Nodes {
+		node, err := NewNodeEntryFromId(tx, nodeId)
 		if err != nil {
 			return err
 		}
 
-		// Add Cluster to ring
-		if err = s.addCluster(cluster.Info.Id); err != nil {
-			return err
+		// Check node is online
+		if !node.isOnline() {
+			continue
 		}
 
-		for _, nodeId := range cluster.Info.Nodes {
-			node, err := NewNodeEntryFromId(tx, nodeId)
+		for _, deviceId := range node.Devices {
+			device, err := NewDeviceEntryFromId(tx, deviceId)
 			if err != nil {
 				return err
 			}
 
-			// Check node is online
-			if !node.isOnline() {
+			// Check device is online
+			if !device.isOnline() {
 				continue
 			}
 
-			for _, deviceId := range node.Devices {
-				device, err := NewDeviceEntryFromId(tx, deviceId)
-				if err != nil {
-					return err
-				}
-
-				// Check device is online
-				if !device.isOnline() {
-					continue
-				}
-
-				// Add device to ring
-				err = s.addDevice(cluster, node, device)
-				if err != nil {
-					return err
-				}
-
+			// Add device to ring
+			err = s.addDevice(cluster, node, device)
+			if err != nil {
+				return err
 			}
+
 		}
 	}
 	return nil
 }
 
-func (s *SimpleAllocator) addDevice(cluster *ClusterEntry,
+func (s *singleClusterRing) addDevice(cluster *ClusterEntry,
 	node *NodeEntry,
 	device *DeviceEntry) error {
 
-	clusterId := cluster.Info.Id
-
-	// Check the cluster id is in the map
-	if _, ok := s.rings[clusterId]; !ok {
-		logger.LogError("Unknown cluster id requested: %v", clusterId)
-		return ErrNotFound
-	}
-
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	s.rings[clusterId].Add(&SimpleDevice{
+	s.ring.Add(&SimpleDevice{
 		zone:     node.Info.Zone,
 		nodeId:   node.Info.Id,
 		deviceId: device.Info.Id,
@@ -108,34 +91,18 @@ func (s *SimpleAllocator) addDevice(cluster *ClusterEntry,
 
 // addCluster adds an entry to the rings map. Must be called before addDevice so
 // that the entry exists.
-func (s *SimpleAllocator) addCluster(clusterId string) error {
-
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	if _, ok := s.rings[clusterId]; ok {
-		logger.LogError("cluster id %s already exists", clusterId)
-		return ErrFound
-	}
+func (s *singleClusterRing) addCluster(clusterId string) error {
 
 	// Add cluster to map
-	s.rings[clusterId] = NewSimpleAllocatorRing()
+	s.ring = NewSimpleAllocatorRing()
 
 	return nil
 }
 
-func (s *SimpleAllocator) getDeviceList(clusterId, brickId string) (SimpleDevices, error) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+func (s *singleClusterRing) getDeviceList(brickId string) (SimpleDevices, error) {
 
-	if _, ok := s.rings[clusterId]; !ok {
-		logger.LogError("Unknown cluster id requested: %v", clusterId)
-		return nil, ErrNotFound
-	}
-
-	ring := s.rings[clusterId]
-	ring.Rebalance()
-	devicelist := ring.GetDeviceList(brickId)
+	s.ring.Rebalance()
+	devicelist := s.ring.GetDeviceList(brickId)
 
 	return devicelist, nil
 
@@ -147,13 +114,14 @@ func (s *SimpleAllocator) GetNodes(db wdb.RODB, clusterId,
 	// Initialize channels
 	device, done := make(chan string), make(chan struct{})
 
-	if err := db.View(s.loadRingFromDB); err != nil {
+	scr := &singleClusterRing{clusterId: clusterId}
+	if err := db.View(scr.loadRingFromDB); err != nil {
 		close(device)
 		return device, done, err
 	}
 
 	// Get the list of devices for this brick id
-	devicelist, err := s.getDeviceList(clusterId, brickId)
+	devicelist, err := scr.getDeviceList(brickId)
 
 	if err != nil {
 		close(device)
