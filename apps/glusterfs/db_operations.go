@@ -17,7 +17,6 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/heketi/pkg/utils"
 )
 
 func dbDumpInternal(db *bolt.DB) (Db, error) {
@@ -210,10 +209,7 @@ func dbDumpInternal(db *bolt.DB) (Db, error) {
 // DbDump ... Creates a JSON output representing the state of DB
 // This is the variant to be called offline, i.e. when the server is not
 // running.
-func DbDump(jsonfile string, dbfile string, debug bool) error {
-	if debug {
-		logger.SetLevel(utils.LEVEL_DEBUG)
-	}
+func DbDump(jsonfile string, dbfile string) error {
 
 	fp, err := os.OpenFile(jsonfile, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
@@ -239,10 +235,7 @@ func DbDump(jsonfile string, dbfile string, debug bool) error {
 }
 
 // DbCreate ... Creates a bolt db file based on JSON input
-func DbCreate(jsonfile string, dbfile string, debug bool) error {
-	if debug {
-		logger.SetLevel(utils.LEVEL_DEBUG)
-	}
+func DbCreate(jsonfile string, dbfile string) error {
 
 	var dump Db
 
@@ -380,11 +373,7 @@ func DbCreate(jsonfile string, dbfile string, debug bool) error {
 
 	return nil
 }
-func DeleteBricksWithEmptyPath(db *bolt.DB, all bool, clusterIDs []string, nodeIDs []string, deviceIDs []string, debug bool) error {
-
-	if debug {
-		logger.SetLevel(utils.LEVEL_DEBUG)
-	}
+func DeleteBricksWithEmptyPath(db *bolt.DB, all bool, clusterIDs []string, nodeIDs []string, deviceIDs []string) error {
 
 	for _, id := range clusterIDs {
 		if err := api.ValidateUUID(id); err != nil {

@@ -95,7 +95,7 @@ func TestDeleteBricksWithEmptyPath(t *testing.T) {
 		"expected len(d.Bricks) == 40, got:", len(d.Bricks))
 
 	// now delete bricks with empty path
-	err = DeleteBricksWithEmptyPath(app.db, true, []string{}, []string{}, []string{}, true)
+	err = DeleteBricksWithEmptyPath(app.db, true, []string{}, []string{}, []string{})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	err = app.db.View(func(tx *bolt.Tx) error {
@@ -129,7 +129,7 @@ func TestDeleteBricksWithEmptyPath(t *testing.T) {
 	tests.Assert(t, len(d.Bricks) == 40,
 		"expected len(d.Bricks) == 40, got:", len(d.Bricks))
 
-	err = DeleteBricksWithEmptyPath(app.db, false, []string{}, []string{}, []string{d.Info.Id}, true)
+	err = DeleteBricksWithEmptyPath(app.db, false, []string{}, []string{}, []string{d.Info.Id})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	err = app.db.View(func(tx *bolt.Tx) error {
@@ -163,7 +163,7 @@ func TestDeleteBricksWithEmptyPath(t *testing.T) {
 	tests.Assert(t, len(d.Bricks) == 40,
 		"expected len(d.Bricks) == 40, got:", len(d.Bricks))
 
-	err = DeleteBricksWithEmptyPath(app.db, false, []string{}, []string{d.NodeId, d.NodeId}, []string{}, true)
+	err = DeleteBricksWithEmptyPath(app.db, false, []string{}, []string{d.NodeId, d.NodeId}, []string{})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	err = app.db.View(func(tx *bolt.Tx) error {
@@ -203,7 +203,7 @@ func TestDeleteBricksWithEmptyPath(t *testing.T) {
 	})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	err = DeleteBricksWithEmptyPath(app.db, false, []string{nodeEntry.Info.ClusterId}, []string{d.NodeId}, []string{}, true)
+	err = DeleteBricksWithEmptyPath(app.db, false, []string{nodeEntry.Info.ClusterId}, []string{d.NodeId}, []string{})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	err = app.db.View(func(tx *bolt.Tx) error {

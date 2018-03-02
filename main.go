@@ -84,7 +84,10 @@ var importdbCmd = &cobra.Command{
 			fmt.Fprintln(os.Stderr, "Please provide path for db file")
 			os.Exit(1)
 		}
-		err := glusterfs.DbCreate(jsonFile, dbFile, debugOutput)
+		if debugOutput {
+			glusterfs.SetLogLevel("debug")
+		}
+		err := glusterfs.DbCreate(jsonFile, dbFile)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "db creation failed: %v\n", err.Error())
 			os.Exit(1)
@@ -108,7 +111,10 @@ var exportdbCmd = &cobra.Command{
 			fmt.Fprintln(os.Stderr, "Please provide path for db file")
 			os.Exit(1)
 		}
-		err := glusterfs.DbDump(jsonFile, dbFile, debugOutput)
+		if debugOutput {
+			glusterfs.SetLogLevel("debug")
+		}
+		err := glusterfs.DbDump(jsonFile, dbFile)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to dump db: %v\n", err.Error())
 			os.Exit(1)
@@ -151,12 +157,15 @@ var deleteBricksWithEmptyPath = &cobra.Command{
 			fmt.Fprintf(os.Stderr, "neither --all flag nor list of clusters/nodes/devices is given\n")
 			os.Exit(1)
 		}
+		if debugOutput {
+			glusterfs.SetLogLevel("debug")
+		}
 		db, err := glusterfs.OpenDB(dbFile, false)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Unable to open database: %v\n", err)
 			os.Exit(1)
 		}
-		err = glusterfs.DeleteBricksWithEmptyPath(db, deleteAllBricksWithEmptyPath, clusterlist, nodelist, devicelist, debugOutput)
+		err = glusterfs.DeleteBricksWithEmptyPath(db, deleteAllBricksWithEmptyPath, clusterlist, nodelist, devicelist)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to delete bricks with empty path: %v\n", err.Error())
 			os.Exit(1)
