@@ -16,7 +16,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
@@ -106,15 +105,13 @@ func NewApp(configIo io.Reader) *App {
 		dbfilename = app.conf.DBfile
 	}
 
-	// Setup BoltDB database
-	app.db, err = bolt.Open(dbfilename, 0600, &bolt.Options{Timeout: 3 * time.Second})
+	// Setup database
+	app.db, err = OpenDB(dbfilename, false)
 	if err != nil {
 		logger.LogError("Unable to open database: %v. Retrying using read only mode", err)
 
 		// Try opening as read-only
-		app.db, err = bolt.Open(dbfilename, 0666, &bolt.Options{
-			ReadOnly: true,
-		})
+		app.db, err = OpenDB(dbfilename, true)
 		if err != nil {
 			logger.LogError("Unable to open database: %v", err)
 			return nil
