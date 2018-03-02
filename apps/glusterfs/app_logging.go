@@ -64,7 +64,7 @@ func (a *App) SetLogLevel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = a.setLogLevel(wantLevel)
+	err = SetLogLevel(wantLevel)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 		return

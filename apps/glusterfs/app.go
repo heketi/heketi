@@ -72,7 +72,7 @@ func NewApp(configIo io.Reader) *App {
 	app.setFromEnvironmentalVariable()
 
 	// Setup loglevel
-	err = app.setLogLevel(app.conf.Loglevel)
+	err = SetLogLevel(app.conf.Loglevel)
 	if err != nil {
 		// just log that the log level was bad, it never failed
 		// anything in previous versions
@@ -177,7 +177,7 @@ func NewApp(configIo io.Reader) *App {
 	return app
 }
 
-func (a *App) setLogLevel(level string) error {
+func SetLogLevel(level string) error {
 	switch level {
 	case "none":
 		logger.SetLevel(utils.LEVEL_NOLOG)
