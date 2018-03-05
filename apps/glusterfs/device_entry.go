@@ -359,6 +359,31 @@ func (d *DeviceEntry) NewBrickEntry(amount uint64, snapFactor float64, gid int64
 
 	// :TODO: This needs unit test
 
+	sn := d.SpaceNeeded(amount, snapFactor)
+
+	logger.Debug("device %v[%v] > required size [%v] ?",
+		d.Id(),
+		d.Info.Storage.Free, sn.Total)
+	if !d.StorageCheck(sn.Total) {
+		return nil
+	}
+
+	// Allocate amount from disk
+	d.StorageAllocate(sn.Total)
+
+	// Create brick
+	return NewBrickEntry(amount, sn.TpSize, sn.PoolMetadataSize, d.Info.Id, d.NodeId, gid, volumeid)
+}
+
+type SpaceNeeded struct {
+	TpSize           uint64
+	PoolMetadataSize uint64
+	Total            uint64
+}
+
+// SpaceNeeded returns the (estimated) space needed to add a brick
+// of the given size amount and snapFactor to this device.
+func (d *DeviceEntry) SpaceNeeded(amount uint64, snapFactor float64) SpaceNeeded {
 	// Calculate thinpool size
 	tpsize := uint64(float64(amount) * snapFactor)
 
@@ -379,19 +404,9 @@ func (d *DeviceEntry) NewBrickEntry(amount uint64, snapFactor float64, gid int64
 
 	// Total required size
 	total := tpsize + metadataSize
-
-	logger.Debug("device %v[%v] > required size [%v] ?",
-		d.Id(),
-		d.Info.Storage.Free, total)
-	if !d.StorageCheck(total) {
-		return nil
-	}
-
-	// Allocate amount from disk
-	d.StorageAllocate(total)
-
-	// Create brick
-	return NewBrickEntry(amount, tpsize, metadataSize, d.Info.Id, d.NodeId, gid, volumeid)
+	logger.Debug("expected space needed for amount=%v snapFactor=%v : %v",
+		amount, snapFactor, total)
+	return SpaceNeeded{tpsize, metadataSize, total}
 }
 
 // Return poolmetadatasize in KB
