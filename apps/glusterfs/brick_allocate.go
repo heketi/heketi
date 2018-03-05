@@ -11,6 +11,7 @@ package glusterfs
 
 import (
 	"github.com/boltdb/bolt"
+	"github.com/lpabon/godbc"
 
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/utils"
@@ -26,6 +27,7 @@ func NewBrickSet(s int) *BrickSet {
 }
 
 func (bs *BrickSet) Add(b *BrickEntry) {
+	godbc.Require(!bs.Full())
 	bs.Bricks = append(bs.Bricks, b)
 }
 
@@ -43,6 +45,7 @@ func NewDeviceSet(s int) *DeviceSet {
 }
 
 func (ds *DeviceSet) Add(d *DeviceEntry) {
+	godbc.Require(!ds.Full())
 	ds.Devices = append(ds.Devices, d)
 }
 
