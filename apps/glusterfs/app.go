@@ -216,7 +216,10 @@ func (a *App) setFromEnvironmentalVariable() {
 
 	env = os.Getenv("HEKETI_IGNORE_STALE_OPERATIONS")
 	if env != "" {
-		a.conf.IgnoreStaleOperations = true
+		a.conf.IgnoreStaleOperations, err = strconv.ParseBool(env)
+		if err != nil {
+			logger.LogError("Error: While parsing HEKETI_IGNORE_STALE_OPERATIONS as bool: %v", err)
+		}
 	}
 
 	env = os.Getenv("HEKETI_AUTO_CREATE_BLOCK_HOSTING_VOLUME")
