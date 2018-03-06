@@ -495,18 +495,6 @@ func (a *App) Allocator() Allocator {
 	return a._allocator
 }
 
-// SetAllocator manually sets the allocator for this app.
-// The specified allocator will be cached on the app and
-// subsequent calls to Allocator will return the same object.
-// Generally this should only be used in test code.
-func (a *App) SetAllocator(allocator Allocator) {
-	if allocator == nil {
-		err := errors.New("use ClearAllocator to reset cached allocator")
-		panic(err)
-	}
-	a._allocator = allocator
-}
-
 // ClearAllocator resets the cached alloctor for this app.
 // This should be paired with calls to SetAllocator in order to
 // reset the app behavior to default when the test allocator is
