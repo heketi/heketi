@@ -62,10 +62,21 @@ func loadRingFromDB(tx *bolt.Tx, clusterId string) (*SimpleAllocatorRing, error)
 			})
 		}
 	}
+
 	return ring, nil
 }
 
-func getDeviceList(ring *SimpleAllocatorRing, brickId string) (SimpleDevices, error) {
+func getDeviceListFromDB(db wdb.RODB, clusterId,
+	brickId string) (SimpleDevices, error) {
+
+	var ring *SimpleAllocatorRing
+	err := db.View(func(tx *bolt.Tx) (e error) {
+		ring, e = loadRingFromDB(tx, clusterId)
+		return e
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	ring.Rebalance()
 	devicelist := ring.GetDeviceList(brickId)
@@ -80,19 +91,8 @@ func (s *SimpleAllocator) GetNodes(db wdb.RODB, clusterId,
 	// Initialize channels
 	device, done := make(chan string), make(chan struct{})
 
-	var ring *SimpleAllocatorRing
-	var err error
-	err = db.View(func(tx *bolt.Tx) error {
-		ring, err = loadRingFromDB(tx, clusterId)
-		return err
-	})
-	if err != nil {
-		close(device)
-		return device, done, err
-	}
-
 	// Get the list of devices for this brick id
-	devicelist, err := getDeviceList(ring, brickId)
+	devicelist, err := getDeviceListFromDB(db, clusterId, brickId)
 
 	if err != nil {
 		close(device)
