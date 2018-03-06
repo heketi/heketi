@@ -485,19 +485,8 @@ func (a *App) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Allocator returns an allocator appropriate for the configuration
-// of this app. The allocator may be dynamically provided at
-// the time of the function call or cached from a prior call to
-// SetAllocator.
+// of this app.
 func (a *App) Allocator() Allocator {
-	if a._allocator == nil {
-		return a.newAllocator()
-	}
-	return a._allocator
-}
-
-// newAllocator returns a newly created allocator based on the
-// configuration of the app.
-func (a *App) newAllocator() Allocator {
 	var alloc Allocator
 	switch {
 	case a.conf.Allocator == "simple" || a.conf.Allocator == "":
