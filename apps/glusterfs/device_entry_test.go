@@ -497,14 +497,13 @@ func TestNewDeviceEntryNewInfoResponseBadBrickIds(t *testing.T) {
 	})
 	tests.Assert(t, err == nil)
 
-	var info *api.DeviceInfoResponse
 	err = app.db.View(func(tx *bolt.Tx) error {
 		device, err := NewDeviceEntryFromId(tx, d.Info.Id)
 		if err != nil {
 			return err
 		}
 
-		info, err = device.NewInfoResponse(tx)
+		_, err = device.NewInfoResponse(tx)
 		if err != nil {
 			return err
 		}
