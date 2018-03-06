@@ -484,13 +484,12 @@ func (a *App) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Invalid path or request", http.StatusNotFound)
 }
 
-// Allocator returns an allocator appropriate for the configuration
-// of this app. The allocator may be dynamically provided at
-// the time of the function call or cached from a prior call to
-// SetAllocator.
+// Allocator returns the allocator for this app.
+// If no allocator has been set explicitly by SetAllocator,
+// this creates a new allocator as configured.
 func (a *App) Allocator() Allocator {
 	if a._allocator == nil {
-		return a.newAllocator()
+		a._allocator = a.newAllocator()
 	}
 	return a._allocator
 }
@@ -498,7 +497,6 @@ func (a *App) Allocator() Allocator {
 // SetAllocator manually sets the allocator for this app.
 // The specified allocator will be cached on the app and
 // subsequent calls to Allocator will return the same object.
-// Generally this should only be used in test code.
 func (a *App) SetAllocator(allocator Allocator) {
 	if allocator == nil {
 		err := errors.New("use ClearAllocator to reset cached allocator")
