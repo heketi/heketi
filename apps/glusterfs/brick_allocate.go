@@ -218,3 +218,93 @@ func allocateBricks(
 	})
 	return r, err
 }
+
+type ClusterDeviceSource struct {
+	tx          *bolt.Tx
+	deviceCache map[string]*DeviceEntry
+	nodeCache   map[string]*NodeEntry
+	clusterId   string
+}
+
+func NewClusterDeviceSource(tx *bolt.Tx,
+	clusterId string) *ClusterDeviceSource {
+
+	return &ClusterDeviceSource{
+		tx:          tx,
+		deviceCache: map[string](*DeviceEntry){},
+		nodeCache:   map[string](*NodeEntry){},
+		clusterId:   clusterId,
+	}
+}
+
+func (cds *ClusterDeviceSource) Devices() ([]DeviceAndNode, error) {
+	cluster, err := NewClusterEntryFromId(cds.tx, cds.clusterId)
+	if err != nil {
+		return nil, err
+	}
+
+	valid := [](DeviceAndNode){}
+	for _, nodeId := range cluster.Info.Nodes {
+		node, err := NewNodeEntryFromId(cds.tx, nodeId)
+		if err != nil {
+			return nil, err
+		}
+		if !node.isOnline() {
+			continue
+		}
+
+		for _, deviceId := range node.Devices {
+			device, err := NewDeviceEntryFromId(cds.tx, deviceId)
+			if err != nil {
+				return nil, err
+			}
+			if !device.isOnline() {
+				continue
+			}
+
+			valid = append(valid, DeviceAndNode{
+				Device: device,
+				Node:   node,
+			})
+			// NOTE: it is extremely important not to overwrite
+			// existing cache items because the allocation algorithms
+			// mutate the device entries during the process.
+			if _, found := cds.deviceCache[deviceId]; !found {
+				cds.deviceCache[deviceId] = device
+			}
+			if _, found := cds.nodeCache[nodeId]; !found {
+				cds.nodeCache[nodeId] = node
+			}
+		}
+	}
+
+	return valid, nil
+}
+
+func (cds *ClusterDeviceSource) Device(id string) (*DeviceEntry, error) {
+	device, ok := cds.deviceCache[id]
+	if !ok {
+		// Get device entry from db otherwise
+		var err error
+		device, err = NewDeviceEntryFromId(cds.tx, id)
+		if err != nil {
+			return nil, err
+		}
+		cds.deviceCache[id] = device
+	}
+	return device, nil
+}
+
+func (cds *ClusterDeviceSource) Node(id string) (*NodeEntry, error) {
+	node, ok := cds.nodeCache[id]
+	if !ok {
+		// Get node entry from db otherwise
+		var err error
+		node, err = NewNodeEntryFromId(cds.tx, id)
+		if err != nil {
+			return nil, err
+		}
+		cds.nodeCache[id] = node
+	}
+	return node, nil
+}
