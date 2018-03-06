@@ -84,13 +84,13 @@ func NewApp(configIo io.Reader) *App {
 	app.asyncManager = rest.NewAsyncHttpManager(ASYNC_ROUTE)
 
 	// Setup executor
-	switch {
-	case app.conf.Executor == "mock":
+	switch app.conf.Executor {
+	case "mock":
 		app.xo, err = mockexec.NewMockExecutor()
 		app.executor = app.xo
-	case app.conf.Executor == "kube" || app.conf.Executor == "kubernetes":
+	case "kube", "kubernetes":
 		app.executor, err = kubeexec.NewKubeExecutor(&app.conf.KubeConfig)
-	case app.conf.Executor == "ssh" || app.conf.Executor == "":
+	case "ssh", "":
 		app.executor, err = sshexec.NewSshExecutor(&app.conf.SshConfig)
 	default:
 		return nil
@@ -485,39 +485,8 @@ func (a *App) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Allocator returns an allocator appropriate for the configuration
-// of this app. The allocator may be dynamically provided at
-// the time of the function call or cached from a prior call to
-// SetAllocator.
+// of this app.
 func (a *App) Allocator() Allocator {
-	if a._allocator == nil {
-		return a.newAllocator()
-	}
-	return a._allocator
-}
-
-// SetAllocator manually sets the allocator for this app.
-// The specified allocator will be cached on the app and
-// subsequent calls to Allocator will return the same object.
-// Generally this should only be used in test code.
-func (a *App) SetAllocator(allocator Allocator) {
-	if allocator == nil {
-		err := errors.New("use ClearAllocator to reset cached allocator")
-		panic(err)
-	}
-	a._allocator = allocator
-}
-
-// ClearAllocator resets the cached alloctor for this app.
-// This should be paired with calls to SetAllocator in order to
-// reset the app behavior to default when the test allocator is
-// no loger needed.
-func (a *App) ClearAllocator() {
-	a._allocator = nil
-}
-
-// newAllocator returns a newly created allocator based on the
-// configuration of the app.
-func (a *App) newAllocator() Allocator {
 	var alloc Allocator
 	switch {
 	case a.conf.Allocator == "simple" || a.conf.Allocator == "":

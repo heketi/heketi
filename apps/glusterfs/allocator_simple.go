@@ -10,151 +10,85 @@
 package glusterfs
 
 import (
-	"sync"
-
 	"github.com/boltdb/bolt"
 	wdb "github.com/heketi/heketi/pkg/db"
 )
 
 // Simple allocator contains a map to rings of clusters
 type SimpleAllocator struct {
-	rings map[string]*SimpleAllocatorRing
-	lock  sync.Mutex
 }
 
 // Create a new simple allocator
 func NewSimpleAllocator() *SimpleAllocator {
 	s := &SimpleAllocator{}
-	s.rings = make(map[string]*SimpleAllocatorRing)
 	return s
 }
 
-func (s *SimpleAllocator) loadRingFromDB(tx *bolt.Tx) error {
-	s.rings = map[string]*SimpleAllocatorRing{}
-
-	clusters, err := ClusterList(tx)
+func loadRingFromDB(tx *bolt.Tx, clusterId string) (*SimpleAllocatorRing, error) {
+	cluster, err := NewClusterEntryFromId(tx, clusterId)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	for _, clusterId := range clusters {
-		cluster, err := NewClusterEntryFromId(tx, clusterId)
+	ring := NewSimpleAllocatorRing()
+
+	for _, nodeId := range cluster.Info.Nodes {
+		node, err := NewNodeEntryFromId(tx, nodeId)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		// Add Cluster to ring
-		if err = s.addCluster(cluster.Info.Id); err != nil {
-			return err
+		// Check node is online
+		if !node.isOnline() {
+			continue
 		}
 
-		for _, nodeId := range cluster.Info.Nodes {
-			node, err := NewNodeEntryFromId(tx, nodeId)
+		for _, deviceId := range node.Devices {
+			device, err := NewDeviceEntryFromId(tx, deviceId)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
-			// Check node is online
-			if !node.isOnline() {
+			// Check device is online
+			if !device.isOnline() {
 				continue
 			}
 
-			for _, deviceId := range node.Devices {
-				device, err := NewDeviceEntryFromId(tx, deviceId)
-				if err != nil {
-					return err
-				}
-
-				// Check device is online
-				if !device.isOnline() {
-					continue
-				}
-
-				// Add device to ring
-				err = s.addDevice(cluster, node, device)
-				if err != nil {
-					return err
-				}
-
-			}
+			// Add device to ring
+			ring.Add(&SimpleDevice{
+				zone:     node.Info.Zone,
+				nodeId:   node.Info.Id,
+				deviceId: device.Info.Id,
+			})
 		}
 	}
-	return nil
+
+	return ring, nil
 }
 
-func (s *SimpleAllocator) addDevice(cluster *ClusterEntry,
-	node *NodeEntry,
-	device *DeviceEntry) error {
+func getDeviceListFromDB(db wdb.RODB, clusterId,
+	brickId string) (SimpleDevices, error) {
 
-	clusterId := cluster.Info.Id
-
-	// Check the cluster id is in the map
-	if _, ok := s.rings[clusterId]; !ok {
-		logger.LogError("Unknown cluster id requested: %v", clusterId)
-		return ErrNotFound
-	}
-
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	s.rings[clusterId].Add(&SimpleDevice{
-		zone:     node.Info.Zone,
-		nodeId:   node.Info.Id,
-		deviceId: device.Info.Id,
+	var ring *SimpleAllocatorRing
+	err := db.View(func(tx *bolt.Tx) (e error) {
+		ring, e = loadRingFromDB(tx, clusterId)
+		return e
 	})
-
-	return nil
-
-}
-
-// addCluster adds an entry to the rings map. Must be called before addDevice so
-// that the entry exists.
-func (s *SimpleAllocator) addCluster(clusterId string) error {
-
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	if _, ok := s.rings[clusterId]; ok {
-		logger.LogError("cluster id %s already exists", clusterId)
-		return ErrFound
+	if err != nil {
+		return nil, err
 	}
 
-	// Add cluster to map
-	s.rings[clusterId] = NewSimpleAllocatorRing()
-
-	return nil
-}
-
-func (s *SimpleAllocator) getDeviceList(clusterId, brickId string) (SimpleDevices, error) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	if _, ok := s.rings[clusterId]; !ok {
-		logger.LogError("Unknown cluster id requested: %v", clusterId)
-		return nil, ErrNotFound
-	}
-
-	ring := s.rings[clusterId]
-	ring.Rebalance()
 	devicelist := ring.GetDeviceList(brickId)
 
 	return devicelist, nil
-
 }
 
 func (s *SimpleAllocator) GetNodes(db wdb.RODB, clusterId,
 	brickId string) (<-chan string, chan<- struct{}, error) {
 
-	// Initialize channels
 	device, done := make(chan string), make(chan struct{})
 
-	if err := db.View(s.loadRingFromDB); err != nil {
-		close(device)
-		return device, done, err
-	}
-
-	// Get the list of devices for this brick id
-	devicelist, err := s.getDeviceList(clusterId, brickId)
-
+	devicelist, err := getDeviceListFromDB(db, clusterId, brickId)
 	if err != nil {
 		close(device)
 		return device, done, err
