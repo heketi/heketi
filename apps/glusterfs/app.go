@@ -84,13 +84,13 @@ func NewApp(configIo io.Reader) *App {
 	app.asyncManager = rest.NewAsyncHttpManager(ASYNC_ROUTE)
 
 	// Setup executor
-	switch {
-	case app.conf.Executor == "mock":
+	switch app.conf.Executor {
+	case "mock":
 		app.xo, err = mockexec.NewMockExecutor()
 		app.executor = app.xo
-	case app.conf.Executor == "kube" || app.conf.Executor == "kubernetes":
+	case "kube", "kubernetes":
 		app.executor, err = kubeexec.NewKubeExecutor(&app.conf.KubeConfig)
-	case app.conf.Executor == "ssh" || app.conf.Executor == "":
+	case "ssh", "":
 		app.executor, err = sshexec.NewSshExecutor(&app.conf.SshConfig)
 	default:
 		return nil
