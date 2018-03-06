@@ -104,7 +104,7 @@ func LeakPendingVolumeCreate(t *testing.T, filename string) {
 		return nil
 	})
 
-	e := vc.Build(app.Allocator())
+	e := vc.Build()
 	tests.Assert(t, e == nil, "expected e == nil, got", e)
 
 	// verify volumes, bricks, & pending ops exist

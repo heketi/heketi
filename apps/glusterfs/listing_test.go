@@ -41,7 +41,7 @@ func TestListCompleteVolumes(t *testing.T) {
 	req.Durability.Replicate.Replica = 3
 
 	vol := NewVolumeEntryFromRequest(req)
-	err = vol.Create(app.db, app.executor, app.Allocator())
+	err = vol.Create(app.db, app.executor)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	app.db.View(func(tx *bolt.Tx) error {
@@ -85,7 +85,7 @@ func TestListCompleteBlockVolumes(t *testing.T) {
 	req.Size = 1024
 
 	vol := NewBlockVolumeEntryFromRequest(req)
-	err = vol.Create(app.db, app.executor, app.Allocator())
+	err = vol.Create(app.db, app.executor)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	app.db.View(func(tx *bolt.Tx) error {
@@ -151,7 +151,7 @@ func TestListCompleteVolumesFakedPending(t *testing.T) {
 	req.Durability.Replicate.Replica = 3
 
 	vol := NewVolumeEntryFromRequest(req)
-	err = vol.Create(app.db, app.executor, app.Allocator())
+	err = vol.Create(app.db, app.executor)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	app.db.View(func(tx *bolt.Tx) error {
@@ -204,7 +204,7 @@ func TestListCompleteBlockVolumesFakedPending(t *testing.T) {
 	req.Size = 1024
 
 	vol := NewBlockVolumeEntryFromRequest(req)
-	err = vol.Create(app.db, app.executor, app.Allocator())
+	err = vol.Create(app.db, app.executor)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	app.db.View(func(tx *bolt.Tx) error {
@@ -259,14 +259,14 @@ func TestUpdateClusterInfoCompleteFakedPending(t *testing.T) {
 	vreq.Durability.Replicate.Replica = 3
 
 	vol := NewVolumeEntryFromRequest(vreq)
-	err = vol.Create(app.db, app.executor, app.Allocator())
+	err = vol.Create(app.db, app.executor)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	breq := &api.BlockVolumeCreateRequest{}
 	breq.Size = 1024
 
 	bvol := NewBlockVolumeEntryFromRequest(breq)
-	err = bvol.Create(app.db, app.executor, app.Allocator())
+	err = bvol.Create(app.db, app.executor)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	app.db.View(func(tx *bolt.Tx) error {

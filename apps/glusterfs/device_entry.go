@@ -192,7 +192,6 @@ func (d *DeviceEntry) modifyState(db wdb.DB, s api.EntryState) error {
 
 func (d *DeviceEntry) SetState(db wdb.DB,
 	e executors.Executor,
-	a Allocator,
 	s api.EntryState) error {
 
 	if e := d.stateCheck(s); e != nil {
@@ -209,7 +208,7 @@ func (d *DeviceEntry) SetState(db wdb.DB,
 			return err
 		}
 	case api.EntryStateFailed:
-		if err := d.Remove(db, e, a); err != nil {
+		if err := d.Remove(db, e); err != nil {
 			if err == ErrNoReplacement {
 				return logger.LogError("Unable to delete device [%v] as no device was found to replace it", d.Id())
 			}
@@ -423,12 +422,10 @@ func (d *DeviceEntry) poolMetadataSize(tpsize uint64) uint64 {
 
 // Moves all the bricks from the device to one or more other devices
 func (d *DeviceEntry) Remove(db wdb.DB,
-	executor executors.Executor,
-	allocator Allocator) (e error) {
+	executor executors.Executor) (e error) {
 
 	if e = RunOperation(
-		NewDeviceRemoveOperation(d.Info.Id, allocator, db),
-		allocator,
+		NewDeviceRemoveOperation(d.Info.Id, db),
 		executor); e != nil {
 		return e
 	}
@@ -446,8 +443,7 @@ func (d *DeviceEntry) Remove(db wdb.DB,
 }
 
 func (d *DeviceEntry) removeBricksFromDevice(db wdb.DB,
-	executor executors.Executor,
-	allocator Allocator) (e error) {
+	executor executors.Executor) (e error) {
 
 	var errBrickWithEmptyPath error = fmt.Errorf("Brick has no path")
 
@@ -479,7 +475,7 @@ func (d *DeviceEntry) removeBricksFromDevice(db wdb.DB,
 			return err
 		}
 		logger.Info("Replacing brick %v on device %v on node %v", brickEntry.Id(), d.Id(), d.NodeId)
-		err = volumeEntry.replaceBrickInVolume(db, executor, allocator, brickEntry.Id())
+		err = volumeEntry.replaceBrickInVolume(db, executor, brickEntry.Id())
 		if err != nil {
 			return logger.Err(fmt.Errorf("Failed to remove device, error: %v", err))
 		}

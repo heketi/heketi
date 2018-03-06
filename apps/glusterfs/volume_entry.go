@@ -231,23 +231,20 @@ func (v *VolumeEntry) BrickDelete(id string) {
 }
 
 func (v *VolumeEntry) Create(db wdb.DB,
-	executor executors.Executor,
-	allocator Allocator) (e error) {
+	executor executors.Executor) (e error) {
 
 	return RunOperation(
 		NewVolumeCreateOperation(v, db),
-		allocator,
 		executor)
 }
 
 func (v *VolumeEntry) tryAllocateBricks(
 	db wdb.DB,
-	allocator Allocator,
 	possibleClusters []string) (brick_entries []*BrickEntry, err error) {
 
 	for _, cluster := range possibleClusters {
 		// Check this cluster for space
-		brick_entries, err = v.allocBricksInCluster(db, allocator, cluster, v.Info.Size)
+		brick_entries, err = v.allocBricksInCluster(db, cluster, v.Info.Size)
 
 		if err == nil {
 			v.Info.Cluster = cluster
@@ -292,8 +289,7 @@ func (v *VolumeEntry) cleanupCreateVolume(db wdb.DB,
 }
 
 func (v *VolumeEntry) createOneShot(db wdb.DB,
-	executor executors.Executor,
-	allocator Allocator) (e error) {
+	executor executors.Executor) (e error) {
 
 	var brick_entries []*BrickEntry
 	// On any error, remove the volume
@@ -303,15 +299,15 @@ func (v *VolumeEntry) createOneShot(db wdb.DB,
 		}
 	}()
 
-	brick_entries, e = v.createVolumeComponents(db, allocator)
+	brick_entries, e = v.createVolumeComponents(db)
 	if e != nil {
 		return e
 	}
 	return v.createVolumeExec(db, executor, brick_entries)
 }
 
-func (v *VolumeEntry) createVolumeComponents(db wdb.DB,
-	allocator Allocator) (brick_entries []*BrickEntry, e error) {
+func (v *VolumeEntry) createVolumeComponents(db wdb.DB) (
+	brick_entries []*BrickEntry, e error) {
 
 	// Get list of clusters
 	var possibleClusters []string
@@ -339,7 +335,7 @@ func (v *VolumeEntry) createVolumeComponents(db wdb.DB,
 	}
 	logger.Debug("Using the following clusters: %+v", possibleClusters)
 
-	return v.saveCreateVolume(db, allocator, possibleClusters)
+	return v.saveCreateVolume(db, possibleClusters)
 }
 
 func (v *VolumeEntry) createVolumeExec(db wdb.DB,
@@ -357,13 +353,12 @@ func (v *VolumeEntry) createVolumeExec(db wdb.DB,
 }
 
 func (v *VolumeEntry) saveCreateVolume(db wdb.DB,
-	allocator Allocator,
 	possibleClusters []string) (brick_entries []*BrickEntry, err error) {
 
 	err = db.Update(func(tx *bolt.Tx) error {
 		txdb := wdb.WrapTx(tx)
 		// For each cluster look for storage space for this volume
-		brick_entries, err = v.tryAllocateBricks(txdb, allocator, possibleClusters)
+		brick_entries, err = v.tryAllocateBricks(txdb, possibleClusters)
 		if err != nil || brick_entries == nil {
 			// Map all 'valid' errors to NoSpace here:
 			// Only the last such error could get propagated down,
@@ -508,12 +503,10 @@ func (v *VolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error {
 
 	return RunOperation(
 		NewVolumeDeleteOperation(v, db),
-		nil,
 		executor)
 }
 
 func (v *VolumeEntry) expandVolumeComponents(db wdb.DB,
-	allocator Allocator,
 	sizeGB int,
 	setSize bool) (brick_entries []*BrickEntry, e error) {
 
@@ -521,7 +514,7 @@ func (v *VolumeEntry) expandVolumeComponents(db wdb.DB,
 		// Allocate new bricks in the cluster
 		txdb := wdb.WrapTx(tx)
 		var err error
-		brick_entries, err = v.allocBricksInCluster(txdb, allocator, v.Info.Cluster, sizeGB)
+		brick_entries, err = v.allocBricksInCluster(txdb, v.Info.Cluster, sizeGB)
 		if err != nil {
 			return err
 		}
@@ -593,12 +586,10 @@ func (v *VolumeEntry) expandVolumeExec(db wdb.DB,
 
 func (v *VolumeEntry) Expand(db wdb.DB,
 	executor executors.Executor,
-	allocator Allocator,
 	sizeGB int) (e error) {
 
 	return RunOperation(
 		NewVolumeExpandOperation(v, db, sizeGB),
-		allocator,
 		executor)
 }
 
