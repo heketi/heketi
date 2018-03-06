@@ -18,34 +18,24 @@ import (
 type SimpleAllocator struct {
 }
 
-type singleClusterRing struct {
-	clusterId string
-	ring      *SimpleAllocatorRing
-}
-
 // Create a new simple allocator
 func NewSimpleAllocator() *SimpleAllocator {
 	s := &SimpleAllocator{}
 	return s
 }
 
-func (s *singleClusterRing) loadRingFromDB(tx *bolt.Tx) error {
-	s.ring = &SimpleAllocatorRing{}
-
-	cluster, err := NewClusterEntryFromId(tx, s.clusterId)
+func loadRingFromDB(tx *bolt.Tx, clusterId string) (*SimpleAllocatorRing, error) {
+	cluster, err := NewClusterEntryFromId(tx, clusterId)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// Add Cluster to ring
-	if err = s.addCluster(cluster.Info.Id); err != nil {
-		return err
-	}
+	ring := NewSimpleAllocatorRing()
 
 	for _, nodeId := range cluster.Info.Nodes {
 		node, err := NewNodeEntryFromId(tx, nodeId)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		// Check node is online
@@ -56,7 +46,7 @@ func (s *singleClusterRing) loadRingFromDB(tx *bolt.Tx) error {
 		for _, deviceId := range node.Devices {
 			device, err := NewDeviceEntryFromId(tx, deviceId)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			// Check device is online
@@ -65,44 +55,20 @@ func (s *singleClusterRing) loadRingFromDB(tx *bolt.Tx) error {
 			}
 
 			// Add device to ring
-			err = s.addDevice(cluster, node, device)
-			if err != nil {
-				return err
-			}
-
+			ring.Add(&SimpleDevice{
+				zone:     node.Info.Zone,
+				nodeId:   node.Info.Id,
+				deviceId: device.Info.Id,
+			})
 		}
 	}
-	return nil
+	return ring, nil
 }
 
-func (s *singleClusterRing) addDevice(cluster *ClusterEntry,
-	node *NodeEntry,
-	device *DeviceEntry) error {
+func getDeviceList(ring *SimpleAllocatorRing, brickId string) (SimpleDevices, error) {
 
-	s.ring.Add(&SimpleDevice{
-		zone:     node.Info.Zone,
-		nodeId:   node.Info.Id,
-		deviceId: device.Info.Id,
-	})
-
-	return nil
-
-}
-
-// addCluster adds an entry to the rings map. Must be called before addDevice so
-// that the entry exists.
-func (s *singleClusterRing) addCluster(clusterId string) error {
-
-	// Add cluster to map
-	s.ring = NewSimpleAllocatorRing()
-
-	return nil
-}
-
-func (s *singleClusterRing) getDeviceList(brickId string) (SimpleDevices, error) {
-
-	s.ring.Rebalance()
-	devicelist := s.ring.GetDeviceList(brickId)
+	ring.Rebalance()
+	devicelist := ring.GetDeviceList(brickId)
 
 	return devicelist, nil
 
@@ -114,14 +80,19 @@ func (s *SimpleAllocator) GetNodes(db wdb.RODB, clusterId,
 	// Initialize channels
 	device, done := make(chan string), make(chan struct{})
 
-	scr := &singleClusterRing{clusterId: clusterId}
-	if err := db.View(scr.loadRingFromDB); err != nil {
+	var ring *SimpleAllocatorRing
+	var err error
+	err = db.View(func(tx *bolt.Tx) error {
+		ring, err = loadRingFromDB(tx, clusterId)
+		return err
+	})
+	if err != nil {
 		close(device)
 		return device, done, err
 	}
 
 	// Get the list of devices for this brick id
-	devicelist, err := scr.getDeviceList(brickId)
+	devicelist, err := getDeviceList(ring, brickId)
 
 	if err != nil {
 		close(device)

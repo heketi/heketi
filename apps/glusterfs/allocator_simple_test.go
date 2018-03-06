@@ -56,31 +56,6 @@ func TestSimpleAllocatorGetNodesEmpty(t *testing.T) {
 	}
 }
 
-func TestSingleClusterRingAddDevice(t *testing.T) {
-
-	cluster := createSampleClusterEntry()
-	node := createSampleNodeEntry()
-	node.Info.ClusterId = cluster.Info.Id
-	device := createSampleDeviceEntry(node.Info.Id, 10000)
-
-	s := &singleClusterRing{clusterId: cluster.Info.Id}
-	tests.Assert(t, s.addCluster(cluster.Info.Id) == nil)
-	err := s.addDevice(cluster, node, device)
-	tests.Assert(t, err == nil)
-	tests.Assert(t, len(s.ring.ring) == 1)
-
-	// Get the nodes from the ring
-	devicelist, err := s.getDeviceList(utils.GenUUID())
-	tests.Assert(t, err == nil)
-
-	var devices int
-	for _, d := range devicelist {
-		devices++
-		tests.Assert(t, d.deviceId == device.Info.Id)
-	}
-	tests.Assert(t, devices == 1)
-}
-
 func TestSimpleAllocatorInitFromDb(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
