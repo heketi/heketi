@@ -78,7 +78,6 @@ func getDeviceListFromDB(db wdb.RODB, clusterId,
 		return nil, err
 	}
 
-	ring.Rebalance()
 	devicelist := ring.GetDeviceList(brickId)
 
 	return devicelist, nil
