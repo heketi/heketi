@@ -546,8 +546,6 @@ func TestJwtWrongSigningMethod(t *testing.T) {
 	n := negroni.New(j)
 	tests.Assert(t, n != nil, "negroni.New failed")
 
-	// Create a simple middleware to check if it was called
-	called := false
 	mw := func(rw http.ResponseWriter, r *http.Request) {
 		data := context.Get(r, "jwt")
 		tests.Assert(t, data != nil, "context.Get failed")
@@ -556,8 +554,6 @@ func TestJwtWrongSigningMethod(t *testing.T) {
 		claims := token.Claims.(jwt.MapClaims)
 		tests.Assert(t, claims["iss"] == "admin",
 			`expected claims["iss"] == "admin", got:`, claims["iss"])
-
-		called = true
 
 		rw.WriteHeader(http.StatusOK)
 	}
