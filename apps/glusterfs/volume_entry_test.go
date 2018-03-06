@@ -41,7 +41,6 @@ func setupSampleDbWithTopology(app *App,
 	clusters, nodes_per_cluster, devices_per_node int,
 	disksize uint64) error {
 
-	var clusterlist []string
 	err := app.db.Update(func(tx *bolt.Tx) error {
 		for c := 0; c < clusters; c++ {
 			cluster := createSampleClusterEntry()
@@ -74,7 +73,7 @@ func setupSampleDbWithTopology(app *App,
 		}
 
 		var err error
-		clusterlist, err = ClusterList(tx)
+		_, err = ClusterList(tx)
 		if err != nil {
 			return err
 		}
