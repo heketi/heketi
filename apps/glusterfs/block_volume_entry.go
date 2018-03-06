@@ -235,12 +235,10 @@ func (v *BlockVolumeEntry) cleanupBlockVolumeCreate(db wdb.DB,
 }
 
 func (v *BlockVolumeEntry) Create(db wdb.DB,
-	executor executors.Executor,
-	allocator Allocator) (e error) {
+	executor executors.Executor) (e error) {
 
 	return RunOperation(
 		NewBlockVolumeCreateOperation(v, db),
-		allocator,
 		executor)
 }
 
@@ -358,7 +356,6 @@ func (v *BlockVolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error
 
 	return RunOperation(
 		NewBlockVolumeDeleteOperation(v, db),
-		nil,
 		executor)
 }
 

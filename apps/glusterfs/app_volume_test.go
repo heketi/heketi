@@ -643,7 +643,7 @@ func TestVolumeInfo(t *testing.T) {
 	req.Durability.Type = api.DurabilityEC
 	v := NewVolumeEntryFromRequest(req)
 	tests.Assert(t, v != nil)
-	err = v.Create(app.db, app.executor, app.Allocator())
+	err = v.Create(app.db, app.executor)
 	tests.Assert(t, err == nil)
 
 	// Now that we have some data in the database, we can
@@ -872,7 +872,7 @@ func TestVolumeDelete(t *testing.T) {
 	// Create a volume
 	v := createSampleReplicaVolumeEntry(100, 2)
 	tests.Assert(t, v != nil)
-	err = v.Create(app.db, app.executor, app.Allocator())
+	err = v.Create(app.db, app.executor)
 	tests.Assert(t, err == nil)
 
 	// Delete the volume
@@ -1017,7 +1017,7 @@ func TestVolumeExpand(t *testing.T) {
 	// Create a volume
 	v := createSampleReplicaVolumeEntry(100, 2)
 	tests.Assert(t, v != nil)
-	err = v.Create(app.db, app.executor, app.Allocator())
+	err = v.Create(app.db, app.executor)
 	tests.Assert(t, err == nil)
 
 	// Keep a copy
@@ -1084,13 +1084,13 @@ func TestVolumeClusterResizeByAddingDevices(t *testing.T) {
 	// Create a volume which uses the entire storage
 	v := createSampleReplicaVolumeEntry(495, 2)
 	tests.Assert(t, v != nil)
-	err = v.Create(app.db, app.executor, app.Allocator())
+	err = v.Create(app.db, app.executor)
 	tests.Assert(t, err == nil)
 
 	// Try to create another volume, but this should fail
 	v = createSampleReplicaVolumeEntry(495, 2)
 	tests.Assert(t, v != nil)
-	err = v.Create(app.db, app.executor, app.Allocator())
+	err = v.Create(app.db, app.executor)
 	tests.Assert(t, err == ErrNoSpace)
 
 	// Create a client
@@ -1118,13 +1118,13 @@ func TestVolumeClusterResizeByAddingDevices(t *testing.T) {
 	// Now add a volume, and it should work
 	v = createSampleReplicaVolumeEntry(495, 2)
 	tests.Assert(t, v != nil)
-	err = v.Create(app.db, app.executor, app.Allocator())
+	err = v.Create(app.db, app.executor)
 	tests.Assert(t, err == nil)
 
 	// Try to create another volume, but this should fail
 	v = createSampleReplicaVolumeEntry(495, 2)
 	tests.Assert(t, v != nil)
-	err = v.Create(app.db, app.executor, app.Allocator())
+	err = v.Create(app.db, app.executor)
 	tests.Assert(t, err == ErrNoSpace)
 }
 

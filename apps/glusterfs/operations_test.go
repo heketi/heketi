@@ -57,7 +57,7 @@ func TestVolumeCreatePendingCreatedCleared(t *testing.T) {
 		return nil
 	})
 
-	e := vc.Build(app.Allocator())
+	e := vc.Build()
 	tests.Assert(t, e == nil, "expected e == nil, got", e)
 
 	// verify volumes, bricks, & pending ops exist
@@ -159,7 +159,7 @@ func TestVolumeCreatePendingRollback(t *testing.T) {
 		return nil
 	})
 
-	e := vc.Build(app.Allocator())
+	e := vc.Build()
 	tests.Assert(t, e == nil, "expected e == nil, got", e)
 
 	// verify volumes, bricks, & pending ops exist
@@ -248,7 +248,7 @@ func TestVolumeCreatePendingNoSpace(t *testing.T) {
 		return nil
 	})
 
-	e := vc.Build(app.Allocator())
+	e := vc.Build()
 	// verify that we failed to allocate due to lack of space
 	tests.Assert(t, e == ErrNoSpace, "expected e == ErrNoSpace, got", e)
 
@@ -305,7 +305,7 @@ func TestVolumeCreatePendingBrickMissing(t *testing.T) {
 		return nil
 	})
 
-	e := vc.Build(app.Allocator())
+	e := vc.Build()
 	tests.Assert(t, e == nil, "expected e == nil, got", e)
 
 	// verify volumes, bricks, & pending ops exist
@@ -417,7 +417,7 @@ func TestVolumeDeleteOperation(t *testing.T) {
 	vol := NewVolumeEntryFromRequest(req)
 	vc := NewVolumeCreateOperation(vol, app.db)
 
-	e := vc.Build(app.Allocator())
+	e := vc.Build()
 	tests.Assert(t, e == nil, "expected e == nil, got:", e)
 	e = vc.Exec(app.executor)
 	tests.Assert(t, e == nil, "expected e == nil, got:", e)
@@ -435,7 +435,7 @@ func TestVolumeDeleteOperation(t *testing.T) {
 	})
 
 	vd := NewVolumeDeleteOperation(vol, app.db)
-	e = vd.Build(app.Allocator())
+	e = vd.Build()
 	tests.Assert(t, e == nil, "expected e == nil, got:", e)
 
 	app.db.View(func(tx *bolt.Tx) error {
@@ -489,7 +489,7 @@ func TestVolumeDeleteOperationRollback(t *testing.T) {
 	vol := NewVolumeEntryFromRequest(req)
 	vc := NewVolumeCreateOperation(vol, app.db)
 
-	e := vc.Build(app.Allocator())
+	e := vc.Build()
 	tests.Assert(t, e == nil, "expected e == nil, got:", e)
 	e = vc.Exec(app.executor)
 	tests.Assert(t, e == nil, "expected e == nil, got:", e)
@@ -507,7 +507,7 @@ func TestVolumeDeleteOperationRollback(t *testing.T) {
 	})
 
 	vd := NewVolumeDeleteOperation(vol, app.db)
-	e = vd.Build(app.Allocator())
+	e = vd.Build()
 	tests.Assert(t, e == nil, "expected e == nil, got:", e)
 
 	app.db.View(func(tx *bolt.Tx) error {
@@ -562,7 +562,7 @@ func TestVolumeExpandOperation(t *testing.T) {
 	vol := NewVolumeEntryFromRequest(req)
 	vc := NewVolumeCreateOperation(vol, app.db)
 
-	e := vc.Build(app.Allocator())
+	e := vc.Build()
 	tests.Assert(t, e == nil, "expected e == nil, got:", e)
 	e = vc.Exec(app.executor)
 	tests.Assert(t, e == nil, "expected e == nil, got:", e)
@@ -580,7 +580,7 @@ func TestVolumeExpandOperation(t *testing.T) {
 	})
 
 	ve := NewVolumeExpandOperation(vol, app.db, 100)
-	e = ve.Build(app.Allocator())
+	e = ve.Build()
 	tests.Assert(t, e == nil, "expected e == nil, got:", e)
 
 	app.db.View(func(tx *bolt.Tx) error {
@@ -664,7 +664,7 @@ func TestBlockVolumeCreateOperation(t *testing.T) {
 		return nil
 	})
 
-	e := vc.Build(app.Allocator())
+	e := vc.Build()
 	tests.Assert(t, e == nil, "expected e == nil, got", e)
 
 	// verify there is one pending op, volume and some bricks
@@ -729,7 +729,7 @@ func TestBlockVolumeCreateOperationExistingHostVol(t *testing.T) {
 	vol := NewVolumeEntryFromRequest(vreq)
 	vc := NewVolumeCreateOperation(vol, app.db)
 
-	e := vc.Build(app.Allocator())
+	e := vc.Build()
 	tests.Assert(t, e == nil, "expected e == nil, got:", e)
 	e = vc.Exec(app.executor)
 	tests.Assert(t, e == nil, "expected e == nil, got:", e)
@@ -758,7 +758,7 @@ func TestBlockVolumeCreateOperationExistingHostVol(t *testing.T) {
 	bvol := NewBlockVolumeEntryFromRequest(breq)
 	bco := NewBlockVolumeCreateOperation(bvol, app.db)
 
-	e = bco.Build(app.Allocator())
+	e = bco.Build()
 	tests.Assert(t, e == nil, "expected e == nil, got:", e)
 
 	// at this point we shouldn't have a new volume or bricks,
@@ -839,7 +839,7 @@ func TestBlockVolumeCreateOperationRollback(t *testing.T) {
 		return nil
 	})
 
-	e := vc.Build(app.Allocator())
+	e := vc.Build()
 	tests.Assert(t, e == nil, "expected e == nil, got", e)
 
 	// verify there is one pending op, volume and some bricks
@@ -908,7 +908,7 @@ func TestBlockVolumeCreateOperationExistingHostVolRollback(t *testing.T) {
 	vol := NewVolumeEntryFromRequest(vreq)
 	vc := NewVolumeCreateOperation(vol, app.db)
 
-	e := vc.Build(app.Allocator())
+	e := vc.Build()
 	tests.Assert(t, e == nil, "expected e == nil, got:", e)
 	e = vc.Exec(app.executor)
 	tests.Assert(t, e == nil, "expected e == nil, got:", e)
@@ -937,7 +937,7 @@ func TestBlockVolumeCreateOperationExistingHostVolRollback(t *testing.T) {
 	bvol := NewBlockVolumeEntryFromRequest(breq)
 	bco := NewBlockVolumeCreateOperation(bvol, app.db)
 
-	e = bco.Build(app.Allocator())
+	e = bco.Build()
 	tests.Assert(t, e == nil, "expected e == nil, got:", e)
 
 	// at this point we shouldn't have a new volume or bricks,
@@ -1019,7 +1019,7 @@ func TestBlockVolumeDeleteOperation(t *testing.T) {
 		return nil
 	})
 
-	e := vc.Build(app.Allocator())
+	e := vc.Build()
 	tests.Assert(t, e == nil, "expected e == nil, got", e)
 	e = vc.Exec(app.executor)
 	tests.Assert(t, e == nil, "expected e == nil, got", e)
@@ -1045,7 +1045,7 @@ func TestBlockVolumeDeleteOperation(t *testing.T) {
 
 	bdel := NewBlockVolumeDeleteOperation(vol, app.db)
 
-	e = bdel.Build(app.Allocator())
+	e = bdel.Build()
 	tests.Assert(t, e == nil, "expected e == nil, got", e)
 
 	// we should now have a pending op for the delete
@@ -1125,7 +1125,7 @@ func TestBlockVolumeDeleteOperationRollback(t *testing.T) {
 		return nil
 	})
 
-	e := vc.Build(app.Allocator())
+	e := vc.Build()
 	tests.Assert(t, e == nil, "expected e == nil, got", e)
 	e = vc.Exec(app.executor)
 	tests.Assert(t, e == nil, "expected e == nil, got", e)
@@ -1151,7 +1151,7 @@ func TestBlockVolumeDeleteOperationRollback(t *testing.T) {
 
 	bdel := NewBlockVolumeDeleteOperation(vol, app.db)
 
-	e = bdel.Build(app.Allocator())
+	e = bdel.Build()
 	tests.Assert(t, e == nil, "expected e == nil, got", e)
 
 	// we should now have a pending op for the delete
@@ -1226,11 +1226,11 @@ func TestDeviceRemoveOperationEmpty(t *testing.T) {
 	})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
+	err = d.SetState(app.db, app.executor, api.EntryStateOffline)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	dro := NewDeviceRemoveOperation(d.Info.Id, app.Allocator(), app.db)
-	err = dro.Build(app.Allocator())
+	dro := NewDeviceRemoveOperation(d.Info.Id, app.db)
+	err = dro.Build()
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	// because there are no bricks on this device it can be disabled
@@ -1272,7 +1272,7 @@ func TestDeviceRemoveOperationWithBricks(t *testing.T) {
 	// create two volumes
 	for i := 0; i < 5; i++ {
 		v := NewVolumeEntryFromRequest(vreq)
-		err = v.Create(app.db, app.executor, app.Allocator())
+		err = v.Create(app.db, app.executor)
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	}
 
@@ -1297,11 +1297,11 @@ func TestDeviceRemoveOperationWithBricks(t *testing.T) {
 	})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
+	err = d.SetState(app.db, app.executor, api.EntryStateOffline)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	dro := NewDeviceRemoveOperation(d.Info.Id, app.Allocator(), app.db)
-	err = dro.Build(app.Allocator())
+	dro := NewDeviceRemoveOperation(d.Info.Id, app.db)
+	err = dro.Build()
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	// because there were bricks on this device it needs to perform
@@ -1377,7 +1377,7 @@ func TestDeviceRemoveOperationTooFewDevices(t *testing.T) {
 	// create two volumes
 	for i := 0; i < 5; i++ {
 		v := NewVolumeEntryFromRequest(vreq)
-		err = v.Create(app.db, app.executor, app.Allocator())
+		err = v.Create(app.db, app.executor)
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	}
 
@@ -1402,11 +1402,11 @@ func TestDeviceRemoveOperationTooFewDevices(t *testing.T) {
 	})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
+	err = d.SetState(app.db, app.executor, api.EntryStateOffline)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	dro := NewDeviceRemoveOperation(d.Info.Id, app.Allocator(), app.db)
-	err = dro.Build(app.Allocator())
+	dro := NewDeviceRemoveOperation(d.Info.Id, app.db)
+	err = dro.Build()
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	// because there were bricks on this device it needs to perform
@@ -1484,7 +1484,7 @@ func TestDeviceRemoveOperationOtherPendingOps(t *testing.T) {
 	// create two volumes
 	for i := 0; i < 4; i++ {
 		v := NewVolumeEntryFromRequest(vreq)
-		err = v.Create(app.db, app.executor, app.Allocator())
+		err = v.Create(app.db, app.executor)
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	}
 
@@ -1512,7 +1512,7 @@ func TestDeviceRemoveOperationOtherPendingOps(t *testing.T) {
 	// now start a volume create operation but don't finish it
 	vol := NewVolumeEntryFromRequest(vreq)
 	vc := NewVolumeCreateOperation(vol, app.db)
-	err = vc.Build(app.Allocator())
+	err = vc.Build()
 	tests.Assert(t, err == nil, "expected e == nil, got", err)
 	// we should have one pending operation
 	err = app.db.View(func(tx *bolt.Tx) error {
@@ -1522,11 +1522,11 @@ func TestDeviceRemoveOperationOtherPendingOps(t *testing.T) {
 		return nil
 	})
 
-	err = d.SetState(app.db, app.executor, app.Allocator(), api.EntryStateOffline)
+	err = d.SetState(app.db, app.executor, api.EntryStateOffline)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	dro := NewDeviceRemoveOperation(d.Info.Id, app.Allocator(), app.db)
-	err = dro.Build(app.Allocator())
+	dro := NewDeviceRemoveOperation(d.Info.Id, app.db)
+	err = dro.Build()
 	tests.Assert(t, err == ErrConflict, "expected err == ErrConflict, got:", err)
 
 	// we should have one pending operation (the volume create)
@@ -1555,7 +1555,7 @@ func (o *testOperation) ResourceUrl() string {
 	return o.rurl
 }
 
-func (o *testOperation) Build(allocator Allocator) error {
+func (o *testOperation) Build() error {
 	if o.build == nil {
 		return nil
 	}
@@ -1839,7 +1839,7 @@ func TestRunOperationRollbackFailure(t *testing.T) {
 		rollback_cc++
 		return fmt.Errorf("rollbackfail")
 	}
-	e := RunOperation(o, app.Allocator(), app.executor)
+	e := RunOperation(o, app.executor)
 	// even if rollback fails we expect the error from Exec
 	tests.Assert(t, strings.Contains(e.Error(), "execfail"),
 		`expected strings.Contains(e.Error(), "execfail"), got:`, e)
@@ -1860,7 +1860,7 @@ func TestRunOperationFinalizeFailure(t *testing.T) {
 		return fmt.Errorf("finfail")
 	}
 
-	e := RunOperation(o, app.Allocator(), app.executor)
+	e := RunOperation(o, app.executor)
 	// check error from finalize
 	tests.Assert(t, strings.Contains(e.Error(), "finfail"),
 		`expected strings.Contains(e.Error(), "finfail"), got:`, e)

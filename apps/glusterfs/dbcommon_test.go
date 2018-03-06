@@ -42,7 +42,7 @@ func TestDeleteBricksWithEmptyPath(t *testing.T) {
 	// create a few volumes
 	for i := 0; i < 15; i++ {
 		v := NewVolumeEntryFromRequest(vreq)
-		err = v.Create(app.db, app.executor, app.Allocator())
+		err = v.Create(app.db, app.executor)
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	}
 

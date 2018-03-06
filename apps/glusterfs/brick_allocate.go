@@ -171,7 +171,6 @@ func populateBrickSet(v *VolumeEntry,
 
 func allocateBricks(
 	db wdb.RODB,
-	allocator Allocator,
 	cluster string,
 	v *VolumeEntry,
 	numBrickSets int,

@@ -280,7 +280,6 @@ func (n *NodeEntry) Delete(tx *bolt.Tx) error {
 }
 
 func (n *NodeEntry) SetState(db wdb.DB, e executors.Executor,
-	a Allocator,
 	s api.EntryState) error {
 
 	// Check current state
@@ -352,7 +351,7 @@ func (n *NodeEntry) SetState(db wdb.DB, e executors.Executor,
 					}
 					return nil
 				})
-				err = d.Remove(db, e, a)
+				err = d.Remove(db, e)
 				if err != nil {
 					if err == ErrNoReplacement {
 						return logger.LogError("Unable to remove node [%v] as no device was found to replace device [%v]", n.Info.Id, d.Id())

@@ -20,7 +20,6 @@ import (
 )
 
 func (v *VolumeEntry) allocBricksInCluster(db wdb.DB,
-	allocator Allocator,
 	cluster string,
 	gbsize int) ([]*BrickEntry, error) {
 
@@ -53,7 +52,7 @@ func (v *VolumeEntry) allocBricksInCluster(db wdb.DB,
 		}
 
 		// Allocate bricks in the cluster
-		brick_entries, err := v.allocBricks(db, allocator, cluster, sets, brick_size)
+		brick_entries, err := v.allocBricks(db, cluster, sets, brick_size)
 		if err == ErrNoSpace {
 			logger.Debug("No space, re-trying with smaller brick size")
 			continue
@@ -261,7 +260,6 @@ func (v *VolumeEntry) prepForBrickReplacement(db wdb.DB,
 }
 
 func (v *VolumeEntry) allocBrickReplacement(db wdb.DB,
-	allocator Allocator,
 	oldBrickEntry *BrickEntry,
 	oldDeviceEntry *DeviceEntry,
 	bs *BrickSet) (newBrickEntry *BrickEntry,
@@ -308,7 +306,6 @@ func (v *VolumeEntry) allocBrickReplacement(db wdb.DB,
 }
 
 func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executor,
-	allocator Allocator,
 	oldBrickId string) (e error) {
 
 	if api.DurabilityDistributeOnly == v.Info.Durability.Type {
@@ -327,7 +324,7 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 	oldBrickNodeEntry := ri.oldBrickNodeEntry
 
 	newBrickEntry, newDeviceEntry, err := v.allocBrickReplacement(
-		db, allocator, oldBrickEntry, oldDeviceEntry, ri.bs)
+		db, oldBrickEntry, oldDeviceEntry, ri.bs)
 	if err != nil {
 		return err
 	}
@@ -434,7 +431,6 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 
 func (v *VolumeEntry) allocBricks(
 	db wdb.DB,
-	allocator Allocator,
 	cluster string,
 	bricksets int,
 	brick_size uint64) (brick_entries []*BrickEntry, e error) {
@@ -457,7 +453,7 @@ func (v *VolumeEntry) allocBricks(
 	// mimic the previous unconditional db update behavior
 	err := db.Update(func(tx *bolt.Tx) error {
 		wtx := wdb.WrapTx(tx)
-		r, e := allocateBricks(wtx, allocator, cluster, v, bricksets, brick_size)
+		r, e := allocateBricks(wtx, cluster, v, bricksets, brick_size)
 		if e != nil {
 			return e
 		}

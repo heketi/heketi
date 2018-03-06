@@ -332,7 +332,7 @@ func (a *App) DeviceSetState(w http.ResponseWriter, r *http.Request) {
 
 	// Set state
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
-		err = device.SetState(a.db, a.executor, a.Allocator(), msg.State)
+		err = device.SetState(a.db, a.executor, msg.State)
 		if err != nil {
 			return "", err
 		}

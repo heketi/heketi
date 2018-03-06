@@ -36,7 +36,7 @@ import (
 type Operation interface {
 	Label() string
 	ResourceUrl() string
-	Build(allocator Allocator) error
+	Build() error
 	Exec(executor executors.Executor) error
 	Rollback(executor executors.Executor) error
 	Finalize() error
@@ -86,10 +86,10 @@ func (vc *VolumeCreateOperation) ResourceUrl() string {
 
 // Build allocates and saves new volume and brick entries (tagged as pending)
 // in the db.
-func (vc *VolumeCreateOperation) Build(allocator Allocator) error {
+func (vc *VolumeCreateOperation) Build() error {
 	return vc.db.Update(func(tx *bolt.Tx) error {
 		txdb := wdb.WrapTx(tx)
-		brick_entries, err := vc.vol.createVolumeComponents(txdb, allocator)
+		brick_entries, err := vc.vol.createVolumeComponents(txdb)
 		if err != nil {
 			return err
 		}
@@ -205,11 +205,11 @@ func (ve *VolumeExpandOperation) ResourceUrl() string {
 
 // Build determines what new bricks needs to be created to satisfy the
 // new volume size. It marks new bricks as pending in the db.
-func (ve *VolumeExpandOperation) Build(allocator Allocator) error {
+func (ve *VolumeExpandOperation) Build() error {
 	return ve.db.Update(func(tx *bolt.Tx) error {
 		txdb := wdb.WrapTx(tx)
 		brick_entries, err := ve.vol.expandVolumeComponents(
-			txdb, allocator, ve.ExpandSize, false)
+			txdb, ve.ExpandSize, false)
 		if err != nil {
 			return err
 		}
@@ -323,7 +323,7 @@ func (vdel *VolumeDeleteOperation) ResourceUrl() string {
 
 // Build determines what volumes and bricks need to be deleted and
 // marks the db entries as such.
-func (vdel *VolumeDeleteOperation) Build(allocator Allocator) error {
+func (vdel *VolumeDeleteOperation) Build() error {
 	return vdel.db.Update(func(tx *bolt.Tx) error {
 		txdb := wdb.WrapTx(tx)
 		brick_entries, err := vdel.vol.deleteVolumeComponents(txdb)
@@ -442,7 +442,7 @@ func (bvc *BlockVolumeCreateOperation) ResourceUrl() string {
 
 // Build allocates and saves new volume and brick entries (tagged as pending)
 // in the db.
-func (bvc *BlockVolumeCreateOperation) Build(allocator Allocator) error {
+func (bvc *BlockVolumeCreateOperation) Build() error {
 	return bvc.db.Update(func(tx *bolt.Tx) error {
 		txdb := wdb.WrapTx(tx)
 		clusters, volumes, err := bvc.bvol.eligibleClustersAndVolumes(txdb)
@@ -457,7 +457,7 @@ func (bvc *BlockVolumeCreateOperation) Build(allocator Allocator) error {
 			if err != nil {
 				return err
 			}
-			brick_entries, err := vol.createVolumeComponents(txdb, allocator)
+			brick_entries, err := vol.createVolumeComponents(txdb)
 			if err != nil {
 				return err
 			}
@@ -651,7 +651,7 @@ func (vdel *BlockVolumeDeleteOperation) ResourceUrl() string {
 
 // Build determines what volumes and bricks need to be deleted and
 // marks the db entries as such.
-func (vdel *BlockVolumeDeleteOperation) Build(allocator Allocator) error {
+func (vdel *BlockVolumeDeleteOperation) Build() error {
 	return vdel.db.Update(func(tx *bolt.Tx) error {
 		vdel.op.RecordDeleteBlockVolume(vdel.bvol)
 		if e := vdel.op.Save(tx); e != nil {
@@ -708,22 +708,18 @@ func (vdel *BlockVolumeDeleteOperation) Finalize() error {
 // operation in the future.
 type DeviceRemoveOperation struct {
 	OperationManager
-	DeviceId  string
-	allocator Allocator
+	DeviceId string
 }
 
-// Note: passing this allocator here a big hack, but its a temporary
-// workaround for how brick relocation currently works
 func NewDeviceRemoveOperation(
-	deviceId string, allocator Allocator, db wdb.DB) *DeviceRemoveOperation {
+	deviceId string, db wdb.DB) *DeviceRemoveOperation {
 
 	return &DeviceRemoveOperation{
 		OperationManager: OperationManager{
 			db: db,
 			op: NewPendingOperationEntry(NEW_ID),
 		},
-		DeviceId:  deviceId,
-		allocator: allocator,
+		DeviceId: deviceId,
 	}
 }
 
@@ -735,7 +731,7 @@ func (dro *DeviceRemoveOperation) ResourceUrl() string {
 	return ""
 }
 
-func (dro *DeviceRemoveOperation) Build(allocator Allocator) error {
+func (dro *DeviceRemoveOperation) Build() error {
 	return dro.db.Update(func(tx *bolt.Tx) error {
 		d, err := NewDeviceEntryFromId(tx, dro.DeviceId)
 		if err != nil {
@@ -802,11 +798,7 @@ func (dro *DeviceRemoveOperation) Exec(executor executors.Executor) error {
 		return e
 	}
 
-	// pulling the allocator from the operation is a huge hack.
-	// its basically an intentional violation of the Operation model that
-	// we need to do if for now because the remove bricks code is an
-	// extra big tangle
-	return d.removeBricksFromDevice(dro.db, executor, dro.allocator)
+	return d.removeBricksFromDevice(dro.db, executor)
 }
 
 func (dro *DeviceRemoveOperation) Rollback(executor executors.Executor) error {
@@ -905,7 +897,7 @@ func AsyncHttpOperation(app *App,
 	op Operation) error {
 
 	label := op.Label()
-	if err := op.Build(app.Allocator()); err != nil {
+	if err := op.Build(); err != nil {
 		logger.LogError("%v Build Failed: %v", label, err)
 		return err
 	}
@@ -934,7 +926,6 @@ func AsyncHttpOperation(app *App,
 // make it easy to run an operation outside of the rest endpoints
 // and should only be used in test code.
 func RunOperation(o Operation,
-	allocator Allocator,
 	executor executors.Executor) (err error) {
 
 	label := o.Label()
@@ -945,7 +936,7 @@ func RunOperation(o Operation,
 	}()
 
 	logger.Info("Running %v", o.Label())
-	if err := o.Build(allocator); err != nil {
+	if err := o.Build(); err != nil {
 		logger.LogError("%v Build Failed: %v", label, err)
 		return err
 	}

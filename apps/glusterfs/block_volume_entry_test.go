@@ -280,7 +280,7 @@ func TestBlockVolumeEntryCreateMissingCluster(t *testing.T) {
 	})
 	tests.Assert(t, err == nil)
 
-	err = bv.Create(app.db, app.executor, app.Allocator())
+	err = bv.Create(app.db, app.executor)
 	tests.Assert(t, err == ErrNoSpace)
 
 }
@@ -305,7 +305,7 @@ func TestBlockVolumeEntryDestroy(t *testing.T) {
 	// Create a blockvolume
 	bv := createSampleBlockVolumeEntry(200)
 
-	err = bv.Create(app.db, app.executor, app.Allocator())
+	err = bv.Create(app.db, app.executor)
 	tests.Assert(t, err == nil)
 
 	// Destroy the blockvolume
@@ -407,13 +407,13 @@ func TestBlockVolumeEntryNameConflictSingleVolume(t *testing.T) {
 	// Create blockvolume
 	bv := createSampleBlockVolumeEntry(500)
 	bv.Info.Name = "myvol"
-	err = bv.Create(app.db, app.executor, app.Allocator())
+	err = bv.Create(app.db, app.executor)
 	tests.Assert(t, err == nil)
 
 	// Create another blockvolume same name
 	bv = createSampleBlockVolumeEntry(400)
 	bv.Info.Name = "myvol"
-	err = bv.Create(app.db, app.executor, app.Allocator())
+	err = bv.Create(app.db, app.executor)
 	tests.Assert(t, err != nil, err)
 }
 
@@ -438,13 +438,13 @@ func TestBlockVolumeEntryNameConflictMultiVolume(t *testing.T) {
 	for i := 0; i < 8; i++ {
 		bv := createSampleBlockVolumeEntry(500)
 		bv.Info.Name = "myvol"
-		err = bv.Create(app.db, app.executor, app.Allocator())
+		err = bv.Create(app.db, app.executor)
 		tests.Assert(t, err == nil)
 	}
 	// Create another blockvolume same name
 	bv := createSampleBlockVolumeEntry(400)
 	bv.Info.Name = "myvol"
-	err = bv.Create(app.db, app.executor, app.Allocator())
+	err = bv.Create(app.db, app.executor)
 	tests.Assert(t, err != nil, err)
 }
 
@@ -469,12 +469,12 @@ func TestBlockVolumeEntryNameConflictMultiCluster(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		bv := createSampleBlockVolumeEntry(500)
 		bv.Info.Name = "myvol"
-		err = bv.Create(app.db, app.executor, app.Allocator())
+		err = bv.Create(app.db, app.executor)
 		tests.Assert(t, err == nil)
 	}
 	// Create another blockvolume same name
 	bv := createSampleBlockVolumeEntry(400)
 	bv.Info.Name = "myvol"
-	err = bv.Create(app.db, app.executor, app.Allocator())
+	err = bv.Create(app.db, app.executor)
 	tests.Assert(t, err != nil, err)
 }
