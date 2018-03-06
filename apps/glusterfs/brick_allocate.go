@@ -11,22 +11,59 @@ package glusterfs
 
 import (
 	"github.com/boltdb/bolt"
+	"github.com/lpabon/godbc"
 
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/utils"
 )
 
-type BrickAllocation struct {
+type BrickSet struct {
+	SetSize int
 	Bricks  []*BrickEntry
+}
+
+func NewBrickSet(s int) *BrickSet {
+	return &BrickSet{SetSize: s, Bricks: []*BrickEntry{}}
+}
+
+func (bs *BrickSet) Add(b *BrickEntry) {
+	godbc.Require(!bs.Full())
+	bs.Bricks = append(bs.Bricks, b)
+}
+
+func (bs *BrickSet) Full() bool {
+	return len(bs.Bricks) == bs.SetSize
+}
+
+type DeviceSet struct {
+	SetSize int
 	Devices []*DeviceEntry
 }
 
+func NewDeviceSet(s int) *DeviceSet {
+	return &DeviceSet{SetSize: s, Devices: []*DeviceEntry{}}
+}
+
+func (ds *DeviceSet) Add(d *DeviceEntry) {
+	godbc.Require(!ds.Full())
+	ds.Devices = append(ds.Devices, d)
+}
+
+func (ds *DeviceSet) Full() bool {
+	return len(ds.Devices) == ds.SetSize
+}
+
+type BrickAllocation struct {
+	BrickSets  []*BrickSet
+	DeviceSets []*DeviceSet
+}
+
 func tryAllocateBrickOnDevice(v *VolumeEntry, device *DeviceEntry,
-	setlist []*BrickEntry, brick_size uint64) *BrickEntry {
+	bs *BrickSet, brick_size uint64) *BrickEntry {
 
 	// Do not allow a device from the same node to be in the set
 	deviceOk := true
-	for _, brickInSet := range setlist {
+	for _, brickInSet := range bs.Bricks {
 		if brickInSet.Info.NodeId == device.NodeId {
 			deviceOk = false
 		}
@@ -47,7 +84,7 @@ func tryAllocateBrickOnDevice(v *VolumeEntry, device *DeviceEntry,
 func findDeviceAndBrickForSet(tx *bolt.Tx, v *VolumeEntry,
 	devcache map[string](*DeviceEntry),
 	deviceCh <-chan string,
-	setlist []*BrickEntry,
+	bs *BrickSet,
 	brick_size uint64) (*BrickEntry, *DeviceEntry, error) {
 
 	// Check the ring for devices to place the brick
@@ -65,7 +102,7 @@ func findDeviceAndBrickForSet(tx *bolt.Tx, v *VolumeEntry,
 			devcache[deviceId] = device
 		}
 
-		brick := tryAllocateBrickOnDevice(v, device, setlist, brick_size)
+		brick := tryAllocateBrickOnDevice(v, device, bs, brick_size)
 		if brick == nil {
 			continue
 		}
@@ -77,17 +114,51 @@ func findDeviceAndBrickForSet(tx *bolt.Tx, v *VolumeEntry,
 	return nil, nil, ErrNoSpace
 }
 
+func populateBrickSet(tx *bolt.Tx,
+	v *VolumeEntry,
+	devcache map[string]*DeviceEntry,
+	deviceCh <-chan string,
+	initId string,
+	brick_size uint64,
+	ssize int) (*BrickSet, *DeviceSet, error) {
+
+	bs := NewBrickSet(ssize)
+	ds := NewDeviceSet(ssize)
+	for i := 0; i < ssize; i++ {
+		logger.Debug("%v / %v", i, ssize)
+
+		brick, device, err := findDeviceAndBrickForSet(tx,
+			v, devcache, deviceCh, bs,
+			brick_size)
+		if err != nil {
+			return bs, ds, err
+		}
+
+		// If the first in the set, then reset the id
+		if i == 0 {
+			brick.SetId(initId)
+		}
+
+		// Save the brick entry to create later
+		bs.Add(brick)
+		ds.Add(device)
+
+		device.BrickAdd(brick.Id())
+	}
+	return bs, ds, nil
+}
+
 func allocateBricks(
 	db wdb.RODB,
 	allocator Allocator,
 	cluster string,
 	v *VolumeEntry,
-	bricksets int,
+	numBrickSets int,
 	brick_size uint64) (*BrickAllocation, error) {
 
 	r := &BrickAllocation{
-		Bricks:  []*BrickEntry{},
-		Devices: []*DeviceEntry{},
+		BrickSets:  []*BrickSet{},
+		DeviceSets: []*DeviceSet{},
 	}
 
 	devcache := map[string](*DeviceEntry){}
@@ -96,12 +167,8 @@ func allocateBricks(
 		txdb := wdb.WrapTx(tx)
 
 		// Determine allocation for each brick required for this volume
-		for brick_num := 0; brick_num < bricksets; brick_num++ {
-			logger.Info("brick_num: %v", brick_num)
-
-			// Create a brick set list to later make sure that the
-			// proposed bricks and devices are acceptable
-			setlist := make([]*BrickEntry, 0)
+		for sn := 0; sn < numBrickSets; sn++ {
+			logger.Info("Allocating brick set #%v", sn)
 
 			// Generate an id for the brick
 			brickId := utils.GenUUID()
@@ -114,43 +181,19 @@ func allocateBricks(
 				return err
 			}
 
-			// Check location has space for each brick and its replicas
-			for i := 0; i < v.Durability.BricksInSet(); i++ {
-				logger.Debug("%v / %v", i, v.Durability.BricksInSet())
-
-				brick, device, err := findDeviceAndBrickForSet(tx,
-					v, devcache, deviceCh, setlist,
-					brick_size)
-				if err != nil {
-					return err
-				}
-
-				// If the first in the set, then reset the id
-				if i == 0 {
-					brick.SetId(brickId)
-				}
-
-				// Save the brick entry to create later
-				r.Bricks = append(r.Bricks, brick)
-				r.Devices = append(r.Devices, device)
-
-				setlist = append(setlist, brick)
-
-				device.BrickAdd(brick.Id())
+			// Fill in a complete set of bricks/devices. If not possible
+			// err will be non-nil
+			bs, ds, err := populateBrickSet(tx,
+				v, devcache, deviceCh, brickId,
+				brick_size, v.Durability.BricksInSet())
+			if err != nil {
+				return err
 			}
+			r.BrickSets = append(r.BrickSets, bs)
+			r.DeviceSets = append(r.DeviceSets, ds)
 		}
 
 		return nil
 	})
-	if err != nil {
-		return r, err
-	}
-
-	// Only assign bricks to the volume object on success
-	for _, brick := range r.Bricks {
-		logger.Debug("Adding brick %v to volume %v", brick.Id(), v.Info.Id)
-		v.BrickAdd(brick.Id())
-	}
-
-	return r, nil
+	return r, err
 }
