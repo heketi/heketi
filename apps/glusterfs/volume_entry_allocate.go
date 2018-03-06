@@ -273,7 +273,8 @@ func (v *VolumeEntry) allocBrickReplacement(db wdb.DB,
 	err = db.Update(func(tx *bolt.Tx) error {
 		txdb := wdb.WrapTx(tx)
 		// Check the ring for devices to place the brick
-		deviceCh, done, err := allocator.GetNodes(txdb, v.Info.Cluster, newBrickId)
+		a := NewSimpleAllocator()
+		deviceCh, done, err := a.GetNodes(txdb, v.Info.Cluster, newBrickId)
 		defer close(done)
 		if err != nil {
 			return err

@@ -197,9 +197,9 @@ func allocateBricks(
 			// Generate an id for the brick
 			brickId := utils.GenUUID()
 
-			// Get allocator generator
-			// The same generator should be used for the brick and its replicas
-			deviceCh, done, err := allocator.GetNodes(txdb, cluster, brickId)
+			a := NewSimpleAllocator()
+
+			deviceCh, done, err := a.GetNodes(txdb, cluster, brickId)
 			defer close(done)
 			if err != nil {
 				return err
