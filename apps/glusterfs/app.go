@@ -483,22 +483,3 @@ func (a *App) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	logger.Warning("Invalid path or request %v", r.URL.Path)
 	http.Error(w, "Invalid path or request", http.StatusNotFound)
 }
-
-// Allocator returns an allocator appropriate for the configuration
-// of this app.
-func (a *App) Allocator() Allocator {
-	var alloc Allocator
-	switch {
-	case a.conf.Allocator == "simple" || a.conf.Allocator == "":
-		a.conf.Allocator = "simple"
-		if r := NewSimpleAllocator(); r != nil {
-			alloc = r
-		} else {
-			panic(errors.New("failed to set up simple allocator"))
-		}
-	default:
-		panic(errors.New("cannot load invalid allocator: " + a.conf.Allocator))
-	}
-	logger.Info("Loaded %v allocator", a.conf.Allocator)
-	return alloc
-}
