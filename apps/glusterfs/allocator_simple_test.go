@@ -123,7 +123,7 @@ func TestSimpleAllocatorInitFromDbWithOfflineDevices(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Get the cluster list
-	var clusterId, nodeId string
+	var clusterId string
 	err = app.db.Update(func(tx *bolt.Tx) error {
 		clusters, err := ClusterList(tx)
 		if err != nil {
@@ -139,7 +139,6 @@ func TestSimpleAllocatorInitFromDbWithOfflineDevices(t *testing.T) {
 		// devices are added to the ring
 		node, err := cluster.NodeEntryFromClusterIndex(tx, 0)
 		tests.Assert(t, err == nil)
-		nodeId = node.Info.Id
 		node.State = api.EntryStateOffline
 		node.Save(tx)
 
