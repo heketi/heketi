@@ -495,14 +495,6 @@ func (a *App) Allocator() Allocator {
 	return a._allocator
 }
 
-// ClearAllocator resets the cached alloctor for this app.
-// This should be paired with calls to SetAllocator in order to
-// reset the app behavior to default when the test allocator is
-// no loger needed.
-func (a *App) ClearAllocator() {
-	a._allocator = nil
-}
-
 // newAllocator returns a newly created allocator based on the
 // configuration of the app.
 func (a *App) newAllocator() Allocator {
