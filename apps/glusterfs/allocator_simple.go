@@ -81,18 +81,14 @@ func getDeviceListFromDB(db wdb.RODB, clusterId,
 	devicelist := ring.GetDeviceList(brickId)
 
 	return devicelist, nil
-
 }
 
 func (s *SimpleAllocator) GetNodes(db wdb.RODB, clusterId,
 	brickId string) (<-chan string, chan<- struct{}, error) {
 
-	// Initialize channels
 	device, done := make(chan string), make(chan struct{})
 
-	// Get the list of devices for this brick id
 	devicelist, err := getDeviceListFromDB(db, clusterId, brickId)
-
 	if err != nil {
 		close(device)
 		return device, done, err
