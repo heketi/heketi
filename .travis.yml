@@ -20,6 +20,10 @@ matrix:
     env: OPTIONS="-race"
   - go: 1.8.2
     env: COVERAGE="true"
+  - go: 1.9.4
+    env: COVERAGE="true"
+  - go: "1.10"
+    env: COVERAGE="true"
 script:
 - make
 - if [[ -z "$COVERAGE" ]]; then make test TESTOPTIONS=-v ; else make test TESTOPTIONS=-vcstdout && bash .travis-coverage; fi
