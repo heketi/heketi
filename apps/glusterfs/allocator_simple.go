@@ -66,6 +66,24 @@ func loadRingFromDB(tx *bolt.Tx, clusterId string) (*SimpleAllocatorRing, error)
 	return ring, nil
 }
 
+func loadRingFromDeviceSource(dsrc DeviceSource) (
+	*SimpleAllocatorRing, error) {
+
+	ring := NewSimpleAllocatorRing()
+	dnl, err := dsrc.Devices()
+	if err != nil {
+		return nil, err
+	}
+	for _, dan := range dnl {
+		ring.Add(&SimpleDevice{
+			zone:     dan.Node.Info.Zone,
+			nodeId:   dan.Node.Info.Id,
+			deviceId: dan.Device.Info.Id,
+		})
+	}
+	return ring, nil
+}
+
 func getDeviceListFromDB(db wdb.RODB, clusterId,
 	brickId string) (SimpleDevices, error) {
 
