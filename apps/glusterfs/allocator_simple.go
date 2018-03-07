@@ -112,6 +112,32 @@ func (s *SimpleAllocator) GetNodes(db wdb.RODB, clusterId,
 		return device, done, err
 	}
 
+	generateDevices(devicelist, device, done)
+	return device, done, nil
+}
+
+// GetNodesFromDeviceSource is a shim function that should only
+// exist as long as we keep the intermediate simple allocator.
+func (s *SimpleAllocator) GetNodesFromDeviceSource(dsrc DeviceSource,
+	brickId string) (
+	<-chan string, chan<- struct{}, error) {
+
+	device, done := make(chan string), make(chan struct{})
+
+	ring, err := loadRingFromDeviceSource(dsrc)
+	if err != nil {
+		close(device)
+		return device, done, err
+	}
+	devicelist := ring.GetDeviceList(brickId)
+
+	generateDevices(devicelist, device, done)
+	return device, done, nil
+}
+
+func generateDevices(devicelist SimpleDevices,
+	device chan<- string, done <-chan struct{}) {
+
 	// Start generator in a new goroutine
 	go func() {
 		defer func() {
@@ -125,8 +151,5 @@ func (s *SimpleAllocator) GetNodes(db wdb.RODB, clusterId,
 				return
 			}
 		}
-
 	}()
-
-	return device, done, nil
 }
