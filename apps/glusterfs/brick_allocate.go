@@ -333,3 +333,65 @@ func (vp *VolumePlacementOpts) SetSize() int {
 func (vp *VolumePlacementOpts) SetCount() int {
 	return vp.numBrickSets
 }
+
+type StandardBrickPlacer struct{}
+
+func NewStandardBrickPlacer() *StandardBrickPlacer {
+	return &StandardBrickPlacer{}
+}
+
+func (bp *StandardBrickPlacer) PlaceAll(
+	dsrc DeviceSource,
+	opts PlacementOpts,
+	pred DeviceFilter) (
+	*BrickAllocation, error) {
+
+	r := &BrickAllocation{
+		BrickSets:  []*BrickSet{},
+		DeviceSets: []*DeviceSet{},
+	}
+
+	numBrickSets := opts.SetCount()
+	for sn := 0; sn < numBrickSets; sn++ {
+		logger.Info("Allocating brick set #%v", sn)
+
+		// Generate an id for the brick, this is used as a
+		// random index into the ring(s)
+		brickId := utils.GenUUID()
+
+		a := NewSimpleAllocator()
+		deviceCh, done, err := a.GetNodesFromDeviceSource(dsrc, brickId)
+		defer close(done)
+		if err != nil {
+			return r, err
+		}
+
+		s, _ := opts.BrickSizes()
+		bs, ds, err := populateBrickSet(
+			opts.(*VolumePlacementOpts).v,
+			dsrc.Device,
+			pred,
+			deviceCh,
+			brickId,
+			s,
+			int(opts.SetSize()))
+		if err != nil {
+			return r, err
+		}
+		r.BrickSets = append(r.BrickSets, bs)
+		r.DeviceSets = append(r.DeviceSets, ds)
+	}
+
+	return r, nil
+}
+
+func (bp *StandardBrickPlacer) Replace(
+	dsrc DeviceSource,
+	opts PlacementOpts,
+	pred DeviceFilter,
+	bs *BrickSet,
+	index int) (
+	*BrickAllocation, error) {
+
+	return nil, nil
+}
