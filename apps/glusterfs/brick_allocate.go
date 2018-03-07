@@ -179,13 +179,8 @@ func allocateBricks(
 		DeviceSets: []*DeviceSet{},
 	}
 
-	devcache := map[string](*DeviceEntry){}
-
 	err := db.View(func(tx *bolt.Tx) error {
-		txdb := wdb.WrapTx(tx)
-		fetchDevice := func(id string) (*DeviceEntry, error) {
-			return getCachedDevice(devcache, tx, id)
-		}
+		dsrc := NewClusterDeviceSource(tx, cluster)
 
 		// Determine allocation for each brick required for this volume
 		for sn := 0; sn < numBrickSets; sn++ {
@@ -195,8 +190,7 @@ func allocateBricks(
 			brickId := utils.GenUUID()
 
 			a := NewSimpleAllocator()
-
-			deviceCh, done, err := a.GetNodes(txdb, cluster, brickId)
+			deviceCh, done, err := a.GetNodesFromDeviceSource(dsrc, brickId)
 			defer close(done)
 			if err != nil {
 				return err
@@ -205,7 +199,7 @@ func allocateBricks(
 			// Fill in a complete set of bricks/devices. If not possible
 			// err will be non-nil
 			bs, ds, err := populateBrickSet(
-				v, fetchDevice, nil, deviceCh, brickId,
+				v, dsrc.Device, nil, deviceCh, brickId,
 				brick_size, v.Durability.BricksInSet())
 			if err != nil {
 				return err
