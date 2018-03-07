@@ -41,6 +41,8 @@ var (
 	dbFile                       string
 	debugOutput                  bool
 	deleteAllBricksWithEmptyPath bool
+	dryRun                       bool
+	force                        bool
 )
 
 var RootCmd = &cobra.Command{
@@ -175,6 +177,33 @@ var deleteBricksWithEmptyPath = &cobra.Command{
 	},
 }
 
+var deletePendingEntriesCmd = &cobra.Command{
+	Use:     "delete-pending-entries",
+	Short:   "removes entries from db that have pending attribute set",
+	Long:    "removes entries from db that have pending attribute set",
+	Example: "heketi db delete-pending-entries --dbfile=/db/file/path/",
+	Run: func(cmd *cobra.Command, args []string) {
+		if dryRun && force {
+			fmt.Fprintf(os.Stderr, "Cannot specify force along with dry-run\n")
+			os.Exit(1)
+		}
+		if debugOutput {
+			glusterfs.SetLogLevel("debug")
+		}
+		db, err := glusterfs.OpenDB(dbFile, false)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to open database: %v\n", err)
+			os.Exit(1)
+		}
+		err = glusterfs.DeletePendingEntries(db, dryRun, force)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to delete entries with pending attribute: %v\n", err.Error())
+			os.Exit(1)
+		}
+		os.Exit(0)
+	},
+}
+
 func init() {
 	RootCmd.Flags().StringVar(&configfile, "config", "", "Configuration file")
 	RootCmd.Flags().BoolVarP(&showVersion, "version", "v", false, "Show version")
@@ -203,6 +232,13 @@ func init() {
 	deleteBricksWithEmptyPath.Flags().StringSlice("nodes", []string{}, "comma separated list of node IDs")
 	deleteBricksWithEmptyPath.Flags().StringSlice("devices", []string{}, "comma separated list of device IDs")
 	deleteBricksWithEmptyPath.SilenceUsage = true
+
+	dbCmd.AddCommand(deletePendingEntriesCmd)
+	deletePendingEntriesCmd.Flags().StringVar(&dbFile, "dbfile", "", "File path for db to operate on")
+	deletePendingEntriesCmd.Flags().BoolVar(&debugOutput, "debug", false, "Show debug logs on stdout")
+	deletePendingEntriesCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show actions that would be performed but don't perform them")
+	deletePendingEntriesCmd.Flags().BoolVar(&force, "force", false, "Clean entries even if they don't have an owner Pending Operation, incompatible with dry-run")
+	deletePendingEntriesCmd.SilenceUsage = true
 }
 
 func setWithEnvVariables(options *Config) {

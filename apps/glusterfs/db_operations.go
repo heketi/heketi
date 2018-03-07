@@ -452,3 +452,300 @@ func DeleteBricksWithEmptyPath(db *bolt.DB, all bool, clusterIDs []string, nodeI
 	}
 	return nil
 }
+
+func deleteChangeOwnerEntry(tx *bolt.Tx, action PendingOperationAction, dryRun bool) error {
+	switch action.Change {
+
+	case OpAddBrick:
+		logger.Debug("Found a pending add brick change with id: %v", action.Id)
+		logger.Info("Deleting brick with id: %v", action.Id)
+		brickEntry, err := NewBrickEntryFromId(tx, action.Id)
+		if err != nil {
+			return err
+		}
+		logger.Info("brickentry %+v", brickEntry)
+		logger.Info("USER ACTION REQUIRED: cleanup brick or create brick(in case of expand op) with path:%v on node:%v", brickEntry.Info.Path, brickEntry.Info.NodeId)
+		if !dryRun {
+			err = brickEntry.Delete(tx)
+			if err != nil {
+				return err
+			}
+		}
+	case OpDeleteBrick:
+		logger.Debug("Found a pending delete brick change with id: %v", action.Id)
+		logger.Info("Deleting brick with id: %v", action.Id)
+		brickEntry, err := NewBrickEntryFromId(tx, action.Id)
+		if err != nil {
+			return err
+		}
+		logger.Info("brickEntry %+v", brickEntry)
+		logger.Info("USER ACTION REQUIRED: cleanup brick with path:%v on node:%v", brickEntry.Info.Path, brickEntry.Info.NodeId)
+		if !dryRun {
+			err = brickEntry.Delete(tx)
+			if err != nil {
+				return err
+			}
+		}
+	case OpAddVolume:
+		logger.Debug("Found a pending add volume change with id: %v", action.Id)
+		logger.Info("Deleting volume with id: %v", action.Id)
+		volumeEntry, err := NewVolumeEntryFromId(tx, action.Id)
+		if err != nil {
+			return err
+		}
+		logger.Info("volumeEntry %+v", volumeEntry)
+		logger.Info("USER ACTION REQUIRED: cleanup volume:%v on cluster:%v", volumeEntry.Info.Name, volumeEntry.Info.Cluster)
+		if !dryRun {
+			err = volumeEntry.Delete(tx)
+			if err != nil {
+				return err
+			}
+		}
+	case OpDeleteVolume:
+		logger.Debug("Found a pending delete volume change with id: %v", action.Id)
+		logger.Info("Deleting volume with id: %v", action.Id)
+		volumeEntry, err := NewVolumeEntryFromId(tx, action.Id)
+		if err != nil {
+			return err
+		}
+		logger.Info("volumeEntry %+v", volumeEntry)
+		logger.Info("USER ACTION REQUIRED: cleanup volume:%v on cluster:%v", volumeEntry.Info.Name, volumeEntry.Info.Cluster)
+		if !dryRun {
+			err = volumeEntry.Delete(tx)
+			if err != nil {
+				return err
+			}
+		}
+	case OpExpandVolume:
+		logger.Debug("Found a pending expand volume change with id: %v", action.Id)
+		volumeEntry, err := NewVolumeEntryFromId(tx, action.Id)
+		if err != nil {
+			return err
+		}
+		logger.Info("USER ACTION REQUIRED: complete volume expand operation on %v using bricks listed above", volumeEntry.Info.Name)
+		if !dryRun {
+			logger.Info("volumeEntry %+v", volumeEntry)
+			err = volumeEntry.Delete(tx)
+			if err != nil {
+				return err
+			}
+		}
+	case OpAddBlockVolume:
+		logger.Debug("Found a pending add blockvolume change with id: %v", action.Id)
+		logger.Info("Deleting blockvolume with id: %v", action.Id)
+		blockVolumeEntry, err := NewBlockVolumeEntryFromId(tx, action.Id)
+		if err != nil {
+			return err
+		}
+		logger.Info("blockVolumeEntry %+v", blockVolumeEntry)
+		logger.Info("USER ACTION REQUIRED: cleanup blockvolume:%v on hostingvolume:%v", blockVolumeEntry.Info.Name, blockVolumeEntry.Info.BlockHostingVolume)
+		if !dryRun {
+			err = blockVolumeEntry.Delete(tx)
+			if err != nil {
+				return err
+			}
+		}
+	case OpDeleteBlockVolume:
+		logger.Debug("Found a pending delete blockvolume change with id: %v", action.Id)
+		logger.Info("Deleting blockvolume with id: %v", action.Id)
+		blockVolumeEntry, err := NewBlockVolumeEntryFromId(tx, action.Id)
+		if err != nil {
+			return err
+		}
+		logger.Info("blockVolumeEntry %+v", blockVolumeEntry)
+		logger.Info("USER ACTION REQUIRED: cleanup blockvolume:%v on hostingvolume:%v", blockVolumeEntry.Info.Name, blockVolumeEntry.Info.BlockHostingVolume)
+		if !dryRun {
+			err = blockVolumeEntry.Delete(tx)
+			if err != nil {
+				return err
+			}
+		}
+	case OpRemoveDevice:
+		logger.Debug("Found a pending remove device change with id: %v", action.Id)
+		logger.Info("Deleting device with id: %v", action.Id)
+		deviceEntry, err := NewDeviceEntryFromId(tx, action.Id)
+		if err != nil {
+			return err
+		}
+		logger.Info("deviceEntry %+v", deviceEntry)
+		logger.Info("USER ACTION REQUIRED: cleanup device:%v on node:%v", deviceEntry.Info.Name, deviceEntry.NodeId)
+		if !dryRun {
+			err = deviceEntry.Delete(tx)
+			if err != nil {
+				return err
+			}
+		}
+	default:
+		logger.Debug("Not a known change type: %v", action.Change)
+	}
+	return nil
+}
+
+func deleteChangeEntriesInOp(tx *bolt.Tx, pendingOpEntry *PendingOperationEntry, dryRun bool) error {
+	switch pendingOpEntry.Type {
+
+	case OperationCreateVolume:
+		logger.Info("Found a pending volume create operation with id: %v and timestamp: %v", pendingOpEntry.Id, pendingOpEntry.Timestamp)
+
+	case OperationDeleteVolume:
+		logger.Info("Found a pending volume delete operation with id: %v and timestamp: %v", pendingOpEntry.Id, pendingOpEntry.Timestamp)
+
+	case OperationExpandVolume:
+		logger.Info("Found a pending volume expand operation with id: %v and timestamp: %v", pendingOpEntry.Id, pendingOpEntry.Timestamp)
+
+	case OperationCreateBlockVolume:
+		logger.Info("Found a pending blockvolume create operation with id: %v and timestamp: %v", pendingOpEntry.Id, pendingOpEntry.Timestamp)
+
+	case OperationDeleteBlockVolume:
+		logger.Info("Found a pending blockvolume delete operation with id: %v and timestamp: %v", pendingOpEntry.Id, pendingOpEntry.Timestamp)
+
+	case OperationRemoveDevice:
+		logger.Info("Found a pending device remove operation with id: %v and timestamp: %v", pendingOpEntry.Id, pendingOpEntry.Timestamp)
+
+	default:
+		logger.Debug("Not a known pending Operation type: %v", pendingOpEntry.Type)
+	}
+	for _, action := range pendingOpEntry.Actions {
+		err := deleteChangeOwnerEntry(tx, action, dryRun)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func DeletePendingEntries(db *bolt.DB, dryRun bool, force bool) error {
+
+	err := db.Update(func(tx *bolt.Tx) error {
+		if b := tx.Bucket([]byte(BOLTDB_BUCKET_PENDING_OPS)); b == nil {
+			return logger.LogError("unable to find pending ops bucket... exiting")
+		}
+		var pendingOpsFoundCount int
+		var pendingOpsDeletedCount int
+
+		logger.Info("traversing through pending ops bucket to delete pending entries")
+		logger.Debug("pendingops bucket")
+		pendingops, err := PendingOperationList(tx)
+		if err != nil {
+			return err
+		}
+		for _, opid := range pendingops {
+			pendingOpEntry, err := NewPendingOperationEntryFromId(tx, opid)
+			if err != nil {
+				return err
+			}
+			pendingOpsFoundCount++
+			logger.Info("\nPending Operation %v Start", pendingOpsFoundCount)
+			// Special case for expand volume operation
+			// Always dry-run
+			if pendingOpEntry.Type == OperationExpandVolume {
+				logger.Info("USER ACTION REQUIRED: Found an expand volume operation, it won't be cleaned")
+				logger.Info("USER ACTION REQUIRED: Note the add brick action printed below and complete the action on Gluster if not completed already")
+				err = deleteChangeEntriesInOp(tx, pendingOpEntry, true)
+				if err != nil {
+					return err
+				}
+			} else {
+				err = deleteChangeEntriesInOp(tx, pendingOpEntry, dryRun)
+				if err != nil {
+					return err
+				}
+			}
+			// Again, skip deleting main op if it is expand volume
+			if !dryRun && pendingOpEntry.Type != OperationExpandVolume {
+				err = pendingOpEntry.Delete(tx)
+				if err != nil {
+					return err
+				}
+				pendingOpsDeletedCount++
+			}
+			logger.Info("\nPending Operation %v End", pendingOpsFoundCount)
+		}
+		logger.Info("Found %v pending entries and deleted %v", pendingOpsFoundCount, pendingOpsDeletedCount)
+
+		// Here onwards, we should not find any entry with pending id set if dry-run is not used
+		// If we do find any entries with pending ID, then it is case of db corruption
+		// Warn users if force flag is not set
+		// Clean the entries if force flag is set
+		if !dryRun {
+			logger.Info("traversing through other buckets to ensure no pending entries are left")
+			logger.Debug("volume bucket")
+			volumes, err := VolumeList(tx)
+			if err != nil {
+				return err
+			}
+
+			for _, volume := range volumes {
+				volEntry, err := NewVolumeEntryFromId(tx, volume)
+				if err != nil {
+					return err
+				}
+				if volEntry.Pending.Id != "" {
+					logger.Info("found untracked pending volume entry %v, use force flag to delete it", volume)
+					if force {
+						logger.Info("deleting untracked pending volume entry %v", volume)
+						err = volEntry.Delete(tx)
+						if err != nil {
+							return err
+						}
+					}
+				}
+			}
+
+			logger.Debug("brick bucket")
+			bricks, err := BrickList(tx)
+			if err != nil {
+				return err
+			}
+
+			for _, brick := range bricks {
+				brickEntry, err := NewBrickEntryFromId(tx, brick)
+				if err != nil {
+					return err
+				}
+				if brickEntry.Pending.Id != "" {
+					logger.Info("found untracked pending brick entry %v, use force flag to delete it", brick)
+					if force {
+						logger.Info("deleting untracked pending brick entry %v", brick)
+						err = brickEntry.Delete(tx)
+						if err != nil {
+							return err
+						}
+					}
+				}
+			}
+
+			// BlockVolume Bucket
+			logger.Debug("blockvolume bucket")
+			blockvolumes, err := BlockVolumeList(tx)
+			if err != nil {
+				return err
+			}
+
+			for _, blockvolume := range blockvolumes {
+				blockvolEntry, err := NewBlockVolumeEntryFromId(tx, blockvolume)
+				if err != nil {
+					return err
+				}
+				if blockvolEntry.Pending.Id != "" {
+					logger.Info("found untracked pending blockvolume entry %v, use force flag to delete it", blockvolume)
+					if force {
+						logger.Info("deleting untracked pending blockvolume entry %v", blockvolume)
+						err = blockvolEntry.Delete(tx)
+						if err != nil {
+							return err
+						}
+					}
+				}
+			}
+
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
