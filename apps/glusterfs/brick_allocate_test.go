@@ -10,8 +10,8 @@
 package glusterfs
 
 import (
-	"testing"
 	"os"
+	"testing"
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/tests"
@@ -157,4 +157,29 @@ func TestClusterDeviceSourceLookupEmptyCache(t *testing.T) {
 			"expected len(dsrc.deviceCache) == 16, got:", len(dsrc.deviceCache))
 		return nil
 	})
+}
+
+func TestVolumePlacementOpts(t *testing.T) {
+	req := &api.VolumeCreateRequest{}
+	req.Size = 1024
+	req.Durability.Type = api.DurabilityReplicate
+	req.Durability.Replicate.Replica = 3
+
+	s := uint64(req.Size) * GB
+	vol := NewVolumeEntryFromRequest(req)
+	gen := vol.Durability.BrickSizeGenerator(s)
+	numSets, brickSize, err := gen()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	interfaceCheck := func(p PlacementOpts) PlacementOpts {
+		return p
+	}
+
+	p := interfaceCheck(NewVolumePlacementOpts(
+		vol,
+		brickSize,
+		numSets))
+	tests.Assert(t, p.BrickOwner() == vol.Info.Id,
+		"expected p.BrickOwner() == vol.Info.Id, got:",
+		p.BrickOwner(), vol.Info.Id)
 }
