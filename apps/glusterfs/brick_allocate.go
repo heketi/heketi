@@ -308,3 +308,34 @@ func (cds *ClusterDeviceSource) Node(id string) (*NodeEntry, error) {
 	}
 	return node, nil
 }
+
+type VolumePlacementOpts struct {
+	v            *VolumeEntry
+	brickSize    uint64
+	numBrickSets int
+}
+
+func NewVolumePlacementOpts(v *VolumeEntry,
+	brickSize uint64, numBrickSets int) *VolumePlacementOpts {
+	return &VolumePlacementOpts{v, brickSize, numBrickSets}
+}
+
+func (vp *VolumePlacementOpts) BrickSizes() (uint64, float64) {
+	return vp.brickSize, float64(vp.v.Info.Snapshot.Factor)
+}
+
+func (vp *VolumePlacementOpts) BrickOwner() string {
+	return vp.v.Info.Id
+}
+
+func (vp *VolumePlacementOpts) BrickGid() int64 {
+	return vp.v.Info.Gid
+}
+
+func (vp *VolumePlacementOpts) SetSize() int {
+	return vp.v.Durability.BricksInSet()
+}
+
+func (vp *VolumePlacementOpts) SetCount() int {
+	return vp.numBrickSets
+}
