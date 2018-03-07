@@ -58,12 +58,10 @@ type BrickAllocation struct {
 	DeviceSets []*DeviceSet
 }
 
-type deviceFilter func(*BrickSet, *DeviceEntry) bool
-
 type deviceFetcher func(string) (*DeviceEntry, error)
 
 func tryAllocateBrickOnDevice(v *VolumeEntry,
-	pred deviceFilter,
+	pred DeviceFilter,
 	device *DeviceEntry,
 	bs *BrickSet, brick_size uint64) *BrickEntry {
 
@@ -92,7 +90,7 @@ func tryAllocateBrickOnDevice(v *VolumeEntry,
 
 func findDeviceAndBrickForSet(v *VolumeEntry,
 	fetchDevice deviceFetcher,
-	pred deviceFilter,
+	pred DeviceFilter,
 	deviceCh <-chan string,
 	bs *BrickSet,
 	brick_size uint64) (*BrickEntry, *DeviceEntry, error) {
@@ -137,7 +135,7 @@ func getCachedDevice(devcache map[string](*DeviceEntry),
 
 func populateBrickSet(v *VolumeEntry,
 	fetchDevice deviceFetcher,
-	pred deviceFilter,
+	pred DeviceFilter,
 	deviceCh <-chan string,
 	initId string,
 	brick_size uint64,
