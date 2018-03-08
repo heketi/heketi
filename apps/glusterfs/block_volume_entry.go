@@ -46,6 +46,12 @@ func NewVolumeEntryForBlockHosting(clusters []string) (*VolumeEntry, error) {
 
 	vol := NewVolumeEntryFromRequest(&msg)
 
+	if !CreateBlockHostingVolumes {
+		return nil, fmt.Errorf("Block Hosting Volume Creation is " +
+			"disabled. Create a Block hosting volume and try " +
+			"again.")
+	}
+
 	if uint64(msg.Size)*GB < vol.Durability.MinVolumeSize() {
 		return nil, fmt.Errorf("Requested volume size (%v GB) is "+
 			"smaller than the minimum supported volume size (%v)",
