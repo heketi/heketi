@@ -216,6 +216,12 @@ GitHub will automatically populate the PR description with the content of
 the change's commit message. Otherwise provide a brief summary of your
 changes and complete the PR.
 
+Usually, a PR should concentrate on one topic like a fix for a
+bug, or the implementation of a feature. This can be achieved
+with multiple commits in the patchset for this PR, but if your
+patchset accomplishes multiple independent things, you should
+probably split it up and create multiple PRs.
+
 *NOTE*: The PR description is not a replacement for writing good commit messages.
 Remember that your commit messages may be needed by someone in the future
 who is trying to learn why a particular change was made.
