@@ -149,7 +149,8 @@ test suite. In order to run the whole functional test suite, you can execute
 [Functional Tests Directory](../tests/functional), and can be executed
 separately by running the `run.sh` script in that directory.
 
-Refer to the test scripts within the
+Refer to the [README](../tests/functional/README.md) and the
+test scripts within the
 [Functional Tests Directory](https://github.com/heketi/heketi/tree/master/tests/functional)
 in the Heketi repository for all the gory details.
 
