@@ -11,11 +11,13 @@ package glusterfs
 
 import (
 	"os"
+	"sort"
 	"testing"
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/tests"
 
+	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 )
 
@@ -182,4 +184,65 @@ func TestVolumePlacementOpts(t *testing.T) {
 	tests.Assert(t, p.BrickOwner() == vol.Info.Id,
 		"expected p.BrickOwner() == vol.Info.Id, got:",
 		p.BrickOwner(), vol.Info.Id)
+}
+
+func TestClusterDeviceSourceAlloc(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		2,    // clusters
+		4,    // nodes_per_cluster
+		4,    // devices_per_node,
+		1*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	app.db.View(func(tx *bolt.Tx) error {
+		cids, err := ClusterList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(cids) == 2,
+			"expected len(cids) == 2, got:", len(cids))
+		cluster := cids[0]
+
+		a := NewSimpleAllocator()
+		txdb := wdb.WrapTx(tx)
+		deviceCh, done, err := a.GetNodes(txdb, cluster, "0000000")
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		defer close(done)
+
+		dtest := []string{}
+		for id := range deviceCh {
+			dtest = append(dtest, id)
+		}
+		tests.Assert(t, len(dtest) == 16,
+			"expected len(dtest) == 16, got:", len(dtest))
+
+		a = NewSimpleAllocator()
+		dsrc := NewClusterDeviceSource(tx, cluster)
+		deviceCh, done, err = a.GetNodesFromDeviceSource(dsrc, "0000000")
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		defer close(done)
+
+		dtest2 := []string{}
+		for id := range deviceCh {
+			dtest2 = append(dtest2, id)
+		}
+		tests.Assert(t, len(dtest2) == 16,
+			"expected len(dtest) == 16, got:", len(dtest))
+
+		sort.Strings(dtest)
+		sort.Strings(dtest2)
+		for i, _ := range dtest {
+			tests.Assert(t, dtest[i] == dtest2[i],
+				"expected dtest[i] == dtest2[i], got",
+				dtest[i], dtest2[i], "@", i)
+		}
+
+		return nil
+	})
 }
