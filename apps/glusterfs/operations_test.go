@@ -702,6 +702,51 @@ func TestBlockVolumeCreateOperation(t *testing.T) {
 	})
 }
 
+func TestBlockVolumeCreateOperationTooLargeSizeRequested(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		1,    // devices_per_node,
+		2*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	req := &api.BlockVolumeCreateRequest{}
+	// request a size larger than the default BlockHostingVolumeSize
+	// (of 1024)
+	req.Size = 1025
+
+	vol := NewBlockVolumeEntryFromRequest(req)
+	vc := NewBlockVolumeCreateOperation(vol, app.db)
+
+	// verify that there are no volumes, bricks or pending operations
+	app.db.View(func(tx *bolt.Tx) error {
+		vl, e := VolumeList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(vl) == 0, "expected len(vl) == 0, got", len(vl))
+		bl, e := BrickList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(bl) == 0, "expected len(bl) == 0, got", len(bl))
+		pol, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pol) == 0, "expected len(pol) == 0, got", len(pol))
+		return nil
+	})
+
+	e := vc.Build()
+	error_string := "The size configured for automatic creation of block hosting volumes (1024) is too small to host the requested block volume of size 1025. Please create a sufficiently large block hosting volume manually."
+	tests.Assert(t, e != nil, "expected e != nil, got nil")
+	tests.Assert(t, e.Error() == error_string,
+		"expected '", error_string, "', got '", e.Error(), "'")
+}
+
 func TestBlockVolumeCreateOperationExistingHostVol(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
