@@ -113,9 +113,43 @@ Do your work here and then commit it. For example, run `git commit -as`,
 to automatically include all your outstanding changes into a new
 patch.
 
+#### Splitting your change into commits
+
+Generally, you will not just commit all your changes into a single
+patch but split them up into multiple commits. It is perfectly
+okay to have multiple patches in one pull request to achieve
+the higher level goal of the pull request. (For example one patch
+fix a bug and one patch to add a regression test.)
+
+You can use `git add -i` to select which hunks of your change to
+commit. `git rebase -i` can be used to polish up a sequence of
+work-in-progress patches into a sequence of patches of merge quality.
+
+Heketi's guidelines for the contents of commits are:
+- Commits should usually be as minimal and atomic as possible.
+- I.e. a patch should only contain one logical change but achieve it completely.
+- If the commit does X and Y, you should probably split it into two patches.
+- Each patch should compile and pass `make test`
+
+#### Good commit messages
+
+Each commit has a commit message. The heketi project prefers
+commit messages roughly of the following form:
+
+```
+component(or topic)[:component]: Short description of what the patch does
+
+Optionally longer explanation of the why and how.
+
+Signed-off-by: Author Name <author@email>
+```
+
+#### Linking to issues
+
 If you are working on an existing issue you should make sure to use
 the appropriate [keywords](https://help.github.com/articles/closing-issues-via-commit-messages/)
-in your commit message. Doing so will allow GitHub to automatically
+in your commit message (e.g. `Fixes #<issue-number>`).
+Doing so will allow GitHub to automatically
 create references between your changes and the issue.
 
 
