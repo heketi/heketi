@@ -155,6 +155,12 @@ create references between your changes and the issue.
 
 ### Testing the Change
 
+Each pull request needs to pass the basic test suite in order
+to qualify for merging. It is hence highly recommended that you
+run at least the basic test suite on your branch, preferably
+even on each individual commit and make sure it passes
+before submitting your changes for review.
+
 #### Basic Tests
 
 As mentioned in the section above Heketi has a suite of quality checks and
