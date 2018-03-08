@@ -123,13 +123,17 @@ are iterating on changes in a narrow area of the code. In this case, you
 can execute the [Go language test tool](https://golang.org/cmd/go/#hdr-Test_packages)
 directly. When using `go test` you can specify a package (sub-directory)
 and the tool will only run tests in that directory. For example:
-`go test -v github.com/heketi/heketi/apps/glusterfs`.
+```
+go test -v github.com/heketi/heketi/apps/glusterfs
+```
 
 You can also run an individual unit test by appending `-run <TestName>`
 to the invocation of `go test`. In order for go to find the test, there are
 two options: either call `go test` from the directory that contains the test,
 or specify the path in the invocation of `go test` as above. For example:
-`go test -v -run TestVolumeEntryCreateFourBricks github.com/heketi/heketi/apps/glusterfs`
+```
+go test -v -run TestVolumeEntryCreateFourBricks github.com/heketi/heketi/apps/glusterfs
+```
 
 #### Functional Tests
 
