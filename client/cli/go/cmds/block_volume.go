@@ -36,7 +36,7 @@ func init() {
 	blockVolumeCommand.AddCommand(blockVolumeInfoCommand)
 	blockVolumeCommand.AddCommand(blockVolumeListCommand)
 
-	blockVolumeCreateCommand.Flags().IntVar(&bv_size, "size", -1,
+	blockVolumeCreateCommand.Flags().IntVar(&bv_size, "size", 0,
 		"\n\tSize of volume in GiB")
 	blockVolumeCreateCommand.Flags().IntVar(&bv_ha, "ha", 0,
 		"\n\tHA count for block volume")
@@ -82,7 +82,7 @@ var blockVolumeCreateCommand = &cobra.Command{
         --clusters=0995098e1284ddccb46c7752d142c832,60d46d518074b13a04ce1022c8c7193c
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if bv_size == -1 {
+		if bv_size == 0 {
 			return errors.New("Missing volume size")
 		}
 
