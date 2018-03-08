@@ -92,8 +92,18 @@ Here the tool will print the cluster by querying the running server.
 
 ## Contributor's Workflow
 
-Here is a guide on how to work on a new patch. In this example, we will
-work on a patch called *hellopatch*:
+Here is a guide on how to work on a new patch and get it included
+in the official Heketi sources.
+
+### Preparatory work
+
+Before you start working on a change, you should check the existing
+issues and pull requests for related content. Maybe someone has
+already done some analysis or even started a patch for your topic...
+
+### Working on the code and creating patches
+
+In this example, we will work on a patch called *hellopatch*:
 
 1. `git checkout master`
 1. `git pull`
