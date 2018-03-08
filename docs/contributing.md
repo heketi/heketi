@@ -144,7 +144,10 @@ TestSmokeTest.
 
 The functional test suite has dependencies on Vagrant, Libvirt, and Ansible.
 You will need these tools installed on your system prior to running the
-test suite.
+test suite. In order to run the whole functional test suite, you can execute
+`make test-functional`. Each functional test suite is a subirectory of the
+[Functional Tests Directory](../tests/functional), and can be executed
+separately by running the `run.sh` script in that directory.
 
 Refer to the test scripts within the
 [Functional Tests Directory](https://github.com/heketi/heketi/tree/master/tests/functional)
