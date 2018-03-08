@@ -452,6 +452,14 @@ func (bvc *BlockVolumeCreateOperation) Build() error {
 
 		if len(volumes) > 0 {
 			bvc.bvol.Info.BlockHostingVolume = volumes[0]
+		} else if bvc.bvol.Info.Size > BlockHostingVolumeSize {
+			return fmt.Errorf("The size configured for "+
+				"automatic creation of block hosting volumes "+
+				"(%v) is too small to host the requested "+
+				"block volume of size %v. Please create a "+
+				"sufficiently large block hosting volume "+
+				"manually.",
+				BlockHostingVolumeSize, bvc.bvol.Info.Size)
 		} else {
 			vol, err := NewVolumeEntryForBlockHosting(clusters)
 			if err != nil {
