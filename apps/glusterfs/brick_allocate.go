@@ -60,10 +60,11 @@ type BrickAllocation struct {
 
 type deviceFetcher func(string) (*DeviceEntry, error)
 
-func tryAllocateBrickOnDevice(v *VolumeEntry,
+func tryAllocateBrickOnDevice(
+	opts PlacementOpts,
 	pred DeviceFilter,
 	device *DeviceEntry,
-	bs *BrickSet, brick_size uint64) *BrickEntry {
+	bs *BrickSet) *BrickEntry {
 
 	// Do not allow a device from the same node to be in the set
 	deviceOk := true
@@ -81,19 +82,23 @@ func tryAllocateBrickOnDevice(v *VolumeEntry,
 	}
 
 	// Try to allocate a brick on this device
-	brick := device.NewBrickEntry(brick_size,
-		float64(v.Info.Snapshot.Factor),
-		v.Info.Gid, v.Info.Id)
-
+	brickSize, snapFactor := opts.BrickSizes()
+	brick := device.NewBrickEntry(brickSize, snapFactor,
+		opts.BrickGid(), opts.BrickOwner())
+	if brick == nil {
+		logger.Debug(
+			"Unable to place a brick of size %v & factor %v on device %v",
+			brickSize, snapFactor, device.Info.Id)
+	}
 	return brick
 }
 
-func findDeviceAndBrickForSet(v *VolumeEntry,
+func findDeviceAndBrickForSet(
+	opts PlacementOpts,
 	fetchDevice deviceFetcher,
 	pred DeviceFilter,
 	deviceCh <-chan string,
-	bs *BrickSet,
-	brick_size uint64) (*BrickEntry, *DeviceEntry, error) {
+	bs *BrickSet) (*BrickEntry, *DeviceEntry, error) {
 
 	// Check the ring for devices to place the brick
 	for deviceId := range deviceCh {
@@ -103,7 +108,7 @@ func findDeviceAndBrickForSet(v *VolumeEntry,
 			return nil, nil, err
 		}
 
-		brick := tryAllocateBrickOnDevice(v, pred, device, bs, brick_size)
+		brick := tryAllocateBrickOnDevice(opts, pred, device, bs)
 		if brick == nil {
 			continue
 		}
@@ -133,22 +138,21 @@ func getCachedDevice(devcache map[string](*DeviceEntry),
 	return device, nil
 }
 
-func populateBrickSet(v *VolumeEntry,
+func populateBrickSet(
+	opts PlacementOpts,
 	fetchDevice deviceFetcher,
 	pred DeviceFilter,
 	deviceCh <-chan string,
-	initId string,
-	brick_size uint64,
-	ssize int) (*BrickSet, *DeviceSet, error) {
+	initId string) (*BrickSet, *DeviceSet, error) {
 
+	ssize := opts.SetSize()
 	bs := NewBrickSet(ssize)
 	ds := NewDeviceSet(ssize)
 	for i := 0; i < ssize; i++ {
 		logger.Debug("%v / %v", i, ssize)
 
 		brick, device, err := findDeviceAndBrickForSet(
-			v, fetchDevice, pred, deviceCh, bs,
-			brick_size)
+			opts, fetchDevice, pred, deviceCh, bs)
 		if err != nil {
 			return bs, ds, err
 		}
@@ -339,15 +343,12 @@ func (bp *StandardBrickPlacer) PlaceAll(
 			return r, err
 		}
 
-		s, _ := opts.BrickSizes()
 		bs, ds, err := populateBrickSet(
-			opts.(*VolumePlacementOpts).v,
+			opts,
 			dsrc.Device,
 			pred,
 			deviceCh,
-			brickId,
-			s,
-			int(opts.SetSize()))
+			brickId)
 		if err != nil {
 			return r, err
 		}

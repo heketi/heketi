@@ -269,27 +269,23 @@ func (v *VolumeEntry) allocBrickReplacement(db wdb.DB,
 	newBrickId := utils.GenUUID()
 
 	err = db.Update(func(tx *bolt.Tx) error {
-		txdb := wdb.WrapTx(tx)
+		dsrc := NewClusterDeviceSource(tx, v.Info.Cluster)
+		opts := NewVolumePlacementOpts(v, oldBrickEntry.Info.Size, bs.SetSize)
 		// Check the ring for devices to place the brick
 		a := NewSimpleAllocator()
-		deviceCh, done, err := a.GetNodes(txdb, v.Info.Cluster, newBrickId)
+		deviceCh, done, err := a.GetNodesFromDeviceSource(dsrc, newBrickId)
 		defer close(done)
 		if err != nil {
 			return err
 		}
 
-		// fetch device from db txn
-		fetchDevice := func(id string) (*DeviceEntry, error) {
-			return NewDeviceEntryFromId(tx, id)
-		}
 		// returns true if new device differs from old device
 		diffDevice := func(bs *BrickSet, d *DeviceEntry) bool {
 			return oldDeviceEntry.Info.Id != d.Info.Id
 		}
 
 		newBrickEntry, newDeviceEntry, err = findDeviceAndBrickForSet(
-			v, fetchDevice, diffDevice, deviceCh, bs,
-			oldBrickEntry.Info.Size)
+			opts, dsrc.Device, diffDevice, deviceCh, bs)
 		if err == ErrNoSpace {
 			// swap error conditions to better match the intent
 			return ErrNoReplacement
