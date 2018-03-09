@@ -10,6 +10,8 @@
 package glusterfs
 
 import (
+	"fmt"
+
 	"github.com/boltdb/bolt"
 	"github.com/lpabon/godbc"
 
@@ -367,5 +369,58 @@ func (bp *StandardBrickPlacer) Replace(
 	index int) (
 	*BrickAllocation, error) {
 
-	return nil, nil
+	// we return a brick allocation for symmetry with PlaceAll
+	// but it only contains one pair of sets
+	r := &BrickAllocation{
+		BrickSets:  []*BrickSet{},
+		DeviceSets: []*DeviceSet{},
+	}
+	newbs := NewBrickSet(bs.SetSize)
+	newds := NewDeviceSet(bs.SetSize)
+	r.BrickSets = append(r.BrickSets, newbs)
+	r.DeviceSets = append(r.DeviceSets, newds)
+
+	// the next two blocks are temporary hacky "assertions" that
+	// force the current behavior of findDeviceAndBrickForSet
+	// and allocBrickReplacement until they develop the smarts
+	// needed for true position aware brick replacement
+	if bs.SetSize != len(bs.Bricks)+1 {
+		return r, fmt.Errorf(
+			"input brick set must be missing last item, size=%v",
+			len(bs.Bricks))
+	}
+	if index != len(bs.Bricks) {
+		return r, fmt.Errorf(
+			"can only replace last item in brick set, got index=%v",
+			index)
+	}
+
+	brickId := utils.GenUUID()
+	a := NewSimpleAllocator()
+	deviceCh, done, err := a.GetNodesFromDeviceSource(dsrc, brickId)
+	defer close(done)
+	if err != nil {
+		return r, err
+	}
+
+	newBrickEntry, newDeviceEntry, err := findDeviceAndBrickForSet(
+		opts, dsrc.Device, pred, deviceCh, bs)
+	if err != nil {
+		return r, err
+	}
+	newBrickEntry.SetId(brickId)
+
+	newbs.Bricks = append(newbs.Bricks, bs.Bricks...)
+	newbs.Bricks = append(newbs.Bricks, newBrickEntry)
+	for _, b := range bs.Bricks {
+		d, err := dsrc.Device(b.Info.DeviceId)
+		if err != nil {
+			return r, err
+		}
+		newds.Devices = append(newds.Devices, d)
+	}
+	newds.Devices = append(newds.Devices, newDeviceEntry)
+	godbc.Require(newbs.Full())
+	godbc.Require(newds.Full())
+	return r, nil
 }
