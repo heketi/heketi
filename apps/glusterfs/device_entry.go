@@ -509,6 +509,16 @@ func PendingOperationsOnDevice(db wdb.RODB, deviceId string) (pdev bool, e error
 				return nil
 			}
 		}
+		pdr, err := MapPendingDeviceRemoves(tx)
+		if err != nil {
+			return err
+		}
+		if _, found := pdr[deviceId]; found {
+			logger.Warning(
+				"Device %v used in another pending device remove operation",
+				deviceId)
+			pdev = true
+		}
 		return nil
 	})
 	return
