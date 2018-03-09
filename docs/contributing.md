@@ -92,8 +92,18 @@ Here the tool will print the cluster by querying the running server.
 
 ## Contributor's Workflow
 
-Here is a guide on how to work on a new patch. In this example, we will
-work on a patch called *hellopatch*:
+Here is a guide on how to work on a new patch and get it included
+in the official Heketi sources.
+
+### Preparatory work
+
+Before you start working on a change, you should check the existing
+issues and pull requests for related content. Maybe someone has
+already done some analysis or even started a patch for your topic...
+
+### Working on the code and creating patches
+
+In this example, we will work on a patch called *hellopatch*:
 
 1. `git checkout master`
 1. `git pull`
@@ -103,13 +113,53 @@ Do your work here and then commit it. For example, run `git commit -as`,
 to automatically include all your outstanding changes into a new
 patch.
 
+#### Splitting your change into commits
+
+Generally, you will not just commit all your changes into a single
+patch but split them up into multiple commits. It is perfectly
+okay to have multiple patches in one pull request to achieve
+the higher level goal of the pull request. (For example one patch
+fix a bug and one patch to add a regression test.)
+
+You can use `git add -i` to select which hunks of your change to
+commit. `git rebase -i` can be used to polish up a sequence of
+work-in-progress patches into a sequence of patches of merge quality.
+
+Heketi's guidelines for the contents of commits are:
+- Commits should usually be as minimal and atomic as possible.
+- I.e. a patch should only contain one logical change but achieve it completely.
+- If the commit does X and Y, you should probably split it into two patches.
+- Each patch should compile and pass `make test`
+
+#### Good commit messages
+
+Each commit has a commit message. The heketi project prefers
+commit messages roughly of the following form:
+
+```
+component(or topic)[:component]: Short description of what the patch does
+
+Optionally longer explanation of the why and how.
+
+Signed-off-by: Author Name <author@email>
+```
+
+#### Linking to issues
+
 If you are working on an existing issue you should make sure to use
 the appropriate [keywords](https://help.github.com/articles/closing-issues-via-commit-messages/)
-in your commit message. Doing so will allow GitHub to automatically
+in your commit message (e.g. `Fixes #<issue-number>`).
+Doing so will allow GitHub to automatically
 create references between your changes and the issue.
 
 
 ### Testing the Change
+
+Each pull request needs to pass the basic test suite in order
+to qualify for merging. It is hence highly recommended that you
+run at least the basic test suite on your branch, preferably
+even on each individual commit and make sure it passes
+before submitting your changes for review.
 
 #### Basic Tests
 
@@ -123,13 +173,17 @@ are iterating on changes in a narrow area of the code. In this case, you
 can execute the [Go language test tool](https://golang.org/cmd/go/#hdr-Test_packages)
 directly. When using `go test` you can specify a package (sub-directory)
 and the tool will only run tests in that directory. For example:
-`go test -v github.com/heketi/heketi/apps/glusterfs`.
+```
+go test -v github.com/heketi/heketi/apps/glusterfs
+```
 
 You can also run an individual unit test by appending `-run <TestName>`
 to the invocation of `go test`. In order for go to find the test, there are
 two options: either call `go test` from the directory that contains the test,
 or specify the path in the invocation of `go test` as above. For example:
-`go test -v -run TestVolumeEntryCreateFourBricks github.com/heketi/heketi/apps/glusterfs`
+```
+go test -v -run TestVolumeEntryCreateFourBricks github.com/heketi/heketi/apps/glusterfs
+```
 
 #### Functional Tests
 
@@ -140,9 +194,13 @@ TestSmokeTest.
 
 The functional test suite has dependencies on Vagrant, Libvirt, and Ansible.
 You will need these tools installed on your system prior to running the
-test suite.
+test suite. In order to run the whole functional test suite, you can execute
+`make test-functional`. Each functional test suite is a subirectory of the
+[Functional Tests Directory](../tests/functional), and can be executed
+separately by running the `run.sh` script in that directory.
 
-Refer to the test scripts within the
+Refer to the [README](../tests/functional/README.md) and the
+test scripts within the
 [Functional Tests Directory](https://github.com/heketi/heketi/tree/master/tests/functional)
 in the Heketi repository for all the gory details.
 
@@ -157,6 +215,12 @@ interface to create a pull request (PR). If you are submitting a single patch
 GitHub will automatically populate the PR description with the content of
 the change's commit message. Otherwise provide a brief summary of your
 changes and complete the PR.
+
+Usually, a PR should concentrate on one topic like a fix for a
+bug, or the implementation of a feature. This can be achieved
+with multiple commits in the patchset for this PR, but if your
+patchset accomplishes multiple independent things, you should
+probably split it up and create multiple PRs.
 
 *NOTE*: The PR description is not a replacement for writing good commit messages.
 Remember that your commit messages may be needed by someone in the future
