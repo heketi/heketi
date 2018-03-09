@@ -174,41 +174,14 @@ func allocateBricks(
 	numBrickSets int,
 	brick_size uint64) (*BrickAllocation, error) {
 
-	r := &BrickAllocation{
-		BrickSets:  []*BrickSet{},
-		DeviceSets: []*DeviceSet{},
-	}
-
+	var r *BrickAllocation
+	opts := NewVolumePlacementOpts(v, brick_size, numBrickSets)
 	err := db.View(func(tx *bolt.Tx) error {
+		var err error
 		dsrc := NewClusterDeviceSource(tx, cluster)
-
-		// Determine allocation for each brick required for this volume
-		for sn := 0; sn < numBrickSets; sn++ {
-			logger.Info("Allocating brick set #%v", sn)
-
-			// Generate an id for the brick
-			brickId := utils.GenUUID()
-
-			a := NewSimpleAllocator()
-			deviceCh, done, err := a.GetNodesFromDeviceSource(dsrc, brickId)
-			defer close(done)
-			if err != nil {
-				return err
-			}
-
-			// Fill in a complete set of bricks/devices. If not possible
-			// err will be non-nil
-			bs, ds, err := populateBrickSet(
-				v, dsrc.Device, nil, deviceCh, brickId,
-				brick_size, v.Durability.BricksInSet())
-			if err != nil {
-				return err
-			}
-			r.BrickSets = append(r.BrickSets, bs)
-			r.DeviceSets = append(r.DeviceSets, ds)
-		}
-
-		return nil
+		placer := NewStandardBrickPlacer()
+		r, err = placer.PlaceAll(dsrc, opts, nil)
+		return err
 	})
 	return r, err
 }
