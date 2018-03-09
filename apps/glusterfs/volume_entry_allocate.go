@@ -16,7 +16,6 @@ import (
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/heketi/pkg/utils"
 )
 
 func (v *VolumeEntry) allocBricksInCluster(db wdb.DB,
@@ -265,27 +264,20 @@ func (v *VolumeEntry) allocBrickReplacement(db wdb.DB,
 	bs *BrickSet) (newBrickEntry *BrickEntry,
 	newDeviceEntry *DeviceEntry, err error) {
 
-	//Create an Id for new brick
-	newBrickId := utils.GenUUID()
-
+	var r *BrickAllocation
+	index := bs.SetSize - 1
 	err = db.Update(func(tx *bolt.Tx) error {
-		dsrc := NewClusterDeviceSource(tx, v.Info.Cluster)
-		opts := NewVolumePlacementOpts(v, oldBrickEntry.Info.Size, bs.SetSize)
-		// Check the ring for devices to place the brick
-		a := NewSimpleAllocator()
-		deviceCh, done, err := a.GetNodesFromDeviceSource(dsrc, newBrickId)
-		defer close(done)
-		if err != nil {
-			return err
-		}
-
 		// returns true if new device differs from old device
 		diffDevice := func(bs *BrickSet, d *DeviceEntry) bool {
 			return oldDeviceEntry.Info.Id != d.Info.Id
 		}
 
-		newBrickEntry, newDeviceEntry, err = findDeviceAndBrickForSet(
-			opts, dsrc.Device, diffDevice, deviceCh, bs)
+		var err error
+		placer := NewStandardBrickPlacer()
+		r, err = placer.Replace(
+			NewClusterDeviceSource(tx, v.Info.Cluster),
+			NewVolumePlacementOpts(v, oldBrickEntry.Info.Size, bs.SetSize),
+			diffDevice, bs, index)
 		if err == ErrNoSpace {
 			// swap error conditions to better match the intent
 			return ErrNoReplacement
@@ -294,10 +286,12 @@ func (v *VolumeEntry) allocBrickReplacement(db wdb.DB,
 		}
 		return nil
 	})
-
-	if err == nil {
-		newBrickEntry.SetId(newBrickId)
+	if err != nil {
+		return
 	}
+
+	newBrickEntry = r.BrickSets[0].Bricks[index]
+	newDeviceEntry = r.DeviceSets[0].Devices[index]
 	return
 }
 
