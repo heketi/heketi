@@ -96,6 +96,12 @@ func MapPendingBricks(tx *bolt.Tx) (map[string]string, error) {
 	})
 }
 
+func MapPendingDeviceRemoves(tx *bolt.Tx) (map[string]string, error) {
+	return mapPendingItems(tx, func(op *PendingOperationEntry, a PendingOperationAction) bool {
+		return (a.Change == OpRemoveDevice)
+	})
+}
+
 func mapPendingItems(tx *bolt.Tx,
 	pred func(op *PendingOperationEntry, a PendingOperationAction) bool) (
 	items map[string]string, e error) {

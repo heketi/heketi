@@ -1628,6 +1628,82 @@ func TestDeviceRemoveOperationOtherPendingOps(t *testing.T) {
 	})
 }
 
+// TestDeviceRemoveOperationMultipleRequests tests that
+// the system fails gracefully if a remove device request
+// comes in while an existing operation is already in progress.
+func TestDeviceRemoveOperationMultipleRequests(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		1,    // devices_per_node,
+		8*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	vreq := &api.VolumeCreateRequest{}
+	vreq.Size = 100
+	vreq.Durability.Type = api.DurabilityReplicate
+	vreq.Durability.Replicate.Replica = 3
+	// create volumes
+	for i := 0; i < 4; i++ {
+		v := NewVolumeEntryFromRequest(vreq)
+		err = v.Create(app.db, app.executor)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	}
+
+	// grab a device that has bricks
+	var d *DeviceEntry
+	err = app.db.View(func(tx *bolt.Tx) error {
+		dl, err := DeviceList(tx)
+		if err != nil {
+			return err
+		}
+		for _, id := range dl {
+			d, err = NewDeviceEntryFromId(tx, id)
+			if err != nil {
+				return err
+			}
+			if len(d.Bricks) > 0 {
+				return nil
+			}
+		}
+		t.Fatalf("should have at least one device with bricks")
+		return nil
+	})
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	err = d.SetState(app.db, app.executor, api.EntryStateOffline)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	// perform the build step of one remove operation
+	dro := NewDeviceRemoveOperation(d.Info.Id, app.db)
+	err = dro.Build()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	// perform the build step of a 2nd remove operation
+	// we can "fake' it this way in a test because the transactions
+	// that cover the Build steps are effectively serializing
+	// these actions.
+	dro2 := NewDeviceRemoveOperation(d.Info.Id, app.db)
+	err = dro2.Build()
+	tests.Assert(t, err == ErrConflict, "expected err == ErrConflict, got:", err)
+
+	// we should have one pending operation (the device remove)
+	err = app.db.View(func(tx *bolt.Tx) error {
+		l, err := PendingOperationList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(l) == 1, "expected len(l) == 1, got:", len(l))
+		return nil
+	})
+
+}
+
 type testOperation struct {
 	label    string
 	rurl     string
