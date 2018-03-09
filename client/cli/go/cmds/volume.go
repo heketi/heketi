@@ -61,14 +61,11 @@ func init() {
 			"\n\t\treplicate: (Default) Distributed-Replica volume."+
 			"\n\t\tdisperse: Distributed-Erasure Coded volume.")
 	volumeCreateCommand.Flags().IntVar(&replica, "replica", 3,
-		"\n\tReplica value for durability type 'replicate'."+
-			"\n\tDefault is 3")
+		"\n\tReplica value for durability type 'replicate'.")
 	volumeCreateCommand.Flags().IntVar(&disperseData, "disperse-data", 4,
-		"\n\tOptional: Dispersion value for durability type 'disperse'."+
-			"\n\tDefault is 4")
+		"\n\tOptional: Dispersion value for durability type 'disperse'.")
 	volumeCreateCommand.Flags().IntVar(&redundancy, "redundancy", 2,
-		"\n\tOptional: Redundancy value for durability type 'disperse'."+
-			"\n\tDefault is 2")
+		"\n\tOptional: Redundancy value for durability type 'disperse'.")
 	volumeCreateCommand.Flags().Float64Var(&snapshotFactor, "snapshot-factor", 1.0,
 		"\n\tOptional: Amount of storage to allocate for snapshot support."+
 			"\n\tMust be greater 1.0.  For example if a 10TiB volume requires 5TiB of"+
