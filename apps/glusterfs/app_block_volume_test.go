@@ -210,7 +210,7 @@ func TestBlockVolumeLargerThanBlockHostingVolume(t *testing.T) {
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, r.ContentLength))
 	tests.Assert(t, err == nil)
 	r.Body.Close()
-	tests.Assert(t, strings.Contains(string(body), "No space"), "got", string(body))
+	tests.Assert(t, strings.Contains(string(body), "Failed to allocate new block volume: The size configured for automatic creation of block hosting volumes (1024) is too small to host the requested block volume of size 1600. Please create a sufficiently large block hosting volume manually."), "got", string(body))
 }
 
 func TestBlockVolumeCreate(t *testing.T) {
