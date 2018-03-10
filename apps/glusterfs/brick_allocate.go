@@ -122,24 +122,6 @@ func findDeviceAndBrickForSet(
 	return nil, nil, ErrNoSpace
 }
 
-func getCachedDevice(devcache map[string](*DeviceEntry),
-	tx *bolt.Tx,
-	deviceId string) (*DeviceEntry, error) {
-
-	// Get device entry from cache if possible
-	device, ok := devcache[deviceId]
-	if !ok {
-		// Get device entry from db otherwise
-		var err error
-		device, err = NewDeviceEntryFromId(tx, deviceId)
-		if err != nil {
-			return nil, err
-		}
-		devcache[deviceId] = device
-	}
-	return device, nil
-}
-
 func populateBrickSet(
 	opts PlacementOpts,
 	fetchDevice deviceFetcher,
