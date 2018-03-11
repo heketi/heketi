@@ -44,6 +44,11 @@ To run a specific functional test, go into that functionl test's directory and t
 $ ./run.sh
 ```
 
+Some of the test setup code assumes that root privileges are needed.
+If the user is not already root the test setup code will run sudo, if
+you know this is not needed on your system you can disable this by
+setting `HEKETI_TEST_USE_SUDO=no` in your environment.
+
 ## Adding new tests
 
 Create a new directory under tests/functional matching the style of
