@@ -37,6 +37,23 @@ func (bs *BrickSet) Full() bool {
 	return len(bs.Bricks) == bs.SetSize
 }
 
+// Drop returns a new brick set with the brick at the given
+// index removed. Does not preserve brick positioning and
+// is not suitable for position dependent allocations.
+func (bs *BrickSet) Drop(index int) *BrickSet {
+	bs2 := NewBrickSet(bs.SetSize)
+	bs2.Bricks = append(bs.Bricks[:index], bs.Bricks[index+1:]...)
+	return bs2
+}
+
+func (bs *BrickSet) String() string {
+	ids := []string{}
+	for _, b := range bs.Bricks {
+		ids = append(ids, b.Id())
+	}
+	return fmt.Sprintf("BrickSet(%v)%v", bs.SetSize, ids)
+}
+
 type DeviceSet struct {
 	SetSize int
 	Devices []*DeviceEntry
@@ -356,6 +373,8 @@ func (bp *StandardBrickPlacer) Replace(
 			"brick replace index out of bounds (got %v, set size %v)",
 			index, bs.SetSize)
 	}
+	logger.Info("Replace brick in brick set %v with index %v",
+		bs, index)
 
 	// we return a brick allocation for symmetry with PlaceAll
 	// but it only contains one pair of sets
@@ -373,7 +392,7 @@ func (bp *StandardBrickPlacer) Replace(
 	}
 
 	newBrickEntry, newDeviceEntry, err := findDeviceAndBrickForSet(
-		opts, dsrc.Device, pred, deviceCh, bs)
+		opts, dsrc.Device, pred, deviceCh, bs.Drop(index))
 	if err != nil {
 		return r, err
 	}
