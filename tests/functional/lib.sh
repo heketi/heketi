@@ -10,7 +10,7 @@ println() {
 }
 
 _sudo() {
-    if [ ${UID} = 0 ] ; then
+    if [[ ${UID} = 0 || "$HEKETI_TEST_USE_SUDO" = "no" ]]; then
         "${@}"
     else
         sudo -E "${@}"
