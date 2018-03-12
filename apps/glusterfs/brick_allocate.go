@@ -351,30 +351,17 @@ func (bp *StandardBrickPlacer) Replace(
 	index int) (
 	*BrickAllocation, error) {
 
+	if index < 0 || index >= bs.SetSize {
+		return nil, fmt.Errorf(
+			"brick replace index out of bounds (got %v, set size %v)",
+			index, bs.SetSize)
+	}
+
 	// we return a brick allocation for symmetry with PlaceAll
 	// but it only contains one pair of sets
 	r := &BrickAllocation{
-		BrickSets:  []*BrickSet{},
-		DeviceSets: []*DeviceSet{},
-	}
-	newbs := NewBrickSet(bs.SetSize)
-	newds := NewDeviceSet(bs.SetSize)
-	r.BrickSets = append(r.BrickSets, newbs)
-	r.DeviceSets = append(r.DeviceSets, newds)
-
-	// the next two blocks are temporary hacky "assertions" that
-	// force the current behavior of findDeviceAndBrickForSet
-	// and allocBrickReplacement until they develop the smarts
-	// needed for true position aware brick replacement
-	if bs.SetSize != len(bs.Bricks)+1 {
-		return r, fmt.Errorf(
-			"input brick set must be missing last item, size=%v",
-			len(bs.Bricks))
-	}
-	if index != len(bs.Bricks) {
-		return r, fmt.Errorf(
-			"can only replace last item in brick set, got index=%v",
-			index)
+		BrickSets:  []*BrickSet{NewBrickSet(bs.SetSize)},
+		DeviceSets: []*DeviceSet{NewDeviceSet(bs.SetSize)},
 	}
 
 	brickId := utils.GenUUID()
@@ -392,17 +379,25 @@ func (bp *StandardBrickPlacer) Replace(
 	}
 	newBrickEntry.SetId(brickId)
 
-	newbs.Bricks = append(newbs.Bricks, bs.Bricks...)
-	newbs.Bricks = append(newbs.Bricks, newBrickEntry)
-	for _, b := range bs.Bricks {
-		d, err := dsrc.Device(b.Info.DeviceId)
-		if err != nil {
-			return r, err
+	newBricks := make([]*BrickEntry, bs.SetSize)
+	newDevices := make([]*DeviceEntry, bs.SetSize)
+	for i := 0; i < bs.SetSize; i++ {
+		if i == index {
+			newBricks[i] = newBrickEntry
+			newDevices[i] = newDeviceEntry
+		} else {
+			newBricks[i] = bs.Bricks[i]
+			d, err := dsrc.Device(bs.Bricks[i].Info.DeviceId)
+			if err != nil {
+				return r, err
+			}
+			newDevices[i] = d
 		}
-		newds.Devices = append(newds.Devices, d)
 	}
-	newds.Devices = append(newds.Devices, newDeviceEntry)
-	godbc.Require(newbs.Full())
-	godbc.Require(newds.Full())
+	r.BrickSets[0].Bricks = newBricks
+	r.DeviceSets[0].Devices = newDevices
+
+	godbc.Require(r.BrickSets[0].Full())
+	godbc.Require(r.DeviceSets[0].Full())
 	return r, nil
 }
