@@ -398,6 +398,11 @@ func (bp *StandardBrickPlacer) Replace(
 	}
 	newBrickEntry.SetId(brickId)
 
+	// if this all seems like an awful lot of boilerplate
+	// and busy work, consider that in real gluster the positions
+	// of the bricks w/in the brickset are meaningful and
+	// this will make more sense in future position-aware placers
+	// (e.g. arbiter)
 	newBricks := make([]*BrickEntry, bs.SetSize)
 	newDevices := make([]*DeviceEntry, bs.SetSize)
 	for i := 0; i < bs.SetSize; i++ {
