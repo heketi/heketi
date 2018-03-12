@@ -49,7 +49,7 @@ func init() {
 	volumeCommand.AddCommand(volumeInfoCommand)
 	volumeCommand.AddCommand(volumeListCommand)
 
-	volumeCreateCommand.Flags().IntVar(&size, "size", -1,
+	volumeCreateCommand.Flags().IntVar(&size, "size", 0,
 		"\n\tSize of volume in GiB")
 	volumeCreateCommand.Flags().Int64Var(&gid, "gid", 0,
 		"\n\tOptional: Initialize volume with the specified group id")
@@ -61,14 +61,11 @@ func init() {
 			"\n\t\treplicate: (Default) Distributed-Replica volume."+
 			"\n\t\tdisperse: Distributed-Erasure Coded volume.")
 	volumeCreateCommand.Flags().IntVar(&replica, "replica", 3,
-		"\n\tReplica value for durability type 'replicate'."+
-			"\n\tDefault is 3")
+		"\n\tReplica value for durability type 'replicate'.")
 	volumeCreateCommand.Flags().IntVar(&disperseData, "disperse-data", 4,
-		"\n\tOptional: Dispersion value for durability type 'disperse'."+
-			"\n\tDefault is 4")
+		"\n\tOptional: Dispersion value for durability type 'disperse'.")
 	volumeCreateCommand.Flags().IntVar(&redundancy, "redundancy", 2,
-		"\n\tOptional: Redundancy value for durability type 'disperse'."+
-			"\n\tDefault is 2")
+		"\n\tOptional: Redundancy value for durability type 'disperse'.")
 	volumeCreateCommand.Flags().Float64Var(&snapshotFactor, "snapshot-factor", 1.0,
 		"\n\tOptional: Amount of storage to allocate for snapshot support."+
 			"\n\tMust be greater 1.0.  For example if a 10TiB volume requires 5TiB of"+
@@ -91,7 +88,7 @@ func init() {
 			"\n\tKubernetes with the name provided.")
 	volumeCreateCommand.Flags().StringVar(&kubePvEndpoint, "persistent-volume-endpoint", "",
 		"\n\tOptional: Endpoint name for the persistent volume")
-	volumeExpandCommand.Flags().IntVar(&expandSize, "expand-size", -1,
+	volumeExpandCommand.Flags().IntVar(&expandSize, "expand-size", 0,
 		"\n\tAmount in GiB to add to the volume")
 	volumeExpandCommand.Flags().StringVar(&id, "volume", "",
 		"\n\tId of volume to expand")
@@ -140,7 +137,7 @@ var volumeCreateCommand = &cobra.Command{
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Check volume size
-		if size == -1 {
+		if size == 0 {
 			return errors.New("Missing volume size")
 		}
 
@@ -271,7 +268,7 @@ var volumeExpandCommand = &cobra.Command{
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Check volume size
-		if expandSize == -1 {
+		if expandSize == 0 {
 			return errors.New("Missing volume amount to expand")
 		}
 

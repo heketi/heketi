@@ -35,7 +35,7 @@ func init() {
 	nodeCommand.AddCommand(nodeDisableCommand)
 	nodeCommand.AddCommand(nodeListCommand)
 	nodeCommand.AddCommand(nodeRemoveCommand)
-	nodeAddCommand.Flags().IntVar(&zone, "zone", -1, "The zone in which the node should reside")
+	nodeAddCommand.Flags().IntVar(&zone, "zone", 0, "The zone in which the node should reside")
 	nodeAddCommand.Flags().StringVar(&clusterId, "cluster", "", "The cluster in which the node should reside")
 	nodeAddCommand.Flags().StringVar(&managmentHostNames, "management-host-name", "", "Management host name")
 	nodeAddCommand.Flags().StringVar(&storageHostNames, "storage-host-name", "", "Storage host name")
@@ -64,7 +64,7 @@ var nodeAddCommand = &cobra.Command{
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Check arguments
-		if zone == -1 {
+		if zone == 0 {
 			return errors.New("Missing zone")
 		}
 		if managmentHostNames == "" {
