@@ -2044,7 +2044,7 @@ func TestReplaceBrickInVolumeSelfHealQuorumNotMet(t *testing.T) {
 	}
 	brickId := be.Id()
 	err = v.replaceBrickInVolume(app.db, app.executor, brickId)
-	tests.Assert(t, err != nil, err)
+	tests.Assert(t, err != nil, "expected err != nil, got:", err)
 
 	oldNode := be.Info.NodeId
 	brickOnOldNode := false
