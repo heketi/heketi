@@ -218,7 +218,7 @@ func allocateBricks(
 	err := db.View(func(tx *bolt.Tx) error {
 		var err error
 		dsrc := NewClusterDeviceSource(tx, cluster)
-		placer := NewStandardBrickPlacer()
+		placer := PlacerForVolume(v)
 		r, err = placer.PlaceAll(dsrc, opts, nil)
 		return err
 	})
