@@ -76,6 +76,12 @@ setup_test_paths() {
     : "${HEKETI_SERVER:=${FUNCTIONAL_DIR}/heketi-server}"
 }
 
+pause_test() {
+    if [[ "$1" = "yes" ]]; then
+        read -r -p "Press ENTER to continue. "
+    fi
+}
+
 functional_tests() {
     setup_test_paths
     if [[ "$HEKETI_TEST_VAGRANT" != "no" ]]
@@ -84,7 +90,9 @@ functional_tests() {
     fi
     start_heketi
 
+    pause_test "$HEKETI_TEST_PAUSE_BEFORE"
     run_go_tests
+    pause_test "$HEKETI_TEST_PAUSE_AFTER"
 
     kill $HEKETI_PID
     if [[ "$HEKETI_TEST_CLEANUP" != "no" ]]
