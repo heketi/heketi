@@ -43,7 +43,7 @@ teardown_vagrant() {
     cd ..
 }
 
-run_tests() {
+run_go_tests() {
     cd tests || fail "Unable to 'cd tests'."
     go test -timeout=1h -tags functional -v
     gotest_result=$?
@@ -73,7 +73,7 @@ functional_tests() {
     fi
     start_heketi
 
-    run_tests
+    run_go_tests
 
     kill $HEKETI_PID
     if [[ "$HEKETI_TEST_CLEANUP" != "no" ]]
