@@ -38,7 +38,7 @@ $ cd $GOPATH/src/github.com/heketi/heketi/tests/functional
 $ ./run.sh
 ```
 
-To run a specific functional test, go into that functionl test's directory and type:
+To run a specific functional test, go into that functional test's directory and type:
 
 ```
 $ ./run.sh
