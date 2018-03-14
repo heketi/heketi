@@ -277,7 +277,7 @@ func (v *VolumeEntry) allocBrickReplacement(db wdb.DB,
 		}
 
 		var err error
-		placer := NewStandardBrickPlacer()
+		placer := PlacerForVolume(v)
 		r, err = placer.Replace(
 			NewClusterDeviceSource(tx, v.Info.Cluster),
 			NewVolumePlacementOpts(v, oldBrickEntry.Info.Size, bs.SetSize),
