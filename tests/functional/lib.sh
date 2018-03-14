@@ -66,7 +66,18 @@ teardown() {
     rm -f heketi.db > /dev/null 2>&1
 }
 
+setup_test_paths() {
+    cd "$SCRIPT_DIR" || return 0
+    if [[ -z "${FUNCTIONAL_DIR}" ]]; then
+        echo "error: env var FUNCTIONAL_DIR not set" >&2
+        exit 2
+    fi
+    : "${HEKETI_SERVER_BUILD_DIR:=$FUNCTIONAL_DIR/../..}"
+    : "${HEKETI_SERVER:=${FUNCTIONAL_DIR}/heketi-server}"
+}
+
 functional_tests() {
+    setup_test_paths
     if [[ "$HEKETI_TEST_VAGRANT" != "no" ]]
     then
         start_vagrant
