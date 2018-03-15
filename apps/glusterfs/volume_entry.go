@@ -14,6 +14,8 @@ import (
 	"encoding/gob"
 	"fmt"
 	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
@@ -36,6 +38,8 @@ const (
 	DEFAULT_EC_DATA               = 4
 	DEFAULT_EC_REDUNDANCY         = 2
 	DEFAULT_THINP_SNAPSHOT_FACTOR = 1.5
+
+	HEKETI_ARBITER_KEY = "user.heketi.arbiter"
 )
 
 // VolumeEntry struct represents a volume in heketi. Serialization is done using
@@ -217,6 +221,20 @@ func (v *VolumeEntry) Unmarshal(buffer []byte) error {
 	}
 
 	return nil
+}
+
+// HasArbiterOption returns true if this volume is flagged for
+// arbiter support.
+func (v *VolumeEntry) HasArbiterOption() bool {
+	for _, s := range v.GlusterVolumeOptions {
+		r := strings.Split(s, " ")
+		if len(r) == 2 && r[0] == HEKETI_ARBITER_KEY {
+			if b, e := strconv.ParseBool(r[1]); e == nil {
+				return b
+			}
+		}
+	}
+	return false
 }
 
 func (v *VolumeEntry) BrickAdd(id string) {
