@@ -216,7 +216,7 @@ func TestArbiterBrickPlacer(t *testing.T) {
 		"/dev/foobar",
 		13000)
 	opts := &TestPlacementOpts{
-		brickSize:       50,
+		brickSize:       800,
 		brickSnapFactor: 0.3,
 		brickOwner:      "asdfasdf",
 		setSize:         3,
@@ -228,6 +228,19 @@ func TestArbiterBrickPlacer(t *testing.T) {
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, len(ba.BrickSets) == 1,
 		"expected len(ba.BrickSets) == 1, got:", len(ba.BrickSets))
+
+	tests.Assert(t, ba.BrickSets[0].Full(),
+		"expected ba.BrickSets[0].Full() to be true, was false")
+	tests.Assert(t, ba.BrickSets[0].SetSize == 3,
+		"expected ba.BrickSets[0].SetSize == 3, got:",
+		ba.BrickSets[0].SetSize)
+	bs := ba.BrickSets[0]
+	tests.Assert(t, bs.Bricks[0].Info.Size == bs.Bricks[1].Info.Size,
+		"expected bs.Bricks[0].Info.Size == bs.Bricks[1].Info.Size, got:",
+		bs.Bricks[0].Info.Size, bs.Bricks[1].Info.Size)
+	tests.Assert(t, bs.Bricks[0].Info.Size > bs.Bricks[2].Info.Size,
+		"expected bs.Bricks[0].Info.Size > bs.Bricks[2].Info.Size, got:",
+		bs.Bricks[0].Info.Size, bs.Bricks[2].Info.Size)
 }
 
 func TestArbiterBrickPlacerTooSmall(t *testing.T) {
@@ -236,19 +249,19 @@ func TestArbiterBrickPlacerTooSmall(t *testing.T) {
 		"10000000",
 		"11111111",
 		"/dev/foobar",
-		110)
+		810)
 	dsrc.QuickAdd(
 		"20000000",
 		"22222222",
 		"/dev/foobar",
-		120)
+		820)
 	dsrc.QuickAdd(
 		"30000000",
 		"33333333",
 		"/dev/foobar",
-		130)
+		830)
 	opts := &TestPlacementOpts{
-		brickSize:       50,
+		brickSize:       800,
 		brickSnapFactor: 0.3,
 		brickOwner:      "asdfasdf",
 		setSize:         3,
@@ -265,7 +278,7 @@ func TestArbiterBrickPlacerDevicesFail(t *testing.T) {
 	dsrc.devicesError = fmt.Errorf("Zonk!")
 
 	opts := &TestPlacementOpts{
-		brickSize:       50,
+		brickSize:       800,
 		brickSnapFactor: 0.3,
 		brickOwner:      "asdfasdf",
 		setSize:         3,
@@ -284,19 +297,19 @@ func TestArbiterBrickPlacerPredicateBlock(t *testing.T) {
 		"10000000",
 		"11111111",
 		"/dev/foobar",
-		110)
+		11000)
 	dsrc.QuickAdd(
 		"20000000",
 		"22222222",
 		"/dev/foobar",
-		120)
+		12000)
 	dsrc.QuickAdd(
 		"30000000",
 		"33333333",
 		"/dev/foobar",
-		130)
+		13000)
 	opts := &TestPlacementOpts{
-		brickSize:       50,
+		brickSize:       800,
 		brickSnapFactor: 0.3,
 		brickOwner:      "asdfasdf",
 		setSize:         3,
@@ -329,7 +342,7 @@ func TestArbiterBrickPlacerBrickOnArbiterDevice(t *testing.T) {
 		"/dev/foobar",
 		23000)
 	opts := &TestPlacementOpts{
-		brickSize:       10,
+		brickSize:       800,
 		brickSnapFactor: 0.3,
 		brickOwner:      "asdfasdf",
 		setSize:         3,
@@ -371,7 +384,7 @@ func TestArbiterBrickPlacerBrickThreeSets(t *testing.T) {
 	addDev("91111111", "/dev/d3", 10003)
 
 	opts := &TestPlacementOpts{
-		brickSize:       100,
+		brickSize:       800,
 		brickSnapFactor: 0.3,
 		brickOwner:      "asdfasdf",
 		setSize:         3,
@@ -417,7 +430,7 @@ func TestArbiterBrickPlacerBrickThreeSetsOnArbiterDevice(t *testing.T) {
 	// improve this but not now and not for this test. :-\
 
 	opts := &TestPlacementOpts{
-		brickSize:       100,
+		brickSize:       800,
 		brickSnapFactor: 0.3,
 		brickOwner:      "asdfasdf",
 		setSize:         3,
@@ -472,7 +485,7 @@ func TestArbiterBrickPlacerSimpleReplace(t *testing.T) {
 		23000)
 
 	opts := &TestPlacementOpts{
-		brickSize:       50,
+		brickSize:       800,
 		brickSnapFactor: 0.3,
 		brickOwner:      "asdfasdf",
 		setSize:         3,
@@ -533,7 +546,7 @@ func TestArbiterBrickPlacerReplaceIndexOOB(t *testing.T) {
 		23000)
 
 	opts := &TestPlacementOpts{
-		brickSize:       50,
+		brickSize:       800,
 		brickSnapFactor: 0.3,
 		brickOwner:      "asdfasdf",
 		setSize:         3,
@@ -584,7 +597,7 @@ func TestArbiterBrickPlacerReplaceDevicesFail(t *testing.T) {
 		23000)
 
 	opts := &TestPlacementOpts{
-		brickSize:       50,
+		brickSize:       800,
 		brickSnapFactor: 0.3,
 		brickOwner:      "asdfasdf",
 		setSize:         3,
@@ -625,7 +638,7 @@ func TestArbiterBrickPlacerReplaceTooFew(t *testing.T) {
 		23000)
 
 	opts := &TestPlacementOpts{
-		brickSize:       50,
+		brickSize:       800,
 		brickSnapFactor: 0.3,
 		brickOwner:      "asdfasdf",
 		setSize:         3,
@@ -677,7 +690,7 @@ func TestArbiterBrickPlacerReplaceTooFewArbiter(t *testing.T) {
 	// when we're limited to certain devices
 
 	opts := &TestPlacementOpts{
-		brickSize:       50,
+		brickSize:       800,
 		brickSnapFactor: 0.3,
 		brickOwner:      "asdfasdf",
 		setSize:         3,
