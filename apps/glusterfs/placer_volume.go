@@ -10,5 +10,8 @@
 package glusterfs
 
 func PlacerForVolume(v *VolumeEntry) BrickPlacer {
+	if v.HasArbiterOption() {
+		return NewArbiterBrickPlacer()
+	}
 	return NewStandardBrickPlacer()
 }
