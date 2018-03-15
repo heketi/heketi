@@ -115,6 +115,7 @@ func (v *VolumeEntry) createVolumeRequest(db wdb.RODB,
 	vr.Name = v.Info.Name
 	v.Durability.SetExecutorVolumeRequest(vr)
 	vr.GlusterVolumeOptions = v.GlusterVolumeOptions
+	vr.Arbiter = v.HasArbiterOption()
 
 	return vr, sshhost, nil
 }

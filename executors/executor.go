@@ -79,6 +79,7 @@ type VolumeRequest struct {
 
 	// Replica
 	Replica int
+	Arbiter bool
 }
 
 type Brick struct {
