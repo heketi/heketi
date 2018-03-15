@@ -17,6 +17,13 @@ import (
 
 var (
 	tryPlaceAgain error = fmt.Errorf("Placement failed. Try again.")
+
+	// default discount size of an arbiter brick
+	ArbiterDiscountSize uint64 = 64 * KB
+)
+
+const (
+	arbiter_index int = 2
 )
 
 // ArbiterBrickPlacer is a Brick Placer implementation that can
@@ -29,6 +36,30 @@ type ArbiterBrickPlacer struct {
 	// dep. injection & unit testing
 	canHostArbiter func(*DeviceEntry) bool
 	canHostData    func(*DeviceEntry) bool
+}
+
+// Arbiter opts supports passing arbiter specific options
+// across layers in the arbiter code along with the
+// original placement opts.
+type arbiterOpts struct {
+	o         PlacementOpts
+	brickSize uint64
+}
+
+func newArbiterOpts(opts PlacementOpts) *arbiterOpts {
+	bsize, _ := opts.BrickSizes()
+	return &arbiterOpts{
+		o:         opts,
+		brickSize: bsize,
+	}
+}
+
+func (aopts *arbiterOpts) discount(index int) (err error) {
+	if index == arbiter_index {
+		aopts.brickSize, err = discountBrickSize(
+			aopts.brickSize, ArbiterDiscountSize)
+	}
+	return
 }
 
 // NewArbiterBrickPlacer returns a new placer for bricks in
@@ -113,7 +144,8 @@ func (bp *ArbiterBrickPlacer) Replace(
 		wbs.Insert(i, b)
 		wds.Insert(i, d)
 	}
-	err = bp.placeBrickInSet(dsrc, dscan, opts, pred, wbs, wds, index)
+	aopts := newArbiterOpts(opts)
+	err = bp.placeBrickInSet(dsrc, dscan, aopts, pred, wbs, wds, index)
 	return r, err
 }
 
@@ -134,7 +166,11 @@ func (bp *ArbiterBrickPlacer) newSets(
 	defer dscan.Close()
 
 	for index := 0; index < ssize; index++ {
-		err := bp.placeBrickInSet(dsrc, dscan, opts, pred, bs, ds, index)
+		aopts := newArbiterOpts(opts)
+		if e := aopts.discount(index); e != nil {
+			return bs, ds, e
+		}
+		err := bp.placeBrickInSet(dsrc, dscan, aopts, pred, bs, ds, index)
 		if err != nil {
 			return bs, ds, err
 		}
@@ -148,7 +184,7 @@ func (bp *ArbiterBrickPlacer) newSets(
 func (bp *ArbiterBrickPlacer) placeBrickInSet(
 	dsrc DeviceSource,
 	dscan *arbiterDeviceScanner,
-	opts PlacementOpts,
+	opts *arbiterOpts,
 	pred DeviceFilter,
 	bs *BrickSet,
 	ds *DeviceSet,
@@ -186,7 +222,7 @@ func (bp *ArbiterBrickPlacer) placeBrickInSet(
 // and the error is nil.
 // If placement fails then tryPlaceAgain error is returned.
 func (bp *ArbiterBrickPlacer) tryPlaceBrickOnDevice(
-	opts PlacementOpts,
+	opts *arbiterOpts,
 	pred DeviceFilter,
 	bs *BrickSet,
 	ds *DeviceSet,
@@ -211,9 +247,13 @@ func (bp *ArbiterBrickPlacer) tryPlaceBrickOnDevice(
 	}
 
 	// Try to allocate a brick on this device
-	brickSize, snapFactor := opts.BrickSizes()
+	origBrickSize, snapFactor := opts.o.BrickSizes()
+	brickSize := opts.brickSize
+	if brickSize != origBrickSize {
+		logger.Info("Placing brick with discounted size: %v", brickSize)
+	}
 	brick := device.NewBrickEntry(brickSize, snapFactor,
-		opts.BrickGid(), opts.BrickOwner())
+		opts.o.BrickGid(), opts.o.BrickOwner())
 	if brick == nil {
 		logger.Debug(
 			"Unable to place a brick of size %v & factor %v on device %v",
@@ -290,8 +330,17 @@ func (dscan *arbiterDeviceScanner) Scan(index int) <-chan string {
 	// an arbiter brick is always two (the 3rd brick in the set of three)
 	// In the future we may want to be smarter here, but this
 	// works for now.
-	if index == 2 {
+	if index == arbiter_index {
 		return dscan.arbiterDevs
 	}
 	return dscan.dataDevs
+}
+
+func discountBrickSize(size, discountSize uint64) (uint64, error) {
+	if size < discountSize {
+		return 0, fmt.Errorf(
+			"Brick size (%v) too small for arbiter (discount size %v)",
+			size, discountSize)
+	}
+	return (size / discountSize), nil
 }
