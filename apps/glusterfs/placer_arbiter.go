@@ -231,7 +231,15 @@ func (bp *ArbiterBrickPlacer) tryPlaceBrickOnDevice(
 
 	logger.Debug("Trying to place brick on device %v", device.Info.Id)
 
-	for _, b := range bs.Bricks {
+	for i, b := range bs.Bricks {
+		// do not check the brick in the brick set for the current
+		// index. If this is a new brick set we won't have the index
+		// populated. If this is a replace, we will have the old brick
+		// at the index and we are OK with re-using its node (as the
+		// standard placer does)
+		if i == index {
+			continue
+		}
 		if b.Info.NodeId == device.NodeId {
 			// this node is used by an existing brick in the set
 			// we can not use this device

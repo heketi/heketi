@@ -654,7 +654,10 @@ func TestArbiterBrickPlacerReplaceTooFew(t *testing.T) {
 		"expected len(ba.BrickSets[0].Bricks) == 3, got:",
 		len(ba.BrickSets[0].Bricks))
 
-	_, err = abplacer.Replace(dsrc, opts, nil, ba.BrickSets[0], 0)
+	pred := func(bs *BrickSet, d *DeviceEntry) bool {
+		return ba.BrickSets[0].Bricks[0].Info.DeviceId != d.Info.Id
+	}
+	_, err = abplacer.Replace(dsrc, opts, pred, ba.BrickSets[0], 0)
 	tests.Assert(t, err == ErrNoSpace,
 		"expected err == ErrNoSpace, got:", err)
 }
@@ -714,7 +717,10 @@ func TestArbiterBrickPlacerReplaceTooFewArbiter(t *testing.T) {
 		len(ba.BrickSets[0].Bricks))
 
 	// this will fail because we have no more "arbiter devices"
-	_, err = abplacer.Replace(dsrc, opts, nil, ba.BrickSets[0], 2)
+	pred := func(bs *BrickSet, d *DeviceEntry) bool {
+		return ba.BrickSets[0].Bricks[2].Info.DeviceId != d.Info.Id
+	}
+	_, err = abplacer.Replace(dsrc, opts, pred, ba.BrickSets[0], 2)
 	tests.Assert(t, err == ErrNoSpace,
 		"expected err == ErrNoSpace, got:", err)
 
