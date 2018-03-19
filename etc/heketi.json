@@ -2,6 +2,16 @@
   "_port_comment": "Heketi Server Port Number",
   "port": "8080",
 
+	"_enable_tls_comment": "Enable TLS in Heketi Server",
+	"enable_tls": false,
+
+	"_cert_file_comment": "Path to a valid certificate file",
+	"cert_file": "",
+
+	"_key_file_comment": "Path to a valid private key file",
+	"key_file": "",
+
+
   "_use_auth": "Enable JWT authorization. Please enable for deployment",
   "use_auth": false,
 
