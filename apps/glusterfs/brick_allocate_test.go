@@ -37,6 +37,10 @@ func TestClusterDeviceSource(t *testing.T) {
 	)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
+	// this function will both verify that the ClusterDeviceSource
+	// meets the DeviceSource interface (at compile time). When
+	// using the return value it also makes sure we only use the
+	// functions that are part of the interface.
 	interfaceCheck := func(dsrc DeviceSource) DeviceSource {
 		return dsrc
 	}
@@ -173,6 +177,10 @@ func TestVolumePlacementOpts(t *testing.T) {
 	numSets, brickSize, err := gen()
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
+	// this function will both verify that the VolumePlacementOpts
+	// meets the PlacementOpts interface (at compile time). When
+	// using the return value it also makes sure we only use the
+	// functions that are part of the interface.
 	interfaceCheck := func(p PlacementOpts) PlacementOpts {
 		return p
 	}
