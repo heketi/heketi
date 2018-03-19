@@ -31,6 +31,9 @@ type Config struct {
 	AuthEnabled          bool                     `json:"use_auth"`
 	JwtConfig            middleware.JwtAuthConfig `json:"jwt"`
 	BackupDbToKubeSecret bool                     `json:"backup_db_to_kube_secret"`
+	EnableTls            bool                     `json:"enable_tls"`
+	CertFile             string                   `json:"cert_file"`
+	KeyFile              string                   `json:"key_file"`
 }
 
 var (
@@ -391,8 +394,13 @@ func main() {
 	done := make(chan bool)
 	go func() {
 		// Start the server.
-		fmt.Printf("Listening on port %v\n", options.Port)
-		err = http.ListenAndServe(":"+options.Port, router)
+		if options.EnableTls {
+			fmt.Printf("Listening on port %v with TLS enabled\n", options.Port)
+			err = http.ListenAndServeTLS(":"+options.Port, options.CertFile, options.KeyFile, router)
+		} else {
+			fmt.Printf("Listening on port %v\n", options.Port)
+			err = http.ListenAndServe(":"+options.Port, router)
+		}
 		if err != nil {
 			fmt.Printf("ERROR: HTTP Server error: %v\n", err)
 		}
