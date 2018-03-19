@@ -34,11 +34,40 @@ import (
 // managed cluster(s), and then either record the data structures as final
 // or roll back to the previous state on error.
 type Operation interface {
+	// Label returns a short descriptive string indicating the kind
+	// of operation being performed. Examples include "Create Volume"
+	// and "Delete Block Volume". This string is most frequently used
+	// for logging.
 	Label() string
+	// ResourceUrl returns a string indicating the steady-state result
+	// of the operation and will be passed up to the API on successful
+	// operations. Not all operations have a concrete result (deletes
+	// for example) and those should return an empty string.
 	ResourceUrl() string
+	// Build functions implement the build phase of an operation; the
+	// build phase constructs the db entries needed to perform the
+	// operation in all subsequent steps. The db changes in Build should
+	// be performed in a single transaction. This phase is responsible
+	// for creating the PendingOperationEntry items in the db and
+	// associating them with other elements.
 	Build() error
+	// Exec functions implement the exec phase of an operation; the
+	// exec phase is responsible for manipulating the storage nodes
+	// to apply the expected changes to the gluster system. The
+	// exec phase is expected to take a large amount of time relative
+	// to the other operation phases. DB transactions within the
+	// exec phase should be read-only.
 	Exec(executor executors.Executor) error
+	// Rollback functions are responsible for undoing any state left
+	// in the DB and/or storage nodes in case of a Build phase error.
+	// Calling rollback should make it like Build and Exec never ran,
+	// this includes removing pending operation entries from the db.
 	Rollback(executor executors.Executor) error
+	// Finalize functions implement the finalize phase of the operation;
+	// it takes any of the db changes that were marked pending
+	// by the build phase and removes the pending markers and pending
+	// operation entries. This function should be performed in a
+	// single transaction.
 	Finalize() error
 }
 
