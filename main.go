@@ -292,16 +292,7 @@ func main() {
 	}
 
 	// Read configuration
-	fp, err := os.Open(configfile)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Unable to open config file %v: %v\n",
-			configfile,
-			err.Error())
-		os.Exit(1)
-	}
-	defer fp.Close()
-
-	options, err := config.ParseConfig(fp)
+	options, err := config.ReadConfig(configfile)
 	if err != nil {
 		os.Exit(1)
 	}
