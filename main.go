@@ -10,7 +10,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -24,17 +23,8 @@ import (
 
 	"github.com/heketi/heketi/apps/glusterfs"
 	"github.com/heketi/heketi/middleware"
+	"github.com/heketi/heketi/server/config"
 )
-
-type Config struct {
-	Port                 string                   `json:"port"`
-	AuthEnabled          bool                     `json:"use_auth"`
-	JwtConfig            middleware.JwtAuthConfig `json:"jwt"`
-	BackupDbToKubeSecret bool                     `json:"backup_db_to_kube_secret"`
-	EnableTls            bool                     `json:"enable_tls"`
-	CertFile             string                   `json:"cert_file"`
-	KeyFile              string                   `json:"key_file"`
-}
 
 var (
 	HEKETI_VERSION               = "(dev)"
@@ -244,7 +234,7 @@ func init() {
 	deletePendingEntriesCmd.SilenceUsage = true
 }
 
-func setWithEnvVariables(options *Config) {
+func setWithEnvVariables(options *config.Config) {
 	// Check for user key
 	env := os.Getenv("HEKETI_USER_KEY")
 	if "" != env {
@@ -315,17 +305,13 @@ func main() {
 	}
 	defer fp.Close()
 
-	configParser := json.NewDecoder(fp)
-	var options Config
-	if err = configParser.Decode(&options); err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Unable to parse %v: %v\n",
-			configfile,
-			err.Error())
+	options, err := config.ParseConfig(fp)
+	if err != nil {
 		os.Exit(1)
 	}
 
 	// Substitute values using any set environment variables
-	setWithEnvVariables(&options)
+	setWithEnvVariables(options)
 
 	// Use negroni to add middleware.  Here we add two
 	// middlewares: Recovery and Logger, which come with
