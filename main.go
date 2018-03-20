@@ -18,12 +18,12 @@ import (
 	"syscall"
 
 	"github.com/gorilla/mux"
-	"github.com/heketi/heketi/apps/glusterfs"
-	"github.com/heketi/heketi/middleware"
 	"github.com/spf13/cobra"
 	"github.com/urfave/negroni"
-
 	restclient "k8s.io/client-go/rest"
+
+	"github.com/heketi/heketi/apps/glusterfs"
+	"github.com/heketi/heketi/middleware"
 )
 
 type Config struct {
