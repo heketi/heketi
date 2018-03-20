@@ -10,22 +10,17 @@
 package glusterfs
 
 import (
-	"bytes"
-
 	"github.com/lpabon/godbc"
 )
 
 func NewTestApp(dbfile string) *App {
 
 	// Create simple configuration for unit tests
-	appConfig := bytes.NewBuffer([]byte(`{
-		"glusterfs" : {
-			"executor" : "mock",
-			"allocator" : "simple",
-			"db" : "` + dbfile + `",
-			"auto_create_block_hosting_volume" : true
-		}
-	}`))
+	appConfig := &GlusterFSConfig{
+		DBfile:                    dbfile,
+		Executor:                  "mock",
+		CreateBlockHostingVolumes: true,
+	}
 	app := NewApp(appConfig)
 	godbc.Check(app != nil)
 

@@ -10,9 +10,6 @@
 package glusterfs
 
 import (
-	"encoding/json"
-	"io"
-
 	"github.com/heketi/heketi/executors/kubeexec"
 	"github.com/heketi/heketi/executors/sshexec"
 )
@@ -46,20 +43,4 @@ type GlusterFSConfig struct {
 
 	// operation retry amounts
 	RetryLimits RetryLimitConfig `json:"operation_retry_limits"`
-}
-
-type ConfigFile struct {
-	GlusterFS GlusterFSConfig `json:"glusterfs"`
-}
-
-func loadConfiguration(configIo io.Reader) *GlusterFSConfig {
-	configParser := json.NewDecoder(configIo)
-
-	var config ConfigFile
-	if err := configParser.Decode(&config); err != nil {
-		logger.LogError("Unable to parse config file: %v\n",
-			err.Error())
-		return nil
-	}
-	return &config.GlusterFS
 }
