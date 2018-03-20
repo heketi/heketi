@@ -2044,7 +2044,7 @@ func TestReplaceBrickInVolumeSelfHealQuorumNotMet(t *testing.T) {
 	}
 	brickId := be.Id()
 	err = v.replaceBrickInVolume(app.db, app.executor, brickId)
-	tests.Assert(t, err != nil, err)
+	tests.Assert(t, err != nil, "expected err != nil, got:", err)
 
 	oldNode := be.Info.NodeId
 	brickOnOldNode := false
@@ -2269,4 +2269,51 @@ func TestVolumeCreateConcurrent(t *testing.T) {
 	})
 	tests.Assert(t, brickCount == 27,
 		"expected brickCount == 27, got:", brickCount)
+}
+
+func TestVolumeCreateArbiter(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	cc := 0
+	mVolumeCreate := app.xo.MockVolumeCreate
+	app.xo.MockVolumeCreate = func(host string, volume *executors.VolumeRequest) (*executors.Volume, error) {
+		cc++
+		tests.Assert(t, volume.Arbiter, "expected volumeArbiter=true, was false")
+		return mVolumeCreate(host, volume)
+	}
+
+	err := setupSampleDbWithTopology(app,
+		2,    // clusters
+		3,    // nodes_per_cluster
+		4,    // devices_per_node,
+		6*TB, // disksize)
+	)
+
+	req := &api.VolumeCreateRequest{}
+	req.Size = 1024
+	req.Durability.Type = api.DurabilityReplicate
+	req.Durability.Replicate.Replica = 3
+	req.GlusterVolumeOptions = []string{"user.heketi.arbiter true"}
+
+	v := NewVolumeEntryFromRequest(req)
+	tests.Assert(t, v.HasArbiterOption(),
+		"expected v.HasArbiterOption() to be true, got false")
+
+	err = v.Create(app.db, app.executor)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	// verify that the mock volume create was called
+	tests.Assert(t, cc == 1, "expected cc == 1, got:", cc)
+
+	app.db.View(func(tx *bolt.Tx) error {
+		bl, err := BrickList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(bl) == 3,
+			"expected len(devices) == 3, got:", len(bl))
+		return nil
+	})
 }
