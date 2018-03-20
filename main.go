@@ -261,7 +261,7 @@ func setWithEnvVariables(options *config.Config) {
 	}
 }
 
-func setupApp(fp *os.File) (a *glusterfs.App) {
+func setupApp(config *config.Config) (a *glusterfs.App) {
 	defer func() {
 		err := recover()
 		if a == nil || err != nil {
@@ -270,10 +270,6 @@ func setupApp(fp *os.File) (a *glusterfs.App) {
 		}
 	}()
 
-	// Go to the beginning of the file when we pass it
-	// to the application
-	fp.Seek(0, os.SEEK_SET)
-
 	// If one really needs to disable the health monitor for
 	// the server binary we provide only this env var.
 	env := os.Getenv("HEKETI_DISABLE_HEALTH_MONITOR")
@@ -281,7 +277,7 @@ func setupApp(fp *os.File) (a *glusterfs.App) {
 		glusterfs.MonitorGlusterNodes = true
 	}
 
-	return glusterfs.NewApp(fp)
+	return glusterfs.NewApp(config.GlusterFS)
 }
 
 func main() {
@@ -319,7 +315,7 @@ func main() {
 	n := negroni.New(negroni.NewRecovery(), negroni.NewLogger())
 
 	// Setup a new GlusterFS application
-	app := setupApp(fp)
+	app := setupApp(options)
 
 	// Add /hello router
 	router := mux.NewRouter()

@@ -12,7 +12,6 @@ package glusterfs
 import (
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -72,15 +71,11 @@ type App struct {
 }
 
 // Use for tests only
-func NewApp(configIo io.Reader) *App {
+func NewApp(conf *GlusterFSConfig) *App {
 	var err error
 	app := &App{}
 
-	// Load configuration file
-	app.conf = loadConfiguration(configIo)
-	if app.conf == nil {
-		return nil
-	}
+	app.conf = conf
 
 	// We would like to perform rebalance by default
 	// As it is very difficult to distinguish missing parameter from

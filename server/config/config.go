@@ -15,7 +15,7 @@ import (
 	"io"
 	"os"
 
-	_ "github.com/heketi/heketi/apps/glusterfs"
+	"github.com/heketi/heketi/apps/glusterfs"
 	"github.com/heketi/heketi/middleware"
 )
 
@@ -27,6 +27,9 @@ type Config struct {
 	EnableTls            bool                     `json:"enable_tls"`
 	CertFile             string                   `json:"cert_file"`
 	KeyFile              string                   `json:"key_file"`
+
+	// pull in the config sub-object for glusterfs app
+	GlusterFS *glusterfs.GlusterFSConfig `json:"glusterfs"`
 }
 
 func ParseConfig(input io.Reader) (config *Config, e error) {
