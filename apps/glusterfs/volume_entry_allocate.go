@@ -16,7 +16,6 @@ import (
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/heketi/pkg/utils"
 )
 
 func (v *VolumeEntry) allocBricksInCluster(db wdb.DB,
@@ -95,23 +94,24 @@ func (v *VolumeEntry) brickNameMap(db wdb.RODB) (
 
 func (v *VolumeEntry) getBrickSetForBrickId(db wdb.DB,
 	executor executors.Executor,
-	oldBrickId string, node string) (*BrickSet, error) {
+	oldBrickId string, node string) (*BrickSet, int, error) {
 
 	// First gather the list of bricks from gluster which, unlike heketi,
 	// retains the brick order
 	vinfo, err := executor.VolumeInfo(node, v.Info.Name)
 	if err != nil {
 		logger.LogError("Unable to get volume info from gluster node %v for volume %v: %v", node, v.Info.Name, err)
-		return nil, err
+		return nil, 0, err
 	}
 
 	var foundbrickset bool
+	var oldBrickIndex int
 	// BrickList in volume info is a slice of all bricks in volume
 	// We loop over the slice in steps of BricksInSet()
 	// If brick to be replaced is found in an iteration, other bricks in that slice form the Brick Set
 	bmap, err := v.brickNameMap(db)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	ssize := v.Durability.BricksInSet()
 	for slicestartindex := 0; slicestartindex <= len(vinfo.Bricks.BrickList)-ssize; slicestartindex += ssize {
@@ -121,21 +121,21 @@ func (v *VolumeEntry) getBrickSetForBrickId(db wdb.DB,
 			if !found {
 				logger.LogError("Unable to create brick entry using brick name:%v",
 					brick.Name)
-				return nil, ErrNotFound
+				return nil, 0, ErrNotFound
 			}
 			if brickentry.Id() == oldBrickId {
 				foundbrickset = true
-			} else {
-				bs.Bricks = append(bs.Bricks, brickentry)
+				oldBrickIndex = len(bs.Bricks)
 			}
+			bs.Bricks = append(bs.Bricks, brickentry)
 		}
 		if foundbrickset {
-			return bs, nil
+			return bs, oldBrickIndex, nil
 		}
 	}
 
 	logger.LogError("Unable to find brick set for brick %v, db is possibly corrupt", oldBrickId)
-	return nil, ErrNotFound
+	return nil, 0, ErrNotFound
 }
 
 // canReplaceBrickInBrickSet
@@ -145,9 +145,9 @@ func (v *VolumeEntry) getBrickSetForBrickId(db wdb.DB,
 // - enough bricks of the set are up
 func (v *VolumeEntry) canReplaceBrickInBrickSet(db wdb.DB,
 	executor executors.Executor,
-	brick *BrickEntry,
 	node string,
-	bs *BrickSet) error {
+	bs *BrickSet,
+	index int) error {
 
 	// Get self heal status for this brick's volume
 	healinfo, err := executor.HealInfo(node, v.Info.Name)
@@ -156,6 +156,7 @@ func (v *VolumeEntry) canReplaceBrickInBrickSet(db wdb.DB,
 	}
 
 	var onlinePeerBrickCount = 0
+	brickId := bs.Bricks[index].Id()
 	bmap, err := v.brickNameMap(db)
 	if err != nil {
 		return err
@@ -170,7 +171,7 @@ func (v *VolumeEntry) canReplaceBrickInBrickSet(db wdb.DB,
 		if !found {
 			return fmt.Errorf("Unable to determine heal status of brick")
 		}
-		if iBrickEntry.Id() == brick.Id() {
+		if iBrickEntry.Id() == brickId {
 			// If we are here, it means the brick to be replaced is
 			// up and running. We need to ensure that it is not a
 			// source for any files.
@@ -179,8 +180,8 @@ func (v *VolumeEntry) canReplaceBrickInBrickSet(db wdb.DB,
 				return fmt.Errorf("Cannot replace brick %v as it is source brick for data to be healed", iBrickEntry.Id())
 			}
 		}
-		for _, brickInSet := range bs.Bricks {
-			if brickInSet.Id() == iBrickEntry.Id() {
+		for i, brickInSet := range bs.Bricks {
+			if i != index && brickInSet.Id() == iBrickEntry.Id() {
 				onlinePeerBrickCount++
 			}
 		}
@@ -188,7 +189,7 @@ func (v *VolumeEntry) canReplaceBrickInBrickSet(db wdb.DB,
 	if onlinePeerBrickCount < v.Durability.QuorumBrickCount() {
 		return fmt.Errorf("Cannot replace brick %v as only %v of %v "+
 			"required peer bricks are online",
-			brick.Id(), onlinePeerBrickCount,
+			brickId, onlinePeerBrickCount,
 			v.Durability.QuorumBrickCount())
 	}
 
@@ -200,6 +201,7 @@ type replacementItems struct {
 	oldDeviceEntry    *DeviceEntry
 	oldBrickNodeEntry *NodeEntry
 	bs                *BrickSet
+	index             int
 }
 
 func (v *VolumeEntry) prepForBrickReplacement(db wdb.DB,
@@ -240,12 +242,12 @@ func (v *VolumeEntry) prepForBrickReplacement(db wdb.DB,
 		}
 	}
 
-	bs, err := v.getBrickSetForBrickId(db, executor, oldBrickId, node)
+	bs, index, err := v.getBrickSetForBrickId(db, executor, oldBrickId, node)
 	if err != nil {
 		return
 	}
 
-	err = v.canReplaceBrickInBrickSet(db, executor, oldBrickEntry, node, bs)
+	err = v.canReplaceBrickInBrickSet(db, executor, node, bs, index)
 	if err != nil {
 		return
 	}
@@ -255,6 +257,7 @@ func (v *VolumeEntry) prepForBrickReplacement(db wdb.DB,
 		oldDeviceEntry:    oldDeviceEntry,
 		oldBrickNodeEntry: oldBrickNodeEntry,
 		bs:                bs,
+		index:             index,
 	}
 	return
 }
@@ -262,34 +265,23 @@ func (v *VolumeEntry) prepForBrickReplacement(db wdb.DB,
 func (v *VolumeEntry) allocBrickReplacement(db wdb.DB,
 	oldBrickEntry *BrickEntry,
 	oldDeviceEntry *DeviceEntry,
-	bs *BrickSet) (newBrickEntry *BrickEntry,
+	bs *BrickSet,
+	index int) (newBrickEntry *BrickEntry,
 	newDeviceEntry *DeviceEntry, err error) {
 
-	//Create an Id for new brick
-	newBrickId := utils.GenUUID()
-
+	var r *BrickAllocation
 	err = db.Update(func(tx *bolt.Tx) error {
-		txdb := wdb.WrapTx(tx)
-		// Check the ring for devices to place the brick
-		a := NewSimpleAllocator()
-		deviceCh, done, err := a.GetNodes(txdb, v.Info.Cluster, newBrickId)
-		defer close(done)
-		if err != nil {
-			return err
-		}
-
-		// fetch device from db txn
-		fetchDevice := func(id string) (*DeviceEntry, error) {
-			return NewDeviceEntryFromId(tx, id)
-		}
 		// returns true if new device differs from old device
 		diffDevice := func(bs *BrickSet, d *DeviceEntry) bool {
 			return oldDeviceEntry.Info.Id != d.Info.Id
 		}
 
-		newBrickEntry, newDeviceEntry, err = findDeviceAndBrickForSet(
-			v, fetchDevice, diffDevice, deviceCh, bs,
-			oldBrickEntry.Info.Size)
+		var err error
+		placer := PlacerForVolume(v)
+		r, err = placer.Replace(
+			NewClusterDeviceSource(tx, v.Info.Cluster),
+			NewVolumePlacementOpts(v, oldBrickEntry.Info.Size, bs.SetSize),
+			diffDevice, bs, index)
 		if err == ErrNoSpace {
 			// swap error conditions to better match the intent
 			return ErrNoReplacement
@@ -298,10 +290,12 @@ func (v *VolumeEntry) allocBrickReplacement(db wdb.DB,
 		}
 		return nil
 	})
-
-	if err == nil {
-		newBrickEntry.SetId(newBrickId)
+	if err != nil {
+		return
 	}
+
+	newBrickEntry = r.BrickSets[0].Bricks[index]
+	newDeviceEntry = r.DeviceSets[0].Devices[index]
 	return
 }
 
@@ -324,7 +318,7 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 	oldBrickNodeEntry := ri.oldBrickNodeEntry
 
 	newBrickEntry, newDeviceEntry, err := v.allocBrickReplacement(
-		db, oldBrickEntry, oldDeviceEntry, ri.bs)
+		db, oldBrickEntry, oldDeviceEntry, ri.bs, ri.index)
 	if err != nil {
 		return err
 	}

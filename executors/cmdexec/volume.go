@@ -39,6 +39,9 @@ func (s *CmdExecutor) VolumeCreate(host string,
 	case executors.DurabilityReplica:
 		logger.Info("Creating volume %v replica %v", volume.Name, volume.Replica)
 		cmd += fmt.Sprintf("replica %v ", volume.Replica)
+		if volume.Arbiter {
+			cmd += "arbiter 1 "
+		}
 		inSet = volume.Replica
 		maxPerSet = 5
 	case executors.DurabilityDispersion:
