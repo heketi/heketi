@@ -23,6 +23,7 @@ import (
 
 	"github.com/heketi/heketi/apps/glusterfs"
 	"github.com/heketi/heketi/middleware"
+	"github.com/heketi/heketi/pkg/metrics"
 	"github.com/heketi/heketi/server/config"
 )
 
@@ -316,6 +317,8 @@ func main() {
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprint(w, "Hello from Heketi")
 		})
+
+	router.Methods("GET").Path("/metrics").Name("Metrics").HandlerFunc(metrics.NewMetricsHandler(app))
 
 	// Create a router and do not allow any routes
 	// unless defined.
