@@ -191,7 +191,7 @@ func (v *BlockVolumeEntry) eligibleClustersAndVolumes(db wdb.RODB) (
 				if err != nil {
 					return err
 				}
-				if volEntry.Info.Block {
+				if volEntry.Info.Block && volEntry.Pending.Id == "" {
 					possibleVolumes = append(possibleVolumes, vol)
 				}
 			}
