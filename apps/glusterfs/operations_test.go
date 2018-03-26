@@ -1704,6 +1704,85 @@ func TestDeviceRemoveOperationMultipleRequests(t *testing.T) {
 
 }
 
+// TestBlockVolumeCreatePendingBHV tests the behavior of the system
+// when a block hosting volume exists but is pending and another
+// block volume request is received.
+func TestBlockVolumeCreatePendingBHV(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		2,    // devices_per_node,
+		2*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	req := &api.BlockVolumeCreateRequest{}
+	req.Size = 1024
+
+	vol := NewBlockVolumeEntryFromRequest(req)
+	vc := NewBlockVolumeCreateOperation(vol, app.db)
+
+	// verify that there are no volumes, bricks or pending operations
+	app.db.View(func(tx *bolt.Tx) error {
+		vl, e := VolumeList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(vl) == 0, "expected len(vl) == 0, got", len(vl))
+		bl, e := BrickList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(bl) == 0, "expected len(bl) == 0, got", len(bl))
+		pol, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pol) == 0, "expected len(pol) == 0, got", len(pol))
+		return nil
+	})
+
+	e := vc.Build()
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	// verify that a volume and a pending operation exist
+	app.db.View(func(tx *bolt.Tx) error {
+		vl, e := VolumeList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(vl) == 1, "expected len(vl) == 1, got", len(vl))
+		pol, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pol) == 1, "expected len(pol) == 1, got", len(pol))
+		v, e := NewVolumeEntryFromId(tx, vl[0])
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, v.Info.Id == vl[0],
+			"expected v.Info.Id == vl[0], got", v.Info.Id, vl[0])
+		tests.Assert(t, v.Pending.Id == pol[0],
+			"expected v.Pending.Id == pol[0], got:", v.Pending.Id, pol[0])
+		return nil
+	})
+
+	// now, start making a 2nd block vol
+	vol2 := NewBlockVolumeEntryFromRequest(req)
+	vc2 := NewBlockVolumeCreateOperation(vol2, app.db)
+	e = vc2.Build()
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	// because the 1st block hosting volume is still pending it
+	// is not safe to re-use (it may still fail to be created)
+	// We expect that a 2nd hosting volume must be created instead
+	app.db.View(func(tx *bolt.Tx) error {
+		pol, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pol) == 2, "expected len(pol) == 2, got", len(pol))
+		vl, e := VolumeList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(vl) == 2, "expected len(vl) == 2, got", len(vl))
+		return nil
+	})
+}
+
 type testOperation struct {
 	label    string
 	rurl     string
