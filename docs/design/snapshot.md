@@ -153,13 +153,11 @@ only interested in the clone and not in the snapshots.
 * **Temporary Resource Response HTTP Status Code**: 303, `Location` header will contain `/volumes/{new_volume_uuid}`. See [Volume Info](#volume_info) for JSON response.
 * **JSON Request**:
     * name: _string_, _optional_, Name of the clone. If not provided, the name of the snapshot will be `snap_{id}`, for example `snap_728faa5522838746abce2980`
-    * description: _string_, _optional_, Description of the snapshot. If not provided, the description will be empty.
     * Example:
 
 ```json
 {
     "name": "my_clone",
-    "description": "my own clone"
 }
 ```
 
