@@ -480,7 +480,8 @@ func (bvc *BlockVolumeCreateOperation) Build() error {
 		}
 
 		if len(volumes) > 0 {
-			bvc.bvol.Info.BlockHostingVolume = volumes[0]
+			bvc.bvol.Info.BlockHostingVolume = volumes[0].Info.Id
+			bvc.bvol.Info.Cluster = volumes[0].Info.Cluster
 		} else if bvc.bvol.Info.Size > BlockHostingVolumeSize {
 			return fmt.Errorf("The size configured for "+
 				"automatic creation of block hosting volumes "+
@@ -511,6 +512,7 @@ func (bvc *BlockVolumeCreateOperation) Build() error {
 				return e
 			}
 			bvc.bvol.Info.BlockHostingVolume = vol.Info.Id
+			bvc.bvol.Info.Cluster = vol.Info.Cluster
 		}
 
 		// we've figured out what block-volume, hosting volume, and bricks we

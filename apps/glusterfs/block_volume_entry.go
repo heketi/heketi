@@ -152,7 +152,7 @@ func (v *BlockVolumeEntry) Unmarshal(buffer []byte) error {
 }
 
 func (v *BlockVolumeEntry) eligibleClustersAndVolumes(db wdb.RODB) (
-	possibleClusters []string, volumes []string, e error) {
+	possibleClusters []string, volumes []*VolumeEntry, e error) {
 
 	if len(v.Info.Clusters) == 0 {
 		err := db.View(func(tx *bolt.Tx) error {
@@ -212,7 +212,7 @@ func (v *BlockVolumeEntry) eligibleClustersAndVolumes(db wdb.RODB) (
 				return err
 			}
 			if ok, err := canHostBlockVolume(tx, v, volEntry); ok {
-				volumes = append(volumes, vol)
+				volumes = append(volumes, volEntry)
 			} else if err != nil {
 				return err
 			}
