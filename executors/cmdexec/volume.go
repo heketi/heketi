@@ -106,15 +106,23 @@ func (s *CmdExecutor) VolumeExpand(host string,
 		0, // start at the beginning of the brick list
 		inSet,
 		maxPerSet)
-
-	if s.RemoteExecutor.RebalanceOnExpansion() {
-		commands = append(commands,
-			fmt.Sprintf("gluster --mode=script volume rebalance %v start", volume.Name))
-	}
-
 	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
 	if err != nil {
 		return nil, err
+	}
+
+	if s.RemoteExecutor.RebalanceOnExpansion() {
+		commands = []string{fmt.Sprintf("gluster --mode=script volume rebalance %v start", volume.Name)}
+		_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
+		if err != nil {
+			// This is a hack. We fake success if rebalance fails.
+			// Mainly because rebalance may fail even if one brick is down for the given volume.
+			// The probability is just too high to undo the work done to create and attach bricks.
+			// Admins should be able to get new size to reflect by executing the rebalance cmd manually.
+			logger.LogError("Unable to start rebalance on the volume %v: %v", volume, err)
+			logger.LogError("Action Required: run rebalance manually on the volume %v", volume)
+			return &executors.Volume{}, nil
+		}
 	}
 
 	return &executors.Volume{}, nil
