@@ -12,6 +12,7 @@ package cmdexec
 import (
 	"encoding/xml"
 	"fmt"
+	"time"
 
 	"github.com/heketi/heketi/executors"
 	"github.com/lpabon/godbc"
@@ -78,6 +79,99 @@ func (s *CmdExecutor) VolumeCreate(host string,
 	return &executors.Volume{}, nil
 }
 
+func (s *CmdExecutor) isRemoveBrickComplete(commands []string, host string) bool {
+	type RemoveBrickStatusOutput struct {
+		OpRet          int    `xml:"opRet"`
+		OpErrno        int    `xml:"opErrno"`
+		OpErrStr       string `xml:"opErrstr"`
+		VolRemoveBrick struct {
+			Aggregate struct {
+				StatusStr string `xml:"statusStr"`
+			} `xml:"aggregate"`
+		} `xml:"volRemoveBrick"`
+	}
+	statusOutputXml, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
+	if err != nil {
+		logger.LogError("Unable to check remove-brick status")
+		return false
+	}
+	var statusOutput RemoveBrickStatusOutput
+	err = xml.Unmarshal([]byte(statusOutputXml[0]), &statusOutput)
+	if err != nil {
+		logger.LogError("Unable to determine remove-brick status output")
+		return false
+	}
+	logger.Debug("%+v\n", statusOutput)
+	if statusOutput.VolRemoveBrick.Aggregate.StatusStr != "completed" {
+		return false
+	}
+
+	return true
+}
+
+func (s *CmdExecutor) cleanupAddBrick(volume *executors.VolumeRequest, host string, inSet, maxPerSet int) error {
+	// If add-brick or rebalance has failed, we have to remove the bricks using the following process
+	// 1. gluster volume remove-brick VOLNAME BRICKs start
+	// 2. gluster volume remove-brick VOLNAME BRICKs status and grep for all completed
+	// 3. gluster volume remove-brick VOLNAME BRICKs commit
+
+	type RemoveBrickStartCommitOutput struct {
+		OpRet    int    `xml:"opRet"`
+		OpErrno  int    `xml:"opErrno"`
+		OpErrStr string `xml:"opErrstr"`
+	}
+	var removeBrickStatusComplete bool
+	commands := s.createRemoveBrickCommands(volume, 0, inSet, maxPerSet, "start --xml")
+	startOutputXML, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
+	if err != nil {
+		return fmt.Errorf("Could not revert add-brick")
+	}
+	var startOutput RemoveBrickStartCommitOutput
+	err = xml.Unmarshal([]byte(startOutputXML[0]), &startOutput)
+	if err != nil {
+		logger.LogError("Unable to determine remove-brick start output")
+		return fmt.Errorf("Could not revert add-brick")
+	}
+	logger.Debug("%+v\n", startOutput)
+	if startOutput.OpRet != 0 {
+		logger.LogError("failed to start remove-brick, manual cleanup might be required")
+		return fmt.Errorf("Could not revert add-brick")
+	}
+
+	commands = s.createRemoveBrickCommands(volume, 0, inSet, maxPerSet, "status --xml")
+	ticker := time.NewTicker(time.Second * 10)
+	select {
+	case <-ticker.C:
+		removeBrickStatusComplete = s.isRemoveBrickComplete(commands, host)
+		if removeBrickStatusComplete {
+			ticker.Stop()
+			commands := s.createRemoveBrickCommands(volume, 0, inSet, maxPerSet, "commit --xml")
+			commitOutputXML, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
+			if err != nil {
+				return fmt.Errorf("Could not revert add-brick")
+			}
+			var commitOutput RemoveBrickStartCommitOutput
+			err = xml.Unmarshal([]byte(commitOutputXML[0]), &commitOutput)
+			if err != nil {
+				logger.LogError("Unable to determine remove-brick commit output")
+				return fmt.Errorf("Could not revert add-brick")
+			}
+			logger.Debug("%+v\n", commitOutput)
+			if commitOutput.OpRet != 0 {
+				return fmt.Errorf("Could not revert add-brick")
+			}
+			return nil
+		}
+		logger.Warning("remove-brick status is not complete yet, will recheck after few seconds")
+	case <-time.After(20 * time.Minute):
+		logger.LogError("remove-brick status did not complete, manual cleanup might be required")
+		ticker.Stop()
+		return fmt.Errorf("Could not revert add-brick")
+	}
+
+	return fmt.Errorf("Could not revert add-brick")
+}
+
 func (s *CmdExecutor) VolumeExpand(host string,
 	volume *executors.VolumeRequest) (*executors.Volume, error) {
 
@@ -106,15 +200,24 @@ func (s *CmdExecutor) VolumeExpand(host string,
 		0, // start at the beginning of the brick list
 		inSet,
 		maxPerSet)
-
-	if s.RemoteExecutor.RebalanceOnExpansion() {
-		commands = append(commands,
-			fmt.Sprintf("gluster --mode=script volume rebalance %v start", volume.Name))
+	_, expandErr := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
+	if expandErr != nil {
+		return nil, expandErr
 	}
 
-	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
-	if err != nil {
-		return nil, err
+	if s.RemoteExecutor.RebalanceOnExpansion() {
+		commands = []string{}
+		commands = append(commands, fmt.Sprintf("gluster --mode=script volume rebalance %v start", volume.Name))
+		_, expandErr = s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
+		if expandErr != nil {
+			logger.LogError("Unable to rebalance volume %v:%v", volume.Name, expandErr)
+			cleanupErr := s.cleanupAddBrick(volume, host, inSet, maxPerSet)
+			if cleanupErr != nil && cleanupErr.Error() == "Could not revert add-brick" {
+				logger.LogError("Unable to revert add-brick, initiate rebalance to make use of added bricks on volume %v", volume.Name)
+				return &executors.Volume{}, nil
+			}
+			return nil, expandErr
+		}
 	}
 
 	return &executors.Volume{}, nil
@@ -199,6 +302,35 @@ func (s *CmdExecutor) createAddBrickCommands(volume *executors.VolumeRequest,
 
 	// Add the last add-brick command to the command list
 	if cmd != "" {
+		commands = append(commands, cmd)
+	}
+
+	return commands
+}
+
+func (s *CmdExecutor) createRemoveBrickCommands(volume *executors.VolumeRequest,
+	start, inSet, maxPerSet int, verb string) []string {
+
+	commands := []string{}
+	var cmd string
+
+	// Go through all the bricks and create remove-brick commands
+	for index, brick := range volume.Bricks[start:] {
+		if index%(inSet*maxPerSet) == 0 {
+			if cmd != "" {
+				cmd += fmt.Sprintf("%v", verb)
+				commands = append(commands, cmd)
+			}
+
+			cmd = fmt.Sprintf("gluster --mode=script volume remove-brick %v ", volume.Name)
+		}
+
+		cmd += fmt.Sprintf("%v:%v ", brick.Host, brick.Path)
+	}
+
+	// Add the last remove-brick command to the command list
+	if cmd != "" {
+		cmd += fmt.Sprintf("%v", verb)
 		commands = append(commands, cmd)
 	}
 
