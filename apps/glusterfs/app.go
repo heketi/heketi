@@ -170,7 +170,10 @@ func NewApp(configIo io.Reader) *App {
 
 	// Set block settings
 	app.setBlockSettings()
-
+	//Start goroutine for Node watcher
+	if app.conf.MonitorGlusterNodes {
+		go NodeWatcher(app.db, app.executor)
+	}
 	// Show application has loaded
 	logger.Info("GlusterFS Application Loaded")
 
@@ -232,6 +235,14 @@ func (a *App) setFromEnvironmentalVariable() {
 		a.conf.BlockHostingVolumeSize, err = strconv.Atoi(env)
 		if err != nil {
 			logger.LogError("Error: Atoi in Block Hosting Volume Size: %v", err)
+		}
+	}
+
+	env = os.Getenv("HEKETI_MONITOR_GLUSTER_NODES")
+	if "" != env {
+		a.conf.MonitorGlusterNodes, err = strconv.ParseBool(env)
+		if err != nil {
+			logger.LogError("Error: While parsing HEKETI_MONITOR_GLUSTER_NODES as bool: %v", err)
 		}
 	}
 }

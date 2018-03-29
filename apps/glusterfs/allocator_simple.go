@@ -84,8 +84,7 @@ func loadRingFromDeviceSource(dsrc DeviceSource) (
 	return ring, nil
 }
 
-func getDeviceListFromDB(db wdb.RODB, clusterId,
-	brickId string) (SimpleDevices, error) {
+func getDeviceListFromDB(db wdb.RODB, clusterId string) (*SimpleAllocatorRing, error) {
 
 	var ring *SimpleAllocatorRing
 	err := db.View(func(tx *bolt.Tx) (e error) {
@@ -95,10 +94,34 @@ func getDeviceListFromDB(db wdb.RODB, clusterId,
 	if err != nil {
 		return nil, err
 	}
+	return ring, nil
+}
 
+func GetRebalancedDeviceList(ring *SimpleAllocatorRing, brickId string) (SimpleDevices, error) {
 	devicelist := ring.GetDeviceList(brickId)
 
 	return devicelist, nil
+}
+
+func filterOfflineDevices(ring *SimpleAllocatorRing, clusterId, brickId string) *SimpleAllocatorRing {
+	//edit ring
+	NodesStatuses.Mutex.RLock()
+	nodelist := NodesStatuses.Status
+	NodesStatuses.Mutex.Unlock()
+
+	s := NewSimpleAllocatorRing()
+	for zone, n := range ring.ring {
+		nodesInZone := make(map[string][]*SimpleDevice)
+		for node, devicelist := range n {
+
+			if nodelist[node] != false {
+				nodesInZone[node] = devicelist
+			}
+		}
+		s.ring[zone] = nodesInZone
+	}
+
+	return s
 }
 
 func (s *SimpleAllocator) GetNodes(db wdb.RODB, clusterId,
@@ -106,12 +129,21 @@ func (s *SimpleAllocator) GetNodes(db wdb.RODB, clusterId,
 
 	device, done := make(chan string), make(chan struct{})
 
-	devicelist, err := getDeviceListFromDB(db, clusterId, brickId)
+	ring, err := getDeviceListFromDB(db, clusterId)
 	if err != nil {
 		close(device)
 		return device, done, err
 	}
+	// if app.conf.MonitorGlusterNodes {
+	// 	Filtering should be based on this
+	// }
+	ring = filterOfflineDevices(ring, clusterId, brickId)
 
+	devicelist, err := GetRebalancedDeviceList(ring, brickId)
+	if err != nil {
+		close(device)
+		return device, done, err
+	}
 	generateDevices(devicelist, device, done)
 	return device, done, nil
 }
