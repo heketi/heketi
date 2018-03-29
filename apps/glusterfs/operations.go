@@ -908,6 +908,7 @@ func bricksFromOp(db wdb.RODB,
 			if a.Change == OpAddBrick || a.Change == OpDeleteBrick {
 				brick, err := NewBrickEntryFromId(tx, a.Id)
 				if err != nil {
+					logger.LogError("failed to find brick with id: %v", a.Id)
 					return err
 				}
 				// this next line is a bit of an unfortunate hack because
