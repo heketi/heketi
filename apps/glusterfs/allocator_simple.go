@@ -30,6 +30,8 @@ func loadRingFromDB(tx *bolt.Tx, clusterId string) (*SimpleAllocatorRing, error)
 		return nil, err
 	}
 
+	nodeUp := currentNodeHealthStatus()
+
 	ring := NewSimpleAllocatorRing()
 
 	for _, nodeId := range cluster.Info.Nodes {
@@ -40,6 +42,11 @@ func loadRingFromDB(tx *bolt.Tx, clusterId string) (*SimpleAllocatorRing, error)
 
 		// Check node is online
 		if !node.isOnline() {
+			continue
+		}
+		if up, found := nodeUp[nodeId]; found && !up {
+			// if the node is in the cache and we know it was not
+			// recently healthy, skip it
 			continue
 		}
 
