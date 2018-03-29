@@ -36,6 +36,7 @@ type GlusterFSConfig struct {
 
 	// server behaviors
 	IgnoreStaleOperations bool `json:"ignore_stale_operations"`
+	MonitorGlusterNodes   bool `json:"monitor_gluster_nodes"`
 }
 
 type ConfigFile struct {
