@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -390,6 +391,65 @@ func TestVolumeCreateOperationBasics(t *testing.T) {
 	tests.Assert(t, vc.ResourceUrl() == "/volumes/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		`expected vc.ResourceUrl() == "/volumes/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", got:`,
 		vc.ResourceUrl())
+}
+
+// Test that volume create operations can retry with some
+// "bad nodes" and still succeed overall.
+func TestVolumeCreateOperationRetrying(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		2,    // clusters
+		5,    // nodes_per_cluster
+		4,    // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	req := &api.VolumeCreateRequest{}
+	req.Size = 1024
+	req.Durability.Type = api.DurabilityReplicate
+	req.Durability.Replicate.Replica = 3
+
+	vol := NewVolumeEntryFromRequest(req)
+	vc := NewVolumeCreateOperation(vol, app.db)
+
+	l := sync.Mutex{}
+	brickCreates := map[string]int{}
+	bCreate := app.xo.MockBrickCreate
+	app.xo.MockBrickCreate = func(host string, brick *executors.BrickRequest) (*executors.BrickInfo, error) {
+		l.Lock()
+		defer l.Unlock()
+		defer func() { brickCreates[host]++ }()
+		if brickCreates[host] > 1 {
+			return bCreate(host, brick)
+		}
+		return nil, fmt.Errorf("FAKE ERR")
+	}
+
+	vc.maxRetries = 10
+	err = RunOperation(vc, app.executor)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	x := 0
+	for _, v := range brickCreates {
+		x += v
+	}
+	tests.Assert(t, x >= 9, "expected x >= 10, got:", x)
+
+	app.db.View(func(tx *bolt.Tx) error {
+		bl, e := BrickList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(bl) == 3, "expected len(bl) == 3, got:", len(bl))
+		po, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(po) == 0, "expected len(po) == 0, got:", len(po))
+		return nil
+	})
 }
 
 func TestVolumeDeleteOperation(t *testing.T) {
