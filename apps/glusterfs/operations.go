@@ -19,6 +19,10 @@ import (
 	"github.com/boltdb/bolt"
 )
 
+const (
+	VOLUME_MAX_RETRIES int = 4
+)
+
 type OperationRetryError struct {
 	OriginalError error
 }
@@ -103,8 +107,8 @@ func (om *OperationManager) Id() string {
 // create a new volume.
 type VolumeCreateOperation struct {
 	OperationManager
-	vol *VolumeEntry
-	noRetriesOperation
+	vol        *VolumeEntry
+	maxRetries int
 }
 
 // NewVolumeCreateOperation returns a new VolumeCreateOperation populated
@@ -118,7 +122,8 @@ func NewVolumeCreateOperation(
 			db: db,
 			op: NewPendingOperationEntry(NEW_ID),
 		},
-		vol: vol,
+		maxRetries: VOLUME_MAX_RETRIES,
+		vol:        vol,
 	}
 }
 
@@ -128,6 +133,10 @@ func (vc *VolumeCreateOperation) Label() string {
 
 func (vc *VolumeCreateOperation) ResourceUrl() string {
 	return fmt.Sprintf("/volumes/%v", vc.vol.Info.Id)
+}
+
+func (vc *VolumeCreateOperation) MaxRetries() int {
+	return vc.maxRetries
 }
 
 // Build allocates and saves new volume and brick entries (tagged as pending)
@@ -166,8 +175,9 @@ func (vc *VolumeCreateOperation) Exec(executor executors.Executor) error {
 	err = vc.vol.createVolumeExec(vc.db, executor, brick_entries)
 	if err != nil {
 		logger.LogError("Error executing create volume: %v", err)
+		return OperationRetryError{err}
 	}
-	return err
+	return nil
 }
 
 // Finalize marks our new volume and brick db entries as no longer pending.
