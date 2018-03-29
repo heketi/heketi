@@ -115,7 +115,15 @@ func (p *PendingOperationEntry) Save(tx *bolt.Tx) error {
 
 // Delete removes a pending operation entry from the db.
 func (p *PendingOperationEntry) Delete(tx *bolt.Tx) error {
+	p.Reset()
 	return EntryDelete(tx, p, p.Id)
+}
+
+// Reset clears the all of PendingOperationEntry's state except for
+// the ID so that it may be reused.
+func (p *PendingOperationEntry) Reset() {
+	p.Type = OperationUnknown
+	p.Actions = []PendingOperationAction{}
 }
 
 // Marshal serializes the object for storage in the db.
