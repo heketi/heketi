@@ -109,6 +109,7 @@ func NewPendingOperationEntryFromId(tx *bolt.Tx, id string) (
 func (p *PendingOperationEntry) Save(tx *bolt.Tx) error {
 	godbc.Require(tx != nil)
 	godbc.Require(p.Id != "")
+	godbc.Require(p.Type != OperationUnknown)
 
 	return EntrySave(tx, p, p.Id)
 }
