@@ -31,8 +31,8 @@ const (
 type ArbiterBrickPlacer struct {
 	// the following two function vars are to better support
 	// dep. injection & unit testing
-	canHostArbiter func(*DeviceEntry) bool
-	canHostData    func(*DeviceEntry) bool
+	canHostArbiter func(*DeviceEntry, DeviceSource) bool
+	canHostData    func(*DeviceEntry, DeviceSource) bool
 }
 
 // Arbiter opts supports passing arbiter specific options
@@ -63,8 +63,14 @@ func (aopts *arbiterOpts) discount(index int) (err error) {
 // a volume that supports the arbiter feature.
 func NewArbiterBrickPlacer() *ArbiterBrickPlacer {
 	return &ArbiterBrickPlacer{
-		canHostArbiter: func(d *DeviceEntry) bool { return true },
-		canHostData:    func(d *DeviceEntry) bool { return true },
+		canHostArbiter: func(d *DeviceEntry, dsrc DeviceSource) bool {
+			return deviceHasArbiterTag(d, dsrc,
+				TAG_VAL_ARBITER_REQUIRED, TAG_VAL_ARBITER_SUPPORTED)
+		},
+		canHostData: func(d *DeviceEntry, dsrc DeviceSource) bool {
+			return deviceHasArbiterTag(d, dsrc,
+				TAG_VAL_ARBITER_SUPPORTED, TAG_VAL_ARBITER_DISABLED)
+		},
 	}
 }
 
@@ -301,10 +307,10 @@ func (bp *ArbiterBrickPlacer) Scanner(dsrc DeviceSource) (
 		// it is perfectly fine for a device to host data & arbiter
 		// bricks if it is so configured. Thus both the following
 		// blocks may be true.
-		if bp.canHostArbiter(dan.Device) {
+		if bp.canHostArbiter(dan.Device, dsrc) {
 			arbiterRing.Add(sd)
 		}
-		if bp.canHostData(dan.Device) {
+		if bp.canHostData(dan.Device, dsrc) {
 			dataRing.Add(sd)
 		}
 	}
@@ -348,4 +354,20 @@ func discountBrickSize(dataBrickSize, averageFileSize uint64) (uint64, error) {
 			averageFileSize, dataBrickSize)
 	}
 	return (dataBrickSize / averageFileSize), nil
+}
+
+func deviceHasArbiterTag(d *DeviceEntry, dsrc DeviceSource, v ...string) bool {
+	n, err := dsrc.Node(d.NodeId)
+	if err != nil {
+		logger.LogError("failed to fetch node (%v) for arbiter tag: %v",
+			d.NodeId, err)
+		return false
+	}
+	a := ArbiterTag(MergeTags(n, d))
+	for _, value := range v {
+		if value == a {
+			return true
+		}
+	}
+	return false
 }
