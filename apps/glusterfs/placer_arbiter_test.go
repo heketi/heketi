@@ -360,11 +360,11 @@ func TestArbiterBrickPlacerBrickOnArbiterDevice(t *testing.T) {
 	}
 
 	abplacer := NewArbiterBrickPlacer()
-	abplacer.canHostArbiter = func(d *DeviceEntry) bool {
+	abplacer.canHostArbiter = func(d *DeviceEntry, ds DeviceSource) bool {
 		return d.Info.Id[0] == 'a'
 	}
-	abplacer.canHostData = func(d *DeviceEntry) bool {
-		return !abplacer.canHostArbiter(d)
+	abplacer.canHostData = func(d *DeviceEntry, ds DeviceSource) bool {
+		return !abplacer.canHostArbiter(d, ds)
 	}
 	ba, err := abplacer.PlaceAll(dsrc, opts, nil)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
@@ -450,11 +450,11 @@ func TestArbiterBrickPlacerBrickThreeSetsOnArbiterDevice(t *testing.T) {
 	}
 
 	abplacer := NewArbiterBrickPlacer()
-	abplacer.canHostArbiter = func(d *DeviceEntry) bool {
+	abplacer.canHostArbiter = func(d *DeviceEntry, ds DeviceSource) bool {
 		return d.Info.Id[0] == 'a'
 	}
-	abplacer.canHostData = func(d *DeviceEntry) bool {
-		return !abplacer.canHostArbiter(d)
+	abplacer.canHostData = func(d *DeviceEntry, ds DeviceSource) bool {
+		return !abplacer.canHostArbiter(d, ds)
 	}
 	ba, err := abplacer.PlaceAll(dsrc, opts, nil)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
@@ -718,11 +718,11 @@ func TestArbiterBrickPlacerReplaceTooFewArbiter(t *testing.T) {
 	}
 
 	abplacer := NewArbiterBrickPlacer()
-	abplacer.canHostArbiter = func(d *DeviceEntry) bool {
+	abplacer.canHostArbiter = func(d *DeviceEntry, ds DeviceSource) bool {
 		return d.Info.Id[0] == 'a'
 	}
-	abplacer.canHostData = func(d *DeviceEntry) bool {
-		return !abplacer.canHostArbiter(d)
+	abplacer.canHostData = func(d *DeviceEntry, ds DeviceSource) bool {
+		return !abplacer.canHostArbiter(d, ds)
 	}
 
 	ba, err := abplacer.PlaceAll(dsrc, opts, nil)
