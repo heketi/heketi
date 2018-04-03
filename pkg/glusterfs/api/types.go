@@ -35,6 +35,8 @@ var (
 	volumeNameRe = regexp.MustCompile("^[a-zA-Z0-9_-]+$")
 
 	blockVolNameRe = regexp.MustCompile("^[a-zA-Z0-9_-]+$")
+
+	tagNameRe = regexp.MustCompile("^[a-zA-Z0-9_.-]+$")
 )
 
 // ValidateUUID is written this way because heketi UUID does not
@@ -157,6 +159,7 @@ type Device struct {
 func (dev Device) Validate() error {
 	return validation.ValidateStruct(&dev,
 		validation.Field(&dev.Name, validation.Required, validation.Match(deviceNameRe)),
+		validation.Field(&dev.Tags, validation.By(ValidateTags)),
 	)
 }
 
@@ -197,6 +200,7 @@ func (req NodeAddRequest) Validate() error {
 		validation.Field(&req.Zone, validation.Required, validation.Min(1)),
 		validation.Field(&req.Hostnames, validation.Required),
 		validation.Field(&req.ClusterId, validation.Required, validation.By(ValidateUUID)),
+		validation.Field(&req.Tags, validation.By(ValidateTags)),
 	)
 }
 
@@ -386,6 +390,37 @@ type LogLevelInfo struct {
 // Common tag post body
 type TagsChangeRequest struct {
 	SetTags map[string]string `json:"settags"`
+}
+
+func (tcr TagsChangeRequest) Validate() error {
+	return validation.ValidateStruct(&tcr,
+		validation.Field(&tcr.SetTags, validation.By(ValidateTags)))
+}
+
+func ValidateTags(v interface{}) error {
+	t, ok := v.(map[string]string)
+	if !ok {
+		return fmt.Errorf("tags must be a map of strings to strings")
+	}
+	if len(t) > 32 {
+		return fmt.Errorf("too many tags specified (%v), up to %v supported",
+			len(t), 32)
+	}
+	for k, v := range t {
+		if len(k) == 0 {
+			return fmt.Errorf("tag names may not be empty")
+		}
+		if err := validation.Validate(k, validation.RuneLength(1, 32)); err != nil {
+			return fmt.Errorf("tag name %v: %v", k, err)
+		}
+		if err := validation.Validate(v, validation.RuneLength(0, 64)); err != nil {
+			return fmt.Errorf("value of tag %v: %v", k, err)
+		}
+		if !tagNameRe.MatchString(k) {
+			return fmt.Errorf("invalid characters in tag name %+v", k)
+		}
+	}
+	return nil
 }
 
 // Constructors
