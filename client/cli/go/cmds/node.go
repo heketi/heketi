@@ -289,6 +289,12 @@ var nodeInfoCommand = &cobra.Command{
 				info.Zone,
 				info.Hostnames.Manage[0],
 				info.Hostnames.Storage[0])
+			if len(info.Tags) != 0 {
+				fmt.Fprintf(stdout, "Tags:\n")
+				for k, v := range info.Tags {
+					fmt.Fprintf(stdout, "  %v: %v\n", k, v)
+				}
+			}
 			fmt.Fprintf(stdout, "Devices:\n")
 			for _, d := range info.DevicesInfo {
 				fmt.Fprintf(stdout, "Id:%-35v"+

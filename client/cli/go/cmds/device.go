@@ -194,6 +194,12 @@ var deviceInfoCommand = &cobra.Command{
 				info.Storage.Total/(1024*1024),
 				info.Storage.Used/(1024*1024),
 				info.Storage.Free/(1024*1024))
+			if len(info.Tags) != 0 {
+				fmt.Fprintf(stdout, "Tags:\n")
+				for k, v := range info.Tags {
+					fmt.Fprintf(stdout, "  %v: %v\n", k, v)
+				}
+			}
 
 			fmt.Fprintf(stdout, "Bricks:\n")
 			for _, d := range info.Bricks {
