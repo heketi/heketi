@@ -55,6 +55,9 @@
     "_db_comment": "Database file name",
     "db": "/var/lib/heketi/heketi.db",
 
+    "_monitor_gluster_nodes": "Periodically check that Gluster nodes are functioning.",
+    "monitor_gluster_nodes": true,
+
      "_refresh_time_monitor_gluster_nodes": "Refresh time in seconds to monitor Gluster nodes",
     "refresh_time_monitor_gluster_nodes": 120,
 
