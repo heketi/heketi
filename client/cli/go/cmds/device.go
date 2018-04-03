@@ -32,15 +32,23 @@ func init() {
 	deviceCommand.AddCommand(deviceEnableCommand)
 	deviceCommand.AddCommand(deviceDisableCommand)
 	deviceCommand.AddCommand(deviceResyncCommand)
+	deviceCommand.AddCommand(deviceSetTagsCommand)
+	deviceCommand.AddCommand(deviceRmTagsCommand)
 	deviceAddCommand.Flags().StringVar(&device, "name", "",
 		"Name of device to add")
 	deviceAddCommand.Flags().StringVar(&nodeId, "node", "",
 		"Id of the node which has this device")
+	deviceSetTagsCommand.Flags().BoolP("exact", "e", false,
+		"Set the object to this exact set of tags. Overwrites existing tags.")
+	deviceRmTagsCommand.Flags().Bool("all", false,
+		"Remove all tags.")
 	deviceAddCommand.SilenceUsage = true
 	deviceDeleteCommand.SilenceUsage = true
 	deviceRemoveCommand.SilenceUsage = true
 	deviceInfoCommand.SilenceUsage = true
 	deviceResyncCommand.SilenceUsage = true
+	deviceSetTagsCommand.SilenceUsage = true
+	deviceRmTagsCommand.SilenceUsage = true
 }
 
 var deviceCommand = &cobra.Command{
@@ -305,5 +313,54 @@ var deviceResyncCommand = &cobra.Command{
 		}
 
 		return nil
+	},
+}
+
+var deviceSetTagsCommand = &cobra.Command{
+	Use:     "settags [device_id] tag1:value1 tag2:value2...",
+	Short:   "Sets tags on a device",
+	Long:    "Sets user-controlled metadata tags on a device",
+	Example: "  $ heketi-cli device settags 886a86a868711bef83001 foo:bar",
+	RunE: func(cmd *cobra.Command, args []string) error {
+
+		heketi := client.NewClient(options.Url, options.User, options.Key)
+		return setTagsCommand(cmd,
+			func(id string) (map[string]string, error) {
+				di, err := heketi.DeviceInfo(id)
+				if err != nil {
+					return nil, err
+				}
+				return di.Tags, nil
+			},
+			func(id string, tags map[string]string) error {
+				return heketi.DeviceSetTags(id, &api.TagsChangeRequest{
+					SetTags: tags,
+				})
+			})
+	},
+}
+
+var deviceRmTagsCommand = &cobra.Command{
+	Use:     "rmtags [device_id] tag1:value1 tag2:value2...",
+	Aliases: []string{"deltags", "removetags"},
+	Short:   "Removes tags from a device",
+	Long:    "Removes user-controlled metadata tags on a device",
+	Example: "  $ heketi-cli device rmtags 886a86a868711bef83001 foo",
+	RunE: func(cmd *cobra.Command, args []string) error {
+
+		heketi := client.NewClient(options.Url, options.User, options.Key)
+		return rmTagsCommand(cmd,
+			func(id string) (map[string]string, error) {
+				di, err := heketi.DeviceInfo(id)
+				if err != nil {
+					return nil, err
+				}
+				return di.Tags, nil
+			},
+			func(id string, tags map[string]string) error {
+				return heketi.DeviceSetTags(id, &api.TagsChangeRequest{
+					SetTags: tags,
+				})
+			})
 	},
 }
