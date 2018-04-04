@@ -282,7 +282,11 @@ func createHeketiCopyJob(volume *api.VolumeInfoResponse) *batch.Job {
 }
 
 var setupHeketiStorageCommand = &cobra.Command{
-	Use:   "setup-openshift-heketi-storage",
+	Use: "setup-openshift-heketi-storage",
+	Aliases: []string{
+		"setup-heketi-db-storage",
+		"setup-kubernetes-heketi-storage",
+	},
 	Short: "Setup OpenShift/Kubernetes persistent storage for Heketi",
 	Long: "Creates a dedicated GlusterFS volume for Heketi.\n" +
 		"Once the volume is created, a Kubernetes/OpenShift\n" +
