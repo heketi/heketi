@@ -350,6 +350,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	n.Use(&middleware.RequestID{})
+
 	// Load authorization JWT middleware
 	if options.AuthEnabled {
 		jwtauth := middleware.NewJwtAuth(&options.JwtConfig)
