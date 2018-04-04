@@ -13,6 +13,18 @@ import (
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 )
 
+// Well-known tags
+const (
+	TAG_ARBITER string = "arbiter"
+)
+
+// Well-known tag values
+const (
+	TAG_VAL_ARBITER_REQUIRED  string = "required"
+	TAG_VAL_ARBITER_SUPPORTED        = "supported"
+	TAG_VAL_ARBITER_DISABLED         = "disabled"
+)
+
 // Generic tagging related functions
 
 type Taggable interface {
@@ -52,4 +64,19 @@ func copyTags(t map[string]string) map[string]string {
 		out[k] = v
 	}
 	return out
+}
+
+// ArbiterTag returns the current arbiter tag value from the given
+// tag map. If the tag is not present or is an unexpected value
+// the default tag value is returned.
+func ArbiterTag(t map[string]string) string {
+	v := t[TAG_ARBITER]
+	switch v {
+	case TAG_VAL_ARBITER_REQUIRED,
+		TAG_VAL_ARBITER_SUPPORTED,
+		TAG_VAL_ARBITER_DISABLED:
+		return v
+	default:
+		return TAG_VAL_ARBITER_SUPPORTED
+	}
 }
