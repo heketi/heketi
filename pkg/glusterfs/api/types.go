@@ -150,7 +150,8 @@ type BrickInfo struct {
 
 // Device
 type Device struct {
-	Name string `json:"name"`
+	Name string            `json:"name"`
+	Tags map[string]string `json:"tags,omitempty"`
 }
 
 func (dev Device) Validate() error {
@@ -185,9 +186,10 @@ type DeviceInfoResponse struct {
 
 // Node
 type NodeAddRequest struct {
-	Zone      int           `json:"zone"`
-	Hostnames HostAddresses `json:"hostnames"`
-	ClusterId string        `json:"cluster"`
+	Zone      int               `json:"zone"`
+	Hostnames HostAddresses     `json:"hostnames"`
+	ClusterId string            `json:"cluster"`
+	Tags      map[string]string `json:"tags,omitempty"`
 }
 
 func (req NodeAddRequest) Validate() error {
@@ -379,6 +381,11 @@ type BlockVolumeListResponse struct {
 type LogLevelInfo struct {
 	// should contain one or more logger to log-level-name mapping
 	LogLevel map[string]string `json:"loglevel"`
+}
+
+// Common tag post body
+type TagsChangeRequest struct {
+	SetTags map[string]string `json:"settags"`
 }
 
 // Constructors
