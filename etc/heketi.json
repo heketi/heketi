@@ -16,6 +16,12 @@
       "key": "My Secret"
     }
   },
+  
+  "_use_http_throttle": "Enable HTTP throttling in heketi",
+  "use_http_throttle": true,
+
+  "_max_http_throttle_count": "Maximum number of POST/DELETE request served by heketi concurrently",
+  "max_http_throttle_count": 60,
 
   "_backup_db_to_kube_secret": "Backup the heketi database to a Kubernetes secret when running in Kubernetes. Default is off.",
   "backup_db_to_kube_secret": false,
