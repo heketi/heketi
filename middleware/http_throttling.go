@@ -9,7 +9,6 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -34,11 +33,11 @@ type ReqLimiter struct {
 func (r *ReqLimiter) reachedMaxRequest() bool {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
-	return r.Maxcount >= r.ServingCount
+	return r.ServingCount >= r.Maxcount
 }
 
 //Function to add request id to the queue
-func (r *ReqLimiter) addRequest(reqid string) {
+func (r *ReqLimiter) incRequest(reqid string) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 	r.RequestCache[reqid] = time.Now()
@@ -77,13 +76,12 @@ func (r *ReqLimiter) ServeHTTP(hw http.ResponseWriter, hr *http.Request, next ht
 			if res.Status() == http.StatusAccepted {
 				reqID := res.Header().Get("X-Request-ID")
 				if reqID != "" {
-					r.addRequest(reqID)
+					r.incRequest(reqID)
 				}
 
 			}
 		} else {
-			hw.WriteHeader(http.StatusTooManyRequests)
-			hw.Write([]byte(http.StatusText(http.StatusTooManyRequests)))
+			http.Error(hw, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 
 		}
 	case http.MethodGet:
@@ -92,13 +90,12 @@ func (r *ReqLimiter) ServeHTTP(hw http.ResponseWriter, hr *http.Request, next ht
 		res := hw.(negroni.ResponseWriter)
 
 		urlPart := strings.Split(hr.URL.Path, "/")
-		fmt.Println(urlPart)
-		if isSuccess(res.Status()) && len(urlPart) >= 3 { //&& urlPart[1] == "volume" {
+
+		if isSuccess(res.Status()) && len(urlPart) >= 3 {
 			reqID := urlPart[2]
 			if _, ok := r.RequestCache[reqID]; ok {
 
-				if hr.Header.Get("X-Pending") == "" {
-					//if r.Header.Get("X-Pending") == "false" {
+				if hr.Header.Get("X-Pending") != "true" {
 					r.decRequest(reqID)
 				}
 
