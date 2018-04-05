@@ -1,4 +1,4 @@
-//
+//Package middleware for heketi
 // Copyright (c) 2018 The heketi Authors
 //
 // This file is licensed to you under your choice of the GNU Lesser
@@ -110,16 +110,17 @@ func (r *ReqLimiter) ServeHTTP(hw http.ResponseWriter, hr *http.Request, next ht
 
 //Cleanup up function to remove stale reqID
 func (r *ReqLimiter) Cleanup(ct uint32) {
-
-	t := time.NewTicker(time.Duration(ct) * time.Minute)
+	c := time.Duration(ct)
+	t := time.NewTicker(c * time.Minute)
 	r.lock.Lock()
 	defer r.lock.Unlock()
 	for {
 		select {
 		case <-t.C:
 			for reqID, value := range r.RequestCache {
-				if value.Sub(time.Now()) > (20 * time.Minute) {
+				if time.Now().Sub(value) > c {
 					delete(r.RequestCache, reqID)
+					r.ServingCount--
 				}
 			}
 		}
