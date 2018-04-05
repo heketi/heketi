@@ -10,10 +10,14 @@
 package middleware
 
 import (
+	"bytes"
+	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
 	"github.com/urfave/negroni"
 )
@@ -27,9 +31,9 @@ func TestNewHTTPThrottler(t *testing.T) {
 
 func TestReachedMaxRequest(t *testing.T) {
 	nt := NewHTTPThrottler(10)
-	tests.Assert(t, nt.reachedMaxRequest() != false)
-	nt.ServingCount = 11
-	tests.Assert(t, nt.reachedMaxRequest() != true)
+	tests.Assert(t, nt.reachedMaxRequest() == false)
+	nt.ServingCount = 10
+	tests.Assert(t, nt.reachedMaxRequest() == true)
 
 }
 
@@ -44,40 +48,33 @@ func TestIsSuccess(t *testing.T) {
 func TestServeHTTP(t *testing.T) {
 	nt := NewHTTPThrottler(10)
 	tests.Assert(t, nt != nil)
-	n := negroni.New(nt)
 
-	called := false
-	mw := func(rw http.ResponseWriter, r *http.Request) {
-		called = true
-	}
+	n := negroni.New(nt)
 	n.UseHandlerFunc(mw)
 
 	ts := httptest.NewServer(n)
+	defer ts.Close()
 	r, err := http.Get(ts.URL)
+
 	tests.Assert(t, err == nil)
 	tests.Assert(t, r.StatusCode == http.StatusOK)
-	tests.Assert(t, called == true)
 
 }
 
 func TestServeHTTPDelete(t *testing.T) {
 	nt := NewHTTPThrottler(10)
 	tests.Assert(t, nt != nil)
-	n := negroni.New(nt)
 
-	called := false
-	mw := func(rw http.ResponseWriter, r *http.Request) {
-		called = true
-	}
+	n := negroni.New(nt)
 	n.UseHandlerFunc(mw)
 	client := http.Client{}
 	ts := httptest.NewServer(n)
+	defer ts.Close()
 	r, err := http.NewRequest("DELETE", ts.URL, nil)
 	tests.Assert(t, err == nil)
 	resp, err := client.Do(r)
 	tests.Assert(t, err == nil)
-	tests.Assert(t, resp.StatusCode == http.StatusOK)
-	tests.Assert(t, called == true)
+	tests.Assert(t, resp.StatusCode == http.StatusAccepted)
 
 }
 
@@ -85,30 +82,24 @@ func TestServeHTTPTrottleTomanyReq(t *testing.T) {
 	nt := NewHTTPThrottler(9)
 	tests.Assert(t, nt != nil)
 	n := negroni.New(nt)
-
-	called := false
-	mw := func(rw http.ResponseWriter, r *http.Request) {
-		rw.Header().Set("X-Request-ID", "12345")
-		called = true
-	}
 	n.UseHandlerFunc(mw)
 	client := http.Client{}
 	ts := httptest.NewServer(n)
 	defer ts.Close()
-	go func(n int) {
+
+	func(n int) {
 		for i := 0; i < n; i++ {
-			r, _ := http.NewRequest("DELETE", ts.URL, nil)
+			_, r := createReq("DELETE", ts.URL)
 			client.Do(r)
 		}
 
 	}(10)
+
 	r, err := http.NewRequest("DELETE", ts.URL, nil)
 	tests.Assert(t, err == nil)
 	resp, err := client.Do(r)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, resp.StatusCode == http.StatusTooManyRequests)
-	//should not get called
-	tests.Assert(t, called == false)
 
 }
 
@@ -117,38 +108,80 @@ func TestServeHTTPTrottle(t *testing.T) {
 	tests.Assert(t, nt != nil)
 	n := negroni.New(nt)
 
-	called := false
-	mw := func(rw http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodPost, http.MethodDelete:
-			rw.Header().Set("X-Request-ID", "12345")
-			rw.Header().Set("X-Pending", "True")
-			rw.WriteHeader(http.StatusAccepted)
-		case http.MethodGet:
-			rw.Header().Del("X-Pending")
-			rw.WriteHeader(http.StatusOK)
-
-		}
-
-		called = true
-	}
 	n.UseHandlerFunc(mw)
 	client := http.Client{}
 	ts := httptest.NewServer(n)
 	defer ts.Close()
-	go func(n int) {
+
+	func(n int) {
 		for i := 0; i < n; i++ {
-			r, _ := http.NewRequest("POST", ts.URL, nil)
+			uid, r := createReq("POST", ts.URL)
 			client.Do(r)
-			http.Get(ts.URL + "/volume/12345")
+			http.Get(ts.URL + "/volume/" + uid)
 		}
 
 	}(20)
+
 	r, err := http.NewRequest("POST", ts.URL, nil)
 	tests.Assert(t, err == nil)
 	resp, err := client.Do(r)
 	tests.Assert(t, err == nil)
-	tests.Assert(t, resp.StatusCode == http.StatusAccepted, resp.StatusCode)
-	tests.Assert(t, called == true)
+	tests.Assert(t, resp.StatusCode == http.StatusAccepted)
+
+}
+
+func TestServeHTTPTrottleQueue(t *testing.T) {
+	nt := NewHTTPThrottler(10)
+	tests.Assert(t, nt != nil)
+	n := negroni.New(nt)
+
+	n.UseHandlerFunc(mw)
+	client := http.Client{}
+	ts := httptest.NewServer(n)
+	defer ts.Close()
+	var url string
+	func(n int) {
+		for i := 0; i < n; i++ {
+			uid, r := createReq("POST", ts.URL)
+			client.Do(r)
+			url = ts.URL + "/volume/" + uid
+		}
+
+	}(10)
+
+	http.Get(url)
+	_, r := createReq("POST", ts.URL)
+	resp, err := client.Do(r)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, resp.StatusCode == http.StatusAccepted)
+	_, r = createReq("POST", ts.URL)
+	resp, err = client.Do(r)
+
+	tests.Assert(t, resp != nil)
+	tests.Assert(t, resp.StatusCode == http.StatusTooManyRequests)
+
+}
+
+var createReq = func(method, url string) (string, *http.Request) {
+	uid := utils.GenUUID()
+	values := map[string]string{"RequestId": uid}
+	jsonValue, _ := json.Marshal(values)
+	r, _ := http.NewRequest(method, url, bytes.NewBuffer(jsonValue))
+	return uid, r
+}
+
+var mw = func(rw http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodPost, http.MethodDelete:
+		body, _ := ioutil.ReadAll(r.Body)
+		data := make(map[string]string)
+		json.Unmarshal(body, &data)
+		rw.Header().Set("X-Request-ID", data["RequestId"])
+		rw.Header().Set("X-Pending", "true")
+		rw.WriteHeader(http.StatusAccepted)
+	case http.MethodGet:
+		rw.WriteHeader(http.StatusOK)
+
+	}
 
 }
