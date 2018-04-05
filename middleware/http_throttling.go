@@ -109,9 +109,9 @@ func (r *ReqLimiter) ServeHTTP(hw http.ResponseWriter, hr *http.Request, next ht
 }
 
 //Cleanup up function to remove stale reqID
-func (r *ReqLimiter) Cleanup() {
+func (r *ReqLimiter) Cleanup(ct uint32) {
 
-	t := time.NewTicker(30 * time.Minute)
+	t := time.NewTicker(time.Duration(ct) * time.Minute)
 	r.lock.Lock()
 	defer r.lock.Unlock()
 	for {

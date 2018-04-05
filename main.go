@@ -27,12 +27,13 @@ import (
 )
 
 type Config struct {
-	Port                 string                   `json:"port"`
-	AuthEnabled          bool                     `json:"use_auth"`
-	JwtConfig            middleware.JwtAuthConfig `json:"jwt"`
-	BackupDbToKubeSecret bool                     `json:"backup_db_to_kube_secret"`
-	HTTPThrottleEnabled  bool                     `json:"use_http_throttle"`
-	MaxHTTPThrottleCount uint32                   `json:"max_http_throttle_count"`
+	Port                       string                   `json:"port"`
+	AuthEnabled                bool                     `json:"use_auth"`
+	JwtConfig                  middleware.JwtAuthConfig `json:"jwt"`
+	BackupDbToKubeSecret       bool                     `json:"backup_db_to_kube_secret"`
+	HTTPThrottleEnabled        bool                     `json:"use_http_throttle"`
+	MaxHTTPThrottleCount       uint32                   `json:"max_http_throttle_count"`
+	HTTPThrottleReqCleanupTime uint32                   `json:"http_throttle_req_cleanup_time"`
 }
 
 var (
@@ -381,7 +382,11 @@ func main() {
 		n.Use(HTTPThrottle)
 
 		//clean up required if we wont get GET request after POST/DELETE to check status
-		go HTTPThrottle.Cleanup()
+		reqCleanUpTime := options.HTTPThrottleReqCleanupTime
+		if reqCleanUpTime == 0 {
+			reqCleanUpTime = 20
+		}
+		go HTTPThrottle.Cleanup(reqCleanUpTime)
 	}
 
 	if options.BackupDbToKubeSecret {
