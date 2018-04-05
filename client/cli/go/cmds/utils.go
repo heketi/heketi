@@ -15,11 +15,12 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 )
 
 func setTagsCommand(cmd *cobra.Command,
-	fetchTags func(id string) (map[string]string, error),
-	submitTags func(id string, tags map[string]string) error) error {
+	submitTags func(id string, r *api.TagsChangeRequest) error) error {
 
 	//ensure proper number of args
 	s := cmd.Flags().Args()
@@ -48,30 +49,18 @@ func setTagsCommand(cmd *cobra.Command,
 		newTags[parts[0]] = parts[1]
 	}
 
-	var setTags map[string]string
+	var req *api.TagsChangeRequest
 	if exact {
-		setTags = newTags
+		req = &api.TagsChangeRequest{Tags: newTags, Change: api.SetTags}
 	} else {
-		oldTags, err := fetchTags(id)
-		if err != nil {
-			return err
-		}
-		if oldTags == nil {
-			setTags = map[string]string{}
-		} else {
-			setTags = oldTags
-		}
-		for k, v := range newTags {
-			setTags[k] = v
-		}
+		req = &api.TagsChangeRequest{Tags: newTags, Change: api.UpdateTags}
 	}
 
-	return submitTags(id, setTags)
+	return submitTags(id, req)
 }
 
 func rmTagsCommand(cmd *cobra.Command,
-	fetchTags func(id string) (map[string]string, error),
-	submitTags func(id string, tags map[string]string) error) error {
+	submitTags func(id string, r *api.TagsChangeRequest) error) error {
 
 	//ensure proper number of args
 	s := cmd.Flags().Args()
@@ -93,23 +82,20 @@ func rmTagsCommand(cmd *cobra.Command,
 		return errors.New("--all may not be combined with named tags")
 	}
 
-	var setTags map[string]string
+	var req *api.TagsChangeRequest
 	if removeAll {
-		setTags = map[string]string{}
+		setTags := map[string]string{}
+		req = &api.TagsChangeRequest{Tags: setTags, Change: api.SetTags}
 	} else {
-		oldTags, err := fetchTags(id)
-		if err != nil {
-			return err
-		}
-		if oldTags == nil {
-			setTags = map[string]string{}
-		} else {
-			setTags = oldTags
-		}
+		// to keep the api simple and consistent delete takes a map
+		// however the values in that map are ignored in the
+		// delete case
+		setTags := map[string]string{}
 		for _, k := range s[1:] {
-			delete(setTags, k)
+			setTags[k] = ""
 		}
+		req = &api.TagsChangeRequest{Tags: setTags, Change: api.DeleteTags}
 	}
 
-	return submitTags(id, setTags)
+	return submitTags(id, req)
 }

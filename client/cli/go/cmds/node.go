@@ -364,19 +364,7 @@ var nodeSetTagsCommand = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		heketi := client.NewClient(options.Url, options.User, options.Key)
-		return setTagsCommand(cmd,
-			func(id string) (map[string]string, error) {
-				ni, err := heketi.NodeInfo(id)
-				if err != nil {
-					return nil, err
-				}
-				return ni.Tags, nil
-			},
-			func(id string, tags map[string]string) error {
-				return heketi.NodeSetTags(id, &api.TagsChangeRequest{
-					SetTags: tags,
-				})
-			})
+		return setTagsCommand(cmd, heketi.NodeSetTags)
 	},
 }
 
@@ -389,18 +377,6 @@ var nodeRmTagsCommand = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		heketi := client.NewClient(options.Url, options.User, options.Key)
-		return rmTagsCommand(cmd,
-			func(id string) (map[string]string, error) {
-				ni, err := heketi.NodeInfo(id)
-				if err != nil {
-					return nil, err
-				}
-				return ni.Tags, nil
-			},
-			func(id string, tags map[string]string) error {
-				return heketi.NodeSetTags(id, &api.TagsChangeRequest{
-					SetTags: tags,
-				})
-			})
+		return rmTagsCommand(cmd, heketi.NodeSetTags)
 	},
 }
