@@ -296,13 +296,15 @@ var nodeInfoCommand = &cobra.Command{
 					"State:%-10v"+
 					"Size (GiB):%-8v"+
 					"Used (GiB):%-8v"+
-					"Free (GiB):%-8v\n",
+					"Free (GiB):%-8v"+
+					"Bricks:%-8v\n",
 					d.Id,
 					d.Name,
 					d.State,
 					d.Storage.Total/(1024*1024),
 					d.Storage.Used/(1024*1024),
-					d.Storage.Free/(1024*1024))
+					d.Storage.Free/(1024*1024),
+					len(d.Bricks))
 			}
 		}
 		return nil
