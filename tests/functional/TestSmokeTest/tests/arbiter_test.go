@@ -97,10 +97,11 @@ func TestArbiterTagging(t *testing.T) {
 		"expected len(n.Tags) == 0, got:", len(n.Tags))
 
 	err = heketi.NodeSetTags(nid, &api.TagsChangeRequest{
-		SetTags: map[string]string{
+		Tags: map[string]string{
 			"flourpower": "300",
 			"zamboni":    "yes please",
 		},
+		Change: api.SetTags,
 	})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
@@ -109,7 +110,7 @@ func TestArbiterTagging(t *testing.T) {
 	tests.Assert(t, len(n.Tags) == 2,
 		"expected len(n.Tags) == 2, got:", len(n.Tags))
 
-	err = heketi.NodeSetTags(nid, &api.TagsChangeRequest{})
+	err = heketi.NodeSetTags(nid, &api.TagsChangeRequest{Change: api.SetTags})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	n, err = heketi.NodeInfo(nid)
@@ -118,9 +119,10 @@ func TestArbiterTagging(t *testing.T) {
 		"expected len(n.Tags) == 0, got:", len(n.Tags))
 
 	err = heketi.NodeSetTags(nid, &api.TagsChangeRequest{
-		SetTags: map[string]string{
+		Tags: map[string]string{
 			"arbiter": "disabled",
 		},
+		Change: api.SetTags,
 	})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
@@ -128,6 +130,47 @@ func TestArbiterTagging(t *testing.T) {
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, len(n.Tags) == 1,
 		"expected len(n.Tags) == 1, got:", len(n.Tags))
+
+	// now add a new tag
+	err = heketi.NodeSetTags(nid, &api.TagsChangeRequest{
+		Tags: map[string]string{
+			"foo-bar": "yes",
+		},
+		Change: api.UpdateTags,
+	})
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	n, err = heketi.NodeInfo(nid)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, len(n.Tags) == 2,
+		"expected len(n.Tags) == 2, got:", len(n.Tags))
+
+	// add and remove a tag
+	err = heketi.NodeSetTags(nid, &api.TagsChangeRequest{
+		Tags: map[string]string{
+			"flim-flam": "no",
+		},
+		Change: api.UpdateTags,
+	})
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	n, err = heketi.NodeInfo(nid)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, len(n.Tags) == 3,
+		"expected len(n.Tags) == 3, got:", len(n.Tags))
+
+	err = heketi.NodeSetTags(nid, &api.TagsChangeRequest{
+		Tags: map[string]string{
+			"flim-flam": "",
+		},
+		Change: api.DeleteTags,
+	})
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	n, err = heketi.NodeInfo(nid)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, len(n.Tags) == 2,
+		"expected len(n.Tags) == 2, got:", len(n.Tags))
 }
 
 func TestArbiterTaggedNodes(t *testing.T) {
@@ -152,9 +195,10 @@ func TestArbiterTaggedNodes(t *testing.T) {
 			"expected len(n.Tags) == 0, got:", len(n.Tags))
 
 		err = heketi.NodeSetTags(nid, &api.TagsChangeRequest{
-			SetTags: map[string]string{
+			Tags: map[string]string{
 				"arbiter": "disabled",
 			},
+			Change: api.SetTags,
 		})
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	}
@@ -176,9 +220,10 @@ func TestArbiterTaggedNodes(t *testing.T) {
 	// now tag one of the nodes for arbiter, and things should work
 	nid := clusterInfo.Nodes[0]
 	err = heketi.NodeSetTags(nid, &api.TagsChangeRequest{
-		SetTags: map[string]string{
+		Tags: map[string]string{
 			"arbiter": "required",
 		},
+		Change: api.SetTags,
 	})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
