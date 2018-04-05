@@ -71,7 +71,10 @@ func (r *ReqLimiter) ServeHTTP(hw http.ResponseWriter, hr *http.Request, next ht
 
 			next(hw, hr)
 
-			res := hw.(negroni.ResponseWriter)
+			res, ok := hw.(negroni.ResponseWriter)
+			if !ok {
+				return
+			}
 			//if request is accepted for Async operation
 			if res.Status() == http.StatusAccepted {
 				reqID := res.Header().Get("X-Request-ID")
@@ -88,8 +91,10 @@ func (r *ReqLimiter) ServeHTTP(hw http.ResponseWriter, hr *http.Request, next ht
 	case http.MethodGet:
 		next(hw, hr)
 
-		res := hw.(negroni.ResponseWriter)
-
+		res, ok := hw.(negroni.ResponseWriter)
+		if !ok {
+			return
+		}
 		urlPart := strings.Split(hr.URL.Path, "/")
 		if len(urlPart) >= 3 {
 			if isSuccess(res.Status()) || res.Status() == http.StatusInternalServerError {

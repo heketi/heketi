@@ -23,7 +23,7 @@
   "_max_http_throttle_count": "Maximum number of POST/DELETE request served by heketi concurrently",
   "max_http_throttle_count": 60,
 
-  "_http_throttle_req_cleanup_time": "Clean up time in minutes to remove stale request id in in-memeory",
+  "_http_throttle_req_cleanup_time": "Clean up time in minutes to remove stale request id from in-memeory",
   "http_throttle_req_cleanup_time": 20,
 
   "_backup_db_to_kube_secret": "Backup the heketi database to a Kubernetes secret when running in Kubernetes. Default is off.",
