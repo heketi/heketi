@@ -72,9 +72,10 @@ func (r *ReqLimiter) ServeHTTP(hw http.ResponseWriter, hr *http.Request, next ht
 			next(hw, hr)
 
 			res := hw.(negroni.ResponseWriter)
-
+			//if request is accepted for Async operation
 			if res.Status() == http.StatusAccepted {
 				reqID := res.Header().Get("X-Request-ID")
+				//Add request Id to in-memory
 				if reqID != "" {
 					r.incRequest(reqID)
 				}
@@ -90,15 +91,20 @@ func (r *ReqLimiter) ServeHTTP(hw http.ResponseWriter, hr *http.Request, next ht
 		res := hw.(negroni.ResponseWriter)
 
 		urlPart := strings.Split(hr.URL.Path, "/")
+		if len(urlPart) >= 3 {
+			if isSuccess(res.Status()) || res.Status() == http.StatusInternalServerError {
+				//extract the reqID from URL
+				reqID := urlPart[2]
 
-		if isSuccess(res.Status()) && len(urlPart) >= 3 {
-			reqID := urlPart[2]
-			if _, ok := r.RequestCache[reqID]; ok {
+				//check Request Id present in im-memeory
+				if _, ok := r.RequestCache[reqID]; ok {
 
-				if hr.Header.Get("X-Pending") != "true" {
-					r.decRequest(reqID)
+					//check operation is not pending
+					if hr.Header.Get("X-Pending") != "true" {
+						r.decRequest(reqID)
+					}
+
 				}
-
 			}
 		}
 
