@@ -387,14 +387,27 @@ type LogLevelInfo struct {
 	LogLevel map[string]string `json:"loglevel"`
 }
 
+type TagsChangeType string
+
+const (
+	UnknownTagsChangeType TagsChangeType = ""
+	SetTags               TagsChangeType = "set"
+	UpdateTags            TagsChangeType = "update"
+	DeleteTags            TagsChangeType = "delete"
+)
+
 // Common tag post body
 type TagsChangeRequest struct {
-	SetTags map[string]string `json:"settags"`
+	Tags   map[string]string `json:"tags"`
+	Change TagsChangeType    `json:"change_type"`
 }
 
 func (tcr TagsChangeRequest) Validate() error {
 	return validation.ValidateStruct(&tcr,
-		validation.Field(&tcr.SetTags, validation.By(ValidateTags)))
+		validation.Field(&tcr.Tags, validation.By(ValidateTags)),
+		validation.Field(&tcr.Change,
+			validation.Required,
+			validation.In(SetTags, UpdateTags, DeleteTags)))
 }
 
 func ValidateTags(v interface{}) error {
