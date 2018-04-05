@@ -37,7 +37,22 @@ type Taggable interface {
 // such that in the future we could support add/exclusive-add/
 // delete for individual keys.
 func ApplyTags(t Taggable, req api.TagsChangeRequest) {
-	t.SetTags(req.SetTags)
+	switch req.Change {
+	case api.SetTags:
+		t.SetTags(req.Tags)
+	case api.UpdateTags:
+		newTags := t.AllTags()
+		for k, v := range req.Tags {
+			newTags[k] = v
+		}
+		t.SetTags(newTags)
+	case api.DeleteTags:
+		newTags := t.AllTags()
+		for k, _ := range req.Tags {
+			delete(newTags, k)
+		}
+		t.SetTags(newTags)
+	}
 }
 
 // MergeTags combines all the tags from the taggable items in the
