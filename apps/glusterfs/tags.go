@@ -42,12 +42,18 @@ func ApplyTags(t Taggable, req api.TagsChangeRequest) {
 		t.SetTags(req.Tags)
 	case api.UpdateTags:
 		newTags := t.AllTags()
+		if newTags == nil {
+			newTags = map[string]string{}
+		}
 		for k, v := range req.Tags {
 			newTags[k] = v
 		}
 		t.SetTags(newTags)
 	case api.DeleteTags:
 		newTags := t.AllTags()
+		if newTags == nil {
+			newTags = map[string]string{}
+		}
 		for k, _ := range req.Tags {
 			delete(newTags, k)
 		}
