@@ -324,19 +324,7 @@ var deviceSetTagsCommand = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		heketi := client.NewClient(options.Url, options.User, options.Key)
-		return setTagsCommand(cmd,
-			func(id string) (map[string]string, error) {
-				di, err := heketi.DeviceInfo(id)
-				if err != nil {
-					return nil, err
-				}
-				return di.Tags, nil
-			},
-			func(id string, tags map[string]string) error {
-				return heketi.DeviceSetTags(id, &api.TagsChangeRequest{
-					SetTags: tags,
-				})
-			})
+		return setTagsCommand(cmd, heketi.DeviceSetTags)
 	},
 }
 
@@ -349,18 +337,6 @@ var deviceRmTagsCommand = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		heketi := client.NewClient(options.Url, options.User, options.Key)
-		return rmTagsCommand(cmd,
-			func(id string) (map[string]string, error) {
-				di, err := heketi.DeviceInfo(id)
-				if err != nil {
-					return nil, err
-				}
-				return di.Tags, nil
-			},
-			func(id string, tags map[string]string) error {
-				return heketi.DeviceSetTags(id, &api.TagsChangeRequest{
-					SetTags: tags,
-				})
-			})
+		return rmTagsCommand(cmd, heketi.DeviceSetTags)
 	},
 }
