@@ -8,4 +8,4 @@ __license__ = 'Apache License (2.0) or LGPLv3+'
 __copyright__ = 'Copyright 2016 Heketi authors'
 
 
-from .heketi import HeketiClient
+from .heketi import HeketiClient, TAGS_SET, TAGS_UPDATE, TAGS_DELETE
