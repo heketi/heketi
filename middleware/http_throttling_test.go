@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
@@ -32,7 +33,7 @@ func TestNewHTTPThrottler(t *testing.T) {
 func TestReachedMaxRequest(t *testing.T) {
 	nt := NewHTTPThrottler(10)
 	tests.Assert(t, nt.reachedMaxRequest() == false)
-	nt.ServingCount = 10
+	nt.servingCount = 10
 	tests.Assert(t, nt.reachedMaxRequest() == true)
 
 }
@@ -159,6 +160,33 @@ func TestServeHTTPTrottleQueue(t *testing.T) {
 
 	tests.Assert(t, resp != nil)
 	tests.Assert(t, resp.StatusCode == http.StatusTooManyRequests)
+
+}
+func TestThrottlingCleanup(t *testing.T) {
+
+	nt := NewHTTPThrottler(10)
+	tests.Assert(t, nt != nil)
+	n := negroni.New(nt)
+	tt := time.Now()
+	throttleNow = func() time.Time { return tt }
+	n.UseHandlerFunc(mw)
+	client := http.Client{}
+	ts := httptest.NewServer(n)
+	defer ts.Close()
+	defer nt.Stop()
+	go nt.Cleanup(time.Second * 2)
+	func(n int) {
+		for i := 0; i < n; i++ {
+			_, r := createReq("POST", ts.URL)
+			client.Do(r)
+		}
+
+	}(10)
+	time.Sleep(2 * time.Second)
+	_, r := createReq("POST", ts.URL)
+	resp, err := client.Do(r)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, resp.StatusCode == http.StatusAccepted, resp.StatusCode)
 
 }
 
