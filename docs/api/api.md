@@ -316,6 +316,7 @@ The _node_ RESTful endpoint is used to register a storage system for Heketi to m
             * _NOTE:_  Even though it takes a list of hostnames, only one is supported at the moment.  The plan is to support multiple hostnames when glusterd-2 is used.  For Kubernetes and OpenShift, this must be the name of the Pod file, not the name of the node.
         * storage: _array of strings_, List of node storage network hostnames.  These storage network addresses will be used to create and access the volume.  It is *highly* recommended to use hostnames instead of IP addresses. _NOTE:_  Even though it takes a list of hostnames, only one is supported at the moment.  The plan is to support multiple ip address when glusterd-2 is used.
     * cluster: _string_, UUID of cluster to whom this node should be part of.
+    * tags: _map of strings_, (optional) a mapping of tag-names to tag-values
     * Example:
 
 ```json
@@ -328,6 +329,9 @@ The _node_ RESTful endpoint is used to register a storage system for Heketi to m
         "storage": [
             "node1-storage.gluster.lab.com"
         ]
+    },
+    "tags": {
+        "incantation": "abracadabra"
     },
     "cluster": "67e267ea403dfcdf80731165b300d1ca"
 }
@@ -444,12 +448,16 @@ The `devices` endpoint allows management of raw devices in the cluster.
 * **JSON Request**:
     * node: _string_, UUID of node which the devices belong to.
     * name: _string_, Device name
+    * tags: _map of strings_, (optional) a mapping of tag-names to tag-values
     * Example:
 
 ```json
 {
     "node": "714c510140c20e808002f2b074bc0c50",
-    "name": "/dev/sdb"
+    "name": "/dev/sdb",
+    "tags": {
+        "serial_number": "a109-84338af8e43-48dd9d43-919231"
+    }
 }
 ```
 
