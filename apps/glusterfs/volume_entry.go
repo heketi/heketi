@@ -12,6 +12,7 @@ package glusterfs
 import (
 	"bytes"
 	"encoding/gob"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -159,6 +160,34 @@ func NewVolumeEntryFromId(tx *bolt.Tx, id string) (*VolumeEntry, error) {
 	}
 
 	return entry, nil
+}
+
+func NewVolumeEntryFromClone(v *VolumeEntry, name string) *VolumeEntry {
+	entry := NewVolumeEntry()
+
+	entry.Info.Id = utils.GenUUID()
+	if name == "" {
+		entry.Info.Name = "vol_" + entry.Info.Id
+	} else {
+		entry.Info.Name = name
+	}
+
+	entry.GlusterVolumeOptions = v.GlusterVolumeOptions
+	entry.Info.Cluster = v.Info.Cluster
+	entry.Info.Durability = v.Info.Durability
+	entry.Info.Durability.Type = v.Info.Durability.Type
+	entry.Info.Gid = v.Info.Gid
+	entry.Info.Mount = v.Info.Mount
+	entry.Info.Size = v.Info.Size
+	entry.Info.Snapshot = v.Info.Snapshot
+	copy(entry.Info.Mount.GlusterFS.Hosts, v.Info.Mount.GlusterFS.Hosts)
+	entry.Info.Mount.GlusterFS.MountPoint = v.Info.Mount.GlusterFS.Hosts[0] + ":" + entry.Info.Name
+	entry.Info.Mount.GlusterFS.Options = v.Info.Mount.GlusterFS.Options
+	entry.Info.BlockInfo.FreeSize = v.Info.BlockInfo.FreeSize
+	copy(entry.Info.BlockInfo.BlockVolumes, v.Info.BlockInfo.BlockVolumes)
+
+	// entry.Bricks is still empty, these need to be filled by the caller
+	return entry
 }
 
 func (v *VolumeEntry) BucketName() string {
@@ -817,4 +846,106 @@ func (v *VolumeEntry) runOnHost(db wdb.RODB,
 		}
 	}
 	return fmt.Errorf("no hosts available (%v total)", len(hosts))
+}
+
+func (v *VolumeEntry) prepareVolumeClone(tx *bolt.Tx, clonename string) (
+	*VolumeEntry, []*BrickEntry, []*DeviceEntry, error) {
+
+	bricks := []*BrickEntry{}
+	devices := []*DeviceEntry{}
+	cvol := NewVolumeEntryFromClone(v, clonename)
+	for _, brickId := range v.Bricks {
+		brick, err := CloneBrickEntryFromId(tx, brickId)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		device, err := NewDeviceEntryFromId(tx, brick.Info.DeviceId)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		brick.Info.VolumeId = cvol.Info.Id
+
+		cvol.Bricks = append(cvol.Bricks, brick.Id())
+		bricks = append(bricks, brick)
+
+		// Add the cloned brick to the device
+		device.BrickAdd(brick.Id())
+		devices = append(devices, device)
+	}
+	return cvol, bricks, devices, nil
+}
+
+func updateCloneBrickPaths(bricks []*BrickEntry,
+	orig, clone *executors.Volume) error {
+
+	pathIndex := map[string]int{}
+	for i, brick := range bricks {
+		pathIndex[brick.Info.Path] = i
+	}
+	if len(pathIndex) != len(bricks) {
+		return fmt.Errorf(
+			"Unexpected number of brick paths. %v unique paths, %v bricks",
+			len(pathIndex), len(bricks))
+	}
+
+	for i, b := range orig.Bricks.BrickList {
+		c := clone.Bricks.BrickList[i]
+		origPath := strings.Split(b.Name, ":")[1]
+		clonePath := strings.Split(c.Name, ":")[1]
+
+		bidx, ok := pathIndex[origPath]
+		if !ok {
+			return fmt.Errorf(
+				"Failed to find brick path %v in known brick paths",
+				origPath)
+		}
+		brick := bricks[bidx]
+		logger.Debug("Updating brick %v with new path %v (had %v)",
+			brick.Id(), clonePath, origPath)
+		brick.Info.Path = clonePath
+	}
+	return nil
+}
+
+func (v *VolumeEntry) cloneVolumeRequest(db wdb.RODB, clonename string) (*executors.VolumeCloneRequest, string, error) {
+	godbc.Require(db != nil)
+	godbc.Require(clonename != "")
+
+	// Setup list of bricks
+	vcr := &executors.VolumeCloneRequest{}
+	vcr.Volume = v.Info.Name
+	vcr.Clone = clonename
+
+	var sshhost string
+	err := db.View(func(tx *bolt.Tx) error {
+		vol, err := NewVolumeEntryFromId(tx, v.Info.Id)
+		if err != nil {
+			return err
+		}
+
+		cluster, err := NewClusterEntryFromId(tx, vol.Info.Cluster)
+		if err != nil {
+			return err
+		}
+
+		// TODO: verify if the node is available/online?
+		// picking the 1st node for now...
+		node, err := NewNodeEntryFromId(tx, cluster.Info.Nodes[0])
+		if err != nil {
+			return err
+		}
+		sshhost = node.ManageHostName()
+
+		return nil
+	})
+	if err != nil {
+		return nil, "", err
+	}
+
+	if sshhost == "" {
+		return nil, "", errors.New("failed to find host for cloning volume " + v.Info.Name)
+	}
+
+	return vcr, sshhost, nil
 }
