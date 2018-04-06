@@ -186,7 +186,7 @@ func (b *BrickEntry) Create(db wdb.RODB, executor executors.Executor) error {
 	return nil
 }
 
-func (b *BrickEntry) Destroy(db wdb.RODB, executor executors.Executor) error {
+func (b *BrickEntry) Destroy(db wdb.RODB, executor executors.Executor) (bool, error) {
 
 	godbc.Require(db != nil)
 	godbc.Require(b.TpSize > 0)
@@ -205,7 +205,7 @@ func (b *BrickEntry) Destroy(db wdb.RODB, executor executors.Executor) error {
 		return nil
 	})
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// Create request
@@ -213,17 +213,18 @@ func (b *BrickEntry) Destroy(db wdb.RODB, executor executors.Executor) error {
 	req.Name = b.Info.Id
 	req.Size = b.Info.Size
 	req.TpSize = b.TpSize
+	req.PoolMetadataSize = b.PoolMetadataSize
 	req.VgId = b.Info.DeviceId
 	req.Path = strings.TrimSuffix(b.Info.Path, "/brick")
 
 	// Delete brick on node
 	logger.Info("Deleting brick %v", b.Info.Id)
-	err = executor.BrickDestroy(host, req)
+	spaceReclaimed, err := executor.BrickDestroy(host, req)
 	if err != nil {
-		return err
+		return spaceReclaimed, err
 	}
 
-	return nil
+	return spaceReclaimed, nil
 }
 
 func (b *BrickEntry) DestroyCheck(db wdb.RODB, executor executors.Executor) error {
@@ -308,4 +309,25 @@ func addVolumeIdInBrickEntry(tx *bolt.Tx) error {
 
 func (b *BrickEntry) UpdatePath() {
 	b.Info.Path = utils.BrickPath(b.Info.DeviceId, b.Info.Id)
+}
+
+func (b *BrickEntry) RemoveFromDevice(tx *bolt.Tx) error {
+	// Access device
+	device, err := NewDeviceEntryFromId(tx, b.Info.DeviceId)
+	if err != nil {
+		logger.Err(err)
+		return err
+	}
+
+	// Delete brick from device
+	device.BrickDelete(b.Info.Id)
+
+	// Save device
+	err = device.Save(tx)
+	if err != nil {
+		logger.Err(err)
+		return err
+	}
+
+	return nil
 }
