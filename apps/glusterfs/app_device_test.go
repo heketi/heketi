@@ -882,3 +882,115 @@ func TestDeviceSyncIdNotFound(t *testing.T) {
 	tests.Assert(t, err == nil)
 	tests.Assert(t, r.StatusCode == http.StatusNotFound)
 }
+
+func TestDeviceSetTags(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	deviceId := utils.GenUUID()
+	// Create a device to save in the db
+	device := NewDeviceEntry()
+	device.Info.Id = deviceId
+	device.Info.Name = "/dev/fake1"
+	device.NodeId = "def"
+	device.StorageSet(10000)
+	device.StorageAllocate(1000)
+	err := app.db.Update(func(tx *bolt.Tx) error {
+		return device.Save(tx)
+	})
+	tests.Assert(t, err == nil)
+
+	// set some tags
+	request := []byte(`{
+		"change_type": "set",
+		"tags": {"foo": "bar", "salad": "ceasar"}
+	}`)
+	r, err := http.Post(ts.URL+"/devices/"+deviceId+"/tags",
+		"application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, r.StatusCode == http.StatusOK,
+		"expected r.StatusCode == http.StatusOK, got:", r.StatusCode)
+
+	r, err = http.Get(ts.URL + "/devices/" + deviceId)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, r.StatusCode == http.StatusOK,
+		"expected r.StatusCode == http.StatusOK, got:", r.StatusCode)
+
+	var info api.DeviceInfoResponse
+	err = utils.GetJsonFromResponse(r, &info)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, len(info.Tags) == 2,
+		"expected len(info.Tags) == 2, got:", len(info.Tags))
+
+	// add a new tag
+	request = []byte(`{
+		"change_type": "update",
+		"tags": {"color": "blue"}
+	}`)
+	r, err = http.Post(ts.URL+"/devices/"+deviceId+"/tags",
+		"application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, r.StatusCode == http.StatusOK,
+		"expected r.StatusCode == http.StatusOK, got:", r.StatusCode)
+
+	r, err = http.Get(ts.URL + "/devices/" + deviceId)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, r.StatusCode == http.StatusOK,
+		"expected r.StatusCode == http.StatusOK, got:", r.StatusCode)
+
+	err = utils.GetJsonFromResponse(r, &info)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, len(info.Tags) == 3,
+		"expected len(info.Tags) == 3, got:", len(info.Tags))
+
+	// submit garbage body
+	request = []byte(`~~~~~`)
+	r, err = http.Post(ts.URL+"/devices/"+deviceId+"/tags",
+		"application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, r.StatusCode == http.StatusUnprocessableEntity,
+		"expected r.StatusCode == http.StatusUnprocessableEntity, got:", r.StatusCode)
+
+	// valid json, but nonsense
+	request = []byte(`[{
+		"flavor": "Purple",
+		"doo_wop": 8888899
+	}]`)
+	r, err = http.Post(ts.URL+"/devices/"+deviceId+"/tags",
+		"application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, r.StatusCode == http.StatusUnprocessableEntity,
+		"expected r.StatusCode == http.StatusUnprocessableEntity, got:", r.StatusCode)
+
+	// invalid params
+	request = []byte(`{
+		"change_type": "batman",
+		"tags": {"": ""}
+	}`)
+	r, err = http.Post(ts.URL+"/devices/"+deviceId+"/tags",
+		"application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, r.StatusCode == http.StatusBadRequest,
+		"expected r.StatusCode == http.StatusBadRequest, got:", r.StatusCode)
+
+	// invalid device id
+	request = []byte(`{
+		"change_type": "update",
+		"tags": {"color": "blue"}
+	}`)
+	r, err = http.Post(ts.URL+"/devices/abc123/tags",
+		"application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, r.StatusCode == http.StatusNotFound,
+		"expected r.StatusCode == http.StatusNotFound, got:", r.StatusCode)
+}
