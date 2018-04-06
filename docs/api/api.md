@@ -346,6 +346,7 @@ The _node_ RESTful endpoint is used to register a storage system for Heketi to m
         * manage: _array of strings_, List of node management hostnames.  Heketi needs to be able to SSH to the host on any of the supplied management hostnames.
         * storage: _array of strings_, List of node storage network hostnames.  These storage network addresses will be used to create and access the volume.
     * devices: _array maps_, See [Device Information](#device_info)
+    * tags: _map_, (omitted if empty) a mapping of tag-names to tag-values
     * Example:
 
 ```json
@@ -360,6 +361,10 @@ The _node_ RESTful endpoint is used to register a storage system for Heketi to m
         "storage": [
             "node1-storage.gluster.lab.com"
         ]
+    },
+    "tags": {
+        "arbiter": "supported",
+        "rack": "7,4"
     },
     "devices": [
         {
@@ -463,6 +468,7 @@ The `devices` endpoint allows management of raw devices in the cluster.
         * id: _string_, UUID of brick
         * path: _string_, Path of brick on the node
         * size: _uint64_, Size of brick in KB
+    * tags: _map_, (omitted if empty) a mapping of tag-names to tag-values
     * Example:
 
 ```json
@@ -474,6 +480,10 @@ The `devices` endpoint allows management of raw devices in the cluster.
         "used": 0
     },
     "id": "49a9bd2e40df882180479024ac4c24c8",
+    "tags": {
+        "arbiter": "required",
+        "drivebay": "3"
+    },
     "bricks": [
         {
             "id": "aaaaaad2e40df882180479024ac4c24c8",
