@@ -31,38 +31,35 @@ type ReqLimiter struct {
 	stop         chan<- interface{}
 }
 
-//in memeory storage for ReqLimiter
-//var limiter ReqLimiter
-
 //Function to check can heketi can take more request
 func (r *ReqLimiter) reachedMaxRequest() bool {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
-	return r.ServingCount >= r.Maxcount
+	return r.servingCount >= r.maxcount
 }
 
 //Function to add request id to the queue
 func (r *ReqLimiter) incRequest(reqid string) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-	r.RequestCache[reqid] = time.Now()
-	r.ServingCount++
+	r.requestCache[reqid] = throttleNow()
+	r.servingCount++
 }
 
 //Function to remove request id to the queue
 func (r *ReqLimiter) decRequest(reqid string) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-	delete(r.RequestCache, reqid)
-	r.ServingCount--
+	delete(r.requestCache, reqid)
+	r.servingCount--
 
 }
 
 //NewHTTPThrottler Function to return the ReqLimiter
 func NewHTTPThrottler(count uint32) *ReqLimiter {
 	return &ReqLimiter{
-		Maxcount:     count,
-		RequestCache: make(map[string]time.Time),
+		maxcount:     count,
+		requestCache: make(map[string]time.Time),
 	}
 
 }
@@ -82,6 +79,7 @@ func (r *ReqLimiter) ServeHTTP(hw http.ResponseWriter, hr *http.Request, next ht
 			}
 			//if request is accepted for Async operation
 			if res.Status() == http.StatusAccepted {
+
 				reqID := res.Header().Get("X-Request-ID")
 				//Add request Id to in-memory
 				if reqID != "" {
@@ -107,7 +105,7 @@ func (r *ReqLimiter) ServeHTTP(hw http.ResponseWriter, hr *http.Request, next ht
 				reqID := urlPart[2]
 
 				//check Request Id present in im-memeory
-				if _, ok := r.RequestCache[reqID]; ok {
+				if _, ok := r.requestCache[reqID]; ok {
 
 					//check operation is not pending
 					if hr.Header.Get("X-Pending") != "true" {
