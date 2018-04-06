@@ -78,6 +78,21 @@ func NewBrickEntryFromId(tx *bolt.Tx, id string) (*BrickEntry, error) {
 	return entry, nil
 }
 
+func CloneBrickEntryFromId(tx *bolt.Tx, id string) (*BrickEntry, error) {
+	godbc.Require(tx != nil)
+	godbc.Require(id != "")
+
+	entry := &BrickEntry{}
+	err := EntryLoad(tx, entry, id)
+	if err != nil {
+		return nil, err
+	}
+
+	entry.Info.Id = utils.GenUUID()
+
+	return entry, nil
+}
+
 func (b *BrickEntry) BucketName() string {
 	return BOLTDB_BUCKET_BRICK
 }

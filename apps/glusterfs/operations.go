@@ -467,6 +467,158 @@ func (vdel *VolumeDeleteOperation) Finalize() error {
 	})
 }
 
+// VolumeCloneOperation implements the operation functions used to
+// clone an existing volume.
+type VolumeCloneOperation struct {
+	OperationManager
+	noRetriesOperation
+
+	// The volume to use as source for the clone
+	vol *VolumeEntry
+	// Optional name for the new volume
+	clonename string
+	// The newly cloned volume, will be set in Exec()
+	clone *VolumeEntry
+	// The bricks for the clone
+	bricks []*BrickEntry
+	// The devices of the bricks
+	devices []*DeviceEntry
+}
+
+func NewVolumeCloneOperation(
+	vol *VolumeEntry, db wdb.DB, clonename string) *VolumeCloneOperation {
+
+	return &VolumeCloneOperation{
+		OperationManager: OperationManager{
+			db: db,
+			op: NewPendingOperationEntry(NEW_ID),
+		},
+		vol:       vol,
+		clonename: clonename,
+		clone:     nil,
+	}
+}
+
+func (vc *VolumeCloneOperation) Label() string {
+	return "Create Clone of a Volume"
+}
+
+func (vc *VolumeCloneOperation) ResourceUrl() string {
+	return fmt.Sprintf("/volumes/%v", vc.clone.Info.Id)
+}
+
+func (vc *VolumeCloneOperation) Build() error {
+	return vc.db.Update(func(tx *bolt.Tx) error {
+		vc.op.RecordCloneVolume(vc.vol)
+		clone, bricks, devices, err := vc.vol.prepareVolumeClone(tx, vc.clonename)
+		if err != nil {
+			return err
+		}
+		vc.clone = clone
+		vc.bricks = bricks
+		vc.devices = devices
+		vc.op.RecordAddVolumeClone(vc.clone)
+		// record new bricks
+		for _, b := range bricks {
+			vc.op.RecordAddBrick(b)
+			if e := b.Save(tx); e != nil {
+				return e
+			}
+		}
+		// save device updates
+		for _, d := range vc.devices {
+			if e := d.Save(tx); e != nil {
+				return e
+			}
+		}
+		// record changes to parent volume
+		if e := vc.vol.Save(tx); e != nil {
+			return e
+		}
+		// add the new volume to the cluster
+		c, err := NewClusterEntryFromId(tx, vc.clone.Info.Cluster)
+		if err != nil {
+			return err
+		}
+		c.VolumeAdd(vc.clone.Info.Id)
+		if err := c.Save(tx); err != nil {
+			return err
+		}
+		// save the pending operation
+		if e := vc.op.Save(tx); e != nil {
+			return e
+		}
+		return nil
+	})
+}
+
+func (vc *VolumeCloneOperation) Exec(executor executors.Executor) error {
+	vcr, host, err := vc.vol.cloneVolumeRequest(vc.db, vc.clone.Info.Name)
+	if err != nil {
+		return err
+	}
+
+	// get all details of the original volume (order of bricks etc)
+	orig, err := executor.VolumeInfo(host, vc.vol.Info.Name)
+	if err != nil {
+		return err
+	}
+
+	clone, err := executor.VolumeClone(host, vcr)
+	if err != nil {
+		return err
+	}
+
+	if err := updateCloneBrickPaths(vc.bricks, orig, clone); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (vc *VolumeCloneOperation) Rollback(executor executors.Executor) error {
+	return vc.db.Update(func(tx *bolt.Tx) error {
+		vc.op.FinalizeVolumeClone(vc.vol)
+		if e := vc.vol.Save(tx); e != nil {
+			return e
+		}
+
+		// TODO: Bricks and a snapshot may have been created in the
+		// executor. These will need to be removed again. The
+		// CmdExecutor.VolumeClone() operation will need to be moved up
+		// to a higher level. This can easiest be done when the
+		// advanced Snapshot*() operations are available.
+
+		vc.op.Delete(tx)
+		return nil
+	})
+}
+
+func (vc *VolumeCloneOperation) Finalize() error {
+	return vc.db.Update(func(tx *bolt.Tx) error {
+		vc.op.FinalizeVolumeClone(vc.vol)
+		if err := vc.vol.Save(tx); err != nil {
+			return err
+		}
+		// finalize the new clone
+		vc.op.FinalizeVolume(vc.clone)
+		if err := vc.clone.Save(tx); err != nil {
+			return err
+		}
+		// finalize the new bricks
+		for _, b := range vc.bricks {
+			vc.op.FinalizeBrick(b)
+			b.Save(tx)
+		}
+		// the DeviceEntry of each brick was updated too
+		for _, d := range vc.devices {
+			d.Save(tx)
+		}
+
+		vc.op.Delete(tx)
+		return nil
+	})
+}
+
 // BlockVolumeCreateOperation  implements the operation functions used to
 // create a new volume.
 type BlockVolumeCreateOperation struct {
