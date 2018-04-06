@@ -356,7 +356,8 @@ func (ve *VolumeExpandOperation) Finalize() error {
 type VolumeDeleteOperation struct {
 	OperationManager
 	noRetriesOperation
-	vol *VolumeEntry
+	vol       *VolumeEntry
+	reclaimed map[string]bool // gets set in Exec(), space_reclaimed = reclaimed[DeviceId]
 }
 
 func NewVolumeDeleteOperation(
@@ -413,7 +414,7 @@ func (vdel *VolumeDeleteOperation) Exec(executor executors.Executor) error {
 	if err != nil {
 		return err
 	}
-	err = vdel.vol.deleteVolumeExec(vdel.db, executor, brick_entries, sshhost)
+	vdel.reclaimed, err = vdel.vol.deleteVolumeExec(vdel.db, executor, brick_entries, sshhost)
 	if err != nil {
 		logger.LogError("Error executing delete volume: %v", err)
 	}
@@ -453,11 +454,36 @@ func (vdel *VolumeDeleteOperation) Rollback(executor executors.Executor) error {
 func (vdel *VolumeDeleteOperation) Finalize() error {
 	return vdel.db.Update(func(tx *bolt.Tx) error {
 		txdb := wdb.WrapTx(tx)
+
 		brick_entries, err := bricksFromOp(txdb, vdel.op, vdel.vol.Info.Gid)
 		if err != nil {
 			logger.LogError("Failed to get bricks from op: %v", err)
 			return err
 		}
+
+		// update the device' free/used space after removing bricks
+		for _, b := range brick_entries {
+			for dev_id, reclaimed := range vdel.reclaimed {
+				if b.Info.DeviceId != dev_id {
+					continue
+				}
+				if !reclaimed {
+					// nothing reclaimed, no need to update the DeviceEntry
+					continue
+				}
+
+				device, err := NewDeviceEntryFromId(tx, dev_id)
+				if err != nil {
+					logger.Err(err)
+					return err
+				}
+
+				// Deallocate space on device
+				device.StorageFree(device.SpaceNeeded(b.Info.Size, float64(vdel.vol.Info.Snapshot.Factor)).Total)
+				device.Save(tx)
+			}
+		}
+
 		if err := vdel.vol.saveDeleteVolume(txdb, brick_entries); err != nil {
 			return err
 		}
@@ -611,6 +637,7 @@ func (vc *VolumeCloneOperation) Finalize() error {
 		}
 		// the DeviceEntry of each brick was updated too
 		for _, d := range vc.devices {
+			// because the bricks are cloned, they do not take extra space
 			d.Save(tx)
 		}
 

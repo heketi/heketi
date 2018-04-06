@@ -261,7 +261,7 @@ func TestSshExecBrickDestroy(t *testing.T) {
 		TpSize:           100,
 		Size:             10,
 		PoolMetadataSize: 5,
-		Path:             utils.BrickPath("xvgid", "id"),
+		Path:             strings.TrimSuffix(utils.BrickPath("xvgid", "id"), "/brick"),
 	}
 
 	// Mock ssh function
@@ -275,6 +275,28 @@ func TestSshExecBrickDestroy(t *testing.T) {
 		for _, cmd := range commands {
 			cmd = strings.Trim(cmd, " ")
 			switch {
+			case strings.HasPrefix(cmd, "mount"):
+				tests.Assert(t,
+					cmd == "mount | grep -w "+b.Path+" | cut -d\" \" -f1", cmd)
+				// return the device that was mounted
+				output := [2]string{"/dev/vg_xvgid/brick_id", ""}
+				return output[0:1], nil
+
+			case strings.Contains(cmd, "lvs") && strings.Contains(cmd, "vg_name"):
+				tests.Assert(t,
+					cmd == "lvs --noheadings --separator=/ "+
+						"-ovg_name,pool_lv /dev/vg_xvgid/brick_id", cmd)
+				// return the device that was mounted
+				output := [2]string{"vg_xvgid/tp_id", ""}
+				return output[0:1], nil
+
+			case strings.Contains(cmd, "lvs") && strings.Contains(cmd, "thin_count"):
+				tests.Assert(t,
+					cmd == "lvs --noheadings --options=thin_count vg_xvgid/tp_id", cmd)
+				// return the number of thin-p users
+				output := [2]string{"0", ""}
+				return output[0:1], nil
+
 			case strings.Contains(cmd, "umount"):
 				tests.Assert(t,
 					cmd == "umount "+
@@ -282,7 +304,8 @@ func TestSshExecBrickDestroy(t *testing.T) {
 
 			case strings.Contains(cmd, "lvremove"):
 				tests.Assert(t,
-					cmd == "lvremove -f vg_xvgid/tp_id", cmd)
+					cmd == "lvremove -f vg_xvgid/tp_id" ||
+						cmd == "lvremove -f /dev/vg_xvgid/brick_id", cmd)
 
 			case strings.Contains(cmd, "rmdir"):
 				tests.Assert(t,
@@ -300,6 +323,6 @@ func TestSshExecBrickDestroy(t *testing.T) {
 	}
 
 	// Create Brick
-	err = s.BrickDestroy("myhost", b)
+	_, err = s.BrickDestroy("myhost", b)
 	tests.Assert(t, err == nil, err)
 }

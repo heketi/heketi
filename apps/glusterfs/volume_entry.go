@@ -486,20 +486,20 @@ func (v *VolumeEntry) saveCreateVolume(db wdb.DB,
 func (v *VolumeEntry) deleteVolumeExec(db wdb.RODB,
 	executor executors.Executor,
 	brick_entries []*BrickEntry,
-	sshhost string) error {
+	sshhost string) (map[string]bool, error) {
 
 	// Determine if we can destroy the volume
 	err := executor.VolumeDestroyCheck(sshhost, v.Info.Name)
 	if err != nil {
 		logger.Err(err)
-		return err
+		return nil, err
 	}
 
 	// Determine if the bricks can be destroyed
 	err = v.checkBricksCanBeDestroyed(db, executor, brick_entries)
 	if err != nil {
 		logger.Err(err)
-		return err
+		return nil, err
 	}
 
 	// :TODO: What if the host is no longer available, we may need to try others
@@ -507,17 +507,17 @@ func (v *VolumeEntry) deleteVolumeExec(db wdb.RODB,
 	err = executor.VolumeDestroy(sshhost, v.Info.Name)
 	if err != nil {
 		logger.LogError("Unable to delete volume: %v", err)
-		return err
+		return nil, err
 	}
 
 	// Destroy bricks
-	err = DestroyBricks(db, executor, brick_entries)
+	space_reclaimed, err := DestroyBricks(db, executor, brick_entries)
 	if err != nil {
 		logger.LogError("Unable to delete bricks: %v", err)
-		return err
+		return nil, err
 	}
 
-	return nil
+	return space_reclaimed, nil
 }
 
 func (v *VolumeEntry) saveDeleteVolume(db wdb.DB,
@@ -869,7 +869,7 @@ func (v *VolumeEntry) prepareVolumeClone(tx *bolt.Tx, clonename string) (
 		cvol.Bricks = append(cvol.Bricks, brick.Id())
 		bricks = append(bricks, brick)
 
-		// Add the cloned brick to the device
+		// Add the cloned brick to the device (clones do not take extra storage space)
 		device.BrickAdd(brick.Id())
 		devices = append(devices, device)
 	}
