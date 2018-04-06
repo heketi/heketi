@@ -17,13 +17,18 @@ import (
 	"github.com/urfave/negroni"
 )
 
+var (
+	throttleNow func() time.Time = time.Now
+)
+
 //ReqLimiter struct holds data related to Throttling
 type ReqLimiter struct {
-	Maxcount     uint32
-	ServingCount uint32
-	RequestCache map[string]time.Time
-	handler      http.Handler
+	maxcount     uint32
+	servingCount uint32
+	//in memeory storage for ReqLimiter
+	requestCache map[string]time.Time
 	lock         sync.RWMutex
+	stop         chan<- interface{}
 }
 
 //in memeory storage for ReqLimiter
