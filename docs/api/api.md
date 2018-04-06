@@ -13,10 +13,12 @@
     * [Nodes](#nodes)
         * [Add node](#add-node)
         * [Node Information](#node-information)
+        * [Set Node Tags](#set-node-tags)
         * [Delete node](#delete-node)
     * [Devices](#devices)
         * [Add device](#add-device)
         * [Device Information](#device-information)
+        * [Set Device Tags](#set-device-tags)
         * [Delete device](#delete-device)
     * [Volumes](#volumes)
         * [Create a Volume](#create-a-volume)
@@ -385,6 +387,39 @@ The _node_ RESTful endpoint is used to register a storage system for Heketi to m
 }
 ```
 
+### Set Node Tags
+
+Allows setting, updating, and deleting user specified metadata tags
+on a node. Tags are key-value pairs that are stored on the server.
+Certain well-known tags may be used by the server for configuration.
+
+Specifying a `change_type` of _set_ overwrites the tags on the object
+with exactly the set of tags in this request. A `change_type` of
+_update_ adds new tags and updates existing tags without changing
+tags not specified in the request. A `change_type` of _delete_ will
+remove tags names in the request (tag values in the request will
+be ignored).
+
+* **Method**: POST
+* **Endpoint**: `/nodes/{id}/tags`
+* **Response HTTP Status Code**: 200
+* **JSON Request**: None
+    * `change_type`: _string_, one of "set", "update", "delete"
+    * `tags`: _map of strings_, a mapping of tag-names to tag-values
+    * Example:
+
+```json
+{
+    "change_type": "set",
+    "tags": {
+        "arbiter": "supported",
+        "rack": "7,4",
+        "os_version": "linux 4.15.8"
+    }
+}
+```
+* **JSON Response**: Ignored
+
 ### Delete Node
 * **Method:** _DELETE_  
 * **Endpoint**:`/nodes/{id}`
@@ -457,6 +492,39 @@ The `devices` endpoint allows management of raw devices in the cluster.
     ]
 }
 ```
+
+### Set Device Tags
+
+Allows setting, updating, and deleting user specified metadata tags
+on a device. Tags are key-value pairs that are stored on the server.
+Certain well-known tags may be used by the server for configuration.
+
+Specifying a `change_type` of _set_ overwrites the tags on the object
+with exactly the set of tags in this request. A `change_type` of
+_update_ adds new tags and updates existing tags without changing
+tags not specified in the request. A `change_type` of _delete_ will
+remove tags names in the request (tag values in the request will
+be ignored).
+
+* **Method**: POST
+* **Endpoint**: `/devices/{id}/tags`
+* **Response HTTP Status Code**: 200
+* **JSON Request**: None
+    * `change_type`: _string_, one of "set", "update", "delete"
+    * `tags`: _map of strings_, a mapping of tag-names to tag-values
+    * Example:
+
+```json
+{
+    "change_type": "set",
+    "tags": {
+        "arbiter": "required",
+        "drivebay": "3",
+        "serial_number": "a109-84338af8e43-48dd9d43-919231"
+    }
+}
+```
+* **JSON Response**: Ignored
 
 ### Delete Device
 * **Method:** _DELETE_  
