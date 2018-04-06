@@ -12,6 +12,7 @@ package glusterfs
 import (
 	"bytes"
 	"encoding/gob"
+	"strings"
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
@@ -213,6 +214,7 @@ func (b *BrickEntry) Destroy(db wdb.RODB, executor executors.Executor) error {
 	req.Size = b.Info.Size
 	req.TpSize = b.TpSize
 	req.VgId = b.Info.DeviceId
+	req.Path = strings.TrimSuffix(b.Info.Path, "/brick")
 
 	// Delete brick on node
 	logger.Info("Deleting brick %v", b.Info.Id)

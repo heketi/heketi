@@ -11,6 +11,7 @@ package cmdexec
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/heketi/heketi/executors"
@@ -112,40 +113,88 @@ func (s *CmdExecutor) BrickDestroy(host string,
 	godbc.Require(host != "")
 	godbc.Require(brick.Name != "")
 	godbc.Require(brick.VgId != "")
+	godbc.Require(brick.Path != "")
 
-	mp := utils.BrickMountPoint(brick.VgId, brick.Name)
-	// Try to unmount first
+	// Cloned bricks do not follow 'our' VG/LV naming, detect it.
 	commands := []string{
-		fmt.Sprintf("umount %v", mp),
+		fmt.Sprintf("mount | grep -w %v | cut -d\" \" -f1", brick.Path),
 	}
-	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	output, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	if output == nil || err != nil {
+		return fmt.Errorf("No brick mounted on %v, unable to proceed with removing", brick.Path)
+	}
+	dev := output[0]
+	// detect the thinp LV used by this brick (in "vg_.../tp_..." format)
+	commands = []string{
+		fmt.Sprintf("lvs --noheadings --separator=/ -ovg_name,pool_lv %v", dev),
+	}
+	output, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
 		logger.Err(err)
 	}
+	tp := output[0]
 
-	// Now try to remove the LV
+	// Try to unmount first
 	commands = []string{
-		fmt.Sprintf("lvremove -f %v", utils.BrickThinLvName(brick.VgId, brick.Name)),
+		fmt.Sprintf("umount %v", brick.Path),
 	}
 	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
 		logger.Err(err)
+	}
+
+	// Remove the LV (by device name)
+	commands = []string{
+		fmt.Sprintf("lvremove -f %v", dev),
+	}
+	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	if err != nil {
+		logger.Err(err)
+	}
+
+	// Detect the number of bricks using the thin-pool
+	commands = []string{
+		fmt.Sprintf("lvs --noheadings --options=thin_count %v", tp),
+	}
+	output, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	if err != nil {
+		logger.Err(err)
+		return fmt.Errorf("Unable to determine number of logical volumes in "+
+			"thin pool %v on host %v", tp, host)
+	}
+	thin_count, err := strconv.Atoi(strings.TrimSpace(output[0]))
+	if err != nil {
+		return fmt.Errorf("Failed to convert number of logical volumes in thin pool %v on host %v: %v", tp, host, err)
+	}
+
+	// If there is no brick left in the thin-pool, it can be removed
+	if thin_count == 0 {
+		commands = []string{
+			fmt.Sprintf("lvremove -f %v", tp),
+		}
+		_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+		if err != nil {
+			logger.Err(err)
+		}
+	}
+
+	// Remove from fstab
+	// If the brick.Path contains "(/var)?/run/gluster/", there is no entry in fstab as GlusterD manages it.
+	if !(strings.HasPrefix(brick.Path, "/run/gluster/") || strings.HasPrefix(brick.Path, "/var/run/gluster/")) {
+		commands = []string{
+			fmt.Sprintf("sed -i.save \"/%v/d\" %v",
+				utils.BrickIdToName(brick.Name),
+				s.Fstab),
+		}
+		_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+		if err != nil {
+			logger.Err(err)
+		}
 	}
 
 	// Now cleanup the mount point
 	commands = []string{
-		fmt.Sprintf("rmdir %v", mp),
-	}
-	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
-	if err != nil {
-		logger.Err(err)
-	}
-
-	// Remove from fstab
-	commands = []string{
-		fmt.Sprintf("sed -i.save \"/%v/d\" %v",
-			utils.BrickIdToName(brick.Name),
-			s.Fstab),
+		fmt.Sprintf("rmdir %v", brick.Path),
 	}
 	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
