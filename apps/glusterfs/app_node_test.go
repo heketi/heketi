@@ -1416,3 +1416,117 @@ func TestNodeInfoAfterDelete(t *testing.T) {
 	tests.Assert(t, r.StatusCode == http.StatusNotFound)
 
 }
+
+func TestNodeSetTags(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	nodeId := utils.GenUUID()
+	// Create a node to save in the db
+	node := NewNodeEntry()
+	node.Info.Id = nodeId
+	node.Info.ClusterId = "123"
+	node.Info.Hostnames.Manage = sort.StringSlice{"manage.system"}
+	node.Info.Hostnames.Storage = sort.StringSlice{"storage.system"}
+	node.Info.Zone = 10
+
+	// Save node in the db
+	err := app.db.Update(func(tx *bolt.Tx) error {
+		return node.Save(tx)
+	})
+	tests.Assert(t, err == nil)
+
+	// set some tags
+	request := []byte(`{
+		"change_type": "set",
+		"tags": {"foo": "bar", "salad": "ceasar"}
+	}`)
+	r, err := http.Post(ts.URL+"/nodes/"+nodeId+"/tags",
+		"application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, r.StatusCode == http.StatusOK,
+		"expected r.StatusCode == http.StatusOK, got:", r.StatusCode)
+
+	r, err = http.Get(ts.URL + "/nodes/" + nodeId)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, r.StatusCode == http.StatusOK,
+		"expected r.StatusCode == http.StatusOK, got:", r.StatusCode)
+
+	var info api.DeviceInfoResponse
+	err = utils.GetJsonFromResponse(r, &info)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, len(info.Tags) == 2,
+		"expected len(info.Tags) == 2, got:", len(info.Tags))
+
+	// add a new tag
+	request = []byte(`{
+		"change_type": "update",
+		"tags": {"color": "blue"}
+	}`)
+	r, err = http.Post(ts.URL+"/nodes/"+nodeId+"/tags",
+		"application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, r.StatusCode == http.StatusOK,
+		"expected r.StatusCode == http.StatusOK, got:", r.StatusCode)
+
+	r, err = http.Get(ts.URL + "/nodes/" + nodeId)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, r.StatusCode == http.StatusOK,
+		"expected r.StatusCode == http.StatusOK, got:", r.StatusCode)
+
+	err = utils.GetJsonFromResponse(r, &info)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, len(info.Tags) == 3,
+		"expected len(info.Tags) == 3, got:", len(info.Tags))
+
+	// submit garbage body
+	request = []byte(`~~~~~`)
+	r, err = http.Post(ts.URL+"/nodes/"+nodeId+"/tags",
+		"application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, r.StatusCode == http.StatusUnprocessableEntity,
+		"expected r.StatusCode == http.StatusUnprocessableEntity, got:", r.StatusCode)
+
+	// valid json, but nonsense
+	request = []byte(`[{
+		"flavor": "Purple",
+		"doo_wop": 8888899
+	}]`)
+	r, err = http.Post(ts.URL+"/nodes/"+nodeId+"/tags",
+		"application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, r.StatusCode == http.StatusUnprocessableEntity,
+		"expected r.StatusCode == http.StatusUnprocessableEntity, got:", r.StatusCode)
+
+	// invalid params
+	request = []byte(`{
+		"change_type": "batman",
+		"tags": {"": ""}
+	}`)
+	r, err = http.Post(ts.URL+"/nodes/"+nodeId+"/tags",
+		"application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, r.StatusCode == http.StatusBadRequest,
+		"expected r.StatusCode == http.StatusBadRequest, got:", r.StatusCode)
+
+	// invalid node id
+	request = []byte(`{
+		"change_type": "update",
+		"tags": {"color": "blue"}
+	}`)
+	r, err = http.Post(ts.URL+"/nodes/abc123/tags",
+		"application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, r.StatusCode == http.StatusNotFound,
+		"expected r.StatusCode == http.StatusNotFound, got:", r.StatusCode)
+}
