@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/apps/glusterfs"
@@ -46,6 +47,7 @@ var (
 	deleteAllBricksWithEmptyPath bool
 	dryRun                       bool
 	force                        bool
+	httpThrottle                 *middleware.ReqLimiter
 )
 
 var RootCmd = &cobra.Command{
@@ -377,16 +379,16 @@ func main() {
 		if maxHTTPThrottleCount == 0 {
 			maxHTTPThrottleCount = 30
 		}
-		HTTPThrottle := middleware.NewHTTPThrottler(maxHTTPThrottleCount)
+		httpThrottle = middleware.NewHTTPThrottler(maxHTTPThrottleCount)
 
-		n.Use(HTTPThrottle)
+		n.Use(httpThrottle)
 
 		//clean up required if we wont get GET request after POST/DELETE to check status
 		reqCleanUpTime := options.HTTPThrottleReqCleanupTime
 		if reqCleanUpTime == 0 {
 			reqCleanUpTime = 20
 		}
-		go HTTPThrottle.Cleanup(reqCleanUpTime)
+		go httpThrottle.Cleanup(time.Duration(reqCleanUpTime) * time.Minute)
 	}
 
 	if options.BackupDbToKubeSecret {
@@ -428,6 +430,10 @@ func main() {
 	}
 	fmt.Printf("Shutting down...\n")
 
+	//close throttling cleanup
+	if httpThrottle != nil {
+		httpThrottle.Stop()
+	}
 	// Shutdown the application
 	// :TODO: Need to shutdown the server
 	app.Close()
