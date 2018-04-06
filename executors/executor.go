@@ -27,6 +27,11 @@ type Executor interface {
 	VolumeExpand(host string, volume *VolumeRequest) (*Volume, error)
 	VolumeReplaceBrick(host string, volume string, oldBrick *BrickInfo, newBrick *BrickInfo) error
 	VolumeInfo(host string, volume string) (*Volume, error)
+	VolumeClone(host string, vsr *VolumeCloneRequest) (*Volume, error)
+	VolumeSnapshot(host string, vsr *VolumeSnapshotRequest) (*Snapshot, error)
+	SnapshotCloneVolume(host string, scr *SnapshotCloneRequest) (*Volume, error)
+	SnapshotCloneBlockVolume(host string, scr *SnapshotCloneRequest) (*BlockVolumeInfo, error)
+	SnapshotDestroy(host string, snapshot string) error
 	HealInfo(host string, volume string) (*HealInfo, error)
 	SetLogLevel(level string)
 	BlockVolumeCreate(host string, blockVolume *BlockVolumeRequest) (*BlockVolumeInfo, error)
@@ -80,6 +85,66 @@ type VolumeRequest struct {
 	// Replica
 	Replica int
 	Arbiter bool
+}
+
+type VolumeCloneRequest struct {
+	Volume string
+	Clone  string
+}
+
+type VolumeSnapshotRequest struct {
+	Volume      string
+	Snapshot    string
+	Description string
+}
+
+type SnapshotCloneRequest struct {
+	Volume   string
+	Snapshot string
+}
+
+type Snapshot struct {
+	XMLName xml.Name `xml:"snapshot"`
+	Name    string   `xml:"name"`
+	UUID    string   `xml:"uuid"`
+}
+
+type SnapCreate struct {
+	XMLName  xml.Name `xml:"snapCreate"`
+	Snapshot Snapshot
+}
+
+type SnapClone struct {
+	XMLName xml.Name `xml:"CloneCreate"`
+	Volume  VolumeClone
+}
+
+type VolumeClone struct {
+	XMLName xml.Name `xml:"volume"`
+	Name    string   `xml:"name"`
+	UUID    string   `xml:"uuid"`
+}
+
+type SnapDelete struct {
+	XMLName   xml.Name         `xml:"snapDelete"`
+	Snapshots []SnapshotStatus `xml:"snapshots"`
+}
+
+type SnapshotStatus struct {
+	XMLName xml.Name `xml:"snapshot"`
+	Status  string   `xml:"status"`
+	Name    string   `xml:"name"`
+	UUID    string   `xml:"uuid"`
+}
+
+type SnapActivate struct {
+	XMLName  xml.Name `xml:"snapActivate"`
+	Snapshot Snapshot
+}
+
+type SnapDeactivate struct {
+	XMLName  xml.Name `xml:"snapDeactivate"`
+	Snapshot Snapshot
 }
 
 type Brick struct {
