@@ -41,6 +41,7 @@ if [[ "${#TESTS[@]}" -eq 0 ]]; then
 	TESTS+=("TestVolumeSnapshotBehavior")
 	TESTS+=("TestManyBricksVolume")
 	TESTS+=("TestUpgrade")
+	TESTS+=("TestEnabledTLS")
 fi
 
 # install glide
