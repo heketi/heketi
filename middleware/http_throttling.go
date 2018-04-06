@@ -149,6 +149,11 @@ func (r *ReqLimiter) Cleanup(ct time.Duration) {
 	}
 }
 
+//Stop Cleanup
+func (r *ReqLimiter) Stop() {
+	r.stop <- true
+}
+
 // To check success status code
 func isSuccess(status int) bool {
 
