@@ -123,20 +123,28 @@ func (r *ReqLimiter) ServeHTTP(hw http.ResponseWriter, hr *http.Request, next ht
 }
 
 //Cleanup up function to remove stale reqID
-func (r *ReqLimiter) Cleanup(ct uint32) {
-	c := time.Duration(ct)
-	t := time.NewTicker(c * time.Minute)
-	r.lock.Lock()
-	defer r.lock.Unlock()
+func (r *ReqLimiter) Cleanup(ct time.Duration) {
+	t := time.NewTicker(ct)
+	stop := make(chan interface{})
+	r.stop = stop
+
+	defer t.Stop()
 	for {
 		select {
+		case <-stop:
+			return
+
 		case <-t.C:
-			for reqID, value := range r.RequestCache {
-				if time.Now().Sub(value) > c {
-					delete(r.RequestCache, reqID)
-					r.ServingCount--
+			r.lock.Lock()
+			for reqID, value := range r.requestCache {
+
+				//using time.Now() which is helps for testing
+				if time.Now().Sub(value) > ct {
+					delete(r.requestCache, reqID)
+					r.servingCount--
 				}
 			}
+			r.lock.Unlock()
 		}
 	}
 }
