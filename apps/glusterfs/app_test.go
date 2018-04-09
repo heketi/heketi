@@ -19,8 +19,10 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
 	client "github.com/heketi/heketi/client/api/go-client"
+	"github.com/heketi/heketi/middleware"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
+	"github.com/urfave/negroni"
 )
 
 func TestAppBadConfigData(t *testing.T) {
@@ -205,7 +207,13 @@ func TestAppPathNotFound(t *testing.T) {
 	app.SetRoutes(router)
 
 	// Setup the server
-	ts := httptest.NewServer(router)
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
+	// Setup the server
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// Setup a new client

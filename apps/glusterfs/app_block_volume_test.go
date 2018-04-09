@@ -22,9 +22,11 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
+	"github.com/heketi/heketi/middleware"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
+	"github.com/urfave/negroni"
 )
 
 func TestBlockVolumeCreateBadJson(t *testing.T) {
@@ -37,8 +39,13 @@ func TestBlockVolumeCreateBadJson(t *testing.T) {
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
 	// Setup the server
-	ts := httptest.NewServer(router)
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// VolumeCreate JSON Request
@@ -62,8 +69,13 @@ func TestBlockVolumeCreateNoTopology(t *testing.T) {
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
 	// Setup the server
-	ts := httptest.NewServer(router)
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// VolumeCreate JSON Request
@@ -86,8 +98,13 @@ func TestBlockVolumeCreateInvalidSize(t *testing.T) {
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
 	// Setup the server
-	ts := httptest.NewServer(router)
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// VolumeCreate JSON Request
@@ -115,8 +132,13 @@ func TestBlockVolumeCreateBadClusters(t *testing.T) {
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
 	// Setup the server
-	ts := httptest.NewServer(router)
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// Create a cluster
@@ -157,8 +179,12 @@ func TestBlockVolumeLargerThanBlockHostingVolume(t *testing.T) {
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 
-	//setup the server
-	ts := httptest.NewServer(router)
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+	n.UseHandler(router)
+	// Setup the server
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// Setup database
@@ -223,8 +249,13 @@ func TestBlockVolumeCreate(t *testing.T) {
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
 	// Setup the server
-	ts := httptest.NewServer(router)
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// Setup database
@@ -287,8 +318,13 @@ func TestBlockVolumeInfoIdNotFound(t *testing.T) {
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
 	// Setup the server
-	ts := httptest.NewServer(router)
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// Now that we have some data in the database, we can
@@ -308,8 +344,13 @@ func TestBlockVolumeInfo(t *testing.T) {
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
 	// Setup the server
-	ts := httptest.NewServer(router)
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// Setup database
@@ -366,8 +407,13 @@ func TestBlockVolumeListEmpty(t *testing.T) {
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
 	// Setup the server
-	ts := httptest.NewServer(router)
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// Get volumes, there should be none
@@ -393,8 +439,13 @@ func TestBlockVolumeList(t *testing.T) {
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
 	// Setup the server
-	ts := httptest.NewServer(router)
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// Create some volumes
@@ -479,8 +530,13 @@ func TestBlockVolumeListReadOnlyDb(t *testing.T) {
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
 	// Setup the server
-	ts := httptest.NewServer(router)
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// Get volumes, there should be none
@@ -520,8 +576,13 @@ func TestBlockVolumeDeleteIdNotFound(t *testing.T) {
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
 	// Setup the server
-	ts := httptest.NewServer(router)
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// Now that we have some data in the database, we can
@@ -543,8 +604,13 @@ func TestBlockVolumeDelete(t *testing.T) {
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
 	// Setup the server
-	ts := httptest.NewServer(router)
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// Setup database
