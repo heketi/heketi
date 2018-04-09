@@ -249,6 +249,8 @@ func (cds *ClusterDeviceSource) Devices() ([]DeviceAndNode, error) {
 		return nil, err
 	}
 
+	nodeUp := currentNodeHealthStatus()
+
 	valid := [](DeviceAndNode){}
 	for _, nodeId := range cluster.Info.Nodes {
 		node, err := NewNodeEntryFromId(cds.tx, nodeId)
@@ -256,6 +258,11 @@ func (cds *ClusterDeviceSource) Devices() ([]DeviceAndNode, error) {
 			return nil, err
 		}
 		if !node.isOnline() {
+			continue
+		}
+		if up, found := nodeUp[nodeId]; found && !up {
+			// if the node is in the cache and we know it was not
+			// recently healthy, skip it
 			continue
 		}
 

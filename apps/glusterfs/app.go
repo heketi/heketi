@@ -42,6 +42,11 @@ const (
 var (
 	logger     = utils.NewLogger("[heketi]", utils.LEVEL_INFO)
 	dbfilename = "heketi.db"
+	// global var to track active node health cache
+	// if multiple apps are started the content of this var is
+	// undefined.
+	// TODO: make a global not needed
+	currentNodeHealthCache *NodeHealthCache
 )
 
 type App struct {
@@ -51,6 +56,9 @@ type App struct {
 	executor     executors.Executor
 	_allocator   Allocator
 	conf         *GlusterFSConfig
+
+	// health monitor
+	nhealth *NodeHealthCache
 
 	// For testing only.  Keep access to the object
 	// not through the interface
@@ -171,6 +179,21 @@ func NewApp(configIo io.Reader) *App {
 	// Set block settings
 	app.setBlockSettings()
 
+	//default monitor gluster node refresh time
+	var timer uint32 = 120
+	var startDelay uint32 = 10
+	if app.conf.RefreshTimeMonitorGlusterNodes > 0 {
+		timer = app.conf.RefreshTimeMonitorGlusterNodes
+	}
+	if app.conf.StartTimeMonitorGlusterNodes > 0 {
+		startDelay = app.conf.StartTimeMonitorGlusterNodes
+	}
+	if app.conf.MonitorGlusterNodes {
+		app.nhealth = NewNodeHealthCache(timer, startDelay, app.db, app.executor)
+		app.nhealth.Monitor()
+		currentNodeHealthCache = app.nhealth
+	}
+
 	// Show application has loaded
 	logger.Info("GlusterFS Application Loaded")
 
@@ -232,6 +255,14 @@ func (a *App) setFromEnvironmentalVariable() {
 		a.conf.BlockHostingVolumeSize, err = strconv.Atoi(env)
 		if err != nil {
 			logger.LogError("Error: Atoi in Block Hosting Volume Size: %v", err)
+		}
+	}
+
+	env = os.Getenv("HEKETI_MONITOR_GLUSTER_NODES")
+	if "" != env {
+		a.conf.MonitorGlusterNodes, err = strconv.ParseBool(env)
+		if err != nil {
+			logger.LogError("Error: While parsing HEKETI_MONITOR_GLUSTER_NODES as bool: %v", err)
 		}
 	}
 }
@@ -457,6 +488,10 @@ func (a *App) SetRoutes(router *mux.Router) error {
 }
 
 func (a *App) Close() {
+	// stop the health goroutine
+	if a.nhealth != nil {
+		a.nhealth.Stop()
+	}
 
 	// Close the DB
 	a.db.Close()
@@ -479,4 +514,18 @@ func (a *App) Backup(w http.ResponseWriter, r *http.Request) {
 func (a *App) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	logger.Warning("Invalid path or request %v", r.URL.Path)
 	http.Error(w, "Invalid path or request", http.StatusNotFound)
+}
+
+// currentNodeHealthStatus returns a map of node ids to the most
+// recently known health status (true is up, false is not up).
+// If a node is not found in the map its status is unknown.
+// If no heath monitor is active an empty map is always returned.
+func currentNodeHealthStatus() (nodeUp map[string]bool) {
+	if currentNodeHealthCache != nil {
+		nodeUp = currentNodeHealthCache.Status()
+	} else {
+		// just an empty map
+		nodeUp = map[string]bool{}
+	}
+	return
 }
