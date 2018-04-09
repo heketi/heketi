@@ -23,9 +23,11 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
 	client "github.com/heketi/heketi/client/api/go-client"
+	"github.com/heketi/heketi/middleware"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
+	"github.com/urfave/negroni"
 )
 
 func TestNodeAddBadRequests(t *testing.T) {
@@ -38,8 +40,13 @@ func TestNodeAddBadRequests(t *testing.T) {
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
 	// Setup the server
-	ts := httptest.NewServer(router)
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// ClusterCreate JSON Request
@@ -153,8 +160,13 @@ func TestPeerProbe(t *testing.T) {
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
 	// Setup the server
-	ts := httptest.NewServer(router)
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// ClusterCreate JSON Request
@@ -258,8 +270,13 @@ func TestPeerProbeFirstNodeDown(t *testing.T) {
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
 	// Setup the server
-	ts := httptest.NewServer(router)
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// ClusterCreate JSON Request
@@ -312,7 +329,13 @@ func TestPeerProbeNewNodeDown(t *testing.T) {
 	app.SetRoutes(router)
 
 	// Setup the server
-	ts := httptest.NewServer(router)
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
+	// Setup the server
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// ClusterCreate JSON Request
@@ -397,8 +420,13 @@ func TestNodeAddDelete(t *testing.T) {
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
 	// Setup the server
-	ts := httptest.NewServer(router)
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// ClusterCreate JSON Request
@@ -633,8 +661,13 @@ func TestNodeInfoIdNotFound(t *testing.T) {
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
 	// Setup the server
-	ts := httptest.NewServer(router)
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// Get unknown node id
@@ -654,8 +687,13 @@ func TestNodeInfo(t *testing.T) {
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
 	// Setup the server
-	ts := httptest.NewServer(router)
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// Create a node to save in the db
@@ -699,8 +737,13 @@ func TestNodeDeleteErrors(t *testing.T) {
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
 	// Setup the server
-	ts := httptest.NewServer(router)
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// Create a node to save in the db
@@ -736,8 +779,13 @@ func TestNodePeerProbeFailure(t *testing.T) {
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
 	// Setup the server
-	ts := httptest.NewServer(router)
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// Create a cluster.  We at least one
@@ -847,8 +895,13 @@ func TestNodePeerDetachFailure(t *testing.T) {
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
 	// Setup the server
-	ts := httptest.NewServer(router)
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// Create a cluster.  We do not want
@@ -947,8 +1000,13 @@ func TestNodePeerDetach(t *testing.T) {
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
 	// Setup the server
-	ts := httptest.NewServer(router)
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// Create a cluster.  We do not want
@@ -1031,8 +1089,13 @@ func TestNodeState(t *testing.T) {
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
 	// Setup the server
-	ts := httptest.NewServer(router)
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// Create a client
@@ -1306,8 +1369,13 @@ func TestNodeInfoAfterDelete(t *testing.T) {
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
 	// Setup the server
-	ts := httptest.NewServer(router)
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// Create a client

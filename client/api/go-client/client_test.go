@@ -36,7 +36,8 @@ func setupHeketiServer(app *glusterfs.App) *httptest.Server {
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 	n := negroni.New()
-
+	reqIDGen := middleware.RequestID{}
+	n.Use(&reqIDGen)
 	jwtconfig := &middleware.JwtAuthConfig{}
 	jwtconfig.Admin.PrivateKey = TEST_ADMIN_KEY
 	jwtconfig.User.PrivateKey = "userkey"
@@ -446,7 +447,7 @@ func TestClientDevice(t *testing.T) {
 		},
 	}
 	cluster, err := c.ClusterCreate(cluster_req)
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, err)
 
 	// Create node request packet
 	nodeReq := &api.NodeAddRequest{}
@@ -507,7 +508,7 @@ func TestClientDevice(t *testing.T) {
 
 	// Resync
 	err = c.DeviceResync(deviceId)
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, err)
 	deviceInfo, err = c.DeviceInfo(deviceId)
 	tests.Assert(t, err == nil)
 	tests.Assert(t, deviceInfo.Storage.Total == 500*1024*1024)

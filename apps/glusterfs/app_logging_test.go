@@ -18,7 +18,9 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
+	"github.com/urfave/negroni"
 
+	"github.com/heketi/heketi/middleware"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
@@ -40,7 +42,13 @@ func TestGetLogLevelNoLog(t *testing.T) {
 	app.SetRoutes(router)
 
 	// Setup the server
-	ts := httptest.NewServer(router)
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
+	// Setup the server
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	r, err := http.Get(ts.URL + "/internal/logging")
@@ -71,7 +79,13 @@ func TestGetLogLevelDebug(t *testing.T) {
 	app.SetRoutes(router)
 
 	// Setup the server
-	ts := httptest.NewServer(router)
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
+	// Setup the server
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	r, err := http.Get(ts.URL + "/internal/logging")
@@ -102,7 +116,13 @@ func TestSetLogLevelDebug(t *testing.T) {
 	app.SetRoutes(router)
 
 	// Setup the server
-	ts := httptest.NewServer(router)
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
+	// Setup the server
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// having done nothing yet our log level should still be NOLOG
@@ -144,7 +164,13 @@ func TestSetLogLevelRoundtrips(t *testing.T) {
 	app.SetRoutes(router)
 
 	// Setup the server
-	ts := httptest.NewServer(router)
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
+	// Setup the server
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// having done nothing yet our log level should still be NOLOG
@@ -187,7 +213,13 @@ func TestSetLogLevelBadJson(t *testing.T) {
 	app.SetRoutes(router)
 
 	// Setup the server
-	ts := httptest.NewServer(router)
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
+	// Setup the server
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// having done nothing yet our log level should still be NOLOG
@@ -224,7 +256,13 @@ func TestSetLogLevelBadLogLevel(t *testing.T) {
 	app.SetRoutes(router)
 
 	// Setup the server
-	ts := httptest.NewServer(router)
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
+	// Setup the server
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// having done nothing yet our log level should still be NOLOG

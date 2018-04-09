@@ -22,9 +22,11 @@ import (
 	"github.com/gorilla/mux"
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/executors"
+	"github.com/heketi/heketi/middleware"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
+	"github.com/urfave/negroni"
 )
 
 func TestDeviceAddBadRequests(t *testing.T) {
@@ -38,7 +40,13 @@ func TestDeviceAddBadRequests(t *testing.T) {
 	app.SetRoutes(router)
 
 	// Setup the server
-	ts := httptest.NewServer(router)
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
+	// Setup the server
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// ClusterCreate JSON Request
@@ -85,7 +93,13 @@ func TestDeviceAddDelete(t *testing.T) {
 	app.SetRoutes(router)
 
 	// Setup the server
-	ts := httptest.NewServer(router)
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
+	// Setup the server
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// Add Cluster then a Node on the cluster
@@ -404,7 +418,13 @@ func TestDeviceAddCleansUp(t *testing.T) {
 	app.SetRoutes(router)
 
 	// Setup the server
-	ts := httptest.NewServer(router)
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
+	// Setup the server
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// Add Cluster then a Node on the cluster
@@ -511,7 +531,13 @@ func TestDeviceInfoIdNotFound(t *testing.T) {
 	app.SetRoutes(router)
 
 	// Setup the server
-	ts := httptest.NewServer(router)
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
+	// Setup the server
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// Get unknown device id
@@ -532,7 +558,13 @@ func TestDeviceInfo(t *testing.T) {
 	app.SetRoutes(router)
 
 	// Setup the server
-	ts := httptest.NewServer(router)
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
+	// Setup the server
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// Create a device to save in the db
@@ -577,7 +609,13 @@ func TestDeviceDeleteErrors(t *testing.T) {
 	app.SetRoutes(router)
 
 	// Setup the server
-	ts := httptest.NewServer(router)
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
+	// Setup the server
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// Create a device to save in the db
@@ -621,7 +659,13 @@ func TestDeviceState(t *testing.T) {
 	app.SetRoutes(router)
 
 	// Setup the server
-	ts := httptest.NewServer(router)
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
+	// Setup the server
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	// Create a client
@@ -783,7 +827,13 @@ func TestDeviceSync(t *testing.T) {
 	app.SetRoutes(router)
 
 	// Setup the server
-	ts := httptest.NewServer(router)
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
+	// Setup the server
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	var total, used, newFree uint64
@@ -872,11 +922,16 @@ func TestDeviceSyncIdNotFound(t *testing.T) {
 	app.SetRoutes(router)
 
 	// Setup the server
-	ts := httptest.NewServer(router)
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
+	// Setup the server
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	deviceId := utils.GenUUID()
-
 	// Get unknown node id
 	r, err := http.Get(ts.URL + "/devices/" + deviceId + "/resync")
 	tests.Assert(t, err == nil)
