@@ -777,7 +777,15 @@ func (v *VolumeEntry) runOnHost(db wdb.RODB,
 		return err
 	}
 
+	nodeUp := currentNodeHealthStatus()
 	for nodeId, host := range hosts {
+		if up, found := nodeUp[nodeId]; found && !up {
+			// if the node is in the cache and we know it was not
+			// recently healthy, skip it
+			logger.Debug("skipping node. %v (%v) is presumed unhealthy",
+				nodeId, host)
+			continue
+		}
 		logger.Debug("running function on node %v (%v)", nodeId, host)
 		tryNext, err := cb(host)
 		if !tryNext {
