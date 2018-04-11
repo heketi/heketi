@@ -304,6 +304,10 @@ func (a *App) setAdvSettings() {
 		// Convert to KB
 		BrickMinSize = uint64(a.conf.BrickMinSize) * 1024 * 1024
 	}
+	if a.conf.AverageFileSize != 0 {
+		logger.Info("Average file size on volumes set to %v KiB", a.conf.AverageFileSize)
+		averageFileSize = a.conf.AverageFileSize
+	}
 }
 
 func (a *App) setBlockSettings() {
