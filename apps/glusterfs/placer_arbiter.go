@@ -18,8 +18,8 @@ import (
 var (
 	tryPlaceAgain error = fmt.Errorf("Placement failed. Try again.")
 
-	// default discount size of an arbiter brick
-	ArbiterDiscountSize uint64 = 64 * KB
+	// average size of files on a volume
+	AverageFileSize uint64 = 64 * KB
 )
 
 const (
@@ -57,7 +57,7 @@ func newArbiterOpts(opts PlacementOpts) *arbiterOpts {
 func (aopts *arbiterOpts) discount(index int) (err error) {
 	if index == arbiter_index {
 		aopts.brickSize, err = discountBrickSize(
-			aopts.brickSize, ArbiterDiscountSize)
+			aopts.brickSize, AverageFileSize)
 	}
 	return
 }
@@ -344,11 +344,11 @@ func (dscan *arbiterDeviceScanner) Scan(index int) <-chan string {
 	return dscan.dataDevs
 }
 
-func discountBrickSize(size, discountSize uint64) (uint64, error) {
-	if size < discountSize {
+func discountBrickSize(dataBrickSize, averageFileSize uint64) (uint64, error) {
+	if dataBrickSize < averageFileSize {
 		return 0, fmt.Errorf(
-			"Brick size (%v) too small for arbiter (discount size %v)",
-			size, discountSize)
+			"Average file size (%v) is greater than Brick size (%v)",
+			averageFileSize, dataBrickSize)
 	}
-	return (size / discountSize), nil
+	return (dataBrickSize / averageFileSize), nil
 }
