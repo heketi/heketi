@@ -17,9 +17,6 @@ import (
 
 var (
 	tryPlaceAgain error = fmt.Errorf("Placement failed. Try again.")
-
-	// average size of files on a volume
-	AverageFileSize uint64 = 64 * KB
 )
 
 const (
@@ -57,7 +54,7 @@ func newArbiterOpts(opts PlacementOpts) *arbiterOpts {
 func (aopts *arbiterOpts) discount(index int) (err error) {
 	if index == arbiter_index {
 		aopts.brickSize, err = discountBrickSize(
-			aopts.brickSize, AverageFileSize)
+			aopts.brickSize, aopts.o.AverageFileSize())
 	}
 	return
 }
