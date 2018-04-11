@@ -726,3 +726,43 @@ func eligibleClusters(db wdb.RODB, req ClusterReq,
 
 	return candidateClusters, err
 }
+
+func (v *VolumeEntry) runOnHost(db wdb.RODB,
+	cb func(host string) (bool, error)) error {
+
+	hosts := map[string]string{}
+	err := db.View(func(tx *bolt.Tx) error {
+		vol, err := NewVolumeEntryFromId(tx, v.Info.Id)
+		if err != nil {
+			return err
+		}
+
+		cluster, err := NewClusterEntryFromId(tx, vol.Info.Cluster)
+		if err != nil {
+			return err
+		}
+
+		for _, nodeId := range cluster.Info.Nodes {
+			node, err := NewNodeEntryFromId(tx, nodeId)
+			if err != nil {
+				return err
+			}
+			hosts[nodeId] = node.ManageHostName()
+		}
+
+		return nil
+	})
+	if err != nil {
+		logger.LogError("runOnHost failed to get hosts: %v", err)
+		return err
+	}
+
+	for nodeId, host := range hosts {
+		logger.Debug("running function on node %v (%v)", nodeId, host)
+		tryNext, err := cb(host)
+		if !tryNext {
+			return err
+		}
+	}
+	return fmt.Errorf("no hosts available (%v total)", len(hosts))
+}
