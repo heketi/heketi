@@ -47,6 +47,12 @@ var (
 	// undefined.
 	// TODO: make a global not needed
 	currentNodeHealthCache *NodeHealthCache
+
+	// global var to enable the use of the health cache + monitor
+	// when the GlusterFS App is created. This is mildly hacky but
+	// avoids having to update config files to enable the feature
+	// while avoiding having to touch all of the unit tests.
+	MonitorGlusterNodes = false
 )
 
 type App struct {
@@ -188,7 +194,7 @@ func NewApp(configIo io.Reader) *App {
 	if app.conf.StartTimeMonitorGlusterNodes > 0 {
 		startDelay = app.conf.StartTimeMonitorGlusterNodes
 	}
-	if app.conf.MonitorGlusterNodes {
+	if MonitorGlusterNodes {
 		app.nhealth = NewNodeHealthCache(timer, startDelay, app.db, app.executor)
 		app.nhealth.Monitor()
 		currentNodeHealthCache = app.nhealth
@@ -255,14 +261,6 @@ func (a *App) setFromEnvironmentalVariable() {
 		a.conf.BlockHostingVolumeSize, err = strconv.Atoi(env)
 		if err != nil {
 			logger.LogError("Error: Atoi in Block Hosting Volume Size: %v", err)
-		}
-	}
-
-	env = os.Getenv("HEKETI_MONITOR_GLUSTER_NODES")
-	if "" != env {
-		a.conf.MonitorGlusterNodes, err = strconv.ParseBool(env)
-		if err != nil {
-			logger.LogError("Error: While parsing HEKETI_MONITOR_GLUSTER_NODES as bool: %v", err)
 		}
 	}
 }

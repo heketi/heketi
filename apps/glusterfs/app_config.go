@@ -36,7 +36,6 @@ type GlusterFSConfig struct {
 
 	// server behaviors
 	IgnoreStaleOperations          bool   `json:"ignore_stale_operations"`
-	MonitorGlusterNodes            bool   `json:"monitor_gluster_nodes"`
 	RefreshTimeMonitorGlusterNodes uint32 `json:"refresh_time_monitor_gluster_nodes"`
 	StartTimeMonitorGlusterNodes   uint32 `json:"start_time_monitor_gluster_nodes"`
 }
