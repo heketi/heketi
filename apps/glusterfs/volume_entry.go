@@ -287,6 +287,26 @@ func (v *VolumeEntry) cleanupCreateVolume(db wdb.DB,
 	executor executors.Executor,
 	brick_entries []*BrickEntry) error {
 
+	err := v.runOnHost(db, func(h string) (bool, error) {
+		err := executor.VolumeDestroy(h, v.Info.Name)
+		switch {
+		case err == nil:
+			// no errors, so we just deleted the volume from gluster
+			return false, nil
+		case strings.Contains(err.Error(), "does not exist"):
+			// we asked gluster to delete a volume that already does not exist
+			return false, nil
+		default:
+			logger.Warning("failed to delete volume %v via %v: %v",
+				v.Info.Id, h, err)
+			return true, err
+		}
+	})
+	if err != nil {
+		logger.LogError("failed to delete volume in cleanup: %v", err)
+		return fmt.Errorf("failed to clean up volume: %v", v.Info.Id)
+	}
+
 	// from a quick read its "safe" to unconditionally try to delete
 	// bricks. TODO: find out if that is true with functional tests
 	DestroyBricks(db, executor, brick_entries)
