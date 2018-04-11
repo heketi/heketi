@@ -39,7 +39,14 @@ const (
 	DEFAULT_EC_REDUNDANCY         = 2
 	DEFAULT_THINP_SNAPSHOT_FACTOR = 1.5
 
-	HEKETI_ARBITER_KEY = "user.heketi.arbiter"
+	HEKETI_ARBITER_KEY           = "user.heketi.arbiter"
+	HEKETI_AVERAGE_FILE_SIZE_KEY = "user.heketi.average-file-size"
+)
+
+var (
+	// Average size of files on a volume, currently used only for arbiter sizing.
+	// Might be used for other purposes later.
+	averageFileSize uint64 = 64 * KB
 )
 
 // VolumeEntry struct represents a volume in heketi. Serialization is done using
@@ -235,6 +242,23 @@ func (v *VolumeEntry) HasArbiterOption() bool {
 		}
 	}
 	return false
+}
+
+// GetAverageFileSize returns averageFileSize provided by user or default averageFileSize
+func (v *VolumeEntry) GetAverageFileSize() uint64 {
+	for _, s := range v.GlusterVolumeOptions {
+		r := strings.Split(s, " ")
+		if len(r) == 2 && r[0] == HEKETI_AVERAGE_FILE_SIZE_KEY {
+			if v, e := strconv.ParseUint(r[1], 10, 64); e == nil {
+				if v == 0 {
+					logger.LogError("Average File Size cannot be zero, using default file size %v", averageFileSize)
+					return averageFileSize
+				}
+				return v
+			}
+		}
+	}
+	return averageFileSize
 }
 
 func (v *VolumeEntry) BrickAdd(id string) {
