@@ -82,6 +82,13 @@ func NewApp(configIo io.Reader) *App {
 		return nil
 	}
 
+	// We would like to perform rebalance by default
+	// As it is very difficult to distinguish missing parameter from
+	// set-but-false parameter in json, we are going to ignore json config
+	// We will provide a env method to set it to false again.
+	app.conf.KubeConfig.RebalanceOnExpansion = true
+	app.conf.SshConfig.RebalanceOnExpansion = true
+
 	// Set values mentioned in environmental variable
 	app.setFromEnvironmentalVariable()
 
@@ -261,6 +268,17 @@ func (a *App) setFromEnvironmentalVariable() {
 		a.conf.BlockHostingVolumeSize, err = strconv.Atoi(env)
 		if err != nil {
 			logger.LogError("Error: Atoi in Block Hosting Volume Size: %v", err)
+		}
+	}
+
+	env = os.Getenv("HEKETI_GLUSTERAPP_REBALANCE_ON_EXPANSION")
+	if env != "" {
+		value, err := strconv.ParseBool(env)
+		if err != nil {
+			logger.LogError("Error: While parsing HEKETI_GLUSTERAPP_REBALANCE_ON_EXPANSION as bool: %v", err)
+		} else {
+			a.conf.SshConfig.RebalanceOnExpansion = value
+			a.conf.KubeConfig.RebalanceOnExpansion = value
 		}
 	}
 }
