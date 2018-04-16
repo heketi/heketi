@@ -287,6 +287,26 @@ func (v *VolumeEntry) cleanupCreateVolume(db wdb.DB,
 	executor executors.Executor,
 	brick_entries []*BrickEntry) error {
 
+	err := v.runOnHost(db, func(h string) (bool, error) {
+		err := executor.VolumeDestroy(h, v.Info.Name)
+		switch {
+		case err == nil:
+			// no errors, so we just deleted the volume from gluster
+			return false, nil
+		case strings.Contains(err.Error(), "does not exist"):
+			// we asked gluster to delete a volume that already does not exist
+			return false, nil
+		default:
+			logger.Warning("failed to delete volume %v via %v: %v",
+				v.Info.Id, h, err)
+			return true, err
+		}
+	})
+	if err != nil {
+		logger.LogError("failed to delete volume in cleanup: %v", err)
+		return fmt.Errorf("failed to clean up volume: %v", v.Info.Id)
+	}
+
 	// from a quick read its "safe" to unconditionally try to delete
 	// bricks. TODO: find out if that is true with functional tests
 	DestroyBricks(db, executor, brick_entries)
@@ -725,4 +745,52 @@ func eligibleClusters(db wdb.RODB, req ClusterReq,
 	})
 
 	return candidateClusters, err
+}
+
+func (v *VolumeEntry) runOnHost(db wdb.RODB,
+	cb func(host string) (bool, error)) error {
+
+	hosts := map[string]string{}
+	err := db.View(func(tx *bolt.Tx) error {
+		vol, err := NewVolumeEntryFromId(tx, v.Info.Id)
+		if err != nil {
+			return err
+		}
+
+		cluster, err := NewClusterEntryFromId(tx, vol.Info.Cluster)
+		if err != nil {
+			return err
+		}
+
+		for _, nodeId := range cluster.Info.Nodes {
+			node, err := NewNodeEntryFromId(tx, nodeId)
+			if err != nil {
+				return err
+			}
+			hosts[nodeId] = node.ManageHostName()
+		}
+
+		return nil
+	})
+	if err != nil {
+		logger.LogError("runOnHost failed to get hosts: %v", err)
+		return err
+	}
+
+	nodeUp := currentNodeHealthStatus()
+	for nodeId, host := range hosts {
+		if up, found := nodeUp[nodeId]; found && !up {
+			// if the node is in the cache and we know it was not
+			// recently healthy, skip it
+			logger.Debug("skipping node. %v (%v) is presumed unhealthy",
+				nodeId, host)
+			continue
+		}
+		logger.Debug("running function on node %v (%v)", nodeId, host)
+		tryNext, err := cb(host)
+		if !tryNext {
+			return err
+		}
+	}
+	return fmt.Errorf("no hosts available (%v total)", len(hosts))
 }
