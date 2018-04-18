@@ -121,7 +121,7 @@ func (r *ReqLimiter) ServeHTTP(hw http.ResponseWriter, hr *http.Request, next ht
 			//if request is accepted for Async operation
 			if res.Status() == http.StatusAccepted {
 
-				reqID := res.Header().Get("X-Request-ID")
+				reqID := GetRequestID(hr.Context())
 				//Add request Id to in-memory
 				if reqID != "" {
 					r.incRequest(reqID)
