@@ -47,6 +47,12 @@ var (
 	// undefined.
 	// TODO: make a global not needed
 	currentNodeHealthCache *NodeHealthCache
+
+	// global var to enable the use of the health cache + monitor
+	// when the GlusterFS App is created. This is mildly hacky but
+	// avoids having to update config files to enable the feature
+	// while avoiding having to touch all of the unit tests.
+	MonitorGlusterNodes = false
 )
 
 type App struct {
@@ -75,6 +81,13 @@ func NewApp(configIo io.Reader) *App {
 	if app.conf == nil {
 		return nil
 	}
+
+	// We would like to perform rebalance by default
+	// As it is very difficult to distinguish missing parameter from
+	// set-but-false parameter in json, we are going to ignore json config
+	// We will provide a env method to set it to false again.
+	app.conf.KubeConfig.RebalanceOnExpansion = true
+	app.conf.SshConfig.RebalanceOnExpansion = true
 
 	// Set values mentioned in environmental variable
 	app.setFromEnvironmentalVariable()
@@ -188,7 +201,7 @@ func NewApp(configIo io.Reader) *App {
 	if app.conf.StartTimeMonitorGlusterNodes > 0 {
 		startDelay = app.conf.StartTimeMonitorGlusterNodes
 	}
-	if app.conf.MonitorGlusterNodes {
+	if MonitorGlusterNodes {
 		app.nhealth = NewNodeHealthCache(timer, startDelay, app.db, app.executor)
 		app.nhealth.Monitor()
 		currentNodeHealthCache = app.nhealth
@@ -258,11 +271,14 @@ func (a *App) setFromEnvironmentalVariable() {
 		}
 	}
 
-	env = os.Getenv("HEKETI_MONITOR_GLUSTER_NODES")
-	if "" != env {
-		a.conf.MonitorGlusterNodes, err = strconv.ParseBool(env)
+	env = os.Getenv("HEKETI_GLUSTERAPP_REBALANCE_ON_EXPANSION")
+	if env != "" {
+		value, err := strconv.ParseBool(env)
 		if err != nil {
-			logger.LogError("Error: While parsing HEKETI_MONITOR_GLUSTER_NODES as bool: %v", err)
+			logger.LogError("Error: While parsing HEKETI_GLUSTERAPP_REBALANCE_ON_EXPANSION as bool: %v", err)
+		} else {
+			a.conf.SshConfig.RebalanceOnExpansion = value
+			a.conf.KubeConfig.RebalanceOnExpansion = value
 		}
 	}
 }

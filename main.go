@@ -280,6 +280,14 @@ func setupApp(fp *os.File) (a *glusterfs.App) {
 	// Go to the beginning of the file when we pass it
 	// to the application
 	fp.Seek(0, os.SEEK_SET)
+
+	// If one really needs to disable the health monitor for
+	// the server binary we provide only this env var.
+	env := os.Getenv("HEKETI_DISABLE_HEALTH_MONITOR")
+	if env != "true" {
+		glusterfs.MonitorGlusterNodes = true
+	}
+
 	return glusterfs.NewApp(fp)
 }
 

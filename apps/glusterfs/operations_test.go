@@ -211,6 +211,76 @@ func TestVolumeCreatePendingRollback(t *testing.T) {
 	})
 }
 
+func TestVolumeCreateRollbackCleanupFailure(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		2,    // clusters
+		3,    // nodes_per_cluster
+		4,    // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	req := &api.VolumeCreateRequest{}
+	req.Size = 1024
+	req.Durability.Type = api.DurabilityReplicate
+	req.Durability.Replicate.Replica = 3
+
+	vol := NewVolumeEntryFromRequest(req)
+	vc := NewVolumeCreateOperation(vol, app.db)
+
+	// verify that there are no volumes, bricks or pending operations
+	app.db.View(func(tx *bolt.Tx) error {
+		vl, e := VolumeList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(vl) == 0, "expected len(vl) == 0, got", len(vl))
+		bl, e := BrickList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(bl) == 0, "expected len(bl) == 0, got", len(bl))
+		pol, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pol) == 0, "expected len(pol) == 0, got", len(pol))
+		return nil
+	})
+
+	e := vc.Build()
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	e = vc.Exec(app.executor)
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	// now we're going to pretend exec failed and inject an
+	// error condition into VolumeDestroy
+
+	app.xo.MockVolumeDestroy = func(host string, volume string) error {
+		return fmt.Errorf("fake error")
+	}
+
+	e = vc.Rollback(app.executor)
+	tests.Assert(t, e != nil, "expected e != nil, got", e)
+
+	// verify that the pending items remain in the db due to rollback
+	// failure
+	app.db.View(func(tx *bolt.Tx) error {
+		vl, e := VolumeList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(vl) == 1, "expected len(vl) == 1, got", len(vl))
+		bl, e := BrickList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(bl) == 3, "expected len(bl) == 3, got", len(bl))
+		pol, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pol) == 1, "expected len(pol) == 1, got", len(pol))
+		return nil
+	})
+}
+
 func TestVolumeCreatePendingNoSpace(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
