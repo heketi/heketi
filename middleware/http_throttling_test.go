@@ -47,9 +47,13 @@ func TestCheckIDPresent(t *testing.T) {
 
 }
 func TestIsSuccess(t *testing.T) {
-	s := isSuccess(200)
+	s := checkRespStatus(200)
 	tests.Assert(t, s == true)
-	s = isSuccess(400)
+	s = checkRespStatus(303)
+	tests.Assert(t, s == true)
+	s = checkRespStatus(500)
+	tests.Assert(t, s == true)
+	s = checkRespStatus(400)
 	tests.Assert(t, s == false)
 
 }
