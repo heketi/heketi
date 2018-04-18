@@ -8,6 +8,7 @@ import:
 - package: github.com/gorilla/context
 - package: github.com/gorilla/mux
 - package: github.com/heketi/rest
+  version: aa6a652074133e6b0836bb095e847021fcb94b6a
 - package: github.com/heketi/tests
 - package: github.com/lpabon/godbc
 - package: github.com/spf13/cobra

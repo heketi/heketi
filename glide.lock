@@ -73,7 +73,7 @@ imports:
 - name: github.com/gorilla/mux
   version: bcd8bc72b08df0f70df986b97f95590779502d31
 - name: github.com/heketi/rest
-  version: 738570ea73f1cc2a0888c7c49fe80991c6050f34
+  version: aa6a652074133e6b0836bb095e847021fcb94b6a
 - name: github.com/heketi/tests
   version: f3775cbcefd6822086c729e3ce4b70ca85a5bd21
 - name: github.com/heketi/utils
