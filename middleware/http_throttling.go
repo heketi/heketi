@@ -47,11 +47,14 @@ func (r *ReqLimiter) incRequest(reqid string) {
 }
 
 //Function to remove request id to the queue
-func (r *ReqLimiter) decRequest(reqid string) {
+func (r *ReqLimiter) decRequest(reqID string) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-	delete(r.requestCache, reqid)
-	r.servingCount--
+	if _, ok := r.requestCache[reqID]; ok {
+		delete(r.requestCache, reqID)
+		r.servingCount--
+	}
+}
 
 }
 
