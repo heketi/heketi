@@ -15,6 +15,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
+	"github.com/heketi/heketi/middleware"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 )
@@ -74,7 +75,7 @@ func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 	logger.Info("Adding device %v to node %v", msg.Name, msg.NodeId)
 
 	// Add device in an asynchronous function
-	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (seeOtherUrl string, e error) {
+	a.asyncManager.AsyncHttpRedirectUsing(w, r, middleware.GetRequestID(r.Context()), func() (seeOtherUrl string, e error) {
 
 		defer func() {
 			if e != nil {
@@ -233,7 +234,7 @@ func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
 
 	// Delete device
 	logger.Info("Deleting device %v on node %v", device.Info.Id, device.NodeId)
-	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
+	a.asyncManager.AsyncHttpRedirectUsing(w, r, middleware.GetRequestID(r.Context()), func() (string, error) {
 
 		// Teardown device
 		err := a.executor.DeviceTeardown(node.ManageHostName(),
@@ -331,7 +332,7 @@ func (a *App) DeviceSetState(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Set state
-	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
+	a.asyncManager.AsyncHttpRedirectUsing(w, r, middleware.GetRequestID(r.Context()), func() (string, error) {
 		err = device.SetState(a.db, a.executor, msg.State)
 		if err != nil {
 			return "", err
@@ -375,7 +376,7 @@ func (a *App) DeviceResync(w http.ResponseWriter, r *http.Request) {
 	logger.Info("Checking for device %v changes", deviceId)
 
 	// Check and update device in background
-	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (seeOtherUrl string, e error) {
+	a.asyncManager.AsyncHttpRedirectUsing(w, r, middleware.GetRequestID(r.Context()), func() (seeOtherUrl string, e error) {
 
 		// Get actual device info from manage host
 		info, err := a.executor.GetDeviceInfo(node.ManageHostName(), device.Info.Name, device.Info.Id)
