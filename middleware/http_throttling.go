@@ -144,7 +144,7 @@ func (r *ReqLimiter) ServeHTTP(hw http.ResponseWriter, hr *http.Request, next ht
 		path := strings.TrimRight(hr.URL.Path, "/")
 		urlPart := strings.Split(path, "/")
 		if len(urlPart) >= 3 {
-			if isSuccess(res.Status()) || res.Status() == http.StatusInternalServerError {
+			if checkRespStatus(res.Status()) {
 				//extract the reqID from URL
 				reqID := urlPart[2]
 
@@ -197,11 +197,16 @@ func (r *ReqLimiter) Stop() {
 	r.stop <- true
 }
 
-// To check success status code
-func isSuccess(status int) bool {
+// To check success status,internalserver,See Other  code
+func checkRespStatus(status int) bool {
 
 	if status >= http.StatusOK && status < http.StatusResetContent {
 		return true
+	} else if status == http.StatusSeeOther {
+		return true
+	} else if status == http.StatusInternalServerError {
+		return true
 	}
+
 	return false
 }
