@@ -25,6 +25,8 @@ var (
 type ReqLimiter struct {
 	maxcount     uint32
 	servingCount uint32
+	//counter for incoming request
+	reqRecvCount uint32
 	//in memeory storage for ReqLimiter
 	requestCache map[string]time.Time
 	lock         sync.RWMutex
@@ -36,6 +38,13 @@ func (r *ReqLimiter) reachedMaxRequest() bool {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 	return r.servingCount >= r.maxcount
+}
+
+//Function to check total received request
+func (r *ReqLimiter) reqReceivedcount() bool {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+	return r.reqRecvCount >= r.maxcount
 }
 
 //Function to add request id to the queue
@@ -56,6 +65,20 @@ func (r *ReqLimiter) decRequest(reqID string) {
 	}
 }
 
+//Function to increment recvRequestCount
+func (r *ReqLimiter) incRecvCount() {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+	r.reqRecvCount++
+}
+
+//Function to decrement recvRequestCount
+func (r *ReqLimiter) decRecvCount() {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+	r.reqRecvCount--
+
+}
 }
 
 //NewHTTPThrottler Function to return the ReqLimiter
@@ -72,12 +95,19 @@ func (r *ReqLimiter) ServeHTTP(hw http.ResponseWriter, hr *http.Request, next ht
 	switch hr.Method {
 
 	case http.MethodPost, http.MethodDelete:
-		if !r.reachedMaxRequest() {
+		
+		//recevied a request increment the counter
+		//this is required ,sometimes it will take time to get response for current request
+		r.incRecvCount()
+
+		//avoid overload by checking maximum and currently received requests counts
+		if !r.reachedMaxRequest() && !r.reqReceivedcount() {
 
 			next(hw, hr)
 
 			res, ok := hw.(negroni.ResponseWriter)
 			if !ok {
+				r.decRecvCount()
 				return
 			}
 			//if request is accepted for Async operation
@@ -94,6 +124,8 @@ func (r *ReqLimiter) ServeHTTP(hw http.ResponseWriter, hr *http.Request, next ht
 			http.Error(hw, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 
 		}
+		//completed  request decrement the counter
+		r.decRecvCount()
 	case http.MethodGet:
 		next(hw, hr)
 
