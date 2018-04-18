@@ -79,6 +79,14 @@ func (r *ReqLimiter) decRecvCount() {
 	r.reqRecvCount--
 
 }
+
+//Function to check ID present in map
+func (r *ReqLimiter) checkReqIDPresent(reqID string) bool {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+	_, ok := r.requestCache[reqID]
+	return ok
+
 }
 
 //NewHTTPThrottler Function to return the ReqLimiter
@@ -139,9 +147,8 @@ func (r *ReqLimiter) ServeHTTP(hw http.ResponseWriter, hr *http.Request, next ht
 				//extract the reqID from URL
 				reqID := urlPart[2]
 
-				//check Request Id present in im-memeory
-				if _, ok := r.requestCache[reqID]; ok {
-
+				//check Request Id present in in-memeory
+				if r.checkReqIDPresent(reqID) {
 					//check operation is not pending
 					if hr.Header.Get("X-Pending") != "true" {
 						r.decRequest(reqID)
