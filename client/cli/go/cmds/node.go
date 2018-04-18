@@ -35,15 +35,22 @@ func init() {
 	nodeCommand.AddCommand(nodeDisableCommand)
 	nodeCommand.AddCommand(nodeListCommand)
 	nodeCommand.AddCommand(nodeRemoveCommand)
+	nodeCommand.AddCommand(nodeSetTagsCommand)
+	nodeCommand.AddCommand(nodeRmTagsCommand)
 	nodeAddCommand.Flags().IntVar(&zone, "zone", 0, "The zone in which the node should reside")
 	nodeAddCommand.Flags().StringVar(&clusterId, "cluster", "", "The cluster in which the node should reside")
 	nodeAddCommand.Flags().StringVar(&managmentHostNames, "management-host-name", "", "Management host name")
 	nodeAddCommand.Flags().StringVar(&storageHostNames, "storage-host-name", "", "Storage host name")
+	nodeSetTagsCommand.Flags().BoolP("exact", "e", false,
+		"Set the object to this exact set of tags. Overwrites existing tags.")
+	nodeRmTagsCommand.Flags().Bool("all", false,
+		"Remove all tags.")
 	nodeAddCommand.SilenceUsage = true
 	nodeDeleteCommand.SilenceUsage = true
 	nodeInfoCommand.SilenceUsage = true
 	nodeListCommand.SilenceUsage = true
 	nodeRemoveCommand.SilenceUsage = true
+	nodeSetTagsCommand.SilenceUsage = true
 }
 
 var nodeCommand = &cobra.Command{
@@ -289,6 +296,12 @@ var nodeInfoCommand = &cobra.Command{
 				info.Zone,
 				info.Hostnames.Manage[0],
 				info.Hostnames.Storage[0])
+			if len(info.Tags) != 0 {
+				fmt.Fprintf(stdout, "Tags:\n")
+				for k, v := range info.Tags {
+					fmt.Fprintf(stdout, "  %v: %v\n", k, v)
+				}
+			}
 			fmt.Fprintf(stdout, "Devices:\n")
 			for _, d := range info.DevicesInfo {
 				fmt.Fprintf(stdout, "Id:%-35v"+
@@ -340,5 +353,30 @@ var nodeRemoveCommand = &cobra.Command{
 		}
 
 		return err
+	},
+}
+
+var nodeSetTagsCommand = &cobra.Command{
+	Use:     "settags [node_id] tag1:value1 tag2:value2...",
+	Short:   "Sets tags on a node",
+	Long:    "Sets user-controlled metadata tags on a node",
+	Example: "  $ heketi-cli node settags 886a86a868711bef83001 foo:bar",
+	RunE: func(cmd *cobra.Command, args []string) error {
+
+		heketi := client.NewClient(options.Url, options.User, options.Key)
+		return setTagsCommand(cmd, heketi.NodeSetTags)
+	},
+}
+
+var nodeRmTagsCommand = &cobra.Command{
+	Use:     "rmtags [node_id] tag1:value1 tag2:value2...",
+	Aliases: []string{"deltags", "removetags"},
+	Short:   "Removes tags from a node",
+	Long:    "Removes user-controlled metadata tags on a node",
+	Example: "  $ heketi-cli node rmtags 886a86a868711bef83001 foo",
+	RunE: func(cmd *cobra.Command, args []string) error {
+
+		heketi := client.NewClient(options.Url, options.User, options.Key)
+		return rmTagsCommand(cmd, heketi.NodeSetTags)
 	},
 }

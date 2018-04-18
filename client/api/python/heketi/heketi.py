@@ -23,6 +23,12 @@ import time
 import json
 
 
+# Constants related to setting tags
+TAGS_SET = 'set'
+TAGS_UPDATE = 'update'
+TAGS_DELETE = 'delete'
+
+
 class HeketiClient(object):
 
     def __init__(self, host, user, key):
@@ -158,6 +164,16 @@ class HeketiClient(object):
         return req.status_code == requests.codes.ok
         '''
 
+    def node_set_tags(self, node_id, tags_options):
+        '''Set, update, or delete tags on a node.
+        Specify tags with options key "tags" and a dict of tags & values,
+        specify change type with options key "change_type" and a
+        string value of "set", "update", "delete" (or use TAGS_* constants).
+        '''
+        uri = '/nodes/' + node_id + '/tags'
+        req = self._make_request('POST', uri, tags_options)
+        return req.status_code == requests.codes.ok
+
     def device_add(self, device_options={}):
         ''' device_options is a dict with parameters to be passed \
             in the json request: \
@@ -191,6 +207,16 @@ class HeketiClient(object):
         uri = '/devices/' + device_id + '/resync'
         req = self._make_request('GET', uri)
         return req.status_code == requests.codes.NO_CONTENT
+
+    def device_set_tags(self, device_id, tags_options):
+        '''Set, update, or delete tags on a device.
+        Specify tags with options key "tags" and a dict of tags & values,
+        specify change type with options key "change_type" and a
+        string value of "set", "update", "delete" (or use TAGS_* constants).
+        '''
+        uri = '/devices/' + device_id + '/tags'
+        req = self._make_request('POST', uri, tags_options)
+        return req.status_code == requests.codes.ok
 
     def volume_create(self, volume_options={}):
         ''' volume_options is a dict with volume creation options:

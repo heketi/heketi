@@ -30,9 +30,12 @@ const (
 var jsonConfigFile string
 
 // Config file
+type ConfigFileDevice struct {
+	api.Device
+}
 type ConfigFileNode struct {
-	Devices []string           `json:"devices"`
-	Node    api.NodeAddRequest `json:"node"`
+	Devices []*ConfigFileDevice `json:"devices"`
+	Node    api.NodeAddRequest  `json:"node"`
 }
 type ConfigFileCluster struct {
 	Nodes []ConfigFileNode `json:"nodes"`
@@ -41,6 +44,29 @@ type ConfigFileCluster struct {
 }
 type ConfigFile struct {
 	Clusters []ConfigFileCluster `json:"clusters"`
+}
+
+// UnmarshalJSON is implemented on the ConfigFileDevice so that older
+// topology files that use strings in the device list can be used
+// with newer versions of heketi. If the json object is a string,
+// it is assigned to the device name and all other values ignored.
+// Otherwise we assume that the object matches the device and
+// that is decoded into our local wrapper type.
+func (device *ConfigFileDevice) UnmarshalJSON(b []byte) error {
+	var s string
+	err := json.Unmarshal(b, &s)
+	if err == nil {
+		device.Name = s
+		return nil
+	}
+	var d api.Device
+	err = json.Unmarshal(b, &d)
+	if err != nil {
+		return err
+	}
+	device.Name = d.Name
+	device.Tags = d.Tags
+	return nil
 }
 
 func init() {
@@ -208,15 +234,16 @@ var topologyLoadCommand = &cobra.Command{
 				for _, device := range node.Devices {
 					deviceInfo := getDeviceIdFromHeketiTopology(heketiTopology,
 						nodeInfo.Hostnames.Manage[0],
-						device)
+						device.Name)
 					if deviceInfo != nil {
-						fmt.Fprintf(stdout, "\t\tFound device %v\n", device)
+						fmt.Fprintf(stdout, "\t\tFound device %v\n", device.Name)
 					} else {
-						fmt.Fprintf(stdout, "\t\tAdding device %v ... ", device)
+						fmt.Fprintf(stdout, "\t\tAdding device %v ... ", device.Name)
 
 						req := &api.DeviceAddRequest{}
-						req.Name = device
+						req.Name = device.Name
 						req.NodeId = nodeInfo.Id
+						req.Tags = device.Tags
 						err := heketi.DeviceAdd(req)
 						if err != nil {
 							fmt.Fprintf(stdout, "Unable to add device: %v\n", err)
