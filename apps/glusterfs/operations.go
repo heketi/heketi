@@ -14,6 +14,7 @@ import (
 	"net/http"
 
 	"github.com/heketi/heketi/executors"
+	"github.com/heketi/heketi/middleware"
 	wdb "github.com/heketi/heketi/pkg/db"
 
 	"github.com/boltdb/bolt"
@@ -974,7 +975,7 @@ func AsyncHttpOperation(app *App,
 		return err
 	}
 
-	app.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
+	app.asyncManager.AsyncHttpRedirectUsing(w, r, middleware.GetRequestID(r.Context()), func() (string, error) {
 		logger.Info("Started async operation: %v", label)
 		if err := op.Exec(app.executor); err != nil {
 			if _, ok := err.(OperationRetryError); ok && op.MaxRetries() > 0 {
