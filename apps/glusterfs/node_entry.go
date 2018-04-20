@@ -63,6 +63,14 @@ func NewNodeEntryFromId(tx *bolt.Tx, id string) (*NodeEntry, error) {
 	return entry, nil
 }
 
+func (n *NodeEntry) Id() string {
+	return n.Info.Id
+}
+
+func (n *NodeEntry) Zone() int {
+	return n.Info.Zone
+}
+
 func (n *NodeEntry) registerManageKey(host string) string {
 	return "MANAGE" + host
 }

@@ -137,6 +137,10 @@ func (d *DeviceEntry) Id() string {
 	return d.Info.Id
 }
 
+func (d *DeviceEntry) ParentNodeId() string {
+	return d.NodeId
+}
+
 func (d *DeviceEntry) BucketName() string {
 	return BOLTDB_BUCKET_DEVICE
 }
@@ -374,6 +378,10 @@ func (d *DeviceEntry) NewBrickEntry(amount uint64, snapFactor float64, gid int64
 
 	// Create brick
 	return NewBrickEntry(amount, sn.TpSize, sn.PoolMetadataSize, d.Info.Id, d.NodeId, gid, volumeid)
+}
+
+func (d *DeviceEntry) NewBrick(amount uint64, snapFactor float64, gid int64, volumeid string) PlacerBrick {
+	return d.NewBrickEntry(amount, snapFactor, gid, volumeid)
 }
 
 type SpaceNeeded struct {

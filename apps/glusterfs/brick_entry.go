@@ -91,6 +91,18 @@ func (b *BrickEntry) Id() string {
 	return b.Info.Id
 }
 
+func (b *BrickEntry) DeviceId() string {
+	return b.Info.DeviceId
+}
+
+func (b *BrickEntry) NodeId() string {
+	return b.Info.NodeId
+}
+
+func (b *BrickEntry) Valid() bool {
+	return (b != nil) && (b.Info.Size > 0)
+}
+
 func (b *BrickEntry) Save(tx *bolt.Tx) error {
 	godbc.Require(tx != nil)
 	godbc.Require(len(b.Info.Id) > 0)
