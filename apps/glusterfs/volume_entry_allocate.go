@@ -272,8 +272,8 @@ func (v *VolumeEntry) allocBrickReplacement(db wdb.DB,
 	var r *BrickAllocation
 	err = db.Update(func(tx *bolt.Tx) error {
 		// returns true if new device differs from old device
-		diffDevice := func(bs *BrickSet, d *DeviceEntry) bool {
-			return oldDeviceEntry.Info.Id != d.Info.Id
+		diffDevice := func(bs *BrickSet, d PlacerDevice) bool {
+			return oldDeviceEntry.Info.Id != d.Id()
 		}
 
 		var err error
@@ -294,8 +294,8 @@ func (v *VolumeEntry) allocBrickReplacement(db wdb.DB,
 		return
 	}
 
-	newBrickEntry = r.BrickSets[0].Bricks[index]
-	newDeviceEntry = r.DeviceSets[0].Devices[index]
+	newBrickEntry = r.BrickSets[0].Bricks[index].(*BrickEntry)
+	newDeviceEntry = r.DeviceSets[0].Devices[index].(*DeviceEntry)
 	return
 }
 
@@ -454,18 +454,19 @@ func (v *VolumeEntry) allocBricks(
 		brick_entries = []*BrickEntry{}
 		for _, bs := range r.BrickSets {
 			for _, x := range bs.Bricks {
-				brick_entries = append(brick_entries, x)
-				err := x.Save(tx)
+				b := x.(*BrickEntry)
+				brick_entries = append(brick_entries, b)
+				err := b.Save(tx)
 				if err != nil {
 					return err
 				}
-				logger.Debug("Adding brick %v to volume %v", x.Id(), v.Info.Id)
-				v.BrickAdd(x.Id())
+				logger.Debug("Adding brick %v to volume %v", b.Id(), v.Info.Id)
+				v.BrickAdd(b.Id())
 			}
 		}
 		for _, ds := range r.DeviceSets {
 			for _, x := range ds.Devices {
-				err := x.Save(tx)
+				err := x.(*DeviceEntry).Save(tx)
 				if err != nil {
 					return err
 				}

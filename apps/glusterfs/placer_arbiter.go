@@ -31,8 +31,8 @@ const (
 type ArbiterBrickPlacer struct {
 	// the following two function vars are to better support
 	// dep. injection & unit testing
-	canHostArbiter func(*DeviceEntry, DeviceSource) bool
-	canHostData    func(*DeviceEntry, DeviceSource) bool
+	canHostArbiter func(PlacerDevice, DeviceSource) bool
+	canHostData    func(PlacerDevice, DeviceSource) bool
 }
 
 // Arbiter opts supports passing arbiter specific options
@@ -63,11 +63,11 @@ func (aopts *arbiterOpts) discount(index int) (err error) {
 // a volume that supports the arbiter feature.
 func NewArbiterBrickPlacer() *ArbiterBrickPlacer {
 	return &ArbiterBrickPlacer{
-		canHostArbiter: func(d *DeviceEntry, dsrc DeviceSource) bool {
+		canHostArbiter: func(d PlacerDevice, dsrc DeviceSource) bool {
 			return deviceHasArbiterTag(d, dsrc,
 				TAG_VAL_ARBITER_REQUIRED, TAG_VAL_ARBITER_SUPPORTED)
 		},
-		canHostData: func(d *DeviceEntry, dsrc DeviceSource) bool {
+		canHostData: func(d PlacerDevice, dsrc DeviceSource) bool {
 			return deviceHasArbiterTag(d, dsrc,
 				TAG_VAL_ARBITER_SUPPORTED, TAG_VAL_ARBITER_DISABLED)
 		},
@@ -140,7 +140,7 @@ func (bp *ArbiterBrickPlacer) Replace(
 	// copy input brick set to working brick set and get the
 	// corresponding device entries for the device set
 	for i, b := range bs.Bricks {
-		d, err := dsrc.Device(b.Info.DeviceId)
+		d, err := dsrc.Device(b.DeviceId())
 		if err != nil {
 			return r, err
 		}
@@ -230,9 +230,9 @@ func (bp *ArbiterBrickPlacer) tryPlaceBrickOnDevice(
 	bs *BrickSet,
 	ds *DeviceSet,
 	index int,
-	device *DeviceEntry) error {
+	device PlacerDevice) error {
 
-	logger.Debug("Trying to place brick on device %v", device.Info.Id)
+	logger.Debug("Trying to place brick on device %v", device.Id())
 
 	for i, b := range bs.Bricks {
 		// do not check the brick in the brick set for the current
@@ -243,17 +243,17 @@ func (bp *ArbiterBrickPlacer) tryPlaceBrickOnDevice(
 		if i == index {
 			continue
 		}
-		if b.Info.NodeId == device.NodeId {
+		if b.NodeId() == device.ParentNodeId() {
 			// this node is used by an existing brick in the set
 			// we can not use this device
 			logger.Debug("Node %v already in use by brick set (device %v)",
-				device.NodeId, device.Info.Id)
+				device.ParentNodeId(), device.Id())
 			return tryPlaceAgain
 		}
 	}
 
 	if pred != nil && !pred(bs, device) {
-		logger.Debug("Device %v rejected by predicate function", device.Info.Id)
+		logger.Debug("Device %v rejected by predicate function", device.Id())
 		return tryPlaceAgain
 	}
 
@@ -263,12 +263,12 @@ func (bp *ArbiterBrickPlacer) tryPlaceBrickOnDevice(
 	if brickSize != origBrickSize {
 		logger.Info("Placing brick with discounted size: %v", brickSize)
 	}
-	brick := device.NewBrickEntry(brickSize, snapFactor,
+	brick := device.NewBrick(brickSize, snapFactor,
 		opts.o.BrickGid(), opts.o.BrickOwner())
 	if brick == nil || !brick.Valid() {
 		logger.Debug(
 			"Unable to place a brick of size %v & factor %v on device %v",
-			brickSize, snapFactor, device.Info.Id)
+			brickSize, snapFactor, device.Id())
 		return tryPlaceAgain
 	}
 
@@ -300,9 +300,9 @@ func (bp *ArbiterBrickPlacer) Scanner(dsrc DeviceSource) (
 	}
 	for _, dan := range dnl {
 		sd := &SimpleDevice{
-			zone:     dan.Node.Info.Zone,
-			nodeId:   dan.Node.Info.Id,
-			deviceId: dan.Device.Info.Id,
+			zone:     dan.Node.Zone(),
+			nodeId:   dan.Node.Id(),
+			deviceId: dan.Device.Id(),
 		}
 		// it is perfectly fine for a device to host data & arbiter
 		// bricks if it is so configured. Thus both the following
@@ -356,14 +356,14 @@ func discountBrickSize(dataBrickSize, averageFileSize uint64) (uint64, error) {
 	return (dataBrickSize / averageFileSize), nil
 }
 
-func deviceHasArbiterTag(d *DeviceEntry, dsrc DeviceSource, v ...string) bool {
-	n, err := dsrc.Node(d.NodeId)
+func deviceHasArbiterTag(d PlacerDevice, dsrc DeviceSource, v ...string) bool {
+	n, err := dsrc.Node(d.ParentNodeId())
 	if err != nil {
 		logger.LogError("failed to fetch node (%v) for arbiter tag: %v",
-			d.NodeId, err)
+			d.ParentNodeId(), err)
 		return false
 	}
-	a := ArbiterTag(MergeTags(n, d))
+	a := ArbiterTag(MergeTags(n.(*NodeEntry), d.(*DeviceEntry)))
 	for _, value := range v {
 		if value == a {
 			return true

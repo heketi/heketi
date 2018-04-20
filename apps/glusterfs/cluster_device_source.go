@@ -82,7 +82,7 @@ func (cds *ClusterDeviceSource) Devices() ([]DeviceAndNode, error) {
 	return valid, nil
 }
 
-func (cds *ClusterDeviceSource) Device(id string) (*DeviceEntry, error) {
+func (cds *ClusterDeviceSource) DeviceEntry(id string) (*DeviceEntry, error) {
 	device, ok := cds.deviceCache[id]
 	if !ok {
 		// Get device entry from db otherwise
@@ -96,7 +96,11 @@ func (cds *ClusterDeviceSource) Device(id string) (*DeviceEntry, error) {
 	return device, nil
 }
 
-func (cds *ClusterDeviceSource) Node(id string) (*NodeEntry, error) {
+func (cds *ClusterDeviceSource) Device(id string) (PlacerDevice, error) {
+	return cds.DeviceEntry(id)
+}
+
+func (cds *ClusterDeviceSource) NodeEntry(id string) (*NodeEntry, error) {
 	node, ok := cds.nodeCache[id]
 	if !ok {
 		// Get node entry from db otherwise
@@ -108,4 +112,8 @@ func (cds *ClusterDeviceSource) Node(id string) (*NodeEntry, error) {
 		cds.nodeCache[id] = node
 	}
 	return node, nil
+}
+
+func (cds *ClusterDeviceSource) Node(id string) (PlacerNode, error) {
+	return cds.NodeEntry(id)
 }

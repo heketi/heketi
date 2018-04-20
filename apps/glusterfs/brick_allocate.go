@@ -19,18 +19,18 @@ import (
 	"github.com/heketi/heketi/pkg/utils"
 )
 
-type deviceFetcher func(string) (*DeviceEntry, error)
+type deviceFetcher func(string) (PlacerDevice, error)
 
 func tryAllocateBrickOnDevice(
 	opts PlacementOpts,
 	pred DeviceFilter,
-	device *DeviceEntry,
-	bs *BrickSet) *BrickEntry {
+	device PlacerDevice,
+	bs *BrickSet) PlacerBrick {
 
 	// Do not allow a device from the same node to be in the set
 	deviceOk := true
 	for _, brickInSet := range bs.Bricks {
-		if brickInSet.Info.NodeId == device.NodeId {
+		if brickInSet.NodeId() == device.ParentNodeId() {
 			deviceOk = false
 		}
 	}
@@ -44,12 +44,12 @@ func tryAllocateBrickOnDevice(
 
 	// Try to allocate a brick on this device
 	brickSize, snapFactor := opts.BrickSizes()
-	brick := device.NewBrickEntry(brickSize, snapFactor,
+	brick := device.NewBrick(brickSize, snapFactor,
 		opts.BrickGid(), opts.BrickOwner())
 	if brick == nil || !brick.Valid() {
 		logger.Debug(
 			"Unable to place a brick of size %v & factor %v on device %v",
-			brickSize, snapFactor, device.Info.Id)
+			brickSize, snapFactor, device.Id())
 	}
 	return brick
 }
@@ -59,7 +59,7 @@ func findDeviceAndBrickForSet(
 	fetchDevice deviceFetcher,
 	pred DeviceFilter,
 	deviceCh <-chan string,
-	bs *BrickSet) (*BrickEntry, *DeviceEntry, error) {
+	bs *BrickSet) (PlacerBrick, PlacerDevice, error) {
 
 	// Check the ring for devices to place the brick
 	for deviceId := range deviceCh {
@@ -224,15 +224,15 @@ func (bp *StandardBrickPlacer) Replace(
 	// of the bricks w/in the brickset are meaningful and
 	// this will make more sense in future position-aware placers
 	// (e.g. arbiter)
-	newBricks := make([]*BrickEntry, bs.SetSize)
-	newDevices := make([]*DeviceEntry, bs.SetSize)
+	newBricks := make([]PlacerBrick, bs.SetSize)
+	newDevices := make([]PlacerDevice, bs.SetSize)
 	for i := 0; i < bs.SetSize; i++ {
 		if i == index {
 			newBricks[i] = newBrickEntry
 			newDevices[i] = newDeviceEntry
 		} else {
 			newBricks[i] = bs.Bricks[i]
-			d, err := dsrc.Device(bs.Bricks[i].Info.DeviceId)
+			d, err := dsrc.Device(bs.Bricks[i].DeviceId())
 			if err != nil {
 				return r, err
 			}

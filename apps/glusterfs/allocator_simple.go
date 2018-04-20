@@ -29,9 +29,9 @@ func loadRingFromDeviceSource(dsrc DeviceSource) (
 	}
 	for _, dan := range dnl {
 		ring.Add(&SimpleDevice{
-			zone:     dan.Node.Info.Zone,
-			nodeId:   dan.Node.Info.Id,
-			deviceId: dan.Device.Info.Id,
+			zone:     dan.Node.Zone(),
+			nodeId:   dan.Node.Id(),
+			deviceId: dan.Device.Id(),
 		})
 	}
 	return ring, nil

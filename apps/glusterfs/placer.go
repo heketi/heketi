@@ -10,8 +10,8 @@
 package glusterfs
 
 type DeviceAndNode struct {
-	Device *DeviceEntry
-	Node   *NodeEntry
+	Device PlacerDevice
+	Node   PlacerNode
 }
 
 // DeviceSource is an abstraction used by the BrickPlacer to
@@ -26,10 +26,10 @@ type DeviceSource interface {
 	Devices() ([]DeviceAndNode, error)
 	// Device looks up a device id and resolves it to a Device
 	// entry object.
-	Device(id string) (*DeviceEntry, error)
+	Device(id string) (PlacerDevice, error)
 	// Node looks up a node id and resolves it to a Node entry
 	// object.
-	Node(id string) (*NodeEntry, error)
+	Node(id string) (PlacerNode, error)
 }
 
 // PlacementOpts is an interface that is meant for passing the
@@ -57,7 +57,7 @@ type PlacementOpts interface {
 // DeviceFilter functions can be defined by the caller of a
 // BrickPlacer to define what devices it wants the Placer
 // algorithm to exclude from the brick set.
-type DeviceFilter func(*BrickSet, *DeviceEntry) bool
+type DeviceFilter func(*BrickSet, PlacerDevice) bool
 
 // BrickPlacer implementations take their source devices and
 // options and place new bricks on devices (if possible).
