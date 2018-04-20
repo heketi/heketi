@@ -46,7 +46,7 @@ func tryAllocateBrickOnDevice(
 	brickSize, snapFactor := opts.BrickSizes()
 	brick := device.NewBrickEntry(brickSize, snapFactor,
 		opts.BrickGid(), opts.BrickOwner())
-	if brick == nil {
+	if brick == nil || !brick.Valid() {
 		logger.Debug(
 			"Unable to place a brick of size %v & factor %v on device %v",
 			brickSize, snapFactor, device.Info.Id)
@@ -70,7 +70,7 @@ func findDeviceAndBrickForSet(
 		}
 
 		brick := tryAllocateBrickOnDevice(opts, pred, device, bs)
-		if brick == nil {
+		if brick == nil || !brick.Valid() {
 			continue
 		}
 

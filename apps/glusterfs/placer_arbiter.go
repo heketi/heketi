@@ -265,7 +265,7 @@ func (bp *ArbiterBrickPlacer) tryPlaceBrickOnDevice(
 	}
 	brick := device.NewBrickEntry(brickSize, snapFactor,
 		opts.o.BrickGid(), opts.o.BrickOwner())
-	if brick == nil {
+	if brick == nil || !brick.Valid() {
 		logger.Debug(
 			"Unable to place a brick of size %v & factor %v on device %v",
 			brickSize, snapFactor, device.Info.Id)
