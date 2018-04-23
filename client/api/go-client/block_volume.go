@@ -43,7 +43,7 @@ func (c *Client) BlockVolumeCreate(request *api.BlockVolumeCreateRequest) (
 		return nil, err
 	}
 
-	r, err := c.do(req)
+	r, err := c.retryOperationDo(req, buffer)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +139,7 @@ func (c *Client) BlockVolumeDelete(id string) error {
 		return err
 	}
 
-	r, err := c.do(req)
+	r, err := c.retryOperationDo(req, nil)
 	if err != nil {
 		return err
 	}
