@@ -46,6 +46,7 @@ func NewNodeEntryFromRequest(req *api.NodeAddRequest) *NodeEntry {
 	node.Info.ClusterId = req.ClusterId
 	node.Info.Hostnames = req.Hostnames
 	node.Info.Zone = req.Zone
+	node.Info.Tags = copyTags(req.Tags)
 
 	return node
 }
@@ -391,6 +392,7 @@ func (n *NodeEntry) NewInfoReponse(tx *bolt.Tx) (*api.NodeInfoResponse, error) {
 	info.Zone = n.Info.Zone
 	info.State = n.State
 	info.DevicesInfo = make([]api.DeviceInfoResponse, 0)
+	info.Tags = copyTags(n.Info.Tags)
 
 	// Add each drive information
 	for _, deviceid := range n.Devices {
@@ -469,5 +471,17 @@ func (n *NodeEntry) DeleteBricksWithEmptyPath(tx *bolt.Tx) error {
 			return err
 		}
 	}
+	return nil
+}
+
+func (n *NodeEntry) AllTags() map[string]string {
+	if n.Info.Tags == nil {
+		return map[string]string{}
+	}
+	return n.Info.Tags
+}
+
+func (n *NodeEntry) SetTags(t map[string]string) error {
+	n.Info.Tags = t
 	return nil
 }

@@ -63,6 +63,7 @@ func NewDeviceEntryFromRequest(req *api.DeviceAddRequest) *DeviceEntry {
 	device.Info.Id = utils.GenUUID()
 	device.Info.Name = req.Name
 	device.NodeId = req.NodeId
+	device.Info.Tags = copyTags(req.Tags)
 
 	return device
 }
@@ -275,6 +276,7 @@ func (d *DeviceEntry) NewInfoResponse(tx *bolt.Tx) (*api.DeviceInfoResponse, err
 	info.Storage = d.Info.Storage
 	info.State = d.State
 	info.Bricks = make([]api.BrickInfo, 0)
+	info.Tags = copyTags(d.Info.Tags)
 
 	// Add each drive information
 	for _, id := range d.Bricks {
@@ -591,5 +593,17 @@ func (d *DeviceEntry) DeleteBricksWithEmptyPath(tx *bolt.Tx) error {
 			return err
 		}
 	}
+	return nil
+}
+
+func (d *DeviceEntry) AllTags() map[string]string {
+	if d.Info.Tags == nil {
+		return map[string]string{}
+	}
+	return d.Info.Tags
+}
+
+func (d *DeviceEntry) SetTags(t map[string]string) error {
+	d.Info.Tags = t
 	return nil
 }

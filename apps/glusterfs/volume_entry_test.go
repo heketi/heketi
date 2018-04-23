@@ -2317,3 +2317,116 @@ func TestVolumeCreateArbiter(t *testing.T) {
 		return nil
 	})
 }
+func TestVolumeCreateArbiterSizing(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	cc := 0
+	arbiterBrickCount := 0
+	mVolumeCreate := app.xo.MockVolumeCreate
+	app.xo.MockVolumeCreate = func(host string, volume *executors.VolumeRequest) (*executors.Volume, error) {
+		cc++
+		tests.Assert(t, volume.Arbiter, "expected volumeArbiter=true, was false")
+		return mVolumeCreate(host, volume)
+	}
+
+	err := setupSampleDbWithTopology(app,
+		2,    // clusters
+		3,    // nodes_per_cluster
+		4,    // devices_per_node,
+		6*TB, // disksize)
+	)
+
+	req := &api.VolumeCreateRequest{}
+	req.Size = 64
+	req.Durability.Type = api.DurabilityReplicate
+	req.Durability.Replicate.Replica = 3
+	req.GlusterVolumeOptions = []string{"user.heketi.arbiter true"}
+
+	v := NewVolumeEntryFromRequest(req)
+	tests.Assert(t, v.HasArbiterOption(),
+		"expected v.HasArbiterOption() to be true, got false")
+
+	err = v.Create(app.db, app.executor)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	// verify that the mock volume create was called
+	tests.Assert(t, cc == 1, "expected cc == 1, got:", cc)
+
+	app.db.View(func(tx *bolt.Tx) error {
+		bl, err := BrickList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(bl) == 3,
+			"expected len(devices) == 3, got:", len(bl))
+		for _, id := range bl {
+			brick, err := NewBrickEntryFromId(tx, id)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			if brick.Info.Size == 1*GB {
+				arbiterBrickCount++
+			}
+		}
+
+		tests.Assert(t, arbiterBrickCount == 1, "expected arbiterBrickCount == 1, got:", arbiterBrickCount)
+		return nil
+	})
+}
+
+func TestVolumeCreateArbiterSizingCustom(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	cc := 0
+	arbiterBrickCount := 0
+	mVolumeCreate := app.xo.MockVolumeCreate
+	app.xo.MockVolumeCreate = func(host string, volume *executors.VolumeRequest) (*executors.Volume, error) {
+		cc++
+		tests.Assert(t, volume.Arbiter, "expected volumeArbiter=true, was false")
+		return mVolumeCreate(host, volume)
+	}
+
+	err := setupSampleDbWithTopology(app,
+		2,    // clusters
+		3,    // nodes_per_cluster
+		4,    // devices_per_node,
+		6*TB, // disksize)
+	)
+
+	req := &api.VolumeCreateRequest{}
+	req.Size = 100
+	req.Durability.Type = api.DurabilityReplicate
+	req.Durability.Replicate.Replica = 3
+	req.GlusterVolumeOptions = []string{"user.heketi.arbiter true", "user.heketi.average-file-size 100"}
+
+	v := NewVolumeEntryFromRequest(req)
+	tests.Assert(t, v.HasArbiterOption(),
+		"expected v.HasArbiterOption() to be true, got false")
+
+	err = v.Create(app.db, app.executor)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	// verify that the mock volume create was called
+	tests.Assert(t, cc == 1, "expected cc == 1, got:", cc)
+
+	app.db.View(func(tx *bolt.Tx) error {
+		bl, err := BrickList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(bl) == 3,
+			"expected len(devices) == 3, got:", len(bl))
+		for _, id := range bl {
+			brick, err := NewBrickEntryFromId(tx, id)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			if brick.Info.Size == 1*GB {
+				arbiterBrickCount++
+			}
+		}
+
+		tests.Assert(t, arbiterBrickCount == 1, "expected arbiterBrickCount == 1, got:", arbiterBrickCount)
+		return nil
+	})
+}

@@ -12,6 +12,8 @@
 
 import unittest
 import requests
+
+import heketi
 from heketi import HeketiClient
 
 
@@ -334,6 +336,234 @@ class test_heketi(unittest.TestCase):
             # Delete node
             node_delete = c.node_delete(node_id)
             self.assertTrue(node_delete)
+
+        # Delete cluster
+        cluster_delete = c.cluster_delete(cluster['id'])
+        self.assertTrue(cluster_delete)
+
+    def test_node_tags(self):
+        # Create app
+        c = HeketiClient(TEST_SERVER, "admin", TEST_ADMIN_KEY)
+
+        # Create cluster
+        cluster_req = {}
+        cluster_req['block'] = True
+        cluster_req['file'] = True
+        cluster = c.cluster_create(cluster_req)
+        self.assertNotEqual(cluster['id'], '')
+
+        # Create node
+        node_req = {}
+        node_req['cluster'] = cluster['id']
+        node_req['zone'] = 10
+        node_req['hostnames'] = {
+            "manage": ["node1-manage.gluster.lab.com"],
+            "storage": ["node1-storage.gluster.lab.com"]
+        }
+        node_req["tags"] = {
+            "foo": "bar",
+            "speed": "ultra",
+        }
+
+        node = c.node_add(node_req)
+        self.assertNotEqual(node['id'], '')
+
+        node_id = node['id']
+        nodeInfo = c.node_info(node_id)
+        self.assertEqual(nodeInfo['tags'], {
+            "foo": "bar",
+            "speed": "ultra",
+        })
+
+        # add some new tags
+        r = c.node_set_tags(node_id, dict(
+            change_type=heketi.TAGS_UPDATE,
+            tags={"robot": "bender"}))
+        self.assertTrue(r)
+
+        nodeInfo = c.node_info(node_id)
+        self.assertEqual(nodeInfo['tags'], {
+            "foo": "bar",
+            "speed": "ultra",
+            "robot": "bender",
+        })
+
+        # reset tags to empty
+        r = c.node_set_tags(node_id, dict(
+            change_type=heketi.TAGS_SET,
+            tags={}))
+        self.assertTrue(r)
+
+        nodeInfo = c.node_info(node_id)
+        self.assertFalse(nodeInfo.get('tags'))
+
+        # add some new tags back
+        r = c.node_set_tags(node_id, dict(
+            change_type=heketi.TAGS_UPDATE,
+            tags={"robot": "bender", "fish": "bulb"}))
+        self.assertTrue(r)
+
+        nodeInfo = c.node_info(node_id)
+        self.assertEqual(nodeInfo['tags'], {
+            "robot": "bender",
+            "fish": "bulb",
+        })
+
+        # delete a particular tag
+        r = c.node_set_tags(node_id, dict(
+            change_type=heketi.TAGS_DELETE,
+            tags={"robot": ""}))
+        self.assertTrue(r)
+
+        nodeInfo = c.node_info(node_id)
+        self.assertEqual(nodeInfo['tags'], {
+            "fish": "bulb",
+        })
+
+        # invalid change_type raises error
+        with self.assertRaises(requests.exceptions.HTTPError):
+            c.node_set_tags(node_id, dict(
+                change_type="zoidberg",
+                tags={"robot": "flexo"}))
+
+        # invalid tag name raises error
+        with self.assertRaises(requests.exceptions.HTTPError):
+            c.node_set_tags(node_id, dict(
+                change_type=heketi.TAGS_UPDATE,
+                tags={"$! W ~~~": "ok"}))
+
+        # check nothing changed
+        nodeInfo = c.node_info(node_id)
+        self.assertEqual(nodeInfo['tags'], {
+            "fish": "bulb",
+        })
+
+        # Delete node
+        node_delete = c.node_delete(node['id'])
+        self.assertTrue(node_delete)
+
+        # Delete cluster
+        cluster_delete = c.cluster_delete(cluster['id'])
+        self.assertTrue(cluster_delete)
+
+    def test_device_tags(self):
+        # Create app
+        c = HeketiClient(TEST_SERVER, "admin", TEST_ADMIN_KEY)
+
+        # Create cluster
+        cluster_req = {}
+        cluster_req['block'] = True
+        cluster_req['file'] = True
+        cluster = c.cluster_create(cluster_req)
+        self.assertNotEqual(cluster['id'], '')
+
+        # Create node
+        node_req = {}
+        node_req['cluster'] = cluster['id']
+        node_req['zone'] = 10
+        node_req['hostnames'] = {
+            "manage": ["node1-manage.gluster.lab.com"],
+            "storage": ["node1-storage.gluster.lab.com"]
+        }
+
+        node = c.node_add(node_req)
+        self.assertNotEqual(node['id'], '')
+
+        # Create a device (with tags)
+        device_req = {}
+        device_req['name'] = "/dev/sda"
+        device_req['node'] = node['id']
+        device_req["tags"] = {
+            "foo": "bar",
+            "speed": "ultra",
+        }
+
+        device = c.device_add(device_req)
+        self.assertTrue(device)
+
+        # get information
+        info = c.node_info(node['id'])
+        self.assertEqual(len(info['devices']), 1)
+        device_id = info['devices'][0]['id']
+
+        # check tags on device
+        device_info = c.device_info(device_id)
+        self.assertEqual(device_info['tags'], {
+            "foo": "bar",
+            "speed": "ultra",
+        })
+
+        # add some new tags
+        r = c.device_set_tags(device_id, dict(
+            change_type=heketi.TAGS_UPDATE,
+            tags={"robot": "calculon"}))
+        self.assertTrue(r)
+
+        device_info = c.device_info(device_id)
+        self.assertEqual(device_info['tags'], {
+            "foo": "bar",
+            "speed": "ultra",
+            "robot": "calculon",
+        })
+
+        # reset tags to empty
+        r = c.device_set_tags(device_id, dict(
+            change_type=heketi.TAGS_SET,
+            tags={}))
+        self.assertTrue(r)
+
+        device_info = c.device_info(device_id)
+        self.assertFalse(device_info.get('tags'))
+
+        # add some new tags back
+        r = c.device_set_tags(device_id, dict(
+            change_type=heketi.TAGS_UPDATE,
+            tags={"robot": "calculon", "fish": "blinky"}))
+        self.assertTrue(r)
+
+        device_info = c.device_info(device_id)
+        self.assertEqual(device_info['tags'], {
+            "robot": "calculon",
+            "fish": "blinky",
+        })
+
+        # delete a particular tag
+        r = c.device_set_tags(device_id, dict(
+            change_type=heketi.TAGS_DELETE,
+            tags={"robot": ""}))
+        self.assertTrue(r)
+
+        device_info = c.device_info(device_id)
+        self.assertEqual(device_info['tags'], {
+            "fish": "blinky",
+        })
+
+        # invalid change_type raises error
+        with self.assertRaises(requests.exceptions.HTTPError):
+            c.device_set_tags(device_id, dict(
+                change_type="hermes",
+                tags={"robot": "flexo"}))
+
+        # invalid tag name raises error
+        with self.assertRaises(requests.exceptions.HTTPError):
+            c.device_set_tags(device_id, dict(
+                change_type=heketi.TAGS_UPDATE,
+                tags={"": "ok"}))
+
+        # check nothing changed
+        device_info = c.device_info(device_id)
+        self.assertEqual(device_info['tags'], {
+            "fish": "blinky",
+        })
+
+        # delete device
+        self.assertTrue(c.device_state(device_id, {'state': 'offline'}))
+        self.assertTrue(c.device_state(device_id, {'state': 'failed'}))
+        self.assertTrue(c.device_delete(device_id))
+
+        # Delete node
+        node_delete = c.node_delete(node['id'])
+        self.assertTrue(node_delete)
 
         # Delete cluster
         cluster_delete = c.cluster_delete(cluster['id'])

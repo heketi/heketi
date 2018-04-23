@@ -26,16 +26,19 @@ type GlusterFSConfig struct {
 	Loglevel   string              `json:"loglevel"`
 
 	// advanced settings
-	BrickMaxSize int `json:"brick_max_size_gb"`
-	BrickMinSize int `json:"brick_min_size_gb"`
-	BrickMaxNum  int `json:"max_bricks_per_volume"`
+	BrickMaxSize    int    `json:"brick_max_size_gb"`
+	BrickMinSize    int    `json:"brick_min_size_gb"`
+	BrickMaxNum     int    `json:"max_bricks_per_volume"`
+	AverageFileSize uint64 `json:"average_file_size_kb"`
 
 	//block settings
 	CreateBlockHostingVolumes bool `json:"auto_create_block_hosting_volume"`
 	BlockHostingVolumeSize    int  `json:"block_hosting_volume_size"`
 
 	// server behaviors
-	IgnoreStaleOperations bool `json:"ignore_stale_operations"`
+	IgnoreStaleOperations          bool   `json:"ignore_stale_operations"`
+	RefreshTimeMonitorGlusterNodes uint32 `json:"refresh_time_monitor_gluster_nodes"`
+	StartTimeMonitorGlusterNodes   uint32 `json:"start_time_monitor_gluster_nodes"`
 }
 
 type ConfigFile struct {

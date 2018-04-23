@@ -39,7 +39,14 @@ const (
 	DEFAULT_EC_REDUNDANCY         = 2
 	DEFAULT_THINP_SNAPSHOT_FACTOR = 1.5
 
-	HEKETI_ARBITER_KEY = "user.heketi.arbiter"
+	HEKETI_ARBITER_KEY           = "user.heketi.arbiter"
+	HEKETI_AVERAGE_FILE_SIZE_KEY = "user.heketi.average-file-size"
+)
+
+var (
+	// Average size of files on a volume, currently used only for arbiter sizing.
+	// Might be used for other purposes later.
+	averageFileSize uint64 = 64 * KB
 )
 
 // VolumeEntry struct represents a volume in heketi. Serialization is done using
@@ -237,6 +244,23 @@ func (v *VolumeEntry) HasArbiterOption() bool {
 	return false
 }
 
+// GetAverageFileSize returns averageFileSize provided by user or default averageFileSize
+func (v *VolumeEntry) GetAverageFileSize() uint64 {
+	for _, s := range v.GlusterVolumeOptions {
+		r := strings.Split(s, " ")
+		if len(r) == 2 && r[0] == HEKETI_AVERAGE_FILE_SIZE_KEY {
+			if v, e := strconv.ParseUint(r[1], 10, 64); e == nil {
+				if v == 0 {
+					logger.LogError("Average File Size cannot be zero, using default file size %v", averageFileSize)
+					return averageFileSize
+				}
+				return v
+			}
+		}
+	}
+	return averageFileSize
+}
+
 func (v *VolumeEntry) BrickAdd(id string) {
 	godbc.Require(!utils.SortedStringHas(v.Bricks, id))
 
@@ -286,6 +310,26 @@ func (v *VolumeEntry) tryAllocateBricks(
 func (v *VolumeEntry) cleanupCreateVolume(db wdb.DB,
 	executor executors.Executor,
 	brick_entries []*BrickEntry) error {
+
+	err := v.runOnHost(db, func(h string) (bool, error) {
+		err := executor.VolumeDestroy(h, v.Info.Name)
+		switch {
+		case err == nil:
+			// no errors, so we just deleted the volume from gluster
+			return false, nil
+		case strings.Contains(err.Error(), "does not exist"):
+			// we asked gluster to delete a volume that already does not exist
+			return false, nil
+		default:
+			logger.Warning("failed to delete volume %v via %v: %v",
+				v.Info.Id, h, err)
+			return true, err
+		}
+	})
+	if err != nil {
+		logger.LogError("failed to delete volume in cleanup: %v", err)
+		return fmt.Errorf("failed to clean up volume: %v", v.Info.Id)
+	}
 
 	// from a quick read its "safe" to unconditionally try to delete
 	// bricks. TODO: find out if that is true with functional tests
@@ -725,4 +769,52 @@ func eligibleClusters(db wdb.RODB, req ClusterReq,
 	})
 
 	return candidateClusters, err
+}
+
+func (v *VolumeEntry) runOnHost(db wdb.RODB,
+	cb func(host string) (bool, error)) error {
+
+	hosts := map[string]string{}
+	err := db.View(func(tx *bolt.Tx) error {
+		vol, err := NewVolumeEntryFromId(tx, v.Info.Id)
+		if err != nil {
+			return err
+		}
+
+		cluster, err := NewClusterEntryFromId(tx, vol.Info.Cluster)
+		if err != nil {
+			return err
+		}
+
+		for _, nodeId := range cluster.Info.Nodes {
+			node, err := NewNodeEntryFromId(tx, nodeId)
+			if err != nil {
+				return err
+			}
+			hosts[nodeId] = node.ManageHostName()
+		}
+
+		return nil
+	})
+	if err != nil {
+		logger.LogError("runOnHost failed to get hosts: %v", err)
+		return err
+	}
+
+	nodeUp := currentNodeHealthStatus()
+	for nodeId, host := range hosts {
+		if up, found := nodeUp[nodeId]; found && !up {
+			// if the node is in the cache and we know it was not
+			// recently healthy, skip it
+			logger.Debug("skipping node. %v (%v) is presumed unhealthy",
+				nodeId, host)
+			continue
+		}
+		logger.Debug("running function on node %v (%v)", nodeId, host)
+		tryNext, err := cb(host)
+		if !tryNext {
+			return err
+		}
+	}
+	return fmt.Errorf("no hosts available (%v total)", len(hosts))
 }

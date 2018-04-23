@@ -19,6 +19,19 @@ import (
 	"github.com/boltdb/bolt"
 )
 
+const (
+	VOLUME_MAX_RETRIES int = 4
+)
+
+type OperationRetryError struct {
+	OriginalError error
+}
+
+func (ore OperationRetryError) Error() string {
+	return fmt.Sprintf("Operation Should Be Retried; Error: %v",
+		ore.OriginalError.Error())
+}
+
 // The operations.go file is meant to provide a common approach to planning,
 // executing, and completing changes to the storage clusters under heketi
 // management as well as accurately reflecting these changes in the heketi db.
@@ -69,6 +82,13 @@ type Operation interface {
 	// operation entries. This function should be performed in a
 	// single transaction.
 	Finalize() error
+	MaxRetries() int
+}
+
+type noRetriesOperation struct{}
+
+func (n *noRetriesOperation) MaxRetries() int {
+	return 0
 }
 
 // OperationManager is an embeddable struct meant to be used within any
@@ -87,7 +107,8 @@ func (om *OperationManager) Id() string {
 // create a new volume.
 type VolumeCreateOperation struct {
 	OperationManager
-	vol *VolumeEntry
+	vol        *VolumeEntry
+	maxRetries int
 }
 
 // NewVolumeCreateOperation returns a new VolumeCreateOperation populated
@@ -101,7 +122,8 @@ func NewVolumeCreateOperation(
 			db: db,
 			op: NewPendingOperationEntry(NEW_ID),
 		},
-		vol: vol,
+		maxRetries: VOLUME_MAX_RETRIES,
+		vol:        vol,
 	}
 }
 
@@ -111,6 +133,10 @@ func (vc *VolumeCreateOperation) Label() string {
 
 func (vc *VolumeCreateOperation) ResourceUrl() string {
 	return fmt.Sprintf("/volumes/%v", vc.vol.Info.Id)
+}
+
+func (vc *VolumeCreateOperation) MaxRetries() int {
+	return vc.maxRetries
 }
 
 // Build allocates and saves new volume and brick entries (tagged as pending)
@@ -149,8 +175,9 @@ func (vc *VolumeCreateOperation) Exec(executor executors.Executor) error {
 	err = vc.vol.createVolumeExec(vc.db, executor, brick_entries)
 	if err != nil {
 		logger.LogError("Error executing create volume: %v", err)
+		return OperationRetryError{err}
 	}
-	return err
+	return nil
 }
 
 // Finalize marks our new volume and brick db entries as no longer pending.
@@ -202,6 +229,7 @@ func (vc *VolumeCreateOperation) Rollback(executor executors.Executor) error {
 // expand an existing volume.
 type VolumeExpandOperation struct {
 	OperationManager
+	noRetriesOperation
 	vol *VolumeEntry
 
 	// modification values
@@ -327,6 +355,7 @@ func (ve *VolumeExpandOperation) Finalize() error {
 // delete an existing volume.
 type VolumeDeleteOperation struct {
 	OperationManager
+	noRetriesOperation
 	vol *VolumeEntry
 }
 
@@ -442,6 +471,7 @@ func (vdel *VolumeDeleteOperation) Finalize() error {
 // create a new volume.
 type BlockVolumeCreateOperation struct {
 	OperationManager
+	noRetriesOperation
 	bvol *BlockVolumeEntry
 	//vol *VolumeEntry
 }
@@ -665,6 +695,7 @@ func (bvc *BlockVolumeCreateOperation) Rollback(executor executors.Executor) err
 // delete an existing volume.
 type BlockVolumeDeleteOperation struct {
 	OperationManager
+	noRetriesOperation
 	bvol *BlockVolumeEntry
 }
 
@@ -747,6 +778,7 @@ func (vdel *BlockVolumeDeleteOperation) Finalize() error {
 // operation in the future.
 type DeviceRemoveOperation struct {
 	OperationManager
+	noRetriesOperation
 	DeviceId string
 }
 
@@ -876,6 +908,7 @@ func bricksFromOp(db wdb.RODB,
 			if a.Change == OpAddBrick || a.Change == OpDeleteBrick {
 				brick, err := NewBrickEntryFromId(tx, a.Id)
 				if err != nil {
+					logger.LogError("failed to find brick with id: %v", a.Id)
 					return err
 				}
 				// this next line is a bit of an unfortunate hack because
@@ -944,6 +977,14 @@ func AsyncHttpOperation(app *App,
 	app.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
 		logger.Info("Started async operation: %v", label)
 		if err := op.Exec(app.executor); err != nil {
+			if _, ok := err.(OperationRetryError); ok && op.MaxRetries() > 0 {
+				logger.Warning("%v Exec requested retry", label)
+				err := retryOperation(op, app.executor)
+				if err != nil {
+					return "", err
+				}
+				return op.ResourceUrl(), nil
+			}
 			if rerr := op.Rollback(app.executor); rerr != nil {
 				logger.LogError("%v Rollback error: %v", label, rerr)
 			}
@@ -980,6 +1021,10 @@ func RunOperation(o Operation,
 		return err
 	}
 	if err := o.Exec(executor); err != nil {
+		if _, ok := err.(OperationRetryError); ok && o.MaxRetries() > 0 {
+			logger.Warning("%v Exec requested retry", label)
+			return retryOperation(o, executor)
+		}
 		if rerr := o.Rollback(executor); rerr != nil {
 			logger.LogError("%v Rollback error: %v", label, rerr)
 		}
@@ -990,4 +1035,42 @@ func RunOperation(o Operation,
 		return err
 	}
 	return nil
+}
+
+func retryOperation(o Operation,
+	executor executors.Executor) (err error) {
+
+	label := o.Label()
+	max := o.MaxRetries()
+	for i := 0; i < max; i++ {
+		logger.Info("Retry %v (%v)", label, i+1)
+		if e := o.Rollback(executor); e != nil {
+			// when retrying rollback must succeed cleanly or it
+			// is not safe to retry
+			logger.LogError("%v Rollback error: %v", label, e)
+			return e
+		}
+		if e := o.Build(); e != nil {
+			logger.LogError("%v Build Failed: %v", label, e)
+			return e
+		}
+		err = o.Exec(executor)
+		if err == nil {
+			// exec succeeded. Finalize it and we're outta here.
+			return o.Finalize()
+		}
+		logger.LogError("%v Failed: %v", label, err)
+		if _, ok := err.(OperationRetryError); !ok {
+			break
+		}
+	}
+	if e := o.Rollback(executor); e != nil {
+		logger.LogError("%v Rollback error: %v", label, e)
+	}
+	// if we exceeded our retries, pull the "real" error out
+	// of the retry error so we return that
+	if ore, ok := err.(OperationRetryError); ok {
+		err = ore.OriginalError
+	}
+	return
 }

@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -210,6 +211,76 @@ func TestVolumeCreatePendingRollback(t *testing.T) {
 	})
 }
 
+func TestVolumeCreateRollbackCleanupFailure(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		2,    // clusters
+		3,    // nodes_per_cluster
+		4,    // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	req := &api.VolumeCreateRequest{}
+	req.Size = 1024
+	req.Durability.Type = api.DurabilityReplicate
+	req.Durability.Replicate.Replica = 3
+
+	vol := NewVolumeEntryFromRequest(req)
+	vc := NewVolumeCreateOperation(vol, app.db)
+
+	// verify that there are no volumes, bricks or pending operations
+	app.db.View(func(tx *bolt.Tx) error {
+		vl, e := VolumeList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(vl) == 0, "expected len(vl) == 0, got", len(vl))
+		bl, e := BrickList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(bl) == 0, "expected len(bl) == 0, got", len(bl))
+		pol, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pol) == 0, "expected len(pol) == 0, got", len(pol))
+		return nil
+	})
+
+	e := vc.Build()
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	e = vc.Exec(app.executor)
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	// now we're going to pretend exec failed and inject an
+	// error condition into VolumeDestroy
+
+	app.xo.MockVolumeDestroy = func(host string, volume string) error {
+		return fmt.Errorf("fake error")
+	}
+
+	e = vc.Rollback(app.executor)
+	tests.Assert(t, e != nil, "expected e != nil, got", e)
+
+	// verify that the pending items remain in the db due to rollback
+	// failure
+	app.db.View(func(tx *bolt.Tx) error {
+		vl, e := VolumeList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(vl) == 1, "expected len(vl) == 1, got", len(vl))
+		bl, e := BrickList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(bl) == 3, "expected len(bl) == 3, got", len(bl))
+		pol, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pol) == 1, "expected len(pol) == 1, got", len(pol))
+		return nil
+	})
+}
+
 func TestVolumeCreatePendingNoSpace(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
@@ -390,6 +461,65 @@ func TestVolumeCreateOperationBasics(t *testing.T) {
 	tests.Assert(t, vc.ResourceUrl() == "/volumes/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		`expected vc.ResourceUrl() == "/volumes/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", got:`,
 		vc.ResourceUrl())
+}
+
+// Test that volume create operations can retry with some
+// "bad nodes" and still succeed overall.
+func TestVolumeCreateOperationRetrying(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		2,    // clusters
+		5,    // nodes_per_cluster
+		4,    // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	req := &api.VolumeCreateRequest{}
+	req.Size = 1024
+	req.Durability.Type = api.DurabilityReplicate
+	req.Durability.Replicate.Replica = 3
+
+	vol := NewVolumeEntryFromRequest(req)
+	vc := NewVolumeCreateOperation(vol, app.db)
+
+	l := sync.Mutex{}
+	brickCreates := map[string]int{}
+	bCreate := app.xo.MockBrickCreate
+	app.xo.MockBrickCreate = func(host string, brick *executors.BrickRequest) (*executors.BrickInfo, error) {
+		l.Lock()
+		defer l.Unlock()
+		defer func() { brickCreates[host]++ }()
+		if brickCreates[host] > 1 {
+			return bCreate(host, brick)
+		}
+		return nil, fmt.Errorf("FAKE ERR")
+	}
+
+	vc.maxRetries = 10
+	err = RunOperation(vc, app.executor)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	x := 0
+	for _, v := range brickCreates {
+		x += v
+	}
+	tests.Assert(t, x >= 9, "expected x >= 10, got:", x)
+
+	app.db.View(func(tx *bolt.Tx) error {
+		bl, e := BrickList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(bl) == 3, "expected len(bl) == 3, got:", len(bl))
+		po, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(po) == 0, "expected len(po) == 0, got:", len(po))
+		return nil
+	})
 }
 
 func TestVolumeDeleteOperation(t *testing.T) {
@@ -1852,6 +1982,7 @@ func TestBlockVolumeCreateBuildRollback(t *testing.T) {
 type testOperation struct {
 	label    string
 	rurl     string
+	retryMax int
 	build    func() error
 	exec     func() error
 	finalize func() error
@@ -1864,6 +1995,10 @@ func (o *testOperation) Label() string {
 
 func (o *testOperation) ResourceUrl() string {
 	return o.rurl
+}
+
+func (o *testOperation) MaxRetries() int {
+	return o.retryMax
 }
 
 func (o *testOperation) Build() error {
@@ -2175,6 +2310,170 @@ func TestRunOperationFinalizeFailure(t *testing.T) {
 	// check error from finalize
 	tests.Assert(t, strings.Contains(e.Error(), "finfail"),
 		`expected strings.Contains(e.Error(), "finfail"), got:`, e)
+}
+
+func TestRunOperationExecRetryError(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+	app := NewTestApp(tmpfile)
+
+	o := &testOperation{label: "X"}
+	o.rurl = "/myresource"
+	o.retryMax = 4
+	o.exec = func() error {
+		return OperationRetryError{
+			OriginalError: fmt.Errorf("foobar"),
+		}
+	}
+	rollback_cc := 0
+	o.rollback = func() error {
+		rollback_cc++
+		return nil
+	}
+	e := RunOperation(o, app.executor)
+	tests.Assert(t, e != nil, "expected e != nil, got:", e)
+	// even if rollback fails we expect the error from Exec
+	tests.Assert(t, strings.Contains(e.Error(), "foobar"),
+		`expected strings.Contains(e.Error(), "foobar"), got:`, e)
+	// check that rollback got called
+	tests.Assert(t, rollback_cc == 5,
+		"expected rollback_cc == 5, got:", rollback_cc)
+}
+
+func TestRunOperationExecRetryRollbackFail(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+	app := NewTestApp(tmpfile)
+
+	o := &testOperation{label: "X"}
+	o.rurl = "/myresource"
+	o.retryMax = 4
+	o.exec = func() error {
+		return OperationRetryError{
+			OriginalError: fmt.Errorf("foobar"),
+		}
+	}
+	rollback_cc := 0
+	o.rollback = func() error {
+		rollback_cc++
+		return fmt.Errorf("rollbackfail")
+	}
+	build_cc := 0
+	o.build = func() error {
+		build_cc++
+		return nil
+	}
+	e := RunOperation(o, app.executor)
+	tests.Assert(t, e != nil, "expected e != nil, got:", e)
+	// even if rollback fails we expect the error from Exec
+	tests.Assert(t, strings.Contains(e.Error(), "rollbackfail"),
+		`expected strings.Contains(e.Error(), "rollbackfail"), got:`, e)
+	// check that rollback got called
+	tests.Assert(t, rollback_cc == 1,
+		"expected rollback_cc == 1, got:", rollback_cc)
+	tests.Assert(t, build_cc == 1,
+		"expected build_cc == 1, got:", build_cc)
+}
+
+func TestRunOperationExecRetryThenBuildFail(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+	app := NewTestApp(tmpfile)
+
+	o := &testOperation{label: "X"}
+	o.rurl = "/myresource"
+	o.retryMax = 4
+	o.exec = func() error {
+		return OperationRetryError{
+			OriginalError: fmt.Errorf("foobar"),
+		}
+	}
+	rollback_cc := 0
+	o.rollback = func() error {
+		rollback_cc++
+		return nil
+	}
+	build_cc := 0
+	o.build = func() error {
+		build_cc++
+		if build_cc > 1 {
+			return fmt.Errorf("buildfail")
+		}
+		return nil
+	}
+	e := RunOperation(o, app.executor)
+	tests.Assert(t, e != nil, "expected e != nil, got:", e)
+	// even if rollback fails we expect the error from Exec
+	tests.Assert(t, strings.Contains(e.Error(), "buildfail"),
+		`expected strings.Contains(e.Error(), "buildfail"), got:`, e)
+	// check that rollback got called
+	tests.Assert(t, rollback_cc == 1,
+		"expected rollback_cc == 1, got:", rollback_cc)
+	tests.Assert(t, build_cc == 2,
+		"expected build_cc == 2, got:", build_cc)
+}
+
+func TestRunOperationExecRetryThenSucceed(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+	app := NewTestApp(tmpfile)
+
+	o := &testOperation{label: "X"}
+	o.rurl = "/myresource"
+	o.retryMax = 4
+	exec_cc := 0
+	o.exec = func() error {
+		exec_cc++
+		if exec_cc > 2 {
+			return nil
+		}
+		return OperationRetryError{
+			OriginalError: fmt.Errorf("foobar"),
+		}
+	}
+	rollback_cc := 0
+	o.rollback = func() error {
+		rollback_cc++
+		return nil
+	}
+	e := RunOperation(o, app.executor)
+	// even if rollback fails we expect the error from Exec
+	tests.Assert(t, e == nil, "expected e == nil, got:", e)
+	tests.Assert(t, rollback_cc == 2,
+		"expected rollback_cc == 2, got:", rollback_cc)
+}
+
+func TestRunOperationExecRetryThenNonRetryError(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+	app := NewTestApp(tmpfile)
+
+	o := &testOperation{label: "X"}
+	o.rurl = "/myresource"
+	o.retryMax = 4
+	exec_cc := 0
+	o.exec = func() error {
+		exec_cc++
+		if exec_cc > 2 {
+			return fmt.Errorf("execfail")
+		}
+		return OperationRetryError{
+			OriginalError: fmt.Errorf("foobar"),
+		}
+	}
+	rollback_cc := 0
+	o.rollback = func() error {
+		rollback_cc++
+		return nil
+	}
+	e := RunOperation(o, app.executor)
+	tests.Assert(t, e != nil, "expected e != nil, got:", e)
+	// even if rollback fails we expect the error from Exec
+	tests.Assert(t, strings.Contains(e.Error(), "execfail"),
+		`expected strings.Contains(e.Error(), "execfail"), got:`, e)
+	// check that rollback got called
+	tests.Assert(t, rollback_cc == 3,
+		"expected rollback_cc == 3, got:", rollback_cc)
 }
 
 func TestExpandSizeFromOp(t *testing.T) {

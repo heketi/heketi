@@ -55,6 +55,12 @@
     "_db_comment": "Database file name",
     "db": "/var/lib/heketi/heketi.db",
 
+     "_refresh_time_monitor_gluster_nodes": "Refresh time in seconds to monitor Gluster nodes",
+    "refresh_time_monitor_gluster_nodes": 120,
+
+    "_start_time_monitor_gluster_nodes": "Start time in seconds to monitor Gluster nodes when the heketi comes up",
+    "start_time_monitor_gluster_nodes": 10,
+
     "_loglevel_comment": [
       "Set log level. Choices are:",
       "  none, critical, error, warning, info, debug",

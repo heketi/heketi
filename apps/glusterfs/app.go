@@ -42,6 +42,17 @@ const (
 var (
 	logger     = utils.NewLogger("[heketi]", utils.LEVEL_INFO)
 	dbfilename = "heketi.db"
+	// global var to track active node health cache
+	// if multiple apps are started the content of this var is
+	// undefined.
+	// TODO: make a global not needed
+	currentNodeHealthCache *NodeHealthCache
+
+	// global var to enable the use of the health cache + monitor
+	// when the GlusterFS App is created. This is mildly hacky but
+	// avoids having to update config files to enable the feature
+	// while avoiding having to touch all of the unit tests.
+	MonitorGlusterNodes = false
 )
 
 type App struct {
@@ -51,6 +62,9 @@ type App struct {
 	executor     executors.Executor
 	_allocator   Allocator
 	conf         *GlusterFSConfig
+
+	// health monitor
+	nhealth *NodeHealthCache
 
 	// For testing only.  Keep access to the object
 	// not through the interface
@@ -67,6 +81,13 @@ func NewApp(configIo io.Reader) *App {
 	if app.conf == nil {
 		return nil
 	}
+
+	// We would like to perform rebalance by default
+	// As it is very difficult to distinguish missing parameter from
+	// set-but-false parameter in json, we are going to ignore json config
+	// We will provide a env method to set it to false again.
+	app.conf.KubeConfig.RebalanceOnExpansion = true
+	app.conf.SshConfig.RebalanceOnExpansion = true
 
 	// Set values mentioned in environmental variable
 	app.setFromEnvironmentalVariable()
@@ -171,6 +192,21 @@ func NewApp(configIo io.Reader) *App {
 	// Set block settings
 	app.setBlockSettings()
 
+	//default monitor gluster node refresh time
+	var timer uint32 = 120
+	var startDelay uint32 = 10
+	if app.conf.RefreshTimeMonitorGlusterNodes > 0 {
+		timer = app.conf.RefreshTimeMonitorGlusterNodes
+	}
+	if app.conf.StartTimeMonitorGlusterNodes > 0 {
+		startDelay = app.conf.StartTimeMonitorGlusterNodes
+	}
+	if MonitorGlusterNodes {
+		app.nhealth = NewNodeHealthCache(timer, startDelay, app.db, app.executor)
+		app.nhealth.Monitor()
+		currentNodeHealthCache = app.nhealth
+	}
+
 	// Show application has loaded
 	logger.Info("GlusterFS Application Loaded")
 
@@ -234,6 +270,17 @@ func (a *App) setFromEnvironmentalVariable() {
 			logger.LogError("Error: Atoi in Block Hosting Volume Size: %v", err)
 		}
 	}
+
+	env = os.Getenv("HEKETI_GLUSTERAPP_REBALANCE_ON_EXPANSION")
+	if env != "" {
+		value, err := strconv.ParseBool(env)
+		if err != nil {
+			logger.LogError("Error: While parsing HEKETI_GLUSTERAPP_REBALANCE_ON_EXPANSION as bool: %v", err)
+		} else {
+			a.conf.SshConfig.RebalanceOnExpansion = value
+			a.conf.KubeConfig.RebalanceOnExpansion = value
+		}
+	}
 }
 
 func (a *App) setAdvSettings() {
@@ -256,6 +303,10 @@ func (a *App) setAdvSettings() {
 		// From volume_entry.go
 		// Convert to KB
 		BrickMinSize = uint64(a.conf.BrickMinSize) * 1024 * 1024
+	}
+	if a.conf.AverageFileSize != 0 {
+		logger.Info("Average file size on volumes set to %v KiB", a.conf.AverageFileSize)
+		averageFileSize = a.conf.AverageFileSize
 	}
 }
 
@@ -334,6 +385,11 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Method:      "POST",
 			Pattern:     "/nodes/{id:[A-Fa-f0-9]+}/state",
 			HandlerFunc: a.NodeSetState},
+		rest.Route{
+			Name:        "NodeSetTags",
+			Method:      "POST",
+			Pattern:     "/nodes/{id:[A-Fa-f0-9]+}/tags",
+			HandlerFunc: a.NodeSetTags},
 
 		// Devices
 		rest.Route{
@@ -361,6 +417,11 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Method:      "GET",
 			Pattern:     "/devices/{id:[A-Fa-f0-9]+}/resync",
 			HandlerFunc: a.DeviceResync},
+		rest.Route{
+			Name:        "DeviceSetTags",
+			Method:      "POST",
+			Pattern:     "/devices/{id:[A-Fa-f0-9]+}/tags",
+			HandlerFunc: a.DeviceSetTags},
 
 		// Volume
 		rest.Route{
@@ -457,6 +518,10 @@ func (a *App) SetRoutes(router *mux.Router) error {
 }
 
 func (a *App) Close() {
+	// stop the health goroutine
+	if a.nhealth != nil {
+		a.nhealth.Stop()
+	}
 
 	// Close the DB
 	a.db.Close()
@@ -479,4 +544,18 @@ func (a *App) Backup(w http.ResponseWriter, r *http.Request) {
 func (a *App) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	logger.Warning("Invalid path or request %v", r.URL.Path)
 	http.Error(w, "Invalid path or request", http.StatusNotFound)
+}
+
+// currentNodeHealthStatus returns a map of node ids to the most
+// recently known health status (true is up, false is not up).
+// If a node is not found in the map its status is unknown.
+// If no heath monitor is active an empty map is always returned.
+func currentNodeHealthStatus() (nodeUp map[string]bool) {
+	if currentNodeHealthCache != nil {
+		nodeUp = currentNodeHealthCache.Status()
+	} else {
+		// just an empty map
+		nodeUp = map[string]bool{}
+	}
+	return
 }

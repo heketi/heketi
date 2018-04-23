@@ -264,6 +264,7 @@ func TestCannotStartWhenPendingOperations(t *testing.T) {
 	// trigger a panic the next time an app is instantiated
 	err := app.db.Update(func(tx *bolt.Tx) error {
 		op := NewPendingOperationEntry(NEW_ID)
+		op.Type = OperationCreateVolume
 		op.Save(tx)
 		return nil
 	})
@@ -298,6 +299,7 @@ func TestCanStartWhenPendingOperationsIgnored(t *testing.T) {
 	// this would trigger a panic
 	err := app.db.Update(func(tx *bolt.Tx) error {
 		op := NewPendingOperationEntry(NEW_ID)
+		op.Type = OperationCreateVolume
 		op.Save(tx)
 		return nil
 	})
