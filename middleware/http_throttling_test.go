@@ -32,8 +32,8 @@ func TestNewHTTPThrottler(t *testing.T) {
 func TestReachedMaxRequest(t *testing.T) {
 	nt := NewHTTPThrottler(10)
 	tests.Assert(t, nt.reachedMaxRequest() == false)
-	nt.servingCount = 10
-	nt.reqRecvCount = 10
+	nt.servingCount = 11
+	nt.reqRecvCount = 11
 	tests.Assert(t, nt.reachedMaxRequest() == true)
 	tests.Assert(t, nt.reqReceivedcount() == true)
 
@@ -105,7 +105,7 @@ func TestServeHTTPTrottleTomanyReq(t *testing.T) {
 	defer ts.Close()
 
 	func(n int) {
-		for i := 0; i < n; i++ {
+		for i := 0; i <= n; i++ {
 			_, r := createReq("DELETE", ts.URL)
 			client.Do(r)
 		}
@@ -163,7 +163,7 @@ func TestServeHTTPTrottleQueue(t *testing.T) {
 	defer ts.Close()
 	var url string
 	func(n int) {
-		for i := 0; i < n; i++ {
+		for i := 0; i <= n; i++ {
 			uid, r := createReq("POST", ts.URL)
 			resp, _ := client.Do(r)
 			uid = resp.Header.Get("X-Request-ID")
