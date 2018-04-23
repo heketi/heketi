@@ -378,7 +378,7 @@ func main() {
 		fmt.Println("Enable HTTP throttling...")
 		maxHTTPThrottleCount := options.MaxHTTPThrottleCount
 		if maxHTTPThrottleCount == 0 {
-			maxHTTPThrottleCount = 25
+			maxHTTPThrottleCount = 1000
 		}
 		httpThrottle = middleware.NewHTTPThrottler(maxHTTPThrottleCount)
 
@@ -387,7 +387,7 @@ func main() {
 		//clean up required if we wont get GET request after POST/DELETE to check status
 		reqCleanUpTime := options.HTTPThrottleReqCleanupTime
 		if reqCleanUpTime == 0 {
-			reqCleanUpTime = 30
+			reqCleanUpTime = 100
 		}
 		go httpThrottle.Cleanup(time.Duration(reqCleanUpTime) * time.Minute)
 	}
