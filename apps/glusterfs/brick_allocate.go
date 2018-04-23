@@ -353,6 +353,10 @@ func (vp *VolumePlacementOpts) SetCount() int {
 	return vp.numBrickSets
 }
 
+func (vp *VolumePlacementOpts) AverageFileSize() uint64 {
+	return vp.v.GetAverageFileSize()
+}
+
 type StandardBrickPlacer struct{}
 
 func NewStandardBrickPlacer() *StandardBrickPlacer {

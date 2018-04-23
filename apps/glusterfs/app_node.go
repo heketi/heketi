@@ -382,3 +382,51 @@ func (a *App) NodeSetState(w http.ResponseWriter, r *http.Request) {
 	})
 
 }
+
+func (a *App) NodeSetTags(w http.ResponseWriter, r *http.Request) {
+	// Get the id from the URL
+	vars := mux.Vars(r)
+	id := vars["id"]
+	var node *NodeEntry
+
+	// Unmarshal JSON
+	var msg api.TagsChangeRequest
+	err := utils.GetJsonFromRequest(r, &msg)
+	if err != nil {
+		http.Error(w, "request unable to be parsed", 422)
+		return
+	}
+
+	err = msg.Validate()
+	if err != nil {
+		http.Error(w, "validation failed: "+err.Error(), http.StatusBadRequest)
+		logger.LogError("validation failed: " + err.Error())
+		return
+	}
+
+	err = a.db.Update(func(tx *bolt.Tx) error {
+		node, err = NewNodeEntryFromId(tx, id)
+		if err == ErrNotFound {
+			http.Error(w, "Id not found", http.StatusNotFound)
+			return err
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+		ApplyTags(node, msg)
+		if err := node.Save(tx); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		logger.Err(err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(node.AllTags()); err != nil {
+		panic(err)
+	}
+}
