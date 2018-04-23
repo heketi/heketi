@@ -15,26 +15,128 @@ import (
 	"testing"
 
 	"github.com/heketi/tests"
+
+	"github.com/heketi/heketi/pkg/utils"
 )
 
+var (
+	// define a mock function for always accepting a device as
+	// OK for arbiter or data bricks
+	hostTrue = func(PlacerDevice, DeviceSource) bool {
+		return true
+	}
+)
+
+type MockDevice struct {
+	Info struct {
+		Id      string
+		Name    string
+		Storage struct {
+			Total uint64
+			Free  uint64
+		}
+	}
+	NodeId string
+}
+
+func (d *MockDevice) Id() string {
+	return d.Info.Id
+}
+
+func (d *MockDevice) ParentNodeId() string {
+	return d.NodeId
+}
+
+func (d *MockDevice) NewBrick(brickSize uint64,
+	snapFactor float64,
+	brickGid int64,
+	owner string) PlacerBrick {
+
+	// the constant 50 exists to mimic the behavior of the
+	// overhead added onto the brick size during real brick
+	// sizing
+	if (brickSize + 50) > d.Info.Storage.Free {
+		return nil
+	}
+
+	b := &MockBrick{}
+	b.Info.Id = utils.GenUUID()
+	b.Info.NodeId = d.NodeId
+	b.Info.DeviceId = d.Id()
+	b.Info.Size = brickSize
+	return b
+}
+
+func (d *MockDevice) BrickAdd(string) {
+	return
+}
+
+type MockNode struct {
+	Info struct {
+		Id        string
+		Zone      int
+		Manage    string
+		Storage   string
+		ClusterId string
+	}
+	Devices []string
+}
+
+func (n *MockNode) Id() string {
+	return n.Info.Id
+}
+
+func (n *MockNode) Zone() int {
+	return n.Info.Zone
+}
+
+type MockBrick struct {
+	Info struct {
+		Id       string
+		DeviceId string
+		NodeId   string
+		Size     uint64
+	}
+}
+
+func (b *MockBrick) Id() string {
+	return b.Info.Id
+}
+
+func (b *MockBrick) DeviceId() string {
+	return b.Info.DeviceId
+}
+
+func (b *MockBrick) NodeId() string {
+	return b.Info.NodeId
+}
+
+func (b *MockBrick) SetId(id string) {
+	b.Info.Id = id
+}
+
+func (b *MockBrick) Valid() bool {
+	return b != nil
+}
+
 type TestDeviceSource struct {
-	devices      map[string]*DeviceEntry
-	nodes        map[string]*NodeEntry
+	devices      map[string]*MockDevice
+	nodes        map[string]*MockNode
 	devicesError error
 }
 
 func NewTestDeviceSource() *TestDeviceSource {
 	return &TestDeviceSource{
-		devices: map[string]*DeviceEntry{},
-		nodes:   map[string]*NodeEntry{},
+		devices: map[string]*MockDevice{},
+		nodes:   map[string]*MockNode{},
 	}
 }
 
-func (tds *TestDeviceSource) AddDevice(d *DeviceEntry) {
+func (tds *TestDeviceSource) AddDevice(d *MockDevice) {
 	tds.devices[d.Info.Id] = d
 }
 
-func (tds *TestDeviceSource) AddNode(n *NodeEntry) {
+func (tds *TestDeviceSource) AddNode(n *MockNode) {
 	tds.nodes[n.Info.Id] = n
 }
 
@@ -46,16 +148,16 @@ func (tds *TestDeviceSource) QuickAdd(
 
 func (tds *TestDeviceSource) MultiAdd(nodeId string) func(string, string, uint64) {
 
-	n := NewNodeEntry()
+	n := &MockNode{}
 	n.Info.Id = nodeId
 	n.Info.Zone = 1
-	n.Info.Hostnames.Manage = []string{"mng-" + nodeId}
-	n.Info.Hostnames.Storage = []string{"stor-" + nodeId}
+	n.Info.Manage = "mng-" + nodeId
+	n.Info.Storage = "stor-" + nodeId
 	n.Info.ClusterId = "0000000000c"
 	tds.AddNode(n)
 
 	return func(deviceId, dname string, size uint64) {
-		d := NewDeviceEntry()
+		d := &MockDevice{}
 		d.Info.Id = deviceId
 		d.Info.Name = dname
 		d.Info.Storage.Total = size
@@ -87,14 +189,14 @@ func (tds *TestDeviceSource) Devices() ([]DeviceAndNode, error) {
 	return valid, nil
 }
 
-func (tds *TestDeviceSource) Device(id string) (*DeviceEntry, error) {
+func (tds *TestDeviceSource) Device(id string) (PlacerDevice, error) {
 	if device, ok := tds.devices[id]; ok {
 		return device, nil
 	}
 	return nil, ErrNotFound
 }
 
-func (tds *TestDeviceSource) Node(id string) (*NodeEntry, error) {
+func (tds *TestDeviceSource) Node(id string) (PlacerNode, error) {
 	if node, ok := tds.nodes[id]; ok {
 		return node, nil
 	}
@@ -158,21 +260,23 @@ func TestTestDeviceSource(t *testing.T) {
 	tests.Assert(t, len(dsrc.nodes) == 3,
 		"expected len(dsrc.nodes) == 3, got:", len(dsrc.nodes))
 
-	d, err := dsrc.Device("22222222")
+	pd, err := dsrc.Device("22222222")
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	d := pd.(*MockDevice)
 	tests.Assert(t, d.Info.Storage.Total == 1200,
 		"expected d.Info.Storage.Total == 1200, got:", d.Info.Storage.Total)
 
-	d, err = dsrc.Device("10000000")
+	pd, err = dsrc.Device("10000000")
 	tests.Assert(t, err == ErrNotFound, "expected err == ErrNotFound, got:", err)
 
-	n, err := dsrc.Node("30000000")
+	pn, err := dsrc.Node("30000000")
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
-	tests.Assert(t, n.Info.Hostnames.Manage[0] == "mng-30000000",
+	n := pn.(*MockNode)
+	tests.Assert(t, n.Info.Manage == "mng-30000000",
 		"expected n.Info.Hostnames.Manage[0] == \"mng-30000000\", got:",
-		n.Info.Hostnames.Manage[0])
+		n.Info.Manage)
 
-	n, err = dsrc.Node("abcdefgh")
+	pn, err = dsrc.Node("abcdefgh")
 	tests.Assert(t, err == ErrNotFound, "expected err == ErrNotFound, got:", err)
 
 	dnl, err := dsrc.Devices()
@@ -230,6 +334,8 @@ func TestArbiterBrickPlacer(t *testing.T) {
 	}
 
 	abplacer := NewArbiterBrickPlacer()
+	abplacer.canHostArbiter = hostTrue
+	abplacer.canHostData = hostTrue
 	ba, err := abplacer.PlaceAll(dsrc, opts, nil)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, len(ba.BrickSets) == 1,
@@ -240,13 +346,16 @@ func TestArbiterBrickPlacer(t *testing.T) {
 	tests.Assert(t, ba.BrickSets[0].SetSize == 3,
 		"expected ba.BrickSets[0].SetSize == 3, got:",
 		ba.BrickSets[0].SetSize)
-	bs := ba.BrickSets[0]
-	tests.Assert(t, bs.Bricks[0].Info.Size == bs.Bricks[1].Info.Size,
-		"expected bs.Bricks[0].Info.Size == bs.Bricks[1].Info.Size, got:",
-		bs.Bricks[0].Info.Size, bs.Bricks[1].Info.Size)
-	tests.Assert(t, bs.Bricks[0].Info.Size > bs.Bricks[2].Info.Size,
-		"expected bs.Bricks[0].Info.Size > bs.Bricks[2].Info.Size, got:",
-		bs.Bricks[0].Info.Size, bs.Bricks[2].Info.Size)
+
+	bi0 := ba.BrickSets[0].Bricks[0].(*MockBrick).Info
+	bi1 := ba.BrickSets[0].Bricks[1].(*MockBrick).Info
+	bi2 := ba.BrickSets[0].Bricks[2].(*MockBrick).Info
+	tests.Assert(t, bi0.Size == bi1.Size,
+		"expected bi0.Size == bi1.Size, got:",
+		bi0.Size, bi1.Size)
+	tests.Assert(t, bi0.Size > bi2.Size,
+		"expected bi0.Size > bi2.Size, got:",
+		bi0.Size, bi2.Size)
 }
 
 func TestArbiterBrickPlacerTooSmall(t *testing.T) {
@@ -276,6 +385,8 @@ func TestArbiterBrickPlacerTooSmall(t *testing.T) {
 	}
 
 	abplacer := NewArbiterBrickPlacer()
+	abplacer.canHostArbiter = hostTrue
+	abplacer.canHostData = hostTrue
 	_, err := abplacer.PlaceAll(dsrc, opts, nil)
 	tests.Assert(t, err == ErrNoSpace, "expected err == ErrNoSpace, got:", err)
 }
@@ -294,6 +405,8 @@ func TestArbiterBrickPlacerDevicesFail(t *testing.T) {
 	}
 
 	abplacer := NewArbiterBrickPlacer()
+	abplacer.canHostArbiter = hostTrue
+	abplacer.canHostData = hostTrue
 	_, err := abplacer.PlaceAll(dsrc, opts, nil)
 	tests.Assert(t, err == dsrc.devicesError,
 		"expected err == dsrc.devicesError, got:", err)
@@ -326,7 +439,9 @@ func TestArbiterBrickPlacerPredicateBlock(t *testing.T) {
 	}
 
 	abplacer := NewArbiterBrickPlacer()
-	pred := func(bs *BrickSet, d *DeviceEntry) bool {
+	abplacer.canHostArbiter = hostTrue
+	abplacer.canHostData = hostTrue
+	pred := func(bs *BrickSet, d PlacerDevice) bool {
 		return false
 	}
 	_, err := abplacer.PlaceAll(dsrc, opts, pred)
@@ -360,22 +475,26 @@ func TestArbiterBrickPlacerBrickOnArbiterDevice(t *testing.T) {
 	}
 
 	abplacer := NewArbiterBrickPlacer()
-	abplacer.canHostArbiter = func(d *DeviceEntry, ds DeviceSource) bool {
-		return d.Info.Id[0] == 'a'
+	abplacer.canHostArbiter = hostTrue
+	abplacer.canHostData = hostTrue
+	abplacer.canHostArbiter = func(d PlacerDevice, ds DeviceSource) bool {
+		return d.Id()[0] == 'a'
 	}
-	abplacer.canHostData = func(d *DeviceEntry, ds DeviceSource) bool {
+	abplacer.canHostData = func(d PlacerDevice, ds DeviceSource) bool {
 		return !abplacer.canHostArbiter(d, ds)
 	}
 	ba, err := abplacer.PlaceAll(dsrc, opts, nil)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	bi2 := ba.BrickSets[0].Bricks[2].(*MockBrick).Info
 	tests.Assert(t, len(ba.BrickSets) == 1,
 		"expected len(ba.BrickSets) == 1, got:", len(ba.BrickSets))
-	tests.Assert(t, ba.BrickSets[0].Bricks[2].Info.DeviceId == "a3333333",
-		`expected ba.BrickSets[0].Bricks[2].Info.DeviceId == "a3333333", got:`,
-		ba.BrickSets[0].Bricks[2].Info.DeviceId)
-	tests.Assert(t, ba.DeviceSets[0].Devices[2].Info.Id == "a3333333",
-		`expected ba.DeviceSets[0].Devices[2].Info.Id == "a3333333", got`,
-		ba.DeviceSets[0].Devices[2].Info.Id)
+	tests.Assert(t, bi2.DeviceId == "a3333333",
+		`expected bi2.DeviceId == "a3333333", got:`,
+		bi2.DeviceId)
+	di2 := ba.DeviceSets[0].Devices[2].(*MockDevice).Info
+	tests.Assert(t, di2.Id == "a3333333",
+		`expected di2.Id == "a3333333", got`,
+		di2.Id)
 }
 
 func TestArbiterBrickPlacerBrickThreeSets(t *testing.T) {
@@ -403,6 +522,8 @@ func TestArbiterBrickPlacerBrickThreeSets(t *testing.T) {
 	}
 
 	abplacer := NewArbiterBrickPlacer()
+	abplacer.canHostArbiter = hostTrue
+	abplacer.canHostData = hostTrue
 	ba, err := abplacer.PlaceAll(dsrc, opts, nil)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, len(ba.BrickSets) == 3,
@@ -450,10 +571,10 @@ func TestArbiterBrickPlacerBrickThreeSetsOnArbiterDevice(t *testing.T) {
 	}
 
 	abplacer := NewArbiterBrickPlacer()
-	abplacer.canHostArbiter = func(d *DeviceEntry, ds DeviceSource) bool {
-		return d.Info.Id[0] == 'a'
+	abplacer.canHostArbiter = func(d PlacerDevice, ds DeviceSource) bool {
+		return d.Id()[0] == 'a'
 	}
-	abplacer.canHostData = func(d *DeviceEntry, ds DeviceSource) bool {
+	abplacer.canHostData = func(d PlacerDevice, ds DeviceSource) bool {
 		return !abplacer.canHostArbiter(d, ds)
 	}
 	ba, err := abplacer.PlaceAll(dsrc, opts, nil)
@@ -462,7 +583,7 @@ func TestArbiterBrickPlacerBrickThreeSetsOnArbiterDevice(t *testing.T) {
 		"expected len(ba.BrickSets) == 3, got:", len(ba.BrickSets))
 	for i := 0; i < 3; i++ {
 		for j := 0; j < 3; j++ {
-			brickDeviceId := ba.BrickSets[i].Bricks[j].Info.DeviceId
+			brickDeviceId := ba.BrickSets[i].Bricks[j].(*MockBrick).Info.DeviceId
 			prefixA := (brickDeviceId[0] == 'a')
 			if j == 2 {
 				tests.Assert(t, prefixA, "expected prefixA true on index", j)
@@ -506,6 +627,8 @@ func TestArbiterBrickPlacerSimpleReplace(t *testing.T) {
 	}
 
 	abplacer := NewArbiterBrickPlacer()
+	abplacer.canHostArbiter = hostTrue
+	abplacer.canHostData = hostTrue
 	ba, err := abplacer.PlaceAll(dsrc, opts, nil)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, len(ba.BrickSets) == 1,
@@ -526,18 +649,18 @@ func TestArbiterBrickPlacerSimpleReplace(t *testing.T) {
 	bs2 := ba2.BrickSets[0]
 	// we replaced the 1st brick, thus it should differ
 	tests.Assert(t,
-		bs1.Bricks[0].Info.Id != bs2.Bricks[0].Info.Id,
-		"expected bs1.Bricks[0].Info.Id == bs2.Bricks[0].Info.Id, got:",
-		bs1.Bricks[0].Info.Id, bs2.Bricks[0].Info.Id)
+		bs1.Bricks[0].Id() != bs2.Bricks[0].Id(),
+		"expected bs1.Bricks[0].Id() == bs2.Bricks[0].Id(), got:",
+		bs1.Bricks[0].Id(), bs2.Bricks[0].Id())
 	// the remaining bricks will be the same
 	tests.Assert(t,
-		bs1.Bricks[1].Info.Id == bs2.Bricks[1].Info.Id,
-		"expected bs1.Bricks[1].Info.Id == bs2.Bricks[1].Info.Id, got:",
-		bs1.Bricks[1].Info.Id, bs2.Bricks[1].Info.Id)
+		bs1.Bricks[1].Id() == bs2.Bricks[1].Id(),
+		"expected bs1.Bricks[1].Id() == bs2.Bricks[1].Id(), got:",
+		bs1.Bricks[1].Id(), bs2.Bricks[1].Id())
 	tests.Assert(t,
-		bs1.Bricks[2].Info.Id == bs2.Bricks[2].Info.Id,
-		"expected bs1.Bricks[2].Info.Id == bs2.Bricks[2].Info.Id, got:",
-		bs1.Bricks[2].Info.Id, bs2.Bricks[2].Info.Id)
+		bs1.Bricks[2].Id() == bs2.Bricks[2].Id(),
+		"expected bs1.Bricks[2].Id() == bs2.Bricks[2].Id(), got:",
+		bs1.Bricks[2].Id(), bs2.Bricks[2].Id())
 }
 
 func TestArbiterBrickPlacerReplaceIndexOOB(t *testing.T) {
@@ -568,6 +691,8 @@ func TestArbiterBrickPlacerReplaceIndexOOB(t *testing.T) {
 	}
 
 	abplacer := NewArbiterBrickPlacer()
+	abplacer.canHostArbiter = hostTrue
+	abplacer.canHostData = hostTrue
 	ba, err := abplacer.PlaceAll(dsrc, opts, nil)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, len(ba.BrickSets) == 1,
@@ -620,6 +745,8 @@ func TestArbiterBrickPlacerReplaceDevicesFail(t *testing.T) {
 	}
 
 	abplacer := NewArbiterBrickPlacer()
+	abplacer.canHostArbiter = hostTrue
+	abplacer.canHostData = hostTrue
 	ba, err := abplacer.PlaceAll(dsrc, opts, nil)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, len(ba.BrickSets) == 1,
@@ -662,6 +789,8 @@ func TestArbiterBrickPlacerReplaceTooFew(t *testing.T) {
 	}
 
 	abplacer := NewArbiterBrickPlacer()
+	abplacer.canHostArbiter = hostTrue
+	abplacer.canHostData = hostTrue
 	ba, err := abplacer.PlaceAll(dsrc, opts, nil)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, len(ba.BrickSets) == 1,
@@ -670,8 +799,8 @@ func TestArbiterBrickPlacerReplaceTooFew(t *testing.T) {
 		"expected len(ba.BrickSets[0].Bricks) == 3, got:",
 		len(ba.BrickSets[0].Bricks))
 
-	pred := func(bs *BrickSet, d *DeviceEntry) bool {
-		return ba.BrickSets[0].Bricks[0].Info.DeviceId != d.Info.Id
+	pred := func(bs *BrickSet, d PlacerDevice) bool {
+		return ba.BrickSets[0].Bricks[0].DeviceId() != d.Id()
 	}
 	_, err = abplacer.Replace(dsrc, opts, pred, ba.BrickSets[0], 0)
 	tests.Assert(t, err == ErrNoSpace,
@@ -718,10 +847,10 @@ func TestArbiterBrickPlacerReplaceTooFewArbiter(t *testing.T) {
 	}
 
 	abplacer := NewArbiterBrickPlacer()
-	abplacer.canHostArbiter = func(d *DeviceEntry, ds DeviceSource) bool {
-		return d.Info.Id[0] == 'a'
+	abplacer.canHostArbiter = func(d PlacerDevice, ds DeviceSource) bool {
+		return d.Id()[0] == 'a'
 	}
-	abplacer.canHostData = func(d *DeviceEntry, ds DeviceSource) bool {
+	abplacer.canHostData = func(d PlacerDevice, ds DeviceSource) bool {
 		return !abplacer.canHostArbiter(d, ds)
 	}
 
@@ -734,8 +863,8 @@ func TestArbiterBrickPlacerReplaceTooFewArbiter(t *testing.T) {
 		len(ba.BrickSets[0].Bricks))
 
 	// this will fail because we have no more "arbiter devices"
-	pred := func(bs *BrickSet, d *DeviceEntry) bool {
-		return ba.BrickSets[0].Bricks[2].Info.DeviceId != d.Info.Id
+	pred := func(bs *BrickSet, d PlacerDevice) bool {
+		return ba.BrickSets[0].Bricks[2].DeviceId() != d.Id()
 	}
 	_, err = abplacer.Replace(dsrc, opts, pred, ba.BrickSets[0], 2)
 	tests.Assert(t, err == ErrNoSpace,

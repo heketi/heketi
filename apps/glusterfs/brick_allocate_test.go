@@ -58,11 +58,11 @@ func TestClusterDeviceSource(t *testing.T) {
 		tests.Assert(t, len(dnl) == 16,
 			"expected len(dnl) == 16, got:", len(dnl))
 		// test that it can lookup a device
-		d, err := dsrci.Device(dnl[0].Device.Info.Id)
+		d, err := dsrci.Device(dnl[0].Device.Id())
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
-		tests.Assert(t, d.Info.Id == dnl[0].Device.Info.Id,
+		tests.Assert(t, d.Id() == dnl[0].Device.Id(),
 			"expected d.Info.Id == dnl[0].Device.Info.Id, got:",
-			d.Info.Id, "vs", dnl[0].Device.Info.Id)
+			d.Id(), "vs", dnl[0].Device.Id())
 		return nil
 	})
 }
@@ -154,9 +154,9 @@ func TestClusterDeviceSourceLookupEmptyCache(t *testing.T) {
 		for _, deviceId := range dids {
 			d, err := dsrc.Device(deviceId)
 			tests.Assert(t, err == nil, "expected err == nil, got:", err)
-			tests.Assert(t, d.Info.Id == deviceId,
+			tests.Assert(t, d.Id() == deviceId,
 				"expected d.Info.Id == deviceId, got:",
-				d.Info.Id, "vs", deviceId)
+				d.Id(), "vs", deviceId)
 		}
 		tests.Assert(t, len(dsrc.deviceCache) == 16,
 			"expected len(dsrc.deviceCache) == 16, got:", len(dsrc.deviceCache))
