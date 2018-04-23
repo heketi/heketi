@@ -23,6 +23,8 @@ const (
 	arbiter_index int = 2
 )
 
+type deviceSupportCheck func(PlacerDevice, DeviceSource) bool
+
 // ArbiterBrickPlacer is a Brick Placer implementation that can
 // place bricks for arbiter volumes. It works primarily by
 // dividing the devices into two "pools" - one for data bricks
@@ -31,8 +33,8 @@ const (
 type ArbiterBrickPlacer struct {
 	// the following two function vars are to better support
 	// dep. injection & unit testing
-	canHostArbiter func(PlacerDevice, DeviceSource) bool
-	canHostData    func(PlacerDevice, DeviceSource) bool
+	canHostArbiter deviceSupportCheck
+	canHostData    deviceSupportCheck
 }
 
 // Arbiter opts supports passing arbiter specific options
