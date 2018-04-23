@@ -63,16 +63,12 @@ func (aopts *arbiterOpts) discount(index int) (err error) {
 
 // NewArbiterBrickPlacer returns a new placer for bricks in
 // a volume that supports the arbiter feature.
-func NewArbiterBrickPlacer() *ArbiterBrickPlacer {
+func NewArbiterBrickPlacer(
+	canHostArbiter, canHostData deviceSupportCheck) *ArbiterBrickPlacer {
+
 	return &ArbiterBrickPlacer{
-		canHostArbiter: func(d PlacerDevice, dsrc DeviceSource) bool {
-			return deviceHasArbiterTag(d, dsrc,
-				TAG_VAL_ARBITER_REQUIRED, TAG_VAL_ARBITER_SUPPORTED)
-		},
-		canHostData: func(d PlacerDevice, dsrc DeviceSource) bool {
-			return deviceHasArbiterTag(d, dsrc,
-				TAG_VAL_ARBITER_SUPPORTED, TAG_VAL_ARBITER_DISABLED)
-		},
+		canHostArbiter: canHostArbiter,
+		canHostData:    canHostData,
 	}
 }
 
@@ -356,20 +352,4 @@ func discountBrickSize(dataBrickSize, averageFileSize uint64) (uint64, error) {
 			averageFileSize, dataBrickSize)
 	}
 	return (dataBrickSize / averageFileSize), nil
-}
-
-func deviceHasArbiterTag(d PlacerDevice, dsrc DeviceSource, v ...string) bool {
-	n, err := dsrc.Node(d.ParentNodeId())
-	if err != nil {
-		logger.LogError("failed to fetch node (%v) for arbiter tag: %v",
-			d.ParentNodeId(), err)
-		return false
-	}
-	a := ArbiterTag(MergeTags(n.(*NodeEntry), d.(*DeviceEntry)))
-	for _, value := range v {
-		if value == a {
-			return true
-		}
-	}
-	return false
 }

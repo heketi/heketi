@@ -11,7 +11,33 @@ package glusterfs
 
 func PlacerForVolume(v *VolumeEntry) BrickPlacer {
 	if v.HasArbiterOption() {
-		return NewArbiterBrickPlacer()
+		return NewArbiterBrickPlacer(canHostArbiter, canHostData)
 	}
 	return NewStandardBrickPlacer()
+}
+
+func canHostArbiter(d PlacerDevice, dsrc DeviceSource) bool {
+	return deviceHasArbiterTag(d, dsrc,
+		TAG_VAL_ARBITER_REQUIRED, TAG_VAL_ARBITER_SUPPORTED)
+}
+
+func canHostData(d PlacerDevice, dsrc DeviceSource) bool {
+	return deviceHasArbiterTag(d, dsrc,
+		TAG_VAL_ARBITER_SUPPORTED, TAG_VAL_ARBITER_DISABLED)
+}
+
+func deviceHasArbiterTag(d PlacerDevice, dsrc DeviceSource, v ...string) bool {
+	n, err := dsrc.Node(d.ParentNodeId())
+	if err != nil {
+		logger.LogError("failed to fetch node (%v) for arbiter tag: %v",
+			d.ParentNodeId(), err)
+		return false
+	}
+	a := ArbiterTag(MergeTags(n.(*NodeEntry), d.(*DeviceEntry)))
+	for _, value := range v {
+		if value == a {
+			return true
+		}
+	}
+	return false
 }
