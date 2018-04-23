@@ -17,13 +17,13 @@ import (
 	"github.com/heketi/heketi/pkg/utils"
 )
 
-type deviceFetcher func(string) (PlacerDevice, error)
+type deviceFetcher func(string) (Device, error)
 
 func tryAllocateBrickOnDevice(
 	opts PlacementOpts,
 	pred DeviceFilter,
-	device PlacerDevice,
-	bs *BrickSet) PlacerBrick {
+	device Device,
+	bs *BrickSet) Brick {
 
 	// Do not allow a device from the same node to be in the set
 	deviceOk := true
@@ -57,7 +57,7 @@ func findDeviceAndBrickForSet(
 	fetchDevice deviceFetcher,
 	pred DeviceFilter,
 	deviceCh <-chan string,
-	bs *BrickSet) (PlacerBrick, PlacerDevice, error) {
+	bs *BrickSet) (Brick, Device, error) {
 
 	// Check the ring for devices to place the brick
 	for deviceId := range deviceCh {
@@ -203,8 +203,8 @@ func (bp *StandardBrickPlacer) Replace(
 	// of the bricks w/in the brickset are meaningful and
 	// this will make more sense in future position-aware placers
 	// (e.g. arbiter)
-	newBricks := make([]PlacerBrick, bs.SetSize)
-	newDevices := make([]PlacerDevice, bs.SetSize)
+	newBricks := make([]Brick, bs.SetSize)
+	newDevices := make([]Device, bs.SetSize)
 	for i := 0; i < bs.SetSize; i++ {
 		if i == index {
 			newBricks[i] = newBrickEntry

@@ -10,8 +10,8 @@
 package placer
 
 type DeviceAndNode struct {
-	Device PlacerDevice
-	Node   PlacerNode
+	Device Device
+	Node   Node
 }
 
 // DeviceSource is an abstraction used by the BrickPlacer to
@@ -26,10 +26,10 @@ type DeviceSource interface {
 	Devices() ([]DeviceAndNode, error)
 	// Device looks up a device id and resolves it to a Device
 	// entry object.
-	Device(id string) (PlacerDevice, error)
+	Device(id string) (Device, error)
 	// Node looks up a node id and resolves it to a Node entry
 	// object.
-	Node(id string) (PlacerNode, error)
+	Node(id string) (Node, error)
 }
 
 // PlacementOpts is an interface that is meant for passing the
@@ -57,7 +57,7 @@ type PlacementOpts interface {
 // DeviceFilter functions can be defined by the caller of a
 // BrickPlacer to define what devices it wants the Placer
 // algorithm to exclude from the brick set.
-type DeviceFilter func(*BrickSet, PlacerDevice) bool
+type DeviceFilter func(*BrickSet, Device) bool
 
 // BrickPlacer implementations take their source devices and
 // options and place new bricks on devices (if possible).

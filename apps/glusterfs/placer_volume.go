@@ -20,17 +20,17 @@ func PlacerForVolume(v *VolumeEntry) placer.BrickPlacer {
 	return placer.NewStandardBrickPlacer()
 }
 
-func canHostArbiter(d placer.PlacerDevice, dsrc placer.DeviceSource) bool {
+func canHostArbiter(d placer.Device, dsrc placer.DeviceSource) bool {
 	return deviceHasArbiterTag(d, dsrc,
 		TAG_VAL_ARBITER_REQUIRED, TAG_VAL_ARBITER_SUPPORTED)
 }
 
-func canHostData(d placer.PlacerDevice, dsrc placer.DeviceSource) bool {
+func canHostData(d placer.Device, dsrc placer.DeviceSource) bool {
 	return deviceHasArbiterTag(d, dsrc,
 		TAG_VAL_ARBITER_SUPPORTED, TAG_VAL_ARBITER_DISABLED)
 }
 
-func deviceHasArbiterTag(d placer.PlacerDevice, dsrc placer.DeviceSource, v ...string) bool {
+func deviceHasArbiterTag(d placer.Device, dsrc placer.DeviceSource, v ...string) bool {
 	n, err := dsrc.Node(d.ParentNodeId())
 	if err != nil {
 		logger.LogError("failed to fetch node (%v) for arbiter tag: %v",

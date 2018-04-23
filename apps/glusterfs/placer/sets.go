@@ -17,19 +17,19 @@ import (
 
 type BrickSet struct {
 	SetSize int
-	Bricks  []PlacerBrick
+	Bricks  []Brick
 }
 
 func NewBrickSet(s int) *BrickSet {
-	return &BrickSet{SetSize: s, Bricks: []PlacerBrick{}}
+	return &BrickSet{SetSize: s, Bricks: []Brick{}}
 }
 
-func (bs *BrickSet) Add(b PlacerBrick) {
+func (bs *BrickSet) Add(b Brick) {
 	godbc.Require(!bs.Full())
 	bs.Bricks = append(bs.Bricks, b)
 }
 
-func (bs *BrickSet) Insert(index int, b PlacerBrick) {
+func (bs *BrickSet) Insert(index int, b Brick) {
 	switch {
 	case index >= bs.SetSize:
 		panic(fmt.Errorf("Insert index (%v) out of bounds", index))
@@ -69,19 +69,19 @@ func (bs *BrickSet) String() string {
 
 type DeviceSet struct {
 	SetSize int
-	Devices []PlacerDevice
+	Devices []Device
 }
 
 func NewDeviceSet(s int) *DeviceSet {
-	return &DeviceSet{SetSize: s, Devices: []PlacerDevice{}}
+	return &DeviceSet{SetSize: s, Devices: []Device{}}
 }
 
-func (ds *DeviceSet) Add(d PlacerDevice) {
+func (ds *DeviceSet) Add(d Device) {
 	godbc.Require(!ds.Full())
 	ds.Devices = append(ds.Devices, d)
 }
 
-func (ds *DeviceSet) Insert(index int, d PlacerDevice) {
+func (ds *DeviceSet) Insert(index int, d Device) {
 	switch {
 	case index >= ds.SetSize:
 		panic(fmt.Errorf("Insert index (%v) out of bounds", index))

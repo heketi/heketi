@@ -22,7 +22,7 @@ import (
 var (
 	// define a mock function for always accepting a device as
 	// OK for arbiter or data bricks
-	hostTrue = func(PlacerDevice, DeviceSource) bool {
+	hostTrue = func(Device, DeviceSource) bool {
 		return true
 	}
 )
@@ -50,7 +50,7 @@ func (d *MockDevice) ParentNodeId() string {
 func (d *MockDevice) NewBrick(brickSize uint64,
 	snapFactor float64,
 	brickGid int64,
-	owner string) PlacerBrick {
+	owner string) Brick {
 
 	// the constant 50 exists to mimic the behavior of the
 	// overhead added onto the brick size during real brick
@@ -189,14 +189,14 @@ func (tds *TestDeviceSource) Devices() ([]DeviceAndNode, error) {
 	return valid, nil
 }
 
-func (tds *TestDeviceSource) Device(id string) (PlacerDevice, error) {
+func (tds *TestDeviceSource) Device(id string) (Device, error) {
 	if device, ok := tds.devices[id]; ok {
 		return device, nil
 	}
 	return nil, errNotFound
 }
 
-func (tds *TestDeviceSource) Node(id string) (PlacerNode, error) {
+func (tds *TestDeviceSource) Node(id string) (Node, error) {
 	if node, ok := tds.nodes[id]; ok {
 		return node, nil
 	}
@@ -433,7 +433,7 @@ func TestArbiterBrickPlacerPredicateBlock(t *testing.T) {
 	}
 
 	abplacer := NewArbiterBrickPlacer(hostTrue, hostTrue)
-	pred := func(bs *BrickSet, d PlacerDevice) bool {
+	pred := func(bs *BrickSet, d Device) bool {
 		return false
 	}
 	_, err := abplacer.PlaceAll(dsrc, opts, pred)
@@ -466,10 +466,10 @@ func TestArbiterBrickPlacerBrickOnArbiterDevice(t *testing.T) {
 		averageFileSize: 64 * KB,
 	}
 
-	canHostArbiter := func(d PlacerDevice, ds DeviceSource) bool {
+	canHostArbiter := func(d Device, ds DeviceSource) bool {
 		return d.Id()[0] == 'a'
 	}
-	canHostData := func(d PlacerDevice, ds DeviceSource) bool {
+	canHostData := func(d Device, ds DeviceSource) bool {
 		return !canHostArbiter(d, ds)
 	}
 	abplacer := NewArbiterBrickPlacer(canHostArbiter, canHostData)
@@ -558,10 +558,10 @@ func TestArbiterBrickPlacerBrickThreeSetsOnArbiterDevice(t *testing.T) {
 		averageFileSize: 64 * KB,
 	}
 
-	canHostArbiter := func(d PlacerDevice, ds DeviceSource) bool {
+	canHostArbiter := func(d Device, ds DeviceSource) bool {
 		return d.Id()[0] == 'a'
 	}
-	canHostData := func(d PlacerDevice, ds DeviceSource) bool {
+	canHostData := func(d Device, ds DeviceSource) bool {
 		return !canHostArbiter(d, ds)
 	}
 	abplacer := NewArbiterBrickPlacer(canHostArbiter, canHostData)
@@ -779,7 +779,7 @@ func TestArbiterBrickPlacerReplaceTooFew(t *testing.T) {
 		"expected len(ba.BrickSets[0].Bricks) == 3, got:",
 		len(ba.BrickSets[0].Bricks))
 
-	pred := func(bs *BrickSet, d PlacerDevice) bool {
+	pred := func(bs *BrickSet, d Device) bool {
 		return ba.BrickSets[0].Bricks[0].DeviceId() != d.Id()
 	}
 	_, err = abplacer.Replace(dsrc, opts, pred, ba.BrickSets[0], 0)
@@ -826,10 +826,10 @@ func TestArbiterBrickPlacerReplaceTooFewArbiter(t *testing.T) {
 		averageFileSize: 64 * KB,
 	}
 
-	canHostArbiter := func(d PlacerDevice, ds DeviceSource) bool {
+	canHostArbiter := func(d Device, ds DeviceSource) bool {
 		return d.Id()[0] == 'a'
 	}
-	canHostData := func(d PlacerDevice, ds DeviceSource) bool {
+	canHostData := func(d Device, ds DeviceSource) bool {
 		return !canHostArbiter(d, ds)
 	}
 	abplacer := NewArbiterBrickPlacer(canHostArbiter, canHostData)
@@ -843,7 +843,7 @@ func TestArbiterBrickPlacerReplaceTooFewArbiter(t *testing.T) {
 		len(ba.BrickSets[0].Bricks))
 
 	// this will fail because we have no more "arbiter devices"
-	pred := func(bs *BrickSet, d PlacerDevice) bool {
+	pred := func(bs *BrickSet, d Device) bool {
 		return ba.BrickSets[0].Bricks[2].DeviceId() != d.Id()
 	}
 	_, err = abplacer.Replace(dsrc, opts, pred, ba.BrickSets[0], 2)

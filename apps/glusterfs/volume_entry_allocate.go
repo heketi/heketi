@@ -273,7 +273,7 @@ func (v *VolumeEntry) allocBrickReplacement(db wdb.DB,
 	var r *placer.BrickAllocation
 	err = db.Update(func(tx *bolt.Tx) error {
 		// returns true if new device differs from old device
-		diffDevice := func(bs *placer.BrickSet, d placer.PlacerDevice) bool {
+		diffDevice := func(bs *placer.BrickSet, d placer.Device) bool {
 			return oldDeviceEntry.Info.Id != d.Id()
 		}
 

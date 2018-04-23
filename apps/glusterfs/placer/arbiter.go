@@ -23,7 +23,7 @@ const (
 	arbiter_index int = 2
 )
 
-type deviceSupportCheck func(PlacerDevice, DeviceSource) bool
+type deviceSupportCheck func(Device, DeviceSource) bool
 
 // ArbiterBrickPlacer is a Brick Placer implementation that can
 // place bricks for arbiter volumes. It works primarily by
@@ -228,7 +228,7 @@ func (bp *ArbiterBrickPlacer) tryPlaceBrickOnDevice(
 	bs *BrickSet,
 	ds *DeviceSet,
 	index int,
-	device PlacerDevice) error {
+	device Device) error {
 
 	logger.Debug("Trying to place brick on device %v", device.Id())
 

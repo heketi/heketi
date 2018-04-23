@@ -381,7 +381,7 @@ func (d *DeviceEntry) NewBrickEntry(amount uint64, snapFactor float64, gid int64
 	return NewBrickEntry(amount, sn.TpSize, sn.PoolMetadataSize, d.Info.Id, d.NodeId, gid, volumeid)
 }
 
-func (d *DeviceEntry) NewBrick(amount uint64, snapFactor float64, gid int64, volumeid string) placer.PlacerBrick {
+func (d *DeviceEntry) NewBrick(amount uint64, snapFactor float64, gid int64, volumeid string) placer.Brick {
 	return d.NewBrickEntry(amount, snapFactor, gid, volumeid)
 }
 

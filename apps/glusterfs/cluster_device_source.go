@@ -98,7 +98,7 @@ func (cds *ClusterDeviceSource) DeviceEntry(id string) (*DeviceEntry, error) {
 	return device, nil
 }
 
-func (cds *ClusterDeviceSource) Device(id string) (placer.PlacerDevice, error) {
+func (cds *ClusterDeviceSource) Device(id string) (placer.Device, error) {
 	return cds.DeviceEntry(id)
 }
 
@@ -116,6 +116,6 @@ func (cds *ClusterDeviceSource) NodeEntry(id string) (*NodeEntry, error) {
 	return node, nil
 }
 
-func (cds *ClusterDeviceSource) Node(id string) (placer.PlacerNode, error) {
+func (cds *ClusterDeviceSource) Node(id string) (placer.Node, error) {
 	return cds.NodeEntry(id)
 }
