@@ -14,19 +14,24 @@ package functional
 import (
 	"testing"
 
+	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
 )
 
-func TestReqTrottling(t *testing.T) {
+//Mimic old client with retry  0
+func TestTrottling(t *testing.T) {
+	//old client with retry  0
+	heketi = client.NewClientWithRetry(heketiUrl, "", "", 0)
 	setupCluster(t, 4, 8)
 	defer teardownCluster(t)
-	t.Run("testReqTrottlingCreateVolume", testReqTrottlingCreateVolume)
+	t.Run("testTrottling", testTrottling)
 
 }
 
-func testReqTrottlingCreateVolume(t *testing.T) {
+//create 25 volume
+func testTrottling(t *testing.T) {
 	vl, err := heketi.VolumeList()
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, len(vl.Volumes) == 0,
@@ -37,7 +42,7 @@ func testReqTrottlingCreateVolume(t *testing.T) {
 	volReq.Durability.Type = api.DurabilityReplicate
 	volReq.Durability.Replicate.Replica = 3
 	wg := utils.NewStatusGroup()
-	for i := 0; i < 30; i++ {
+	for i := 0; i < 25; i++ {
 		wg.Add(1)
 		go func(t *testing.T, wg *utils.StatusGroup) {
 			defer wg.Done()
@@ -51,8 +56,8 @@ func testReqTrottlingCreateVolume(t *testing.T) {
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	vl, err = heketi.VolumeList()
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
-	tests.Assert(t, len(vl.Volumes) == 30,
-		"expected len(vl.Volumes) == 30, got:", len(vl.Volumes))
+	tests.Assert(t, len(vl.Volumes) == 25,
+		"expected len(vl.Volumes) == 25, got:", len(vl.Volumes))
 
 	throttlingteardownVolumes(t)
 }
@@ -67,12 +72,12 @@ func throttlingteardownVolumes(t *testing.T) {
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 		for _, volume := range clusterInfo.Volumes {
 			sg.Add(1)
-			go func(t *testing.T, sg *utils.StatusGroup, volume string) {
+			go func(sg *utils.StatusGroup, volID string) {
 
 				defer sg.Done()
-				err := heketi.VolumeDelete(volume)
+				err := heketi.VolumeDelete(volID)
 				sg.Err(err)
-			}(t, sg, volume)
+			}(sg, volume)
 		}
 	}
 	err = sg.Result()
