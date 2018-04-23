@@ -37,14 +37,14 @@ type ReqLimiter struct {
 func (r *ReqLimiter) reachedMaxRequest() bool {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
-	return r.servingCount >= r.maxcount
+	return r.servingCount > r.maxcount
 }
 
 //Function to check total received request
 func (r *ReqLimiter) reqReceivedcount() bool {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
-	return r.reqRecvCount >= r.maxcount
+	return r.reqRecvCount > r.maxcount
 }
 
 //Function to add request id to the queue
@@ -109,7 +109,7 @@ func (r *ReqLimiter) ServeHTTP(hw http.ResponseWriter, hr *http.Request, next ht
 		r.incRecvCount()
 
 		//avoid overload by checking maximum and currently received requests counts
-		if !r.reachedMaxRequest() && !r.reqReceivedcount() {
+		if !r.reqReceivedcount() && !r.reachedMaxRequest() {
 
 			next(hw, hr)
 
@@ -143,8 +143,10 @@ func (r *ReqLimiter) ServeHTTP(hw http.ResponseWriter, hr *http.Request, next ht
 		}
 		path := strings.TrimRight(hr.URL.Path, "/")
 		urlPart := strings.Split(path, "/")
+
 		if len(urlPart) >= 3 {
 			if checkRespStatus(res.Status()) {
+
 				//extract the reqID from URL
 				reqID := urlPart[2]
 
