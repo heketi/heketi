@@ -43,7 +43,7 @@ func (c *Client) DeviceAdd(request *api.DeviceAddRequest) error {
 	}
 
 	// Send request
-	r, err := c.do(req)
+	r, err := c.retryOperationDo(req, buffer)
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ func (c *Client) DeviceDelete(id string) error {
 	}
 
 	// Send request
-	r, err := c.do(req)
+	r, err := c.retryOperationDo(req, nil)
 	if err != nil {
 		return err
 	}
@@ -150,8 +150,8 @@ func (c *Client) DeviceState(id string,
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Content-Type", "application/json")
 
+	req.Header.Set("Content-Type", "application/json")
 	// Set token
 	err = c.setToken(req)
 	if err != nil {
@@ -159,7 +159,7 @@ func (c *Client) DeviceState(id string,
 	}
 
 	// Get info
-	r, err := c.do(req)
+	r, err := c.retryOperationDo(req, buffer)
 	if err != nil {
 		return err
 	}
@@ -193,9 +193,8 @@ func (c *Client) DeviceResync(id string) error {
 	if err != nil {
 		return err
 	}
-
 	// Send request
-	r, err := c.do(req)
+	r, err := c.retryOperationDo(req, nil)
 	if err != nil {
 		return err
 	}
