@@ -38,6 +38,7 @@ func (c *Client) VolumeCreate(request *api.VolumeCreateRequest) (
 	if err != nil {
 		return nil, err
 	}
+
 	req.Header.Set("Content-Type", "application/json")
 
 	// Set token
@@ -47,7 +48,7 @@ func (c *Client) VolumeCreate(request *api.VolumeCreateRequest) (
 	}
 
 	// Send request
-	r, err := c.do(req)
+	r, err := c.retryOperationDo(req, buffer)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +56,6 @@ func (c *Client) VolumeCreate(request *api.VolumeCreateRequest) (
 	if r.StatusCode != http.StatusAccepted {
 		return nil, utils.GetErrorFromResponse(r)
 	}
-
 	// Wait for response
 	r, err = c.waitForResponseWithTimer(r, time.Second)
 	if err != nil {
@@ -91,6 +91,7 @@ func (c *Client) VolumeExpand(id string, request *api.VolumeExpandRequest) (
 	if err != nil {
 		return nil, err
 	}
+
 	req.Header.Set("Content-Type", "application/json")
 
 	// Set token
@@ -100,7 +101,7 @@ func (c *Client) VolumeExpand(id string, request *api.VolumeExpandRequest) (
 	}
 
 	// Send request
-	r, err := c.do(req)
+	r, err := c.retryOperationDo(req, buffer)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +213,7 @@ func (c *Client) VolumeDelete(id string) error {
 	}
 
 	// Send request
-	r, err := c.do(req)
+	r, err := c.retryOperationDo(req, nil)
 	if err != nil {
 		return err
 	}
