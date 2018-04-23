@@ -7,7 +7,7 @@
 // cases as published by the Free Software Foundation.
 //
 
-package glusterfs
+package placer
 
 // Simple allocator contains a map to rings of clusters
 type SimpleAllocator struct {

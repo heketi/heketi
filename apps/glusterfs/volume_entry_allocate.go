@@ -13,6 +13,7 @@ import (
 	"fmt"
 
 	"github.com/boltdb/bolt"
+	"github.com/heketi/heketi/apps/glusterfs/placer"
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
@@ -52,7 +53,7 @@ func (v *VolumeEntry) allocBricksInCluster(db wdb.DB,
 
 		// Allocate bricks in the cluster
 		brick_entries, err := v.allocBricks(db, cluster, sets, brick_size)
-		if err == ErrNoSpace {
+		if err == ErrNoSpace || err == placer.ErrNoDevices {
 			logger.Debug("No space, re-trying with smaller brick size")
 			continue
 		}
@@ -94,7 +95,7 @@ func (v *VolumeEntry) brickNameMap(db wdb.RODB) (
 
 func (v *VolumeEntry) getBrickSetForBrickId(db wdb.DB,
 	executor executors.Executor,
-	oldBrickId string, node string) (*BrickSet, int, error) {
+	oldBrickId string, node string) (*placer.BrickSet, int, error) {
 
 	// First gather the list of bricks from gluster which, unlike heketi,
 	// retains the brick order
@@ -115,7 +116,7 @@ func (v *VolumeEntry) getBrickSetForBrickId(db wdb.DB,
 	}
 	ssize := v.Durability.BricksInSet()
 	for slicestartindex := 0; slicestartindex <= len(vinfo.Bricks.BrickList)-ssize; slicestartindex += ssize {
-		bs := NewBrickSet(ssize)
+		bs := placer.NewBrickSet(ssize)
 		for _, brick := range vinfo.Bricks.BrickList[slicestartindex : slicestartindex+ssize] {
 			brickentry, found := bmap[brick.Name]
 			if !found {
@@ -146,7 +147,7 @@ func (v *VolumeEntry) getBrickSetForBrickId(db wdb.DB,
 func (v *VolumeEntry) canReplaceBrickInBrickSet(db wdb.DB,
 	executor executors.Executor,
 	node string,
-	bs *BrickSet,
+	bs *placer.BrickSet,
 	index int) error {
 
 	// Get self heal status for this brick's volume
@@ -200,7 +201,7 @@ type replacementItems struct {
 	oldBrickEntry     *BrickEntry
 	oldDeviceEntry    *DeviceEntry
 	oldBrickNodeEntry *NodeEntry
-	bs                *BrickSet
+	bs                *placer.BrickSet
 	index             int
 }
 
@@ -265,24 +266,24 @@ func (v *VolumeEntry) prepForBrickReplacement(db wdb.DB,
 func (v *VolumeEntry) allocBrickReplacement(db wdb.DB,
 	oldBrickEntry *BrickEntry,
 	oldDeviceEntry *DeviceEntry,
-	bs *BrickSet,
+	bs *placer.BrickSet,
 	index int) (newBrickEntry *BrickEntry,
 	newDeviceEntry *DeviceEntry, err error) {
 
-	var r *BrickAllocation
+	var r *placer.BrickAllocation
 	err = db.Update(func(tx *bolt.Tx) error {
 		// returns true if new device differs from old device
-		diffDevice := func(bs *BrickSet, d PlacerDevice) bool {
+		diffDevice := func(bs *placer.BrickSet, d placer.PlacerDevice) bool {
 			return oldDeviceEntry.Info.Id != d.Id()
 		}
 
 		var err error
-		placer := PlacerForVolume(v)
-		r, err = placer.Replace(
+		pl := PlacerForVolume(v)
+		r, err = pl.Replace(
 			NewClusterDeviceSource(tx, v.Info.Cluster),
 			NewVolumePlacementOpts(v, oldBrickEntry.Info.Size, bs.SetSize),
 			diffDevice, bs, index)
-		if err == ErrNoSpace {
+		if err == ErrNoSpace || err == placer.ErrNoDevices {
 			// swap error conditions to better match the intent
 			return ErrNoReplacement
 		} else if err != nil {

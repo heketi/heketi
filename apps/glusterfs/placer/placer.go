@@ -7,7 +7,7 @@
 // cases as published by the Free Software Foundation.
 //
 
-package glusterfs
+package placer
 
 type DeviceAndNode struct {
 	Device PlacerDevice

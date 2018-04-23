@@ -17,6 +17,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/heketi/tests"
 
+	"github.com/heketi/heketi/apps/glusterfs/placer"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 )
 
@@ -40,7 +41,7 @@ func TestClusterDeviceSource(t *testing.T) {
 	// meets the DeviceSource interface (at compile time). When
 	// using the return value it also makes sure we only use the
 	// functions that are part of the interface.
-	interfaceCheck := func(dsrc DeviceSource) DeviceSource {
+	interfaceCheck := func(dsrc placer.DeviceSource) placer.DeviceSource {
 		return dsrc
 	}
 
@@ -180,7 +181,7 @@ func TestVolumePlacementOpts(t *testing.T) {
 	// meets the PlacementOpts interface (at compile time). When
 	// using the return value it also makes sure we only use the
 	// functions that are part of the interface.
-	interfaceCheck := func(p PlacementOpts) PlacementOpts {
+	interfaceCheck := func(p placer.PlacementOpts) placer.PlacementOpts {
 		return p
 	}
 
@@ -216,7 +217,7 @@ func TestClusterDeviceSourceAlloc(t *testing.T) {
 			"expected len(cids) == 2, got:", len(cids))
 		cluster := cids[0]
 
-		a := NewSimpleAllocator()
+		a := placer.NewSimpleAllocator()
 		dsrc := NewClusterDeviceSource(tx, cluster)
 		deviceCh, done, err := a.GetNodesFromDeviceSource(dsrc, "0000000")
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)

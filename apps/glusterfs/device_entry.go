@@ -16,6 +16,7 @@ import (
 	"sort"
 
 	"github.com/boltdb/bolt"
+	"github.com/heketi/heketi/apps/glusterfs/placer"
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
@@ -380,7 +381,7 @@ func (d *DeviceEntry) NewBrickEntry(amount uint64, snapFactor float64, gid int64
 	return NewBrickEntry(amount, sn.TpSize, sn.PoolMetadataSize, d.Info.Id, d.NodeId, gid, volumeid)
 }
 
-func (d *DeviceEntry) NewBrick(amount uint64, snapFactor float64, gid int64, volumeid string) PlacerBrick {
+func (d *DeviceEntry) NewBrick(amount uint64, snapFactor float64, gid int64, volumeid string) placer.PlacerBrick {
 	return d.NewBrickEntry(amount, snapFactor, gid, volumeid)
 }
 

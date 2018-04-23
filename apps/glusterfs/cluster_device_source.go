@@ -11,6 +11,8 @@ package glusterfs
 
 import (
 	"github.com/boltdb/bolt"
+
+	"github.com/heketi/heketi/apps/glusterfs/placer"
 )
 
 type ClusterDeviceSource struct {
@@ -31,7 +33,7 @@ func NewClusterDeviceSource(tx *bolt.Tx,
 	}
 }
 
-func (cds *ClusterDeviceSource) Devices() ([]DeviceAndNode, error) {
+func (cds *ClusterDeviceSource) Devices() ([]placer.DeviceAndNode, error) {
 	cluster, err := NewClusterEntryFromId(cds.tx, cds.clusterId)
 	if err != nil {
 		return nil, err
@@ -39,7 +41,7 @@ func (cds *ClusterDeviceSource) Devices() ([]DeviceAndNode, error) {
 
 	nodeUp := currentNodeHealthStatus()
 
-	valid := [](DeviceAndNode){}
+	valid := [](placer.DeviceAndNode){}
 	for _, nodeId := range cluster.Info.Nodes {
 		node, err := NewNodeEntryFromId(cds.tx, nodeId)
 		if err != nil {
@@ -63,7 +65,7 @@ func (cds *ClusterDeviceSource) Devices() ([]DeviceAndNode, error) {
 				continue
 			}
 
-			valid = append(valid, DeviceAndNode{
+			valid = append(valid, placer.DeviceAndNode{
 				Device: device,
 				Node:   node,
 			})
@@ -96,7 +98,7 @@ func (cds *ClusterDeviceSource) DeviceEntry(id string) (*DeviceEntry, error) {
 	return device, nil
 }
 
-func (cds *ClusterDeviceSource) Device(id string) (PlacerDevice, error) {
+func (cds *ClusterDeviceSource) Device(id string) (placer.PlacerDevice, error) {
 	return cds.DeviceEntry(id)
 }
 
@@ -114,6 +116,6 @@ func (cds *ClusterDeviceSource) NodeEntry(id string) (*NodeEntry, error) {
 	return node, nil
 }
 
-func (cds *ClusterDeviceSource) Node(id string) (PlacerNode, error) {
+func (cds *ClusterDeviceSource) Node(id string) (placer.PlacerNode, error) {
 	return cds.NodeEntry(id)
 }

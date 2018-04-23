@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/boltdb/bolt"
+	"github.com/heketi/heketi/apps/glusterfs/placer"
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
@@ -293,6 +294,7 @@ func (v *VolumeEntry) tryAllocateBricks(
 			logger.Debug("Volume to be created on cluster %v", cluster)
 			break
 		} else if err == ErrNoSpace ||
+			err == placer.ErrNoDevices ||
 			err == ErrMaxBricks ||
 			err == ErrMinimumBrickSize {
 			logger.Debug("Cluster %v can not accommodate volume "+

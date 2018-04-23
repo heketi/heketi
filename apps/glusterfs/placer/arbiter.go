@@ -7,7 +7,7 @@
 // cases as published by the Free Software Foundation.
 //
 
-package glusterfs
+package placer
 
 import (
 	"fmt"
@@ -215,7 +215,7 @@ func (bp *ArbiterBrickPlacer) placeBrickInSet(
 
 	// we exhausted all possible devices for this brick
 	logger.Debug("Can not find any device for brick (index=%v)", index)
-	return ErrNoSpace
+	return ErrNoDevices
 }
 
 // tryPlaceBrickOnDevice attempts to place a brick on the given device.
