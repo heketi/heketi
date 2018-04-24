@@ -124,7 +124,7 @@ __handle_filename_extension_flag()
 __handle_subdirs_in_dir_flag()
 {
     local dir="$1"
-    pushd "${dir}" >/dev/null 2>&1 && _filedir -d && popd >/dev/null 2>&1
+    pushd "${dir}" >/dev/null 2>&1 && _filedir -d && popd >/dev/null 2>&1 || exit
 }
 
 __handle_flag()
