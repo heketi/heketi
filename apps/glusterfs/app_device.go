@@ -433,3 +433,51 @@ func (a *App) DeviceResync(w http.ResponseWriter, r *http.Request) {
 		return "", err
 	})
 }
+
+func (a *App) DeviceSetTags(w http.ResponseWriter, r *http.Request) {
+	// Get the id from the URL
+	vars := mux.Vars(r)
+	id := vars["id"]
+	var device *DeviceEntry
+
+	// Unmarshal JSON
+	var msg api.TagsChangeRequest
+	err := utils.GetJsonFromRequest(r, &msg)
+	if err != nil {
+		http.Error(w, "request unable to be parsed", 422)
+		return
+	}
+
+	err = msg.Validate()
+	if err != nil {
+		http.Error(w, "validation failed: "+err.Error(), http.StatusBadRequest)
+		logger.LogError("validation failed: " + err.Error())
+		return
+	}
+
+	err = a.db.Update(func(tx *bolt.Tx) error {
+		device, err = NewDeviceEntryFromId(tx, id)
+		if err == ErrNotFound {
+			http.Error(w, "Id not found", http.StatusNotFound)
+			return err
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+		ApplyTags(device, msg)
+		if err := device.Save(tx); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		logger.Err(err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(device.AllTags()); err != nil {
+		panic(err)
+	}
+}

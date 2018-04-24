@@ -304,6 +304,10 @@ func (a *App) setAdvSettings() {
 		// Convert to KB
 		BrickMinSize = uint64(a.conf.BrickMinSize) * 1024 * 1024
 	}
+	if a.conf.AverageFileSize != 0 {
+		logger.Info("Average file size on volumes set to %v KiB", a.conf.AverageFileSize)
+		averageFileSize = a.conf.AverageFileSize
+	}
 }
 
 func (a *App) setBlockSettings() {
@@ -381,6 +385,11 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Method:      "POST",
 			Pattern:     "/nodes/{id:[A-Fa-f0-9]+}/state",
 			HandlerFunc: a.NodeSetState},
+		rest.Route{
+			Name:        "NodeSetTags",
+			Method:      "POST",
+			Pattern:     "/nodes/{id:[A-Fa-f0-9]+}/tags",
+			HandlerFunc: a.NodeSetTags},
 
 		// Devices
 		rest.Route{
@@ -408,6 +417,11 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Method:      "GET",
 			Pattern:     "/devices/{id:[A-Fa-f0-9]+}/resync",
 			HandlerFunc: a.DeviceResync},
+		rest.Route{
+			Name:        "DeviceSetTags",
+			Method:      "POST",
+			Pattern:     "/devices/{id:[A-Fa-f0-9]+}/tags",
+			HandlerFunc: a.DeviceSetTags},
 
 		// Volume
 		rest.Route{

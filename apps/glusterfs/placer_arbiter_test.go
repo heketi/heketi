@@ -108,6 +108,7 @@ type TestPlacementOpts struct {
 	brickGid        int64
 	setSize         int
 	setCount        int
+	averageFileSize uint64
 }
 
 func (tpo *TestPlacementOpts) BrickSizes() (uint64, float64) {
@@ -128,6 +129,10 @@ func (tpo *TestPlacementOpts) SetSize() int {
 
 func (tpo *TestPlacementOpts) SetCount() int {
 	return tpo.setCount
+}
+
+func (tpo *TestPlacementOpts) AverageFileSize() uint64 {
+	return tpo.averageFileSize
 }
 
 func TestTestDeviceSource(t *testing.T) {
@@ -221,6 +226,7 @@ func TestArbiterBrickPlacer(t *testing.T) {
 		brickOwner:      "asdfasdf",
 		setSize:         3,
 		setCount:        1,
+		averageFileSize: 64 * KB,
 	}
 
 	abplacer := NewArbiterBrickPlacer()
@@ -266,6 +272,7 @@ func TestArbiterBrickPlacerTooSmall(t *testing.T) {
 		brickOwner:      "asdfasdf",
 		setSize:         3,
 		setCount:        1,
+		averageFileSize: 64 * KB,
 	}
 
 	abplacer := NewArbiterBrickPlacer()
@@ -283,6 +290,7 @@ func TestArbiterBrickPlacerDevicesFail(t *testing.T) {
 		brickOwner:      "asdfasdf",
 		setSize:         3,
 		setCount:        1,
+		averageFileSize: 64 * KB,
 	}
 
 	abplacer := NewArbiterBrickPlacer()
@@ -314,6 +322,7 @@ func TestArbiterBrickPlacerPredicateBlock(t *testing.T) {
 		brickOwner:      "asdfasdf",
 		setSize:         3,
 		setCount:        1,
+		averageFileSize: 64 * KB,
 	}
 
 	abplacer := NewArbiterBrickPlacer()
@@ -347,14 +356,15 @@ func TestArbiterBrickPlacerBrickOnArbiterDevice(t *testing.T) {
 		brickOwner:      "asdfasdf",
 		setSize:         3,
 		setCount:        1,
+		averageFileSize: 64 * KB,
 	}
 
 	abplacer := NewArbiterBrickPlacer()
-	abplacer.canHostArbiter = func(d *DeviceEntry) bool {
+	abplacer.canHostArbiter = func(d *DeviceEntry, ds DeviceSource) bool {
 		return d.Info.Id[0] == 'a'
 	}
-	abplacer.canHostData = func(d *DeviceEntry) bool {
-		return !abplacer.canHostArbiter(d)
+	abplacer.canHostData = func(d *DeviceEntry, ds DeviceSource) bool {
+		return !abplacer.canHostArbiter(d, ds)
 	}
 	ba, err := abplacer.PlaceAll(dsrc, opts, nil)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
@@ -389,6 +399,7 @@ func TestArbiterBrickPlacerBrickThreeSets(t *testing.T) {
 		brickOwner:      "asdfasdf",
 		setSize:         3,
 		setCount:        3,
+		averageFileSize: 64 * KB,
 	}
 
 	abplacer := NewArbiterBrickPlacer()
@@ -435,14 +446,15 @@ func TestArbiterBrickPlacerBrickThreeSetsOnArbiterDevice(t *testing.T) {
 		brickOwner:      "asdfasdf",
 		setSize:         3,
 		setCount:        3,
+		averageFileSize: 64 * KB,
 	}
 
 	abplacer := NewArbiterBrickPlacer()
-	abplacer.canHostArbiter = func(d *DeviceEntry) bool {
+	abplacer.canHostArbiter = func(d *DeviceEntry, ds DeviceSource) bool {
 		return d.Info.Id[0] == 'a'
 	}
-	abplacer.canHostData = func(d *DeviceEntry) bool {
-		return !abplacer.canHostArbiter(d)
+	abplacer.canHostData = func(d *DeviceEntry, ds DeviceSource) bool {
+		return !abplacer.canHostArbiter(d, ds)
 	}
 	ba, err := abplacer.PlaceAll(dsrc, opts, nil)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
@@ -490,6 +502,7 @@ func TestArbiterBrickPlacerSimpleReplace(t *testing.T) {
 		brickOwner:      "asdfasdf",
 		setSize:         3,
 		setCount:        1,
+		averageFileSize: 64 * KB,
 	}
 
 	abplacer := NewArbiterBrickPlacer()
@@ -551,6 +564,7 @@ func TestArbiterBrickPlacerReplaceIndexOOB(t *testing.T) {
 		brickOwner:      "asdfasdf",
 		setSize:         3,
 		setCount:        1,
+		averageFileSize: 64 * KB,
 	}
 
 	abplacer := NewArbiterBrickPlacer()
@@ -602,6 +616,7 @@ func TestArbiterBrickPlacerReplaceDevicesFail(t *testing.T) {
 		brickOwner:      "asdfasdf",
 		setSize:         3,
 		setCount:        1,
+		averageFileSize: 64 * KB,
 	}
 
 	abplacer := NewArbiterBrickPlacer()
@@ -643,6 +658,7 @@ func TestArbiterBrickPlacerReplaceTooFew(t *testing.T) {
 		brickOwner:      "asdfasdf",
 		setSize:         3,
 		setCount:        1,
+		averageFileSize: 64 * KB,
 	}
 
 	abplacer := NewArbiterBrickPlacer()
@@ -698,14 +714,15 @@ func TestArbiterBrickPlacerReplaceTooFewArbiter(t *testing.T) {
 		brickOwner:      "asdfasdf",
 		setSize:         3,
 		setCount:        1,
+		averageFileSize: 64 * KB,
 	}
 
 	abplacer := NewArbiterBrickPlacer()
-	abplacer.canHostArbiter = func(d *DeviceEntry) bool {
+	abplacer.canHostArbiter = func(d *DeviceEntry, ds DeviceSource) bool {
 		return d.Info.Id[0] == 'a'
 	}
-	abplacer.canHostData = func(d *DeviceEntry) bool {
-		return !abplacer.canHostArbiter(d)
+	abplacer.canHostData = func(d *DeviceEntry, ds DeviceSource) bool {
+		return !abplacer.canHostArbiter(d, ds)
 	}
 
 	ba, err := abplacer.PlaceAll(dsrc, opts, nil)
