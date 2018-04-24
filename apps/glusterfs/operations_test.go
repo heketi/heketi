@@ -18,6 +18,8 @@ import (
 	"github.com/heketi/tests"
 
 	"github.com/gorilla/mux"
+	"github.com/heketi/heketi/middleware"
+	"github.com/urfave/negroni"
 )
 
 func TestVolumeCreatePendingCreatedCleared(t *testing.T) {
@@ -2038,7 +2040,7 @@ func TestAsyncHttpOperationOK(t *testing.T) {
 				return http.ErrUseLastResponse
 			},
 		}
-		r, err := client.Get(url + "/app")
+		r, err := client.Post(url+"/app", "application/json", nil)
 		tests.Assert(t, r.StatusCode == http.StatusAccepted)
 		tests.Assert(t, err == nil)
 		location, err := r.Location()
@@ -2084,7 +2086,7 @@ func TestAsyncHttpOperationBuildFailure(t *testing.T) {
 				return http.ErrUseLastResponse
 			},
 		}
-		r, err := client.Get(url + "/app")
+		r, err := client.Post(url+"/app", "application/json", nil)
 		tests.Assert(t, err == nil, "expected err == nil, got", err)
 		tests.Assert(t, r.StatusCode == http.StatusInternalServerError)
 	})
@@ -2102,7 +2104,7 @@ func TestAsyncHttpOperationExecFailure(t *testing.T) {
 				return http.ErrUseLastResponse
 			},
 		}
-		r, err := client.Get(url + "/app")
+		r, err := client.Post(url+"/app", "application/json", nil)
 		tests.Assert(t, err == nil, "expected err == nil, got", err)
 		tests.Assert(t, r.StatusCode == http.StatusAccepted)
 		location, err := r.Location()
@@ -2155,7 +2157,7 @@ func TestAsyncHttpOperationRollbackFailure(t *testing.T) {
 				return http.ErrUseLastResponse
 			},
 		}
-		r, err := client.Get(url + "/app")
+		r, err := client.Post(url+"/app", "application/json", nil)
 		tests.Assert(t, err == nil, "expected err == nil, got", err)
 		tests.Assert(t, r.StatusCode == http.StatusAccepted)
 		location, err := r.Location()
@@ -2204,7 +2206,7 @@ func TestAsyncHttpOperationFinalizeFailure(t *testing.T) {
 				return http.ErrUseLastResponse
 			},
 		}
-		r, err := client.Get(url + "/app")
+		r, err := client.Post(url+"/app", "application/json", nil)
 		tests.Assert(t, err == nil, "expected err == nil, got", err)
 		tests.Assert(t, r.StatusCode == http.StatusAccepted)
 		location, err := r.Location()
@@ -2261,10 +2263,15 @@ func testAsyncHttpOperation(t *testing.T,
 		if x := AsyncHttpOperation(app, w, r, o); x != nil {
 			http.Error(w, x.Error(), http.StatusInternalServerError)
 		}
-	}).Methods("GET")
+	}).Methods("POST")
 
+	reqIDGen := middleware.RequestID{}
+	n := negroni.New()
+	n.Use(&reqIDGen)
+
+	n.UseHandler(router)
 	// Setup the server
-	ts := httptest.NewServer(router)
+	ts := httptest.NewServer(n)
 	defer ts.Close()
 
 	testFunc(t, ts.URL)

@@ -13,8 +13,12 @@
 package client
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
+	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"time"
 
@@ -24,24 +28,32 @@ import (
 
 const (
 	MAX_CONCURRENT_REQUESTS = 32
+	RETRY_COUNT             = 1000
 )
 
 // Client object
 type Client struct {
-	host     string
-	key      string
-	user     string
-	throttle chan bool
+	host       string
+	key        string
+	user       string
+	throttle   chan bool
+	retryCount int
 }
 
-// Creates a new client to access a Heketi server
+//NewClient Creates a new client to access a Heketi server
 func NewClient(host, user, key string) *Client {
+	return NewClientWithRetry(host, user, key, RETRY_COUNT)
+}
+
+//NewClientWithRetry Creates a new client to access a Heketi server with retryCount
+func NewClientWithRetry(host, user, key string, retryCount int) *Client {
 	c := &Client{}
 
 	c.key = key
 	c.host = host
 	c.user = user
-
+	//maximum retry for request
+	c.retryCount = retryCount
 	// Maximum concurrent requests
 	c.throttle = make(chan bool, MAX_CONCURRENT_REQUESTS)
 
@@ -133,6 +145,11 @@ func (c *Client) waitForResponseWithTimer(r *http.Response,
 			if r.StatusCode != http.StatusOK {
 				return nil, utils.GetErrorFromResponse(r)
 			}
+			if r != nil {
+				//Read Response Body
+				ioutil.ReadAll(r.Body)
+				r.Body.Close()
+			}
 			time.Sleep(waitTime)
 		} else {
 			return r, nil
@@ -174,4 +191,37 @@ func (c *Client) setToken(r *http.Request) error {
 	r.Header.Set("Authorization", "bearer "+signedtoken)
 
 	return nil
+}
+
+//retryOperationDo for retry operation
+func (c *Client) retryOperationDo(req *http.Request, requestBody []byte) (*http.Response, error) {
+	// Send request
+	for i := 0; i <= c.retryCount; i++ {
+		req.Body = ioutil.NopCloser(bytes.NewBuffer(requestBody))
+		r, err := c.do(req)
+		if err != nil {
+			return nil, err
+		}
+		switch r.StatusCode {
+		case http.StatusTooManyRequests:
+			if r != nil {
+				//Read Response Body
+				ioutil.ReadAll(r.Body)
+				r.Body.Close()
+			}
+			//sleep before continue
+			num := random(10, 30)
+			time.Sleep(time.Second * time.Duration(num))
+			continue
+
+		default:
+			return r, err
+
+		}
+	}
+	return nil, errors.New("Failed to complete requested operation")
+}
+
+func random(min, max int) int {
+	return rand.Intn(max-min) + min
 }

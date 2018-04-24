@@ -19,14 +19,20 @@ _sudo() {
 
 HEKETI_PID=
 start_heketi() {
+    local config_filename=$1
     ( cd "$HEKETI_SERVER_BUILD_DIR" && make && cp heketi "$HEKETI_SERVER" )
     if [ $? -ne 0 ] ; then
         fail "Unable to build Heketi"
     fi
 
+    if [ ! -f config/"${config_filename}" ]
+    then
+        config_filename="heketi.json"
+    fi
+
     # Start server
     rm -f heketi.db > /dev/null 2>&1
-    $HEKETI_SERVER --config=config/heketi.json &
+    $HEKETI_SERVER --config=config/${config_filename} &
     HEKETI_PID=$!
     sleep 2
 }
@@ -45,8 +51,24 @@ teardown_vagrant() {
 
 run_go_tests() {
     cd tests || fail "Unable to 'cd tests'."
-    go test -timeout=1h -tags functional -v
-    gotest_result=$?
+    for t in $(find . -name '*_test.go' | LC_COLLATE=C sort)
+    do
+        config_file=${t%.go}.json
+        cd ..
+        start_heketi "$config_file"
+        cd tests || fail "Unable to 'cd tests'."
+        testfuncs=$(grep "func Test.*(t\\ \\*testing.T)[\\ ]*{" ./* | awk '{print $2}' | cut -d"(" -f1)
+        for testfunc in "${testfuncs[@]}"
+        do
+            go test -timeout=1h -tags functional -run "$testfunc"
+            if [ $? -ne 0 ]
+            then
+                gotest_result=$?
+            fi
+        done
+        testfuncs=""
+        kill $HEKETI_PID
+    done
     cd ..
 }
 
@@ -88,13 +110,11 @@ functional_tests() {
     then
         start_vagrant
     fi
-    start_heketi
 
     pause_test "$HEKETI_TEST_PAUSE_BEFORE"
     run_go_tests
     pause_test "$HEKETI_TEST_PAUSE_AFTER"
 
-    kill $HEKETI_PID
     if [[ "$HEKETI_TEST_CLEANUP" != "no" ]]
     then
         teardown

@@ -1,6 +1,7 @@
 {
 	"_port_comment": "Heketi Server Port Number",
 	"port" : "8080",
+	"use_http_throttle": true,
 
 	"_glusterfs_comment": "GlusterFS Configuration",
 	"glusterfs" : {
