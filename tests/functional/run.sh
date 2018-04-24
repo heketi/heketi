@@ -62,7 +62,7 @@ fetch_golang() {
 vercheck() {
     # return true (0) if version number $2 is greater-or-equal to
     # version number $1
-    r="$(echo -e "$1\n$2" | sort -V | head -n1)"
+    r="$(echo -e "$1\\n$2" | sort -V | head -n1)"
     if [[ "$r" == "$1" ]]; then
         return 0
     fi
