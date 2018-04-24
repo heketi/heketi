@@ -209,6 +209,51 @@ $ heketi-cli device resync 886a86a868711bef83001
 .fi
 .RE
 .RE
+.PP
+\fBheketi\-cli device settags <DEVICE-ID> <TAG>:<VALUE> ...\fP
+.RS
+Set metadata tags on a given device. Tags are free-form key value pairs
+that are stored by Heketi and may be used for extra configuration.
+One or more <TAG>:<TAG-VALUE> pairs may be provided.
+.PP
+.B Options
+.RS
+.TP
+\fB\-\-exact
+Optional:
+Overwrite the existing tags with the exactly set of tags (and values)
+specified on this command line. Without this option, the command will
+add or update tags.
+.RE
+.PP
+\fBExample\fP
+.RS
+.nf
+$ heketi-cli device settags 886a86a868711bef83001 arbiter:required flavor:strawberry
+.fi
+.RE
+.RE
+.PP
+\fBheketi\-cli device rmtags <DEVICE-ID> <TAG> ...\fP
+.RS
+Remove metadata tags from a given device.
+.PP
+.B Options
+.RS
+.TP
+\fB\-\-all
+Optional:
+Remove all tags from the specified device. May not be combined with
+specifying tag names.
+.RE
+.PP
+\fBExample\fP
+.RS
+.nf
+$ heketi-cli device rmtags 886a86a868711bef83001 arbiter
+.fi
+.RE
+.RE
 .SS "Node Commands"
 .PP
 \fBheketi\-cli node add \-\-zone=<ZONE-NUMBER> \-\-cluster=<CLUSTER-ID> \-\-management\-host\-name=<MANAGEMENT-HOSTNAME> \-\-storage-host-name=<STORAGE-HOSTNAME>\fP
@@ -299,6 +344,51 @@ List all nodes in cluster
 .RE
 .nf
 $ heketi\-cli node list
+.fi
+.RE
+.RE
+.PP
+\fBheketi\-cli node settags <NODE-ID> <TAG>:<VALUE> ...\fP
+.RS
+Set metadata tags on a given node. Tags are free-form key value pairs
+that are stored by Heketi and may be used for extra configuration.
+One or more <TAG>:<TAG-VALUE> pairs may be provided.
+.PP
+.B Options
+.RS
+.TP
+\fB\-\-exact
+Optional:
+Overwrite the existing tags with the exactly set of tags (and values)
+specified on this command line. Without this option, the command will
+add or update tags.
+.RE
+.PP
+\fBExample\fP
+.RS
+.nf
+$ heketi-cli node settags 886a86a868711bef83001 arbiter:required flavor:strawberry
+.fi
+.RE
+.RE
+.PP
+\fBheketi\-cli node rmtags <NODE-ID> <TAG> ...\fP
+.RS
+Remove metadata tags from a given node.
+.PP
+.B Options
+.RS
+.TP
+\fB\-\-all
+Optional:
+Remove all tags from the specified node. May not be combined with
+specifying tag names.
+.RE
+.PP
+\fBExample\fP
+.RS
+.nf
+$ heketi-cli node rmtags 886a86a868711bef83001 arbiter
 .fi
 .RE
 .RE

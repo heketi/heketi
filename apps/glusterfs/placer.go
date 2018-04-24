@@ -50,6 +50,8 @@ type PlacementOpts interface {
 	// SetCount returns the total number of Brick Sets that
 	// will be produced.
 	SetCount() int
+	// AverageFileSize returns the average file size for the volume
+	AverageFileSize() uint64
 }
 
 // DeviceFilter functions can be defined by the caller of a
