@@ -52,7 +52,7 @@ __handle_reply()
             else
                 allflags=("${flags[*]} ${two_word_flags[*]}")
             fi
-            COMPREPLY=( $(compgen -W "${allflags[*]}" -- "$cur") )
+            COMPREPLY=( "$(compgen -W "${allflags[*]}" -- "$cur")" )
             if [[ $(type -t compopt) = "builtin" ]]; then
                 [[ "${COMPREPLY[0]}" == *= ]] || compopt +o nospace
             fi
@@ -101,10 +101,10 @@ __handle_reply()
     if [[ ${#must_have_one_flag[@]} -ne 0 ]]; then
         completions+=("${must_have_one_flag[@]}")
     fi
-    COMPREPLY=( $(compgen -W "${completions[*]}" -- "$cur") )
+    COMPREPLY=( "$(compgen -W "${completions[*]}" -- "$cur")" )
 
     if [[ ${#COMPREPLY[@]} -eq 0 && ${#noun_aliases[@]} -gt 0 && ${#must_have_one_noun[@]} -ne 0 ]]; then
-        COMPREPLY=( $(compgen -W "${noun_aliases[*]}" -- "$cur") )
+        COMPREPLY=( "$(compgen -W "${noun_aliases[*]}" -- "$cur")" )
     fi
 
     if [[ ${#COMPREPLY[@]} -eq 0 ]]; then
