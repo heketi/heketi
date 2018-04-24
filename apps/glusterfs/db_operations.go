@@ -226,8 +226,10 @@ func DbDump(jsonfile string, dbfile string) error {
 	if err != nil {
 		return fmt.Errorf("Could not construct dump from DB: %v", err.Error())
 	}
+	enc := json.NewEncoder(fp)
+	enc.SetIndent("", "    ")
 
-	if err := json.NewEncoder(fp).Encode(dump); err != nil {
+	if err := enc.Encode(dump); err != nil {
 		return fmt.Errorf("Could not encode dump as JSON: %v", err.Error())
 	}
 
