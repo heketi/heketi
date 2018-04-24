@@ -23,6 +23,6 @@ func TestTrottlingRetryNewClient(t *testing.T) {
 	heketi = client.NewClientWithRetry(heketiUrl, "", "", 1000)
 	setupCluster(t, 4, 8)
 	defer teardownCluster(t)
-	t.Run("testTrottling", testTrottling)
+	t.Run("throttlingcreatevolume", throttlingcreatevolume)
 
 }

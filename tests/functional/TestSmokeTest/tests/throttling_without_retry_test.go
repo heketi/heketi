@@ -26,12 +26,11 @@ func TestTrottling(t *testing.T) {
 	heketi = client.NewClientWithRetry(heketiUrl, "", "", 0)
 	setupCluster(t, 4, 8)
 	defer teardownCluster(t)
-	t.Run("testTrottling", testTrottling)
+	t.Run("throttlingcreatevolume", throttlingcreatevolume)
 
 }
 
-//create 25 volume
-func testTrottling(t *testing.T) {
+func throttlingcreatevolume(t *testing.T) {
 	vl, err := heketi.VolumeList()
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, len(vl.Volumes) == 0,
@@ -63,7 +62,6 @@ func testTrottling(t *testing.T) {
 }
 
 func throttlingteardownVolumes(t *testing.T) {
-	PauseBeforeTeardown()
 	clusters, err := heketi.ClusterList()
 	tests.Assert(t, err == nil, err)
 	sg := utils.NewStatusGroup()
