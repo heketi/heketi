@@ -12,16 +12,16 @@ eval "$(minikube docker-env)"
 
 display_information() {
 	# Display information
-	echo -e "\nVersions"
+	echo -e "\\nVersions"
 	kubectl version
 
-	echo -e "\nDocker containers running"
+	echo -e "\\nDocker containers running"
 	docker ps
 
-	echo -e "\nDocker images"
+	echo -e "\\nDocker images"
 	docker images
 
-	echo -e "\nShow nodes"
+	echo -e "\\nShow nodes"
 	kubectl get nodes
 }
 
@@ -78,7 +78,7 @@ setup_all_pods() {
 	kubectl get nodes --show-labels
 
 	# Start Heketi
-	echo -e "\nStart Heketi container"
+	echo -e "\\nStart Heketi container"
     sed -e "s#heketi/heketi:dev#heketi/heketi:ci#" \
         -e "s#Always#IfNotPresent#" \
         "$RESOURCES_DIR/deploy-heketi-deployment.json" | kubectl create -f -
@@ -96,26 +96,26 @@ setup_all_pods() {
 	echo "Create a service for deploy-heketi"
 	kubectl expose deployment deploy-heketi --port=8080 --type=NodePort || fail "Unable to expose heketi service"
 
-	echo -e "\nShow Topology"
+	echo -e "\\nShow Topology"
 	HEKETI_CLI_SERVER=$(minikube service deploy-heketi --url)
 	export HEKETI_CLI_SERVER
 	heketi-cli topology info
 
-	echo -e "\nStart gluster mock container"
+	echo -e "\\nStart gluster mock container"
 	start_mock_gluster_container 1
 }
 
 test_add_devices() {
-	echo -e "\nGet the Heketi server connection"
+	echo -e "\\nGet the Heketi server connection"
 	heketi-cli cluster create || fail "Unable to create cluster"
 
 	CLUSTERID=$(heketi-cli cluster list | sed -e '$!d')
 
-	echo -e "\nAdd Node"
+	echo -e "\\nAdd Node"
 	heketi-cli node add --zone=1 --cluster="$CLUSTERID" \
 		--management-host-name=minikube --storage-host-name=minikube || fail "Unable to add gluster1"
 
-	echo -e "\nAdd device"
+	echo -e "\\nAdd device"
 	nodeid=$(heketi-cli node list | awk '{print $1}' | awk -F: '{print $2}')
 	heketi-cli device add --name=/dev/fakedevice --node="$nodeid" || fail "Unable to add device"
 
@@ -133,14 +133,14 @@ test_add_devices() {
 		fail "Expected free of 99 instead got $device_free"
 	fi
 
-	echo -e "\nShow Topology"
+	echo -e "\\nShow Topology"
 	heketi-cli topology info
 }
 
 display_information
 setup_all_pods
 
-echo -e "\n*** Start tests ***"
+echo -e "\\n*** Start tests ***"
 test_add_devices
 
 # Ok now start test
