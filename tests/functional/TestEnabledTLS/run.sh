@@ -37,6 +37,7 @@ if ! command -v virtualenv &>/dev/null; then
 fi
 
 rm -rf .env
+export PYTHONPATH="$PYTHONPATH:$HEKETI_DIR/client/api/python"
 virtualenv .env
 . .env/bin/activate
 pip install -r "$HEKETI_DIR/client/api/python/requirements.txt"

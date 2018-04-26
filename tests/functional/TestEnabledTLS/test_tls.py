@@ -11,6 +11,7 @@
 """
 
 import contextlib
+import errno
 import os
 import socket
 import subprocess
@@ -25,15 +26,27 @@ class SetupError(Exception):
     pass
 
 
+def _remove(path):
+    try:
+        os.unlink(path)
+    except (OSError, IOError) as err:
+        if err.errno == errno.ENOENT:
+            return
+        raise
+
+
 class HeketiServer(object):
     def __init__(self):
         self.heketi_bin = os.environ.get('HEKETI_SERVER', './heketi-server')
         self.log_path = os.environ.get('HEKETI_LOG', 'heketi.log')
+        self.db_path = os.environ.get('HEKETI_DB_PATH', 'heketi.db')
         self._proc = None
         self._log = None
 
     def start(self):
         self._log = open(self.log_path, 'wb')
+        # do not preserve the heketi db between server instances
+        _remove(self.db_path)
         self._proc = subprocess.Popen(
             [self.heketi_bin, '--config=heketi.json'],
             stdin=subprocess.PIPE,
@@ -71,17 +84,64 @@ class HeketiServer(object):
 
 
 class TestTLS(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.heketi = HeketiServer().start()
+
+    def setUp(self):
+        self.heketi = HeketiServer().start()
+
+    def tearDown(self):
+        self.heketi.stop()
 
     def test_tls_enabled(self):
         resp = requests.get("https://localhost:8080/hello", verify="heketi.crt")
         self.assertEqual(resp.status_code, 200)
 
-    @classmethod
-    def tearDownClass(cls):
-        cls.heketi.stop()
+    def test_create_cluster_tls_cert(self):
+        import heketi
+        c = heketi.HeketiClient('https://localhost:8080',
+                                'abc', 'xyz', verify="heketi.crt")
+        resp = c.cluster_create()
+        self.assertTrue(resp)
+        self.assertTrue(resp['id'])
+        cluster_id = resp['id']
+        node = c.node_add({
+            "cluster": cluster_id,
+            "zone": 1,
+            "hostnames": {
+                "manage": ["node1.foo.example.com"],
+                "storage": ["s1.foo.example.com"],
+            },
+        })
+        self.assertTrue(node)
+        self.assertTrue(node["id"])
+        resp = c.cluster_list()
+        self.assertTrue(resp)
+        ci = c.cluster_info(resp['clusters'][0])
+        self.assertTrue(ci)
+        self.assertIn(node["id"], ci["nodes"])
+
+    def test_create_cluster_tls_no_verify(self):
+        import heketi
+        c = heketi.HeketiClient('https://localhost:8080',
+                                'abc', 'xyz', verify=False)
+        resp = c.cluster_create()
+        self.assertTrue(resp)
+        self.assertTrue(resp['id'])
+        cluster_id = resp['id']
+        node = c.node_add({
+            "cluster": cluster_id,
+            "zone": 1,
+            "hostnames": {
+                "manage": ["node2.foo.example.com"],
+                "storage": ["s2.foo.example.com"],
+            },
+        })
+        self.assertTrue(node)
+        self.assertTrue(node["id"])
+        resp = c.cluster_list()
+        self.assertTrue(resp)
+        ci = c.cluster_info(resp['clusters'][0])
+        self.assertTrue(ci)
+        self.assertIn(node["id"], ci["nodes"])
 
 
 if __name__ == "__main__":
