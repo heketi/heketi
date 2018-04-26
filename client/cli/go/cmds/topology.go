@@ -16,7 +16,6 @@ import (
 	"os"
 	"strings"
 
-	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/spf13/cobra"
 )
@@ -154,7 +153,10 @@ var topologyLoadCommand = &cobra.Command{
 		}
 
 		// Create client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		// Load current topolgy
 		heketiTopology, err := heketi.TopologyInfo()
@@ -277,7 +279,10 @@ var topologyInfoCommand = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		// Create a client to talk to Heketi
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		// Create Topology
 		topoinfo, err := heketi.TopologyInfo()

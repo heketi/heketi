@@ -307,7 +307,10 @@ var setupHeketiStorageCommand = &cobra.Command{
 		list.Items = make([]interface{}, 0)
 
 		// Create client
-		c := client.NewClient(options.Url, options.User, options.Key)
+		c, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		// Create volume
 		volume, err := createHeketiStorageVolume(c, durability, heketiStorageReplicaCount)

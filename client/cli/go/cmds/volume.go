@@ -16,7 +16,6 @@ import (
 	"os"
 	"strings"
 
-	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/kubernetes"
 	"github.com/spf13/cobra"
@@ -186,7 +185,10 @@ var volumeCreateCommand = &cobra.Command{
 		}
 
 		// Create a client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		// Add volume
 		volume, err := heketi.VolumeCreate(req)
@@ -252,10 +254,13 @@ var volumeDeleteCommand = &cobra.Command{
 		volumeId := cmd.Flags().Arg(0)
 
 		// Create a client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		//set url
-		err := heketi.VolumeDelete(volumeId)
+		err = heketi.VolumeDelete(volumeId)
 		if err == nil {
 			fmt.Fprintf(stdout, "Volume %v deleted\n", volumeId)
 		}
@@ -286,7 +291,10 @@ var volumeExpandCommand = &cobra.Command{
 		req.Size = expandSize
 
 		// Create client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		// Expand volume
 		volume, err := heketi.VolumeExpand(id, req)
@@ -323,7 +331,10 @@ var volumeInfoCommand = &cobra.Command{
 		volumeId := cmd.Flags().Arg(0)
 
 		// Create a client to talk to Heketi
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		// Create cluster
 		info, err := heketi.VolumeInfo(volumeId)
@@ -352,7 +363,10 @@ var volumeListCommand = &cobra.Command{
 	Example: "  $ heketi-cli volume list",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Create a client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		// List volumes
 		list, err := heketi.VolumeList()
@@ -410,8 +424,10 @@ var volumeCloneCommand = &cobra.Command{
 			req.Name = volname
 		}
 
-		// Create client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		// Clone the volume
 		volume, err := heketi.VolumeClone(volumeId, req)

@@ -14,7 +14,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/spf13/cobra"
 )
@@ -86,7 +85,10 @@ var deviceAddCommand = &cobra.Command{
 		req.DestroyData = destroyData
 
 		// Create a client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		// Add node
 		err = heketi.DeviceAdd(req)
@@ -117,10 +119,13 @@ var deviceDeleteCommand = &cobra.Command{
 		deviceId := cmd.Flags().Arg(0)
 
 		// Create a client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		//set url
-		err := heketi.DeviceDelete(deviceId)
+		err = heketi.DeviceDelete(deviceId)
 		if err == nil {
 			fmt.Fprintf(stdout, "Device %v deleted\n", deviceId)
 		}
@@ -146,13 +151,16 @@ var deviceRemoveCommand = &cobra.Command{
 		deviceId := cmd.Flags().Arg(0)
 
 		// Create a client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		//set url
 		req := &api.StateRequest{
 			State: "failed",
 		}
-		err := heketi.DeviceState(deviceId, req)
+		err = heketi.DeviceState(deviceId, req)
 		if err == nil {
 			fmt.Fprintf(stdout, "Device %v is now removed\n", deviceId)
 		}
@@ -177,7 +185,10 @@ var deviceInfoCommand = &cobra.Command{
 		deviceId := cmd.Flags().Arg(0)
 
 		// Create a client to talk to Heketi
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		// Create cluster
 		info, err := heketi.DeviceInfo(deviceId)
@@ -248,13 +259,16 @@ var deviceEnableCommand = &cobra.Command{
 		deviceId := cmd.Flags().Arg(0)
 
 		// Create a client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		//set url
 		req := &api.StateRequest{
 			State: "online",
 		}
-		err := heketi.DeviceState(deviceId, req)
+		err = heketi.DeviceState(deviceId, req)
 		if err == nil {
 			fmt.Fprintf(stdout, "Device %v is now online\n", deviceId)
 		}
@@ -280,13 +294,16 @@ var deviceDisableCommand = &cobra.Command{
 		deviceId := cmd.Flags().Arg(0)
 
 		// Create a client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		//set url
 		req := &api.StateRequest{
 			State: "offline",
 		}
-		err := heketi.DeviceState(deviceId, req)
+		err = heketi.DeviceState(deviceId, req)
 		if err == nil {
 			fmt.Fprintf(stdout, "Device %v is now offline\n", deviceId)
 		}
@@ -311,10 +328,13 @@ var deviceResyncCommand = &cobra.Command{
 		deviceId := cmd.Flags().Arg(0)
 
 		// Create a client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		//set url
-		err := heketi.DeviceResync(deviceId)
+		err = heketi.DeviceResync(deviceId)
 		if err == nil {
 			fmt.Fprintf(stdout, "Device %v updated\n", nodeId)
 		}
@@ -330,7 +350,10 @@ var deviceSetTagsCommand = &cobra.Command{
 	Example: "  $ heketi-cli device settags 886a86a868711bef83001 foo:bar",
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 		return setTagsCommand(cmd, heketi.DeviceSetTags)
 	},
 }
@@ -343,7 +366,10 @@ var deviceRmTagsCommand = &cobra.Command{
 	Example: "  $ heketi-cli device rmtags 886a86a868711bef83001 foo",
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 		return rmTagsCommand(cmd, heketi.DeviceSetTags)
 	},
 }

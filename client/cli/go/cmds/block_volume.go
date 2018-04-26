@@ -16,7 +16,6 @@ import (
 	//	"os"
 	"strings"
 
-	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/spf13/cobra"
 )
@@ -103,7 +102,10 @@ var blockVolumeCreateCommand = &cobra.Command{
 			return errors.New("Invalid HA count")
 		}
 
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		blockvolume, err := heketi.BlockVolumeCreate(req)
 		if err != nil {
@@ -141,10 +143,13 @@ var blockVolumeDeleteCommand = &cobra.Command{
 		volumeId := cmd.Flags().Arg(0)
 
 		// Create a client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		//set url
-		err := heketi.BlockVolumeDelete(volumeId)
+		err = heketi.BlockVolumeDelete(volumeId)
 		if err == nil {
 			fmt.Fprintf(stdout, "Volume %v deleted\n", volumeId)
 		}
@@ -169,7 +174,10 @@ var blockVolumeInfoCommand = &cobra.Command{
 		volumeId := cmd.Flags().Arg(0)
 
 		// Create a client to talk to Heketi
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		// Create cluster
 		info, err := heketi.BlockVolumeInfo(volumeId)
@@ -198,7 +206,10 @@ var blockVolumeListCommand = &cobra.Command{
 	Example: "  $ heketi-cli blockvolume list",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Create a client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		// List volumes
 		list, err := heketi.BlockVolumeList()
