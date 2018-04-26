@@ -12,7 +12,6 @@ package cmds
 import (
 	"fmt"
 
-	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/spf13/cobra"
 )
 
@@ -34,7 +33,10 @@ var dumpDbCommand = &cobra.Command{
 	Long:    "dumps the database in json format",
 	Example: "  $ heketi-cli db dump",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		dump, err := heketi.DbDump()
 		if err != nil {

@@ -16,7 +16,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/spf13/cobra"
 )
@@ -90,7 +89,10 @@ var clusterCreateCommand = &cobra.Command{
 		req.Block = cl_block
 
 		// Create a client to talk to Heketi
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 		// Create cluster
 		cluster, err := heketi.ClusterCreate(req)
 		if err != nil {
@@ -134,7 +136,10 @@ var clusterSetFlagsCommand = &cobra.Command{
 
 		clusterId := cmd.Flags().Arg(0)
 
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		info, err := heketi.ClusterInfo(clusterId)
 		if err != nil {
@@ -187,10 +192,13 @@ var clusterDeleteCommand = &cobra.Command{
 		clusterId := cmd.Flags().Arg(0)
 
 		// Create a client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		//set url
-		err := heketi.ClusterDelete(clusterId)
+		err = heketi.ClusterDelete(clusterId)
 		if err == nil {
 			fmt.Fprintf(stdout, "Cluster %v deleted\n", clusterId)
 		}
@@ -214,7 +222,10 @@ var clusterInfoCommand = &cobra.Command{
 		clusterId := cmd.Flags().Arg(0)
 
 		// Create a client to talk to Heketi
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		info, err := heketi.ClusterInfo(clusterId)
 		if err != nil {
@@ -247,7 +258,10 @@ var clusterListCommand = &cobra.Command{
 	Example: "  $ heketi-cli cluster list",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Create a client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		// List clusters
 		list, err := heketi.ClusterList()

@@ -14,7 +14,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/spf13/cobra"
 )
@@ -92,7 +91,10 @@ var nodeAddCommand = &cobra.Command{
 		req.Zone = zone
 
 		// Create a client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		// Add node
 		node, err := heketi.NodeAdd(req)
@@ -142,10 +144,13 @@ var nodeDeleteCommand = &cobra.Command{
 		nodeId := cmd.Flags().Arg(0)
 
 		// Create a client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		//set url
-		err := heketi.NodeDelete(nodeId)
+		err = heketi.NodeDelete(nodeId)
 		if err == nil {
 			fmt.Fprintf(stdout, "Node %v deleted\n", nodeId)
 		}
@@ -171,13 +176,16 @@ var nodeEnableCommand = &cobra.Command{
 		nodeId := cmd.Flags().Arg(0)
 
 		// Create a client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		//set url
 		req := &api.StateRequest{
 			State: "online",
 		}
-		err := heketi.NodeState(nodeId, req)
+		err = heketi.NodeState(nodeId, req)
 		if err == nil {
 			fmt.Fprintf(stdout, "Node %v is now online\n", nodeId)
 		}
@@ -203,13 +211,16 @@ var nodeDisableCommand = &cobra.Command{
 		nodeId := cmd.Flags().Arg(0)
 
 		// Create a client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		//set url
 		req := &api.StateRequest{
 			State: "offline",
 		}
-		err := heketi.NodeState(nodeId, req)
+		err = heketi.NodeState(nodeId, req)
 		if err == nil {
 			fmt.Fprintf(stdout, "Node %v is now offline\n", nodeId)
 		}
@@ -225,7 +236,10 @@ var nodeListCommand = &cobra.Command{
 	Example: "  $ heketi-cli node list",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Create a client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		clusters, err := heketi.ClusterList()
 		if err != nil {
@@ -265,7 +279,10 @@ var nodeInfoCommand = &cobra.Command{
 		nodeId := cmd.Flags().Arg(0)
 
 		// Create a client to talk to Heketi
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		// Create cluster
 		info, err := heketi.NodeInfo(nodeId)
@@ -341,13 +358,16 @@ var nodeRemoveCommand = &cobra.Command{
 		nodeId := cmd.Flags().Arg(0)
 
 		// Create a client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		//set url
 		req := &api.StateRequest{
 			State: "failed",
 		}
-		err := heketi.NodeState(nodeId, req)
+		err = heketi.NodeState(nodeId, req)
 		if err == nil {
 			fmt.Fprintf(stdout, "Node %v is now removed\n", nodeId)
 		}
@@ -363,7 +383,10 @@ var nodeSetTagsCommand = &cobra.Command{
 	Example: "  $ heketi-cli node settags 886a86a868711bef83001 foo:bar",
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 		return setTagsCommand(cmd, heketi.NodeSetTags)
 	},
 }
@@ -376,7 +399,10 @@ var nodeRmTagsCommand = &cobra.Command{
 	Example: "  $ heketi-cli node rmtags 886a86a868711bef83001 foo",
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 		return rmTagsCommand(cmd, heketi.NodeSetTags)
 	},
 }

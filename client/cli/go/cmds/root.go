@@ -33,6 +33,8 @@ const (
 type Options struct {
 	Url, Key, User string
 	Json           bool
+	InsecureTLS    bool
+	TLSCerts       []string
 }
 
 var RootCmd = &cobra.Command{
@@ -64,6 +66,13 @@ func init() {
 		"\n\tPrint response as JSON")
 	RootCmd.Flags().BoolVarP(&version, "version", "v", false,
 		"\n\tPrint version")
+	RootCmd.PersistentFlags().BoolVarP(&options.InsecureTLS,
+		"insecure-tls", "I", false,
+		"\n\tIf using TLS (HTTPS) do not verify server certificates (insecure)")
+	RootCmd.PersistentFlags().StringSliceVarP(&options.TLSCerts,
+		"tls-cert", "C", []string{},
+		"\n\tIf using TLS (HTTPS), specify a certificate file that can be used to verify"+
+			"\n\tthe TLS connection (can be repeated)")
 	RootCmd.SilenceUsage = true
 }
 
