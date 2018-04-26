@@ -1,5 +1,7 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "${0}")" && pwd)"
+
 show_help() {
 	echo "$0 [options]"
 	echo "  Options:"
@@ -8,14 +10,20 @@ show_help() {
 	echo ""
 }
 
+TESTS_DIR="$SCRIPT_DIR"
 TESTS=()
 
-CLI="$(getopt -o h --long test:,help -n "$0" -- "$@")"
+CLI="$(getopt -o hd: --long test:,tests-dir:,help -n "$0" -- "$@")"
 eval set -- "${CLI}"
 while true ; do
 	case "$1" in
 		--test)
 			TESTS+=("$2")
+			shift
+			shift
+		;;
+		-d|--tests-dir)
+			TESTS_DIR="$2"
 			shift
 			shift
 		;;
@@ -34,8 +42,8 @@ while true ; do
 	esac
 done
 
-
 if [[ "${#TESTS[@]}" -eq 0 ]]; then
+	TESTS+=("TestSelfTest")
 	TESTS+=("TestSmokeTest")
 	TESTS+=("TestVolumeNotDeletedWhenNodeIsDown")
 	TESTS+=("TestVolumeSnapshotBehavior")
@@ -92,10 +100,9 @@ case "$HEKETI_TEST_SYSTEM_GO" in
     ;;
 esac
 
-source ./lib.sh
+source "${SCRIPT_DIR}/lib.sh"
 
 teardown_all() {
-    results=0
     for testDir in "${TESTS[@]}" ; do
         if [ -x "$testDir/teardown.sh" ] ; then
             println "TEARDOWN $testDir"
@@ -119,6 +126,8 @@ if [ -z "$GOPATH" ] ; then
     fail "GOPATH must be specified"
 fi
 
+cd "$TESTS_DIR" || fail "Unable to 'cd $TESTS_DIR'"
+
 # Clean up
 rm -f heketi-server > /dev/null 2>&1
 teardown_all
@@ -133,7 +142,8 @@ for testDir in "${TESTS[@]}" ; do
 
         # Run the command with a large timeout.
         # Just large enough so that it doesn't run forever.
-        timeout 1h run.sh ; result=$?
+        timeout 1h run.sh
+        result=$?
 
         if [ $result -ne 0 ] ; then
             println "FAILED $testDir"
@@ -146,6 +156,10 @@ for testDir in "${TESTS[@]}" ; do
         fi
 
         cd ..
+    else
+        echo "ERROR: Missing or malformed test dir: $testDir" >&2
+        echo "       run.sh is missing or not executable (in $PWD)" >&2
+        tfailed+=("${testDir}")
     fi
 done
 
@@ -160,4 +174,7 @@ else
     println "FAILED"
 fi
 
-exit $results
+if [[ "${#tfailed[@]}" -gt 0 ]]; then
+    exit 1
+fi
+exit 0
