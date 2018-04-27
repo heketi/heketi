@@ -14,6 +14,7 @@ import os
 import time
 import unittest
 import subprocess
+import sys
 import requests
 
 
@@ -38,8 +39,14 @@ class HeketiServer(object):
         self._proc.stdin.close()
         time.sleep(0.25)
         if self._proc.poll() is not None:
+            self.dump_log()
             raise SetupError('Heketi server failed to start')
         return self
+
+    def dump_log(self):
+        with open(self.log_path) as fh:
+            for line in fh.readlines():
+                sys.stderr.write("HEKETI-LOG: {}".format(line))
 
     def stop(self):
         self._proc.terminate()
