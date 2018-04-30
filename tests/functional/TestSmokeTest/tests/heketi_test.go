@@ -149,7 +149,22 @@ func setupCluster(t *testing.T, numNodes int, numDisks int) {
 	}
 }
 
+func dbStateDump(t *testing.T) {
+	if t.Failed() {
+		fmt.Println("~~~~~ dumping db state prior to teardown ~~~~~")
+		dump, err := heketi.DbDump()
+		if err != nil {
+			fmt.Printf("Unable to get db dump: %v\n", err)
+		} else {
+			fmt.Printf("\n%v\n", dump)
+		}
+		fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+	}
+}
+
 func teardownCluster(t *testing.T) {
+	dbStateDump(t)
+
 	clusters, err := heketi.ClusterList()
 	tests.Assert(t, err == nil, err)
 
