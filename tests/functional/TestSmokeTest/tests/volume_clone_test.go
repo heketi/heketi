@@ -67,3 +67,22 @@ func TestCloneVolumeDelete(t *testing.T) {
 	_, err = heketi.VolumeInfo(clonedVol.Id)
 	tests.Assert(t, err != nil, "expected err != nil, got:", err)
 }
+
+func TestCloneBlockVolumeFails(t *testing.T) {
+	setupCluster(t, 4, 8)
+	defer teardownCluster(t)
+
+	volReq := &api.VolumeCreateRequest{}
+	volReq.Size = 10
+	volReq.Durability.Type = api.DurabilityReplicate
+	volReq.Durability.Replicate.Replica = 3
+	volReq.Block = true
+
+	vol, err := heketi.VolumeCreate(volReq)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	cloneReq := &api.VolumeCloneRequest{}
+	clonedVol, err := heketi.VolumeClone(vol.Id, cloneReq)
+	tests.Assert(t, err != nil, "expected err != nil, got:", err)
+	tests.Assert(t, clonedVol == nil, "expected clonedVol == nil, got:", clonedVol)
+}

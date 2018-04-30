@@ -851,6 +851,9 @@ func (v *VolumeEntry) runOnHost(db wdb.RODB,
 func (v *VolumeEntry) prepareVolumeClone(tx *bolt.Tx, clonename string) (
 	*VolumeEntry, []*BrickEntry, []*DeviceEntry, error) {
 
+	if v.Info.Block {
+		return nil, nil, nil, ErrCloneBlockVol
+	}
 	bricks := []*BrickEntry{}
 	devices := []*DeviceEntry{}
 	cvol := NewVolumeEntryFromClone(v, clonename)
