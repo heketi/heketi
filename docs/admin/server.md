@@ -19,7 +19,7 @@ The config file has information required to run the Heketi server.  The config f
         * **mock**: Does not send any commands out to servers. Can be used for development and tests
         * **ssh**: Sends commands to real systems over ssh
         * **kubernetes**: Communicate with GlusterFS containers over Kubernetes exec
-    * db: _string_, Location of Heketi database
+    * db: _string_, Location of Heketi database.  Environment variable HEKETI_DB_PATH can also be used to customize database location.
     * sshexec: _map_, SSH configuration
         * keyfile: _string_, File with private ssh key
         * user: _string_, SSH user
