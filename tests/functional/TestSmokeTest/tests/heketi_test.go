@@ -244,14 +244,14 @@ func TestHeketiSmokeTest(t *testing.T) {
 	for i := 0; i < 2; i++ {
 
 		volReq := &api.VolumeCreateRequest{}
-		volReq.Size = 4000
+		volReq.Size = 2500
 		volReq.Snapshot.Enable = true
 		volReq.Snapshot.Factor = 1.5
 		volReq.Durability.Type = api.DurabilityReplicate
 
 		volInfo, err := heketi.VolumeCreate(volReq)
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
-		tests.Assert(t, volInfo.Size == 4000)
+		tests.Assert(t, volInfo.Size == 2500)
 		tests.Assert(t, volInfo.Mount.GlusterFS.MountPoint != "")
 		tests.Assert(t, volInfo.Name != "")
 
