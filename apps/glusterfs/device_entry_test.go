@@ -1063,3 +1063,124 @@ func TestDeviceSetStateFailedWithEmptyPathBricks(t *testing.T) {
 	tests.Assert(t, len(d.Bricks) == 1,
 		"expected len(d.Bricks) == 1, got:", len(d.Bricks))
 }
+
+// See also RHBZ#1572661
+func TestDeviceRemoveSizeAccounting(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		3,    // devices_per_node,
+		5*TB, // disksize
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	vreq := &api.VolumeCreateRequest{}
+	vreq.Size = 100
+	vreq.Durability.Type = api.DurabilityReplicate
+	vreq.Durability.Replicate.Replica = 3
+	v := NewVolumeEntryFromRequest(vreq)
+	err = v.Create(app.db, app.executor)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	// grab a device that has bricks
+	var d *DeviceEntry
+	vols := []string{}
+	err = app.db.View(func(tx *bolt.Tx) error {
+		dl, err := DeviceList(tx)
+		if err != nil {
+			return err
+		}
+		for _, id := range dl {
+			d, err = NewDeviceEntryFromId(tx, id)
+			if err != nil {
+				return err
+			}
+			if len(d.Bricks) > 0 {
+				for _, b := range d.Bricks {
+					be, err := NewBrickEntryFromId(tx, b)
+					tests.Assert(t, err == nil, "expected err == nil, got:", err)
+					vols = append(vols, be.Info.VolumeId)
+				}
+				return nil
+			}
+		}
+		t.Fatalf("should have at least one device with bricks")
+		return nil
+	})
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	err = d.SetState(app.db, app.executor, api.EntryStateOffline)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, d.State == api.EntryStateOffline)
+
+	// update d from db
+	err = app.db.View(func(tx *bolt.Tx) error {
+		d, err = NewDeviceEntryFromId(tx, d.Info.Id)
+		return err
+	})
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, d.State == api.EntryStateOffline)
+	tests.Assert(t, len(d.Bricks) > 0,
+		"expected len(d.Bricks) > 0, got:", len(d.Bricks))
+
+	app.xo.MockVolumeInfo = func(host string, volume string) (*executors.Volume, error) {
+		return mockVolumeInfoFromDb(app.db, volume)
+	}
+	app.xo.MockHealInfo = func(host string, volume string) (*executors.HealInfo, error) {
+		return mockHealStatusFromDb(app.db, volume)
+	}
+
+	err = d.SetState(app.db, app.executor, api.EntryStateFailed)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	// update d from db
+	err = app.db.View(func(tx *bolt.Tx) error {
+		d, err = NewDeviceEntryFromId(tx, d.Info.Id)
+		return err
+	})
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, d.State == api.EntryStateFailed)
+	tests.Assert(t, len(d.Bricks) == 0,
+		"expected len(d.Bricks) == 0, got:", len(d.Bricks))
+
+	err = d.SetState(app.db, app.executor, api.EntryStateOffline)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	err = d.SetState(app.db, app.executor, api.EntryStateOnline)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	// update d from db
+	err = app.db.View(func(tx *bolt.Tx) error {
+		d, err = NewDeviceEntryFromId(tx, d.Info.Id)
+		return err
+	})
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, d.State == api.EntryStateOnline)
+	tests.Assert(t, d.Info.Storage.Used == 0,
+		"expected d.Info.Storage.Used == 0, got:", d.Info.Storage.Used)
+
+	app.db.View(func(tx *bolt.Tx) error {
+		for _, vid := range vols {
+			v, err := NewVolumeEntryFromId(tx, vid)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			for _, brickId := range v.Bricks {
+				brick, err := NewBrickEntryFromId(tx, brickId)
+				tests.Assert(t, err == nil, "expected err == nil, got:", err)
+				device, err := NewDeviceEntryFromId(tx, brick.Info.DeviceId)
+				tests.Assert(t, err == nil, "expected err == nil, got:", err)
+				bsize := brick.TpSize + brick.PoolMetadataSize
+				tests.Assert(t, device.Info.Storage.Used == bsize,
+					"expected device.Info.Storage.Used == bsize, got:",
+					device.Info.Storage.Used,
+					bsize)
+			}
+		}
+		return nil
+	})
+}
