@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
@@ -34,6 +35,7 @@ func init() {
 	deviceCommand.AddCommand(deviceResyncCommand)
 	deviceCommand.AddCommand(deviceSetTagsCommand)
 	deviceCommand.AddCommand(deviceRmTagsCommand)
+	deviceCommand.AddCommand(deviceListCommand)
 	deviceAddCommand.Flags().StringVar(&device, "name", "",
 		"Name of device to add")
 	deviceAddCommand.Flags().StringVar(&nodeId, "node", "",
@@ -42,6 +44,8 @@ func init() {
 		"Set the object to this exact set of tags. Overwrites existing tags.")
 	deviceRmTagsCommand.Flags().Bool("all", false,
 		"Remove all tags.")
+	deviceListCommand.Flags().StringVar(&nodeId, "node", "",
+		"Id of the node on which to list devices")
 	deviceAddCommand.SilenceUsage = true
 	deviceDeleteCommand.SilenceUsage = true
 	deviceRemoveCommand.SilenceUsage = true
@@ -49,6 +53,7 @@ func init() {
 	deviceResyncCommand.SilenceUsage = true
 	deviceSetTagsCommand.SilenceUsage = true
 	deviceRmTagsCommand.SilenceUsage = true
+	deviceListCommand.SilenceUsage = true
 }
 
 var deviceCommand = &cobra.Command{
@@ -338,5 +343,42 @@ var deviceRmTagsCommand = &cobra.Command{
 
 		heketi := client.NewClient(options.Url, options.User, options.Key)
 		return rmTagsCommand(cmd, heketi.DeviceSetTags)
+	},
+}
+
+var deviceListCommand = &cobra.Command{
+	Use:   "list",
+	Short: "List all devices on a node",
+	Long:  "List all devices on a node",
+	Example: `  $ heketi-cli device list \
+      --node=3e098cb4407d7109806bb196d9e8f095 `,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		heketi := client.NewClient(options.Url, options.User, options.Key)
+		if nodeId == "" {
+			return errors.New("Missing node id")
+		}
+
+		nodeInfo, err := heketi.NodeInfo(nodeId)
+		if err != nil {
+			return err
+		}
+
+		for _, info := range nodeInfo.DevicesInfo {
+			tags := make([]string, 0)
+			for k, v := range info.Tags {
+				tags = append(tags, fmt.Sprintf("%v:%v", k, v))
+			}
+
+			fmt.Fprintf(stdout,
+				"Id:%v Name:%v Size[Total:%vGiB, Free:%vGib, Used:%vGiB] Tags[%v]\n",
+				info.Id,
+				info.Name,
+				info.Storage.Total/(1024*1024),
+				info.Storage.Free/(1024*1024),
+				info.Storage.Used/(1024*1024),
+				strings.Join(tags, ", "))
+		}
+
+		return nil
 	},
 }
