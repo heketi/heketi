@@ -103,6 +103,12 @@ func (bp *ArbiterBrickPlacer) PlaceAll(
 		if err != nil {
 			return r, err
 		}
+		if bs.IsSparse() {
+			return r, fmt.Errorf("Did not fully populate brick set")
+		}
+		if ds.IsSparse() {
+			return r, fmt.Errorf("Did not fully populate device set")
+		}
 		r.BrickSets = append(r.BrickSets, bs)
 		r.DeviceSets = append(r.DeviceSets, ds)
 	}
@@ -171,15 +177,20 @@ func (bp *ArbiterBrickPlacer) newSets(
 	pred DeviceFilter) (*BrickSet, *DeviceSet, error) {
 
 	ssize := opts.SetSize()
-	bs := NewBrickSet(ssize)
-	ds := NewDeviceSet(ssize)
+	bs := NewSparseBrickSet(ssize)
+	ds := NewSparseDeviceSet(ssize)
 	dscan, err := bp.Scanner(dsrc)
 	if err != nil {
 		return nil, nil, err
 	}
 	defer dscan.Close()
 
-	for index := 0; index < ssize; index++ {
+	// work backwards from the last item in the brick set (typically index 2)
+	// in order to place the most special brick, the arbiter brick, first.
+	// Placing the arbiter brick first means we get a more reliable distribution
+	// of bricks because the nodes will not be "reserved" by the two data
+	// bricks before we try to place the arbiter brick.
+	for index := ssize - 1; index >= 0; index-- {
 		aopts := newArbiterOpts(opts)
 		if e := aopts.discount(index); e != nil {
 			return bs, ds, e
@@ -245,7 +256,7 @@ func (bp *ArbiterBrickPlacer) tryPlaceBrickOnDevice(
 
 	logger.Debug("Trying to place brick on device %v", device.Info.Id)
 
-	for i, b := range bs.Bricks {
+	for i, b := range bs.Contents() {
 		// do not check the brick in the brick set for the current
 		// index. If this is a new brick set we won't have the index
 		// populated. If this is a replace, we will have the old brick
