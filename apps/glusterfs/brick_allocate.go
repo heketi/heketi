@@ -28,6 +28,13 @@ func NewBrickSet(s int) *BrickSet {
 	return &BrickSet{SetSize: s, Bricks: []*BrickEntry{}}
 }
 
+func NewSparseBrickSet(s int) *BrickSet {
+	return &BrickSet{
+		SetSize: s,
+		Bricks:  make([]*BrickEntry, s),
+	}
+}
+
 func (bs *BrickSet) Add(b *BrickEntry) {
 	godbc.Require(!bs.Full())
 	bs.Bricks = append(bs.Bricks, b)
@@ -48,6 +55,25 @@ func (bs *BrickSet) Insert(index int, b *BrickEntry) {
 			"Brick set may only be extended one (index=%v, len=%v)",
 			index, len(bs.Bricks)))
 	}
+}
+
+func (bs *BrickSet) Contents() []*BrickEntry {
+	out := []*BrickEntry{}
+	for _, b := range bs.Bricks {
+		if b != nil {
+			out = append(out, b)
+		}
+	}
+	return out
+}
+
+func (bs *BrickSet) IsSparse() bool {
+	for _, b := range bs.Bricks {
+		if b == nil {
+			return true
+		}
+	}
+	return false
 }
 
 func (bs *BrickSet) Full() bool {
@@ -80,6 +106,13 @@ func NewDeviceSet(s int) *DeviceSet {
 	return &DeviceSet{SetSize: s, Devices: []*DeviceEntry{}}
 }
 
+func NewSparseDeviceSet(s int) *DeviceSet {
+	return &DeviceSet{
+		SetSize: s,
+		Devices: make([]*DeviceEntry, s),
+	}
+}
+
 func (ds *DeviceSet) Add(d *DeviceEntry) {
 	godbc.Require(!ds.Full())
 	ds.Devices = append(ds.Devices, d)
@@ -104,6 +137,15 @@ func (ds *DeviceSet) Insert(index int, d *DeviceEntry) {
 
 func (ds *DeviceSet) Full() bool {
 	return len(ds.Devices) == ds.SetSize
+}
+
+func (ds *DeviceSet) IsSparse() bool {
+	for _, d := range ds.Devices {
+		if d == nil {
+			return true
+		}
+	}
+	return false
 }
 
 type BrickAllocation struct {
