@@ -1066,6 +1066,15 @@ func TestDeviceSetStateFailedWithEmptyPathBricks(t *testing.T) {
 
 // See also RHBZ#1572661
 func TestDeviceRemoveSizeAccounting(t *testing.T) {
+	t.Run("standard", func(t *testing.T) {
+		testDeviceRemoveSizeAccounting(t, false)
+	})
+	t.Run("arbiter", func(t *testing.T) {
+		testDeviceRemoveSizeAccounting(t, true)
+	})
+}
+
+func testDeviceRemoveSizeAccounting(t *testing.T, useArbiter bool) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
 
@@ -1084,6 +1093,9 @@ func TestDeviceRemoveSizeAccounting(t *testing.T) {
 	vreq.Size = 100
 	vreq.Durability.Type = api.DurabilityReplicate
 	vreq.Durability.Replicate.Replica = 3
+	if useArbiter {
+		vreq.GlusterVolumeOptions = []string{"user.heketi.arbiter true"}
+	}
 	v := NewVolumeEntryFromRequest(vreq)
 	err = v.Create(app.db, app.executor)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
