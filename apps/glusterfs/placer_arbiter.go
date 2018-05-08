@@ -41,6 +41,9 @@ type ArbiterBrickPlacer struct {
 type arbiterOpts struct {
 	o         PlacementOpts
 	brickSize uint64
+	// used to determine if the device should be
+	// updated with the brick ID
+	recordBrick bool
 }
 
 func newArbiterOpts(opts PlacementOpts) *arbiterOpts {
@@ -48,6 +51,9 @@ func newArbiterOpts(opts PlacementOpts) *arbiterOpts {
 	return &arbiterOpts{
 		o:         opts,
 		brickSize: bsize,
+		// by default we want to record bricks
+		// this needs to be set to false in the replace path
+		recordBrick: true,
 	}
 }
 
@@ -148,6 +154,11 @@ func (bp *ArbiterBrickPlacer) Replace(
 		wds.Insert(i, d)
 	}
 	aopts := newArbiterOpts(opts)
+	// this is a mildly hacky way to deal with the higher level replace
+	// code's desire to save the device size and the device's bricks
+	// in different db commits. Eventually we should move to a more
+	// unified approach and drop this
+	aopts.recordBrick = false
 	err = bp.placeBrickInSet(dsrc, dscan, aopts, pred, wbs, wds, index)
 	return r, err
 }
@@ -272,7 +283,9 @@ func (bp *ArbiterBrickPlacer) tryPlaceBrickOnDevice(
 		return tryPlaceAgain
 	}
 
-	device.BrickAdd(brick.Id())
+	if opts.recordBrick {
+		device.BrickAdd(brick.Id())
+	}
 	bs.Insert(index, brick)
 	ds.Insert(index, device)
 	return nil
