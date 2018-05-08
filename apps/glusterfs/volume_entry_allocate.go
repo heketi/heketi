@@ -206,7 +206,7 @@ type replacementItems struct {
 
 func (v *VolumeEntry) prepForBrickReplacement(db wdb.DB,
 	executor executors.Executor,
-	oldBrickId string) (ri replacementItems, err error) {
+	oldBrickId string) (ri replacementItems, node string, err error) {
 
 	var oldBrickEntry *BrickEntry
 	var oldDeviceEntry *DeviceEntry
@@ -233,7 +233,7 @@ func (v *VolumeEntry) prepForBrickReplacement(db wdb.DB,
 		return
 	}
 
-	node := oldBrickNodeEntry.ManageHostName()
+	node = oldBrickNodeEntry.ManageHostName()
 	err = executor.GlusterdCheck(node)
 	if err != nil {
 		node, err = GetVerifiedManageHostname(db, executor, oldBrickNodeEntry.Info.ClusterId)
@@ -311,7 +311,7 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 		return fmt.Errorf("replace brick is not supported for volume durability type %v", v.Info.Durability.Type)
 	}
 
-	ri, err := v.prepForBrickReplacement(
+	ri, node, err := v.prepForBrickReplacement(
 		db, executor, oldBrickId)
 	if err != nil {
 		return err
@@ -374,7 +374,6 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 	newBrick.Path = newBrickEntry.Info.Path
 	newBrick.Host = newBrickNodeEntry.StorageHostName()
 
-	node := oldBrickNodeEntry.ManageHostName()
 	err = executor.VolumeReplaceBrick(node, v.Info.Name, &oldBrick, &newBrick)
 	if err != nil {
 		return err
