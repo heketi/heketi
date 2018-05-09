@@ -188,7 +188,7 @@ func (bp *ArbiterBrickPlacer) newSets(
 	// work backwards from the last item in the brick set (typically index 2)
 	// in order to place the most special brick, the arbiter brick, first.
 	// Placing the arbiter brick first means we get a more reliable distribution
-	// of bricks because the nodes will not be "reserved" by the two data
+	// of bricks because the nodes will not be taken by the two data
 	// bricks before we try to place the arbiter brick.
 	for index := ssize - 1; index >= 0; index-- {
 		aopts := newArbiterOpts(opts)

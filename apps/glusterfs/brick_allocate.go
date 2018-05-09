@@ -24,10 +24,16 @@ type BrickSet struct {
 	Bricks  []*BrickEntry
 }
 
+// NewBrickSet creates an empty brick set tracking object with
+// the expected final size of s.
 func NewBrickSet(s int) *BrickSet {
 	return &BrickSet{SetSize: s, Bricks: []*BrickEntry{}}
 }
 
+// NewSparseBrickSet creates a brick set tracking object with
+// the expected final size of s and the brick tracking slice
+// pre-sized to s. This means that the array can be directly
+// indexed but may contain null brick entries.
 func NewSparseBrickSet(s int) *BrickSet {
 	return &BrickSet{
 		SetSize: s,
@@ -67,6 +73,8 @@ func (bs *BrickSet) Contents() []*BrickEntry {
 	return out
 }
 
+// IsSparse returns true if the brick tracking slice contains
+// any nulls, indicating that the BrickSet is not fully populated.
 func (bs *BrickSet) IsSparse() bool {
 	for _, b := range bs.Bricks {
 		if b == nil {
@@ -76,6 +84,8 @@ func (bs *BrickSet) IsSparse() bool {
 	return false
 }
 
+// Full returns true if the brick slice contains the same
+// number of items as the expected set size.
 func (bs *BrickSet) Full() bool {
 	return len(bs.Bricks) == bs.SetSize
 }
@@ -102,10 +112,16 @@ type DeviceSet struct {
 	Devices []*DeviceEntry
 }
 
+// NewDeviceSet creates a device set tracking object with
+// the expected final size of s.
 func NewDeviceSet(s int) *DeviceSet {
 	return &DeviceSet{SetSize: s, Devices: []*DeviceEntry{}}
 }
 
+// NewSparseDeviceSet creates a device set tracking object with
+// the expected final size of s and the device tracking slice
+// pre-sized to s. This means that the array can be directly
+// indexed but may contain null brick entries.
 func NewSparseDeviceSet(s int) *DeviceSet {
 	return &DeviceSet{
 		SetSize: s,
@@ -135,10 +151,14 @@ func (ds *DeviceSet) Insert(index int, d *DeviceEntry) {
 	}
 }
 
+// Full returns true if the device slice contains the same
+// number of items as the expected set size.
 func (ds *DeviceSet) Full() bool {
 	return len(ds.Devices) == ds.SetSize
 }
 
+// IsSparse returns true if the device tracking slice contains
+// any nulls, indicating that the DeviceSet is not fully populated.
 func (ds *DeviceSet) IsSparse() bool {
 	for _, d := range ds.Devices {
 		if d == nil {
