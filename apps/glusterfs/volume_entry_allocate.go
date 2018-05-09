@@ -288,6 +288,11 @@ func (v *VolumeEntry) allocBrickReplacement(db wdb.DB,
 		} else if err != nil {
 			return err
 		}
+		// Unfortunately, we need to save the updated device here in order
+		// to preserve the space allocated for the new brick.
+		if err := r.DeviceSets[0].Devices[index].Save(tx); err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {
