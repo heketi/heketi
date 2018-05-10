@@ -3,13 +3,13 @@
   "port": "8080",
 
 	"_enable_tls_comment": "Enable TLS in Heketi Server",
-	"enable_tls": false,
+	"enable_tls": true,
 
 	"_cert_file_comment": "Path to a valid certificate file",
-	"cert_file": "",
+	"cert_file": "heketi.crt",
 
 	"_key_file_comment": "Path to a valid private key file",
-	"key_file": "",
+	"key_file": "heketi.key",
 
 
   "_use_auth": "Enable JWT authorization. Please enable for deployment",
@@ -63,13 +63,7 @@
     },
 
     "_db_comment": "Database file name",
-    "db": "/var/lib/heketi/heketi.db",
-
-     "_refresh_time_monitor_gluster_nodes": "Refresh time in seconds to monitor Gluster nodes",
-    "refresh_time_monitor_gluster_nodes": 120,
-
-    "_start_time_monitor_gluster_nodes": "Start time in seconds to monitor Gluster nodes when the heketi comes up",
-    "start_time_monitor_gluster_nodes": 10,
+    "db": "heketi.db",
 
     "_loglevel_comment": [
       "Set log level. Choices are:",

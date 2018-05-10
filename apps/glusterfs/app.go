@@ -227,6 +227,9 @@ func SetLogLevel(level string) error {
 		logger.SetLevel(utils.LEVEL_INFO)
 	case "debug":
 		logger.SetLevel(utils.LEVEL_DEBUG)
+	case "":
+		// treat empty string as a no-op & don't complain
+		// about it
 	default:
 		return fmt.Errorf("invalid log level: %s", level)
 	}
