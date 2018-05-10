@@ -147,6 +147,9 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vc := NewVolumeCreateOperation(vol, a.db)
+	if a.conf.RetryLimits.VolumeCreate > 0 {
+		vc.maxRetries = a.conf.RetryLimits.VolumeCreate
+	}
 	if err := AsyncHttpOperation(a, w, r, vc); err != nil {
 		http.Error(w,
 			fmt.Sprintf("Failed to allocate new volume: %v", err),

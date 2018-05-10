@@ -2114,7 +2114,7 @@ func TestVolumeEntryNoMatchingFlags(t *testing.T) {
 	// request block volume
 	v.Info.Block = true
 	err = v.Create(app.db, app.executor)
-	// expect no space error due to no clusters able to satifsy block volume
+	// expect no space error due to no clusters able to satisfy block volume
 	tests.Assert(t, err == ErrNoSpace)
 }
 
@@ -2155,7 +2155,7 @@ func TestVolumeEntryMissingFlags(t *testing.T) {
 	// Create volume
 	v := createSampleReplicaVolumeEntry(1024, 2)
 	err = v.Create(app.db, app.executor)
-	// expect no space error due to no clusters able to satifsy block volume
+	// expect no space error due to no clusters able to satisfy block volume
 	tests.Assert(t, err == ErrNoSpace)
 }
 
