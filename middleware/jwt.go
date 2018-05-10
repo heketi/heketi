@@ -14,10 +14,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/http"
+	"strings"
+
 	"github.com/auth0/go-jwt-middleware"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/context"
-	"net/http"
 )
 
 var (
@@ -104,12 +106,20 @@ func (j *JwtAuth) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.Ha
 		return nil, errors.New("Token missing iss claim")
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		errmsg := fmt.Sprintf("Invalid JWT token: %s", err)
+		// annoying that the types don't actually match
+		if err.Error() == jwt.ErrSignatureInvalid.Error() {
+			errmsg += "\n(client and server secrets may not match)"
+		}
+		if strings.Contains(err.Error(), "used before issued") {
+			errmsg += "\n(client and server clocks may differ)"
+		}
+		http.Error(w, errmsg, http.StatusUnauthorized)
 		return
 	}
 
 	if !token.Valid {
-		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		http.Error(w, "Invalid JWT token", http.StatusUnauthorized)
 		return
 	}
 
