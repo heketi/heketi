@@ -245,6 +245,11 @@ func (a *App) setFromEnvironmentalVariable() {
 		a.conf.Executor = env
 	}
 
+	env = os.Getenv("HEKETI_DB_PATH")
+	if env != "" {
+		a.conf.DBfile = env
+	}
+
 	env = os.Getenv("HEKETI_GLUSTERAPP_LOGLEVEL")
 	if env != "" {
 		a.conf.Loglevel = env

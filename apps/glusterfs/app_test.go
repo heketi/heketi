@@ -75,12 +75,14 @@ func TestAppAdvsettings(t *testing.T) {
 	defer os.Remove(dbfile)
 	os.Setenv("HEKETI_EXECUTOR", "mock")
 	defer os.Unsetenv("HEKETI_EXECUTOR")
+	os.Setenv("HEKETI_DB_PATH", dbfile)
+	defer os.Unsetenv("HEKETI_DB_PATH")
 
 	data := []byte(`{
 		"glusterfs" : {
 			"executor" : "crazyexec",
 			"allocator" : "simple",
-			"db" : "` + dbfile + `",
+			"db" : "/path/to/nonexistent/heketi.db",
 			"brick_max_size_gb" : 1024,
 			"brick_min_size_gb" : 4,
 			"max_bricks_per_volume" : 33
@@ -96,6 +98,7 @@ func TestAppAdvsettings(t *testing.T) {
 	defer app.Close()
 	tests.Assert(t, app != nil)
 	tests.Assert(t, app.conf.Executor == "mock")
+	tests.Assert(t, app.conf.DBfile == dbfile)
 	tests.Assert(t, BrickMaxNum == 33)
 	tests.Assert(t, BrickMaxSize == 1*TB)
 	tests.Assert(t, BrickMinSize == 4*GB)
@@ -228,12 +231,14 @@ func TestAppBlockSettings(t *testing.T) {
 	defer os.Remove(dbfile)
 	os.Setenv("HEKETI_EXECUTOR", "mock")
 	defer os.Unsetenv("HEKETI_EXECUTOR")
+	os.Setenv("HEKETI_DB_PATH", dbfile)
+	defer os.Unsetenv("HEKETI_DB_PATH")
 
 	data := []byte(`{
 		"glusterfs" : {
 			"executor" : "crazyexec",
 			"allocator" : "simple",
-			"db" : "` + dbfile + `",
+			"db" : "/path/to/nonexistent/heketi.db",
 			"auto_create_block_hosting_volume" : true,
 			"block_hosting_volume_size" : 500
 		}
@@ -248,6 +253,7 @@ func TestAppBlockSettings(t *testing.T) {
 	defer app.Close()
 	tests.Assert(t, app != nil)
 	tests.Assert(t, app.conf.Executor == "mock")
+	tests.Assert(t, app.conf.DBfile == dbfile)
 	tests.Assert(t, CreateBlockHostingVolumes == true)
 	tests.Assert(t, BlockHostingVolumeSize == 500)
 }
