@@ -4,6 +4,8 @@
 
 	"_glusterfs_comment": "GlusterFS Configuration",
 	"glusterfs" : {
+		"_loglevel" : "enable debug log level for tests",
+		"loglevel" : "debug",
 
 		"_executor_comment": "Execute plugin. Possible choices: mock, ssh",
 		"executor" : "ssh",

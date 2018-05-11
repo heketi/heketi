@@ -1,5 +1,7 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "${0}")" && pwd)"
+
 show_help() {
 	echo "$0 [options]"
 	echo "  Options:"
@@ -8,14 +10,20 @@ show_help() {
 	echo ""
 }
 
+TESTS_DIR="$SCRIPT_DIR"
 TESTS=()
 
-CLI="$(getopt -o h --long test:,help -n "$0" -- "$@")"
+CLI="$(getopt -o hd: --long test:,tests-dir:,help -n "$0" -- "$@")"
 eval set -- "${CLI}"
 while true ; do
 	case "$1" in
 		--test)
 			TESTS+=("$2")
+			shift
+			shift
+		;;
+		-d|--tests-dir)
+			TESTS_DIR="$2"
 			shift
 			shift
 		;;
@@ -34,8 +42,8 @@ while true ; do
 	esac
 done
 
-
 if [[ "${#TESTS[@]}" -eq 0 ]]; then
+	TESTS+=("TestSelfTest")
 	TESTS+=("TestSmokeTest")
 	TESTS+=("TestVolumeNotDeletedWhenNodeIsDown")
 	TESTS+=("TestVolumeSnapshotBehavior")
@@ -52,58 +60,57 @@ if ! command -v glide ; then
 fi
 
 fetch_golang() {
-    # Download golang 1.8.3
-    curl -O https://storage.googleapis.com/golang/go1.8.3.linux-amd64.tar.gz
-    tar xzvf go1.8.3.linux-amd64.tar.gz
-    GOROOT=$(pwd)/go
-    export GOROOT
-    export PATH=$GOROOT/bin:$PATH
+	# Download golang 1.8.3
+	curl -O https://storage.googleapis.com/golang/go1.8.3.linux-amd64.tar.gz
+	tar xzvf go1.8.3.linux-amd64.tar.gz
+	GOROOT=$(pwd)/go
+	export GOROOT
+	export PATH=$GOROOT/bin:$PATH
 }
 
 vercheck() {
-    # return true (0) if version number $2 is greater-or-equal to
-    # version number $1
-    r="$(echo -e "$1\\n$2" | sort -V | head -n1)"
-    if [[ "$r" == "$1" ]]; then
-        return 0
-    fi
-    return 1
+	# return true (0) if version number $2 is greater-or-equal to
+	# version number $1
+	r="$(echo -e "$1\\n$2" | sort -V | head -n1)"
+	if [[ "$r" == "$1" ]]; then
+		return 0
+	fi
+	return 1
 }
 
 case "$HEKETI_TEST_SYSTEM_GO" in
-    yes)
-        echo "Using system go packages"
-    ;;
-    auto|"")
-        gv="$(go version | awk '{print $3}')"
-        gv="${gv/go/}"
-        if [[ "${gv}" ]] && vercheck "1.8.3" "${gv}"; then
-            echo "Using system go (version ${gv})"
-        else
-            fetch_golang
-        fi
-    ;;
-    no)
-        fetch_golang
-    ;;
-    *)
-        echo "error: unknown value for HEKETI_TEST_SYSTEM_GO, need yes|no|auto" >&2
-        exit 2
-    ;;
+	yes)
+		echo "Using system go packages"
+	;;
+	auto|"")
+		gv="$(go version | awk '{print $3}')"
+		gv="${gv/go/}"
+		if [[ "${gv}" ]] && vercheck "1.8.3" "${gv}"; then
+			echo "Using system go (version ${gv})"
+		else
+			fetch_golang
+		fi
+	;;
+	no)
+		fetch_golang
+	;;
+	*)
+		echo "error: unknown value for HEKETI_TEST_SYSTEM_GO, need yes|no|auto" >&2
+		exit 2
+	;;
 esac
 
-source ./lib.sh
+source "${SCRIPT_DIR}/lib.sh"
 
 teardown_all() {
-    results=0
-    for testDir in "${TESTS[@]}" ; do
-        if [ -x "$testDir/teardown.sh" ] ; then
-            println "TEARDOWN $testDir"
-            cd "$testDir" || fail "Unable to 'cd $testDir'."
-            teardown.sh
-            cd ..
-        fi
-    done
+	for testDir in "${TESTS[@]}" ; do
+		if [ -x "$testDir/teardown.sh" ] ; then
+			println "TEARDOWN $testDir"
+			cd "$testDir" || fail "Unable to 'cd $testDir'."
+			teardown.sh
+			cd ..
+		fi
+	done
 }
 
 ### MAIN ###
@@ -116,8 +123,10 @@ export PATH=$PATH:.
 
 # Check go can build
 if [ -z "$GOPATH" ] ; then
-    fail "GOPATH must be specified"
+	fail "GOPATH must be specified"
 fi
+
+cd "$TESTS_DIR" || fail "Unable to 'cd $TESTS_DIR'"
 
 # Clean up
 rm -f heketi-server > /dev/null 2>&1
@@ -127,26 +136,31 @@ teardown_all
 tpassed=()
 tfailed=()
 for testDir in "${TESTS[@]}" ; do
-    if [ -x "$testDir/run.sh" ] ; then
-        println "TEST $testDir"
-        cd "$testDir" || fail "Unable to 'cd $testDir'."
+	if [ -x "$testDir/run.sh" ] ; then
+		println "TEST $testDir"
+		cd "$testDir" || fail "Unable to 'cd $testDir'."
 
-        # Run the command with a large timeout.
-        # Just large enough so that it doesn't run forever.
-        timeout 1h run.sh ; result=$?
+		# Run the command with a large timeout.
+		# Just large enough so that it doesn't run forever.
+		timeout 1h run.sh
+		result=$?
 
-        if [ $result -ne 0 ] ; then
-            println "FAILED $testDir"
-            println "TEARDOWN $testDir"
-            teardown.sh
-            tfailed+=("${testDir}")
-        else
-            println "PASSED $testDir"
-            tpassed+=("${testDir}")
-        fi
+		if [ $result -ne 0 ] ; then
+			println "FAILED $testDir"
+			println "TEARDOWN $testDir"
+			teardown.sh
+			tfailed+=("${testDir}")
+		else
+			println "PASSED $testDir"
+			tpassed+=("${testDir}")
+		fi
 
-        cd ..
-    fi
+		cd ..
+	else
+		echo "ERROR: Missing or malformed test dir: $testDir" >&2
+		echo "       run.sh is missing or not executable (in $PWD)" >&2
+		tfailed+=("${testDir}")
+	fi
 done
 
 # Summary
@@ -154,10 +168,13 @@ println "Started $starttime"
 println "Ended $(date)"
 println "-- Passing Tests: ${tpassed[*]}"
 if [[ ${#tfailed[@]} -eq 0 ]] ; then
-    println "PASSED"
+	println "PASSED"
 else
-    println "-- Failing Tests: ${tfailed[*]}"
-    println "FAILED"
+	println "-- Failing Tests: ${tfailed[*]}"
+	println "FAILED"
 fi
 
-exit $results
+if [[ "${#tfailed[@]}" -gt 0 ]]; then
+	exit 1
+fi
+exit 0

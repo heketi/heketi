@@ -149,7 +149,22 @@ func setupCluster(t *testing.T, numNodes int, numDisks int) {
 	}
 }
 
+func dbStateDump(t *testing.T) {
+	if t.Failed() {
+		fmt.Println("~~~~~ dumping db state prior to teardown ~~~~~")
+		dump, err := heketi.DbDump()
+		if err != nil {
+			fmt.Printf("Unable to get db dump: %v\n", err)
+		} else {
+			fmt.Printf("\n%v\n", dump)
+		}
+		fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+	}
+}
+
 func teardownCluster(t *testing.T) {
+	dbStateDump(t)
+
 	clusters, err := heketi.ClusterList()
 	tests.Assert(t, err == nil, err)
 
@@ -229,14 +244,14 @@ func TestHeketiSmokeTest(t *testing.T) {
 	for i := 0; i < 2; i++ {
 
 		volReq := &api.VolumeCreateRequest{}
-		volReq.Size = 4000
+		volReq.Size = 2500
 		volReq.Snapshot.Enable = true
 		volReq.Snapshot.Factor = 1.5
 		volReq.Durability.Type = api.DurabilityReplicate
 
 		volInfo, err := heketi.VolumeCreate(volReq)
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
-		tests.Assert(t, volInfo.Size == 4000)
+		tests.Assert(t, volInfo.Size == 2500)
 		tests.Assert(t, volInfo.Mount.GlusterFS.MountPoint != "")
 		tests.Assert(t, volInfo.Name != "")
 
