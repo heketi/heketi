@@ -36,10 +36,28 @@ if ! command -v virtualenv &>/dev/null; then
     exit 0
 fi
 
+failures=()
+
 rm -rf .env
 export PYTHONPATH="$PYTHONPATH:$HEKETI_DIR/client/api/python"
 virtualenv .env
 . .env/bin/activate
 pip install -r "$HEKETI_DIR/client/api/python/requirements.txt"
+
 echo '----> Running test_tls.py'
-exec python test_tls.py -v "$@"
+python test_tls.py -v "$@"
+if [[ $? -ne 0 ]]; then
+    failures+=(test_tls.py)
+fi
+
+echo '----> Running client_tls_test'
+go test ./client_tls_test -v -tags functional
+if [[ $? -ne 0 ]]; then
+    failures+=(client_tls_test)
+fi
+
+if [[ "${#failures[@]}" -gt 0 ]]; then
+    echo "--- FAILED:" "${failures[@]}"
+    exit 1
+fi
+exit 0
