@@ -1750,7 +1750,7 @@ func TestDeviceRemoveOperationOtherPendingOps(t *testing.T) {
 	tests.Assert(t, err == ErrConflict, "expected err == ErrConflict, got:", err)
 
 	// we should have one pending operation (the volume create)
-	err = app.db.View(func(tx *bolt.Tx) error {
+	app.db.View(func(tx *bolt.Tx) error {
 		l, err := PendingOperationList(tx)
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 		tests.Assert(t, len(l) == 1, "expected len(l) == 1, got:", len(l))
@@ -1825,7 +1825,7 @@ func TestDeviceRemoveOperationMultipleRequests(t *testing.T) {
 	tests.Assert(t, err == ErrConflict, "expected err == ErrConflict, got:", err)
 
 	// we should have one pending operation (the device remove)
-	err = app.db.View(func(tx *bolt.Tx) error {
+	app.db.View(func(tx *bolt.Tx) error {
 		l, err := PendingOperationList(tx)
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 		tests.Assert(t, len(l) == 1, "expected len(l) == 1, got:", len(l))
