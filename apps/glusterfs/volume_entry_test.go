@@ -572,7 +572,7 @@ func TestVolumeEntryCreateRunOutOfSpaceMaxBrickLimit(t *testing.T) {
 	// Check no bricks or volumes exist
 	var bricks []string
 	var volumes []string
-	err = app.db.View(func(tx *bolt.Tx) error {
+	app.db.View(func(tx *bolt.Tx) error {
 		bricks = EntryKeys(tx, BOLTDB_BUCKET_BRICK)
 
 		volumes = EntryKeys(tx, BOLTDB_BUCKET_VOLUME)
@@ -690,7 +690,7 @@ func TestVolumeEntryCreateTwoBricks(t *testing.T) {
 		info)
 
 	// Check all hosts are in the list
-	err = app.db.View(func(tx *bolt.Tx) error {
+	app.db.View(func(tx *bolt.Tx) error {
 		for _, brick := range info.Bricks {
 			found := false
 
@@ -1207,7 +1207,7 @@ func TestVolumeEntryDestroy(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Check database volume does not exist
-	err = app.db.View(func(tx *bolt.Tx) error {
+	app.db.View(func(tx *bolt.Tx) error {
 
 		// Check that all devices have no used data
 		devices, err := DeviceList(tx)
@@ -1222,11 +1222,11 @@ func TestVolumeEntryDestroy(t *testing.T) {
 		// Check there are no bricks
 		bricks, err := BrickList(tx)
 		tests.Assert(t, len(bricks) == 0)
+		tests.Assert(t, err == nil)
 
 		return nil
 
 	})
-	tests.Assert(t, err == nil)
 
 	// Check that the devices have no bricks
 	err = app.db.View(func(tx *bolt.Tx) error {

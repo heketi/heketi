@@ -193,7 +193,7 @@ func TestDisperseDurability(t *testing.T) {
 	tests.Assert(t, 8 == r.QuorumBrickCount())
 
 	// Gen 6
-	sets, brick_size, err = gen()
+	_, _, err = gen()
 	tests.Assert(t, err == ErrMinimumBrickSize)
 	tests.Assert(t, 8+3 == r.BricksInSet())
 	tests.Assert(t, 8 == r.QuorumBrickCount())
