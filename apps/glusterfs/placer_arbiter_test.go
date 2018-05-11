@@ -381,17 +381,17 @@ func TestArbiterBrickPlacerBrickOnArbiterDevice(t *testing.T) {
 func TestArbiterBrickPlacerBrickThreeSets(t *testing.T) {
 	dsrc := NewTestDeviceSource()
 	addDev := dsrc.MultiAdd("10000000")
-	addDev("11111111", "/dev/d1", 10001)
-	addDev("21111111", "/dev/d2", 10002)
-	addDev("31111111", "/dev/d3", 10003)
+	addDev("11111111", "/dev/d1", 20001)
+	addDev("21111111", "/dev/d2", 20002)
+	addDev("31111111", "/dev/d3", 20003)
 	addDev = dsrc.MultiAdd("20000000")
-	addDev("41111111", "/dev/d1", 10001)
-	addDev("51111111", "/dev/d2", 10002)
-	addDev("61111111", "/dev/d3", 10003)
+	addDev("41111111", "/dev/d1", 20001)
+	addDev("51111111", "/dev/d2", 20002)
+	addDev("61111111", "/dev/d3", 20003)
 	addDev = dsrc.MultiAdd("30000000")
-	addDev("71111111", "/dev/d1", 10001)
-	addDev("81111111", "/dev/d2", 10002)
-	addDev("91111111", "/dev/d3", 10003)
+	addDev("71111111", "/dev/d1", 20001)
+	addDev("81111111", "/dev/d2", 20002)
+	addDev("91111111", "/dev/d3", 20003)
 
 	opts := &TestPlacementOpts{
 		brickSize:       800,

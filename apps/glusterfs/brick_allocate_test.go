@@ -17,7 +17,6 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/heketi/tests"
 
-	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 )
 
@@ -218,21 +217,8 @@ func TestClusterDeviceSourceAlloc(t *testing.T) {
 		cluster := cids[0]
 
 		a := NewSimpleAllocator()
-		txdb := wdb.WrapTx(tx)
-		deviceCh, done, err := a.GetNodes(txdb, cluster, "0000000")
-		tests.Assert(t, err == nil, "expected err == nil, got:", err)
-		defer close(done)
-
-		dtest := []string{}
-		for id := range deviceCh {
-			dtest = append(dtest, id)
-		}
-		tests.Assert(t, len(dtest) == 16,
-			"expected len(dtest) == 16, got:", len(dtest))
-
-		a = NewSimpleAllocator()
 		dsrc := NewClusterDeviceSource(tx, cluster)
-		deviceCh, done, err = a.GetNodesFromDeviceSource(dsrc, "0000000")
+		deviceCh, done, err := a.GetNodesFromDeviceSource(dsrc, "0000000")
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 		defer close(done)
 
@@ -241,6 +227,21 @@ func TestClusterDeviceSourceAlloc(t *testing.T) {
 			dtest2 = append(dtest2, id)
 		}
 		tests.Assert(t, len(dtest2) == 16,
+			"expected len(dtest2) == 16, got:", len(dtest2))
+
+		dtest := []string{}
+		dl, err := DeviceList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		for _, id := range dl {
+			d, err := NewDeviceEntryFromId(tx, id)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			n, err := NewNodeEntryFromId(tx, d.NodeId)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			if n.Info.ClusterId == cluster {
+				dtest = append(dtest, id)
+			}
+		}
+		tests.Assert(t, len(dtest) == 16,
 			"expected len(dtest) == 16, got:", len(dtest))
 
 		sort.Strings(dtest)

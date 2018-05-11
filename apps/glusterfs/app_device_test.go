@@ -747,6 +747,7 @@ func TestDeviceState(t *testing.T) {
 
 	var info api.DeviceInfoResponse
 	err = utils.GetJsonFromResponse(r, &info)
+	tests.Assert(t, err == nil)
 	tests.Assert(t, info.Id == device.Id)
 	tests.Assert(t, info.Name == device.Name)
 	tests.Assert(t, info.State == "offline")
@@ -785,6 +786,7 @@ func TestDeviceState(t *testing.T) {
 	tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
 
 	err = utils.GetJsonFromResponse(r, &info)
+	tests.Assert(t, err == nil)
 	tests.Assert(t, info.Id == device.Id)
 	tests.Assert(t, info.Name == device.Name)
 	tests.Assert(t, info.State == "online")
@@ -808,6 +810,7 @@ func TestDeviceState(t *testing.T) {
 	tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
 
 	err = utils.GetJsonFromResponse(r, &info)
+	tests.Assert(t, err == nil)
 	tests.Assert(t, info.Id == device.Id)
 	tests.Assert(t, info.Name == device.Name)
 	tests.Assert(t, info.State == "online")

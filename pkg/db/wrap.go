@@ -87,7 +87,7 @@ func (w *TxWrap) Update(cb func(*bolt.Tx) error) error {
 	return cb(w.tx)
 }
 
-// WrapReadWrite wraps a db object when applicible. If db is
+// WrapReadWrite wraps a db object when applicable. If db is
 // already in a capsule the original object is returned (type cast).
 // Panics if the type is not valid for read-write encapsulation.
 func WrapReadWrite(db DB) *DBWrap {
@@ -105,7 +105,7 @@ func WrapReadWrite(db DB) *DBWrap {
 	}
 }
 
-// WrapReadOnly wraps a db object when applicible. If db is
+// WrapReadOnly wraps a db object when applicable. If db is
 // already in a capsule the original object is returned (type cast).
 // Panics if the type is not valid for read-only encapsulation.
 func WrapReadOnly(db DB) *DBWrap {

@@ -572,7 +572,7 @@ func TestVolumeEntryCreateRunOutOfSpaceMaxBrickLimit(t *testing.T) {
 	// Check no bricks or volumes exist
 	var bricks []string
 	var volumes []string
-	err = app.db.View(func(tx *bolt.Tx) error {
+	app.db.View(func(tx *bolt.Tx) error {
 		bricks = EntryKeys(tx, BOLTDB_BUCKET_BRICK)
 
 		volumes = EntryKeys(tx, BOLTDB_BUCKET_VOLUME)
@@ -690,7 +690,7 @@ func TestVolumeEntryCreateTwoBricks(t *testing.T) {
 		info)
 
 	// Check all hosts are in the list
-	err = app.db.View(func(tx *bolt.Tx) error {
+	app.db.View(func(tx *bolt.Tx) error {
 		for _, brick := range info.Bricks {
 			found := false
 
@@ -1207,7 +1207,7 @@ func TestVolumeEntryDestroy(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Check database volume does not exist
-	err = app.db.View(func(tx *bolt.Tx) error {
+	app.db.View(func(tx *bolt.Tx) error {
 
 		// Check that all devices have no used data
 		devices, err := DeviceList(tx)
@@ -1222,11 +1222,11 @@ func TestVolumeEntryDestroy(t *testing.T) {
 		// Check there are no bricks
 		bricks, err := BrickList(tx)
 		tests.Assert(t, len(bricks) == 0)
+		tests.Assert(t, err == nil)
 
 		return nil
 
 	})
-	tests.Assert(t, err == nil)
 
 	// Check that the devices have no bricks
 	err = app.db.View(func(tx *bolt.Tx) error {
@@ -2114,7 +2114,7 @@ func TestVolumeEntryNoMatchingFlags(t *testing.T) {
 	// request block volume
 	v.Info.Block = true
 	err = v.Create(app.db, app.executor)
-	// expect no space error due to no clusters able to satifsy block volume
+	// expect no space error due to no clusters able to satisfy block volume
 	tests.Assert(t, err == ErrNoSpace)
 }
 
@@ -2155,7 +2155,7 @@ func TestVolumeEntryMissingFlags(t *testing.T) {
 	// Create volume
 	v := createSampleReplicaVolumeEntry(1024, 2)
 	err = v.Create(app.db, app.executor)
-	// expect no space error due to no clusters able to satifsy block volume
+	// expect no space error due to no clusters able to satisfy block volume
 	tests.Assert(t, err == ErrNoSpace)
 }
 
@@ -2429,4 +2429,46 @@ func TestVolumeCreateArbiterSizingCustom(t *testing.T) {
 		tests.Assert(t, arbiterBrickCount == 1, "expected arbiterBrickCount == 1, got:", arbiterBrickCount)
 		return nil
 	})
+}
+
+func TestVolumeCreateBoundarySizing(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,      // clusters
+		4,      // nodes_per_cluster
+		8,      // devices_per_node,
+		500*GB, // disksize)
+	)
+
+	for i := 0; i < 2; i++ {
+		req := &api.VolumeCreateRequest{}
+		// setting the size to 300 or more fails the test intermittently
+		// due to randomization in the device selection
+		req.Size = 2500
+		req.Snapshot.Enable = true
+		req.Snapshot.Factor = 1.5
+		req.Durability.Type = api.DurabilityReplicate
+
+		v := NewVolumeEntryFromRequest(req)
+		err = v.Create(app.db, app.executor)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+		err = v.Destroy(app.db, app.executor)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	}
+
+	// Create a 1TB volume
+	req := &api.VolumeCreateRequest{}
+	req.Size = 1024
+	req.Snapshot.Enable = true
+	req.Snapshot.Factor = 1.5
+	req.Durability.Type = api.DurabilityReplicate
+
+	err = NewVolumeEntryFromRequest(req).Create(app.db, app.executor)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 }

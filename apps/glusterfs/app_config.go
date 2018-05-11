@@ -17,6 +17,10 @@ import (
 	"github.com/heketi/heketi/executors/sshexec"
 )
 
+type RetryLimitConfig struct {
+	VolumeCreate int `json:"volume_create"`
+}
+
 type GlusterFSConfig struct {
 	DBfile     string              `json:"db"`
 	Executor   string              `json:"executor"`
@@ -39,6 +43,9 @@ type GlusterFSConfig struct {
 	IgnoreStaleOperations          bool   `json:"ignore_stale_operations"`
 	RefreshTimeMonitorGlusterNodes uint32 `json:"refresh_time_monitor_gluster_nodes"`
 	StartTimeMonitorGlusterNodes   uint32 `json:"start_time_monitor_gluster_nodes"`
+
+	// operation retry amounts
+	RetryLimits RetryLimitConfig `json:"operation_retry_limits"`
 }
 
 type ConfigFile struct {

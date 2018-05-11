@@ -19,7 +19,7 @@ docker_set_env() {
     ### CENTOS WORKAROUND ###
     ### Suffering from same bug as https://github.com/getcarina/carina/issues/112
     ###
-    if grep -q -s "CentOS\|Fedora" /etc/redhat-release ; then
+    if grep -q -s "CentOS\\|Fedora" /etc/redhat-release ; then
         echo "CentOS/Fedora DOCKER WORKAROUND"
         curl -sL https://download.getcarina.com/dvm/latest/install.sh | sh
         eval "$(minikube docker-env)"
@@ -77,12 +77,12 @@ setup_minikube() {
     fi
 
     if ! md5sum -c md5sums > /dev/null 2>&1 ; then
-        echo -e "\nGet docker-machine"
+        echo -e "\\nGet docker-machine"
         curl -Lo docker-machine https://github.com/docker/machine/releases/download/v0.8.2/docker-machine-Linux-x86_64 || fail "Unable to get docker-machine"
         chmod +x docker-machine
         _sudo mv docker-machine /usr/local/bin
 
-        echo -e "\nGet docker-machine-driver-kvm"
+        echo -e "\\nGet docker-machine-driver-kvm"
         curl -Lo docker-machine-driver-kvm \
             https://github.com/dhiltgen/docker-machine-kvm/releases/download/v0.7.0/docker-machine-driver-kvm || fail "Unable to get docker-machine-driver-kvm"
         chmod +x docker-machine-driver-kvm
@@ -91,20 +91,20 @@ setup_minikube() {
         _sudo usermod -a -G libvirt "$(whoami)"
         #newgrp libvirt
 
-        echo -e "\nGet minikube"
+        echo -e "\\nGet minikube"
         curl -Lo minikube \
             https://storage.googleapis.com/minikube/releases/v0.12.2/minikube-linux-amd64 || fail "Unable to get minikube"
         chmod +x minikube
         _sudo mv minikube /usr/local/bin
 
-        echo -e "\nGet kubectl $KUBEVERSION"
+        echo -e "\\nGet kubectl $KUBEVERSION"
         curl -Lo kubectl \
             http://storage.googleapis.com/kubernetes-release/release/${KUBEVERSION}/bin/linux/amd64/kubectl || fail "Unable to get kubectl"
         chmod +x kubectl
         _sudo mv kubectl /usr/local/bin
     fi
 
-    echo -e "\nOpt-out of errors"
+    echo -e "\\nOpt-out of errors"
     minikube config set WantReportErrorPrompt false
 }
 
@@ -116,7 +116,7 @@ start_minikube() {
 		--kubernetes-version="${KUBEVERSION}" || fail "Unable to start minikube"
 
     # wait until it is ready
-    echo -e "\nWait until kubernetes containers are running and ready"
+    echo -e "\\nWait until kubernetes containers are running and ready"
     while [ 3 -ne "$(kubectl get pods --all-namespaces | grep -c Running)" ] ; do
         echo -n "."
         sleep 1

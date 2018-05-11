@@ -41,6 +41,9 @@ type ArbiterBrickPlacer struct {
 type arbiterOpts struct {
 	o         PlacementOpts
 	brickSize uint64
+	// used to determine if the device should be
+	// updated with the brick ID
+	recordBrick bool
 }
 
 func newArbiterOpts(opts PlacementOpts) *arbiterOpts {
@@ -48,6 +51,9 @@ func newArbiterOpts(opts PlacementOpts) *arbiterOpts {
 	return &arbiterOpts{
 		o:         opts,
 		brickSize: bsize,
+		// by default we want to record bricks
+		// this needs to be set to false in the replace path
+		recordBrick: true,
 	}
 }
 
@@ -96,6 +102,12 @@ func (bp *ArbiterBrickPlacer) PlaceAll(
 			pred)
 		if err != nil {
 			return r, err
+		}
+		if bs.IsSparse() {
+			return r, fmt.Errorf("Did not fully populate brick set")
+		}
+		if ds.IsSparse() {
+			return r, fmt.Errorf("Did not fully populate device set")
 		}
 		r.BrickSets = append(r.BrickSets, bs)
 		r.DeviceSets = append(r.DeviceSets, ds)
@@ -148,6 +160,11 @@ func (bp *ArbiterBrickPlacer) Replace(
 		wds.Insert(i, d)
 	}
 	aopts := newArbiterOpts(opts)
+	// this is a mildly hacky way to deal with the higher level replace
+	// code's desire to save the device size and the device's bricks
+	// in different db commits. Eventually we should move to a more
+	// unified approach and drop this
+	aopts.recordBrick = false
 	err = bp.placeBrickInSet(dsrc, dscan, aopts, pred, wbs, wds, index)
 	return r, err
 }
@@ -160,15 +177,20 @@ func (bp *ArbiterBrickPlacer) newSets(
 	pred DeviceFilter) (*BrickSet, *DeviceSet, error) {
 
 	ssize := opts.SetSize()
-	bs := NewBrickSet(ssize)
-	ds := NewDeviceSet(ssize)
+	bs := NewSparseBrickSet(ssize)
+	ds := NewSparseDeviceSet(ssize)
 	dscan, err := bp.Scanner(dsrc)
 	if err != nil {
 		return nil, nil, err
 	}
 	defer dscan.Close()
 
-	for index := 0; index < ssize; index++ {
+	// work backwards from the last item in the brick set (typically index 2)
+	// in order to place the most special brick, the arbiter brick, first.
+	// Placing the arbiter brick first means we get a more reliable distribution
+	// of bricks because the nodes will not be taken by the two data
+	// bricks before we try to place the arbiter brick.
+	for index := ssize - 1; index >= 0; index-- {
 		aopts := newArbiterOpts(opts)
 		if e := aopts.discount(index); e != nil {
 			return bs, ds, e
@@ -234,7 +256,7 @@ func (bp *ArbiterBrickPlacer) tryPlaceBrickOnDevice(
 
 	logger.Debug("Trying to place brick on device %v", device.Info.Id)
 
-	for i, b := range bs.Bricks {
+	for i, b := range bs.Contents() {
 		// do not check the brick in the brick set for the current
 		// index. If this is a new brick set we won't have the index
 		// populated. If this is a replace, we will have the old brick
@@ -272,7 +294,9 @@ func (bp *ArbiterBrickPlacer) tryPlaceBrickOnDevice(
 		return tryPlaceAgain
 	}
 
-	device.BrickAdd(brick.Id())
+	if opts.recordBrick {
+		device.BrickAdd(brick.Id())
+	}
 	bs.Insert(index, brick)
 	ds.Insert(index, device)
 	return nil
