@@ -596,6 +596,7 @@ func TestJwtWrongSigningMethod(t *testing.T) {
 	tests.Assert(t, err == nil, "http.DefaultClient failed:", err)
 	tests.Assert(t, r.StatusCode != 0)
 	s, err := utils.GetStringFromResponse(r)
+	tests.Assert(t, err == nil)
 	tests.Assert(t, strings.Contains(s, "Unexpected signing method"),
 		`expected s to contain "Unexpected signing method", got:`, s)
 }
