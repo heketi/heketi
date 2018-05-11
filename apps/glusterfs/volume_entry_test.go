@@ -2430,3 +2430,45 @@ func TestVolumeCreateArbiterSizingCustom(t *testing.T) {
 		return nil
 	})
 }
+
+func TestVolumeCreateBoundarySizing(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,      // clusters
+		4,      // nodes_per_cluster
+		8,      // devices_per_node,
+		500*GB, // disksize)
+	)
+
+	for i := 0; i < 2; i++ {
+		req := &api.VolumeCreateRequest{}
+		// setting the size to 300 or more fails the test intermittently
+		// due to randomization in the device selection
+		req.Size = 2500
+		req.Snapshot.Enable = true
+		req.Snapshot.Factor = 1.5
+		req.Durability.Type = api.DurabilityReplicate
+
+		v := NewVolumeEntryFromRequest(req)
+		err = v.Create(app.db, app.executor)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+		err = v.Destroy(app.db, app.executor)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	}
+
+	// Create a 1TB volume
+	req := &api.VolumeCreateRequest{}
+	req.Size = 1024
+	req.Snapshot.Enable = true
+	req.Snapshot.Factor = 1.5
+	req.Durability.Type = api.DurabilityReplicate
+
+	err = NewVolumeEntryFromRequest(req).Create(app.db, app.executor)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+}
