@@ -17,7 +17,7 @@ Heketi requires ssh access to the nodes that it will manage.  For that reason, H
 * Installation:
   * [OpenShift](./install-openshift.md): New in v2.0, Heketi can now be used to manage GlusterFS containers deployed in an OpenShift Cluster.
   * [Standalone](./install-standalone.md): This method allows a Heketi to be installed on a system to manage GlusterFS storage nodes.
-  * [Kubernetes](./install-kubernetes.md): Heketi can now be used to manage GlusterFS containers deployed in a Kubernetes Cluster. 
+  * [Kubernetes](https://github.com/gluster/gluster-kubernetes/blob/master/docs/setup-guide.md): Heketi can now be used to manage GlusterFS containers deployed in a Kubernetes Cluster. 
 * [Running the server](./server.md)
 * [Setting up the topology](./topology.md)
 * [Creating a volume](./volume.md)
