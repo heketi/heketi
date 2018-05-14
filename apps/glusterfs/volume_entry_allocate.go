@@ -382,7 +382,10 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 	// After this point we should not call any defer func()
 	// We don't have a *revert* of replace brick operation
 
-	_, _ = oldBrickEntry.Destroy(db, executor)
+	spaceReclaimed, err := oldBrickEntry.Destroy(db, executor)
+	if err != nil {
+		logger.LogError("Error destroying old brick: %v", err)
+	}
 
 	// We must read entries from db again as state on disk might
 	// have changed
@@ -400,6 +403,17 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 		err = reReadNewDeviceEntry.Save(tx)
 		if err != nil {
 			return err
+		}
+		if spaceReclaimed {
+			oldDevice2, err := NewDeviceEntryFromId(tx, oldBrickEntry.Info.DeviceId)
+			if err != nil {
+				return err
+			}
+			oldDevice2.StorageFree(oldBrickEntry.TotalSize())
+			err = oldDevice2.Save(tx)
+			if err != nil {
+				return err
+			}
 		}
 
 		reReadVolEntry, err := NewVolumeEntryFromId(tx, newBrickEntry.Info.VolumeId)
