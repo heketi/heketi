@@ -66,12 +66,12 @@ consumes on the underlying devices.
 
 To create an Arbiter volume with a custom average file size
 using the heketi-cli command line tool the volume options
-`user.heketi.arbiter true` and `user.heketi-average-file-size 1024`
+`user.heketi.arbiter true` and `user.heketi.average-file-size 1024`
 must be provided.
 
 Example:
 ```bash
-$ heketi-cli volume create --size=4 --gluster-volume-options='user.heketi.arbiter true,user.heketi.heketi-average-file-size 1024'
+$ heketi-cli volume create --size=4 --gluster-volume-options='user.heketi.arbiter true,user.heketi.average-file-size 1024'
 ```
 
 ### Setting Average File Size with the Heketi CLI
@@ -79,7 +79,7 @@ $ heketi-cli volume create --size=4 --gluster-volume-options='user.heketi.arbite
 To create an Arbiter volume with a custom average file size
 using the Heketi API, or using another system that consumes
 the Heketi API, such as a Kubernetes storage provisioner,
-specify the string `user.heketi-average-file-size NUM`
+specify the string `user.heketi.average-file-size NUM`
 to the *glustervolumeoptions* list, replacing NUM with size
 of desired size as an integer in KiB. If this option is
 provided without a corresponding user.heketi.arbiter option
