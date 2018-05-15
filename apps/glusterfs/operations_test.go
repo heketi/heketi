@@ -2498,3 +2498,39 @@ func TestExpandSizeFromOpErrorHandling(t *testing.T) {
 		`expected strings.Contains(e.Error(), "no OpExpandVolume action"), got:`,
 		e)
 }
+
+func TestBlockVolumeCloneFails(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		1,    // devices_per_node,
+		3*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	// first we create a volume to host the block volume
+
+	vreq := &api.VolumeCreateRequest{}
+	vreq.Size = 2048
+	vreq.Block = true
+	vreq.Durability.Type = api.DurabilityReplicate
+	vreq.Durability.Replicate.Replica = 3
+
+	vol := NewVolumeEntryFromRequest(vreq)
+	vc := NewVolumeCreateOperation(vol, app.db)
+
+	err = RunOperation(vc, app.executor)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, vol.Info.Id != "", "expected vol.Info.Id != \"\", got:", vol.Info.Id)
+
+	cloneOp := NewVolumeCloneOperation(vol, app.db, "foo")
+	err = RunOperation(cloneOp, app.executor)
+	tests.Assert(t, err == ErrCloneBlockVol, "expected err == ErrCloneBlockVol, got:", err)
+}
