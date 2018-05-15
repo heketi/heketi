@@ -100,6 +100,11 @@ func init() {
 	volumeExpandCommand.SilenceUsage = true
 	volumeInfoCommand.SilenceUsage = true
 	volumeListCommand.SilenceUsage = true
+
+	volumeCommand.AddCommand(volumeCloneCommand)
+	volumeCloneCommand.Flags().StringVar(&volname, "name", "",
+		"\n\tOptional: Name of the newly cloned volume.")
+	volumeCloneCommand.SilenceUsage = true
 }
 
 var volumeCommand = &cobra.Command{
@@ -380,6 +385,49 @@ var volumeListCommand = &cobra.Command{
 			}
 		}
 
+		return nil
+	},
+}
+
+var volumeCloneCommand = &cobra.Command{
+	Use:     "clone",
+	Short:   "Creates a clone",
+	Long:    "Creates a clone",
+	Example: "  $ heketi-cli volume clone 886a86a868711bef83001",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		//ensure proper number of args
+		s := cmd.Flags().Args()
+		if len(s) < 1 {
+			return errors.New("Volume id missing")
+		}
+
+		// Set volume id
+		volumeId := cmd.Flags().Arg(0)
+
+		// Create request
+		req := &api.VolumeCloneRequest{}
+		if volname != "" {
+			req.Name = volname
+		}
+
+		// Create client
+		heketi := client.NewClient(options.Url, options.User, options.Key)
+
+		// Clone the volume
+		volume, err := heketi.VolumeClone(volumeId, req)
+		if err != nil {
+			return err
+		}
+
+		if options.Json {
+			data, err := json.Marshal(volume)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(stdout, string(data))
+		} else {
+			fmt.Fprintf(stdout, "%v", volume)
+		}
 		return nil
 	},
 }

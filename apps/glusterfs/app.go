@@ -458,6 +458,13 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Pattern:     "/volumes",
 			HandlerFunc: a.VolumeList},
 
+		// Volume Cloning
+		rest.Route{
+			Name:        "VolumeClone",
+			Method:      "POST",
+			Pattern:     "/volumes/{id:[A-Fa-f0-9]+}/clone",
+			HandlerFunc: a.VolumeClone},
+
 		// BlockVolumes
 		rest.Route{
 			Name:        "BlockVolumeCreate",

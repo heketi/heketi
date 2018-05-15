@@ -1490,29 +1490,7 @@ func TestVolumeEntryDestroyCheck(t *testing.T) {
 	err = v.Create(app.db, app.executor)
 	tests.Assert(t, err == nil)
 
-	// Test that a volume that is sharing space in a thin pool
-	// with either a clone or a snapshot cannot be deleted
-	app.xo.MockBrickDestroyCheck = func(host string, brick *executors.BrickRequest) error {
-		return fmt.Errorf("BRICKMOCK")
-	}
-	err = v.Destroy(app.db, app.executor)
-	tests.Assert(t, err != nil)
-	tests.Assert(t, err.Error() == "BRICKMOCK")
-	app.xo.MockBrickDestroyCheck = func(host string, brick *executors.BrickRequest) error {
-		return nil
-	}
-
-	// Check that a volume with snapshots cannot be deleted
-	app.xo.MockVolumeDestroyCheck = func(host, volume string) error {
-		return fmt.Errorf("VOLMOCK")
-	}
-	err = v.Destroy(app.db, app.executor)
-	tests.Assert(t, err != nil)
-	tests.Assert(t, err.Error() == "VOLMOCK")
-	app.xo.MockVolumeDestroyCheck = func(host, volume string) error {
-		return nil
-	}
-
+	// volumes (and bricks) can now be destroyed even when snapshots exist
 	// Now it should be able to be deleted
 	err = v.Destroy(app.db, app.executor)
 	tests.Assert(t, err == nil)

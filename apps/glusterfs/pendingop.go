@@ -35,6 +35,7 @@ const (
 	OperationCreateBlockVolume
 	OperationDeleteBlockVolume
 	OperationRemoveDevice
+	OperationCloneVolume
 )
 
 // PendingChangeType identifies what kind of lower-level new item or change
@@ -51,6 +52,9 @@ const (
 	OpAddBlockVolume
 	OpDeleteBlockVolume
 	OpRemoveDevice
+	OpCloneVolume
+	OpSnapshotVolume
+	OpAddVolumeClone
 )
 
 // PendingOperationAction tracks individual changes to entries within the
