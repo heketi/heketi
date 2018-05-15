@@ -54,7 +54,7 @@ func TestSshExecBrickCreate(t *testing.T) {
 			case 1:
 				tests.Assert(t,
 					cmd == "lvcreate --poolmetadatasize 5K "+
-						"-c 256K -L 100K -T vg_xvgid/tp_id -V 10K -n brick_id", cmd)
+						"--chunksize 256K --size 100K --thin vg_xvgid/tp_id --virtualsize 10K --name brick_id", cmd)
 
 			case 2:
 				tests.Assert(t,
@@ -127,7 +127,7 @@ func TestSshExecBrickCreateWithGid(t *testing.T) {
 			case 1:
 				tests.Assert(t,
 					cmd == "lvcreate --poolmetadatasize 5K "+
-						"-c 256K -L 100K -T vg_xvgid/tp_id -V 10K -n brick_id", cmd)
+						"--chunksize 256K --size 100K --thin vg_xvgid/tp_id --virtualsize 10K --name brick_id", cmd)
 
 			case 2:
 				tests.Assert(t,
@@ -211,7 +211,7 @@ func TestSshExecBrickCreateSudo(t *testing.T) {
 			case 1:
 				tests.Assert(t,
 					cmd == "lvcreate --poolmetadatasize 5K "+
-						"-c 256K -L 100K -T vg_xvgid/tp_id -V 10K -n brick_id", cmd)
+						"--chunksize 256K --size 100K --thin vg_xvgid/tp_id --virtualsize 10K --name brick_id", cmd)
 
 			case 2:
 				tests.Assert(t,
