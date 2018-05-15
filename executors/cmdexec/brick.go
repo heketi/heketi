@@ -44,7 +44,7 @@ func (s *CmdExecutor) BrickCreate(host string,
 		fmt.Sprintf("mkdir -p %v", mountPath),
 
 		// Setup the LV
-		fmt.Sprintf("lvcreate --poolmetadatasize %vK -c 256K -L %vK -T %v/%v -V %vK -n %v",
+		fmt.Sprintf("lvcreate --poolmetadatasize %vK --chunksize 256K --size %vK --thin %v/%v --virtualsize %vK --name %v",
 			// MetadataSize
 			brick.PoolMetadataSize,
 
