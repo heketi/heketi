@@ -209,19 +209,19 @@ func TestArbiterBrickPlacer(t *testing.T) {
 		"10000000",
 		"11111111",
 		"/dev/foobar",
-		11000)
+		100*GB)
 	dsrc.QuickAdd(
 		"20000000",
 		"22222222",
 		"/dev/foobar",
-		12000)
+		100*GB)
 	dsrc.QuickAdd(
 		"30000000",
 		"33333333",
 		"/dev/foobar",
-		13000)
+		100*GB)
 	opts := &TestPlacementOpts{
-		brickSize:       800,
+		brickSize:       10 * GB,
 		brickSnapFactor: 0.3,
 		brickOwner:      "asdfasdf",
 		setSize:         3,
@@ -415,24 +415,24 @@ func TestArbiterBrickPlacerBrickThreeSetsOnArbiterDevice(t *testing.T) {
 	dsrc := NewTestDeviceSource()
 	addDev := dsrc.MultiAdd("10000000")
 	// data nodes
-	addDev("11111111", "/dev/d1", 10001)
-	addDev("21111111", "/dev/d2", 10002)
+	addDev("11111111", "/dev/d1", 100*GB)
+	addDev("21111111", "/dev/d2", 100*GB)
 	addDev = dsrc.MultiAdd("20000000")
-	addDev("31111111", "/dev/d1", 10001)
-	addDev("41111111", "/dev/d2", 10002)
+	addDev("31111111", "/dev/d1", 100*GB)
+	addDev("41111111", "/dev/d2", 100*GB)
 	addDev = dsrc.MultiAdd("30000000")
-	addDev("51111111", "/dev/d1", 10001)
-	addDev("61111111", "/dev/d2", 10002)
+	addDev("51111111", "/dev/d1", 100*GB)
+	addDev("61111111", "/dev/d2", 100*GB)
 	addDev = dsrc.MultiAdd("40000000")
-	addDev("71111111", "/dev/d1", 10001)
-	addDev("81111111", "/dev/d2", 10002)
+	addDev("71111111", "/dev/d1", 100*GB)
+	addDev("81111111", "/dev/d2", 100*GB)
 	// arbiter nodes
 	addDev = dsrc.MultiAdd("50000000")
-	addDev("a1111111", "/dev/d1", 10001)
+	addDev("a1111111", "/dev/d1", 100*GB)
 	addDev = dsrc.MultiAdd("60000000")
-	addDev("a2111111", "/dev/d1", 10001)
+	addDev("a2111111", "/dev/d1", 100*GB)
 	addDev = dsrc.MultiAdd("70000000")
-	addDev("a3111111", "/dev/d1", 10001)
+	addDev("a3111111", "/dev/d1", 100*GB)
 	// the above configuration is pretty artificial and reflects
 	// a downside to the current approach. because of the
 	// non-deterministic way the ring provides devices and
@@ -443,7 +443,7 @@ func TestArbiterBrickPlacerBrickThreeSetsOnArbiterDevice(t *testing.T) {
 	// improve this but not now and not for this test. :-\
 
 	opts := &TestPlacementOpts{
-		brickSize:       800,
+		brickSize:       10 * GB,
 		brickSnapFactor: 0.3,
 		brickOwner:      "asdfasdf",
 		setSize:         3,
