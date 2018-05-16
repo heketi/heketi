@@ -38,6 +38,8 @@ func init() {
 		"Name of device to add")
 	deviceAddCommand.Flags().StringVar(&nodeId, "node", "",
 		"Id of the node which has this device")
+	deviceAddCommand.Flags().Bool("destroy-existing-data", false,
+		"[DANGEROUS] Destroy any existing data on the device.")
 	deviceSetTagsCommand.Flags().BoolP("exact", "e", false,
 		"Set the object to this exact set of tags. Overwrites existing tags.")
 	deviceRmTagsCommand.Flags().Bool("all", false,
@@ -72,17 +74,22 @@ var deviceAddCommand = &cobra.Command{
 		if nodeId == "" {
 			return errors.New("Missing node id")
 		}
+		destroyData, err := cmd.Flags().GetBool("destroy-existing-data")
+		if err != nil {
+			return err
+		}
 
 		// Create request blob
 		req := &api.DeviceAddRequest{}
 		req.Name = device
 		req.NodeId = nodeId
+		req.DestroyData = destroyData
 
 		// Create a client
 		heketi := client.NewClient(options.Url, options.User, options.Key)
 
 		// Add node
-		err := heketi.DeviceAdd(req)
+		err = heketi.DeviceAdd(req)
 		if err != nil {
 			return err
 		} else {
