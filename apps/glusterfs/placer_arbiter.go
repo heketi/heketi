@@ -375,13 +375,25 @@ func (dscan *arbiterDeviceScanner) Scan(index int) <-chan string {
 	return dscan.dataDevs
 }
 
-func discountBrickSize(dataBrickSize, averageFileSize uint64) (uint64, error) {
+func discountBrickSize(dataBrickSize, averageFileSize uint64) (brickSize uint64,
+	err error) {
+
 	if dataBrickSize < averageFileSize {
 		return 0, fmt.Errorf(
 			"Average file size (%v) is greater than Brick size (%v)",
 			averageFileSize, dataBrickSize)
 	}
-	return (dataBrickSize / averageFileSize), nil
+
+	brickSize = dataBrickSize / averageFileSize
+
+	if brickSize < 16*MB {
+		logger.Info("Increasing calculated arbiter brickSize (%vKiB) "+
+			"to 16MiB, the minimum XFS filsystem size with 4KiB "+
+			"blocks.", brickSize)
+		brickSize = 16 * MB
+	}
+
+	return brickSize, nil
 }
 
 func deviceHasArbiterTag(d *DeviceEntry, dsrc DeviceSource, v ...string) bool {
