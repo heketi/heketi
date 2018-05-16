@@ -165,13 +165,15 @@ func (dev Device) Validate() error {
 
 type DeviceAddRequest struct {
 	Device
-	NodeId string `json:"node"`
+	NodeId      string `json:"node"`
+	DestroyData bool   `json:"destroydata,omitempty"`
 }
 
 func (devAddReq DeviceAddRequest) Validate() error {
 	return validation.ValidateStruct(&devAddReq,
 		validation.Field(&devAddReq.Device, validation.Required),
 		validation.Field(&devAddReq.NodeId, validation.Required, validation.By(ValidateUUID)),
+		validation.Field(&devAddReq.DestroyData, validation.In(true, false)),
 	)
 }
 

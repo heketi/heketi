@@ -448,6 +448,7 @@ The `devices` endpoint allows management of raw devices in the cluster.
 * **JSON Request**:
     * node: _string_, UUID of node which the devices belong to.
     * name: _string_, Device name
+    * destroydata: _bool_, (optional) destroy any data on the device
     * tags: _map of strings_, (optional) a mapping of tag-names to tag-values
     * Example:
 
