@@ -407,6 +407,8 @@ func TestArbiterBrickPlacerBrickThreeSets(t *testing.T) {
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, len(ba.BrickSets) == 3,
 		"expected len(ba.BrickSets) == 3, got:", len(ba.BrickSets))
+
+	assertNoRepeatNodesInBrickSet(t, dsrc, ba)
 }
 
 func TestArbiterBrickPlacerBrickThreeSetsOnArbiterDevice(t *testing.T) {
@@ -471,6 +473,7 @@ func TestArbiterBrickPlacerBrickThreeSetsOnArbiterDevice(t *testing.T) {
 			}
 		}
 	}
+	assertNoRepeatNodesInBrickSet(t, dsrc, ba)
 }
 
 func TestArbiterBrickPlacerSimpleReplace(t *testing.T) {
@@ -521,6 +524,9 @@ func TestArbiterBrickPlacerSimpleReplace(t *testing.T) {
 	tests.Assert(t, len(ba2.BrickSets[0].Bricks) == 3,
 		"expected len(ba2.BrickSets[0].Bricks) == 3, got:",
 		len(ba2.BrickSets[0].Bricks))
+
+	assertNoRepeatNodesInBrickSet(t, dsrc, ba)
+	assertNoRepeatNodesInBrickSet(t, dsrc, ba2)
 
 	bs1 := ba.BrickSets[0]
 	bs2 := ba2.BrickSets[0]
@@ -750,4 +756,25 @@ func TestArbiterBrickPlacerReplaceTooFewArbiter(t *testing.T) {
 	tests.Assert(t, len(ba2.BrickSets[0].Bricks) == 3,
 		"expected len(ba2.BrickSets[0].Bricks) == 3, got:",
 		len(ba2.BrickSets[0].Bricks))
+}
+
+func assertNoRepeatNodesInBrickSet(t *testing.T,
+	dsrc DeviceSource, ba *BrickAllocation) {
+
+	// this check is only for arbiter tests so we can assume that there
+	// will be exactly 3 bricks in a brickset on successful placement
+	for _, bs := range ba.BrickSets {
+		d0, err := dsrc.Device(bs.Bricks[0].Info.DeviceId)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		d1, err := dsrc.Device(bs.Bricks[1].Info.DeviceId)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		d2, err := dsrc.Device(bs.Bricks[2].Info.DeviceId)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, d0.NodeId != d1.NodeId,
+			"bricks 0 1 placed on same node:", d0.NodeId)
+		tests.Assert(t, d1.NodeId != d2.NodeId,
+			"bricks 1 2 placed on same node:", d1.NodeId)
+		tests.Assert(t, d2.NodeId != d0.NodeId,
+			"bricks 2 0 placed on same node:", d2.NodeId)
+	}
 }
