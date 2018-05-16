@@ -92,7 +92,7 @@ func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 
 		// Setup device on node
 		info, err := a.executor.DeviceSetup(node.ManageHostName(),
-			device.Info.Name, device.Info.Id)
+			device.Info.Name, device.Info.Id, msg.DestroyData)
 		if err != nil {
 			return "", err
 		}

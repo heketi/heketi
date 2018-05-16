@@ -31,13 +31,17 @@ const (
 // https://access.redhat.com/documentation/en-US/Red_Hat_Storage/3.1/html/Administration_Guide/Brick_Configuration.html
 //
 
-func (s *CmdExecutor) DeviceSetup(host, device, vgid string) (d *executors.DeviceInfo, e error) {
+func (s *CmdExecutor) DeviceSetup(host, device, vgid string, destroy bool) (d *executors.DeviceInfo, e error) {
 
 	// Setup commands
-	commands := []string{
-		fmt.Sprintf("pvcreate --metadatasize=128M --dataalignment=256K '%v'", device),
-		fmt.Sprintf("vgcreate %v %v", utils.VgIdToName(vgid), device),
+	commands := []string{}
+
+	if destroy {
+		logger.Info("Data on device %v (host %v) will be destroyed", device, host)
+		commands = append(commands, fmt.Sprintf("wipefs --all %v", device))
 	}
+	commands = append(commands, fmt.Sprintf("pvcreate --metadatasize=128M --dataalignment=256K '%v'", device))
+	commands = append(commands, fmt.Sprintf("vgcreate %v %v", utils.VgIdToName(vgid), device))
 
 	// Execute command
 	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)

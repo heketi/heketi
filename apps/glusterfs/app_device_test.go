@@ -445,7 +445,7 @@ func TestDeviceAddCleansUp(t *testing.T) {
 	// Mock the device setup to return an error, which will
 	// cause the cleanup.
 	deviceSetupFn := app.xo.MockDeviceSetup
-	app.xo.MockDeviceSetup = func(host, device, vgid string) (*executors.DeviceInfo, error) {
+	app.xo.MockDeviceSetup = func(host, device, vgid string, destroy bool) (*executors.DeviceInfo, error) {
 		return nil, ErrDbAccess
 	}
 
