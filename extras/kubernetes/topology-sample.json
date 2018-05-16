@@ -15,9 +15,18 @@
             "zone": 1
           },
           "devices": [
-            "/dev/vdb",
-            "/dev/vdc",
-            "/dev/vdd"
+            {
+              "name": "/dev/vdb",
+              "destroydata": false
+            },
+            {
+              "name": "/dev/vdc",
+              "destroydata": false
+            },
+            {
+              "name": "/dev/vdd",
+              "destroydata": false
+            }
           ]
         },
         {
@@ -33,9 +42,18 @@
             "zone": 1
           },
           "devices": [
-            "/dev/vdb",
-            "/dev/vdc",
-            "/dev/vdd"
+            {
+              "name": "/dev/vdb",
+              "destroydata": false
+            },
+            {
+              "name": "/dev/vdc",
+              "destroydata": false
+            },
+            {
+              "name": "/dev/vdd",
+              "destroydata": false
+            }
           ]
         },
         {
@@ -51,9 +69,18 @@
             "zone": 1
           },
           "devices": [
-            "/dev/vdb",
-            "/dev/vdc",
-            "/dev/vdd"
+            {
+              "name": "/dev/vdb",
+              "destroydata": false
+            },
+            {
+              "name": "/dev/vdc",
+              "destroydata": false
+            },
+            {
+              "name": "/dev/vdd",
+              "destroydata": false
+            }
           ]
         }
       ]
