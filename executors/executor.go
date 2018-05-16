@@ -15,7 +15,7 @@ type Executor interface {
 	GlusterdCheck(host string) error
 	PeerProbe(exec_host, newnode string) error
 	PeerDetach(exec_host, detachnode string) error
-	DeviceSetup(host, device, vgid string) (*DeviceInfo, error)
+	DeviceSetup(host, device, vgid string, destroy bool) (*DeviceInfo, error)
 	GetDeviceInfo(host, device, vgid string) (*DeviceInfo, error)
 	DeviceTeardown(host, device, vgid string) error
 	BrickCreate(host string, brick *BrickRequest) (*BrickInfo, error)
