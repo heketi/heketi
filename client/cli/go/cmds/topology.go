@@ -30,8 +30,13 @@ const (
 var jsonConfigFile string
 
 // Config file
-type ConfigFileDevice struct {
+type ConfigFileDeviceOptions struct {
 	api.Device
+	DestroyData bool `json:"destroydata,omitempty"`
+}
+
+type ConfigFileDevice struct {
+	ConfigFileDeviceOptions
 }
 type ConfigFileNode struct {
 	Devices []*ConfigFileDevice `json:"devices"`
@@ -59,13 +64,18 @@ func (device *ConfigFileDevice) UnmarshalJSON(b []byte) error {
 		device.Name = s
 		return nil
 	}
-	var d api.Device
+
+	// ConfigFileDevice embeds the ConfigFileDeviceOptions struct which has
+	// additional members compared to the standard api.Device. Structuring
+	// it this way, prevents a recursive call to UnmarshalJSON().
+	var d ConfigFileDeviceOptions
 	err = json.Unmarshal(b, &d)
 	if err != nil {
 		return err
 	}
 	device.Name = d.Name
 	device.Tags = d.Tags
+	device.DestroyData = d.DestroyData
 	return nil
 }
 
@@ -244,6 +254,7 @@ var topologyLoadCommand = &cobra.Command{
 						req.Name = device.Name
 						req.NodeId = nodeInfo.Id
 						req.Tags = device.Tags
+						req.DestroyData = device.DestroyData
 						err := heketi.DeviceAdd(req)
 						if err != nil {
 							fmt.Fprintf(stdout, "Unable to add device: %v\n", err)
