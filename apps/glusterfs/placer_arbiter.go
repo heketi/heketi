@@ -254,15 +254,19 @@ func (bp *ArbiterBrickPlacer) tryPlaceBrickOnDevice(
 	index int,
 	device *DeviceEntry) error {
 
-	logger.Debug("Trying to place brick on device %v", device.Info.Id)
+	logger.Debug("Trying to place brick on device %v (node %v)",
+		device.Info.Id, device.NodeId)
 
-	for i, b := range bs.Contents() {
+	for i, b := range bs.Bricks {
 		// do not check the brick in the brick set for the current
 		// index. If this is a new brick set we won't have the index
 		// populated. If this is a replace, we will have the old brick
 		// at the index and we are OK with re-using its node (as the
 		// standard placer does)
-		if i == index {
+		// If b is nil, it means that this is a "sparse" brick set and
+		// we have not tried allocating a brick for that index yet,
+		// so there's nothing to check.
+		if i == index || b == nil {
 			continue
 		}
 		if b.Info.NodeId == device.NodeId {
