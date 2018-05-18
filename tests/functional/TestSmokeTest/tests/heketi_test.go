@@ -555,7 +555,7 @@ func TestRemoveDeviceVsVolumeCreate(t *testing.T) {
 func TestHeketiVolumeExpandWithGid(t *testing.T) {
 	// Setup the VM storage topology
 	teardownCluster(t)
-	setupCluster(t, 4, 8)
+	setupCluster(t, 3, 8)
 	defer teardownCluster(t)
 
 	// Create a volume
@@ -592,9 +592,6 @@ func TestHeketiVolumeExpandWithGid(t *testing.T) {
 	tests.Assert(t, err == nil, "Brick found with different Gid")
 	_, err = vagrantexec.ConnectAndExec(storage2ssh, cmd, 10, true)
 	tests.Assert(t, err == nil, "Brick found with different Gid")
-	_, err = vagrantexec.ConnectAndExec(storage3ssh, cmd, 10, true)
-	tests.Assert(t, err == nil, "Brick found with different Gid")
-
 }
 
 func TestHeketiVolumeCreateWithOptions(t *testing.T) {
