@@ -44,7 +44,10 @@ func (s *CmdExecutor) BrickCreate(host string,
 		fmt.Sprintf("mkdir -p %v", mountPath),
 
 		// Setup the LV
-		fmt.Sprintf("lvcreate --poolmetadatasize %vK --chunksize 256K --size %vK --thin %v/%v --virtualsize %vK --name %v",
+		fmt.Sprintf("lvcreate --autobackup=%v --poolmetadatasize %vK --chunksize 256K --size %vK --thin %v/%v --virtualsize %vK --name %v",
+			// backup LVM metadata
+			utils.BoolToYN(s.BackupLVM),
+
 			// MetadataSize
 			brick.PoolMetadataSize,
 
@@ -147,7 +150,7 @@ func (s *CmdExecutor) BrickDestroy(host string,
 
 	// Remove the LV (by device name)
 	commands = []string{
-		fmt.Sprintf("lvremove -f %v", dev),
+		fmt.Sprintf("lvremove --autobackup=%v -f %v", utils.BoolToYN(s.BackupLVM), dev),
 	}
 	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
@@ -175,7 +178,7 @@ func (s *CmdExecutor) BrickDestroy(host string,
 	// If there is no brick left in the thin-pool, it can be removed
 	if thin_count == 0 {
 		commands = []string{
-			fmt.Sprintf("lvremove -f %v", tp),
+			fmt.Sprintf("lvremove --autobackup=%v -f %v", utils.BoolToYN(s.BackupLVM), tp),
 		}
 		_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 		if err != nil {

@@ -41,7 +41,7 @@ func (s *CmdExecutor) DeviceSetup(host, device, vgid string, destroy bool) (d *e
 		commands = append(commands, fmt.Sprintf("wipefs --all %v", device))
 	}
 	commands = append(commands, fmt.Sprintf("pvcreate --metadatasize=128M --dataalignment=256K '%v'", device))
-	commands = append(commands, fmt.Sprintf("vgcreate %v %v", utils.VgIdToName(vgid), device))
+	commands = append(commands, fmt.Sprintf("vgcreate --autobackup=%v %v %v", utils.BoolToYN(s.BackupLVM), utils.VgIdToName(vgid), device))
 
 	// Execute command
 	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
