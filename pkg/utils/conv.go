@@ -7,12 +7,12 @@
 // cases as published by the Free Software Foundation.
 //
 
-package cmdexec
+package utils
 
-type CmdConfig struct {
-	Fstab                string `json:"fstab"`
-	Sudo                 bool   `json:"sudo"`
-	SnapShotLimit        int    `json:"snapshot_limit"`
-	RebalanceOnExpansion bool   `json:"rebalance_on_expansion"`
-	BackupLVM            bool   `json:"backup_lvm_metadata"`
+// BoolToYN returns a "y" (yes) or "n" (no) for the passed bool.
+func BoolToYN(b bool) string {
+	if b {
+		return "y"
+	}
+	return "n"
 }

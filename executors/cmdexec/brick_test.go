@@ -18,13 +18,7 @@ import (
 	"github.com/heketi/tests"
 )
 
-func TestSshExecBrickCreate(t *testing.T) {
-	f := NewCommandFaker()
-	s, err := NewFakeExecutor(f)
-	tests.Assert(t, err == nil)
-	tests.Assert(t, s != nil)
-	s.portStr = "100"
-
+func doTestSshExecBrickCreate(t *testing.T, f *CommandFaker, s *FakeExecutor) {
 	// Create a Brick
 	b := &executors.BrickRequest{
 		VgId:             "xvgid",
@@ -53,7 +47,7 @@ func TestSshExecBrickCreate(t *testing.T) {
 
 			case 1:
 				tests.Assert(t,
-					cmd == "lvcreate --poolmetadatasize 5K "+
+					cmd == "lvcreate --autobackup="+utils.BoolToYN(s.BackupLVM)+" --poolmetadatasize 5K "+
 						"--chunksize 256K --size 100K --thin vg_xvgid/tp_id --virtualsize 10K --name brick_id", cmd)
 
 			case 2:
@@ -85,9 +79,19 @@ func TestSshExecBrickCreate(t *testing.T) {
 	}
 
 	// Create Brick
-	_, err = s.BrickCreate("myhost", b)
+	_, err := s.BrickCreate("myhost", b)
 	tests.Assert(t, err == nil, err)
 
+}
+
+func TestSshExecBrickCreate(t *testing.T) {
+	f := NewCommandFaker()
+	s, err := NewFakeExecutor(f)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, s != nil)
+	s.portStr = "100"
+
+	doTestSshExecBrickCreate(t, f, s)
 }
 
 func TestSshExecBrickCreateWithGid(t *testing.T) {
@@ -126,7 +130,7 @@ func TestSshExecBrickCreateWithGid(t *testing.T) {
 
 			case 1:
 				tests.Assert(t,
-					cmd == "lvcreate --poolmetadatasize 5K "+
+					cmd == "lvcreate --autobackup="+utils.BoolToYN(s.BackupLVM)+" --poolmetadatasize 5K "+
 						"--chunksize 256K --size 100K --thin vg_xvgid/tp_id --virtualsize 10K --name brick_id", cmd)
 
 			case 2:
@@ -210,7 +214,7 @@ func TestSshExecBrickCreateSudo(t *testing.T) {
 
 			case 1:
 				tests.Assert(t,
-					cmd == "lvcreate --poolmetadatasize 5K "+
+					cmd == "lvcreate --autobackup="+utils.BoolToYN(s.BackupLVM)+" --poolmetadatasize 5K "+
 						"--chunksize 256K --size 100K --thin vg_xvgid/tp_id --virtualsize 10K --name brick_id", cmd)
 
 			case 2:
@@ -245,6 +249,17 @@ func TestSshExecBrickCreateSudo(t *testing.T) {
 	_, err = s.BrickCreate("myhost", b)
 	tests.Assert(t, err == nil, err)
 
+}
+
+func TestSshExecBrickCreateBackupLVM(t *testing.T) {
+	f := NewCommandFaker()
+	s, err := NewFakeExecutor(f)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, s != nil)
+	s.portStr = "100"
+	s.BackupLVM = true
+
+	doTestSshExecBrickCreate(t, f, s)
 }
 
 func TestSshExecBrickDestroy(t *testing.T) {
@@ -304,8 +319,8 @@ func TestSshExecBrickDestroy(t *testing.T) {
 
 			case strings.Contains(cmd, "lvremove"):
 				tests.Assert(t,
-					cmd == "lvremove -f vg_xvgid/tp_id" ||
-						cmd == "lvremove -f /dev/vg_xvgid/brick_id", cmd)
+					cmd == "lvremove --autobackup="+utils.BoolToYN(s.BackupLVM)+" -f vg_xvgid/tp_id" ||
+						cmd == "lvremove --autobackup="+utils.BoolToYN(s.BackupLVM)+" -f /dev/vg_xvgid/brick_id", cmd)
 
 			case strings.Contains(cmd, "rmdir"):
 				tests.Assert(t,

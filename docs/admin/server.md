@@ -25,6 +25,7 @@ The config file has information required to run the Heketi server.  The config f
         * user: _string_, SSH user
         * port: _string_, SSH port number
         * fstab: _string_, Fstab file where to store mount points
+        * backup_lvm_metadata: _bool_, Create archives of the LVM metadata when running vgcreate/lvcreate
         * sudo: _bool_, set to true when SSHing as a non root user
     * kubexec: _map_, Kubernetes configuration
         * host: _string_, Kubernetes API host.  Example `https://myhost:8443`.  Can also be use using environment variable HEKETI_KUBE_APIHOST
@@ -34,6 +35,7 @@ The config file has information required to run the Heketi server.  The config f
         * password: _string_, Password for _user_. Can also be use using environment variable HEKETI_KUBE_PASSWORD.
         * namespace: _string_, Kubernetes namespace or OpenShift project where GlusterFS containers/Pods are running. Can also be use using environment variable HEKETI_KUBE_NAMESPACE.
         * fstab: _string_, Fstab file where to store mount points
+        * backup_lvm_metadata: _bool_, Create archives of the LVM metadata when running vgcreate/lvcreate
 
 ## Advanced Options
 The following configuration options should only be set on advanced configurations under `glusterfs` section:
