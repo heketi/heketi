@@ -758,6 +758,74 @@ func TestArbiterBrickPlacerReplaceTooFewArbiter(t *testing.T) {
 		len(ba2.BrickSets[0].Bricks))
 }
 
+func TestArbiterBrickPlacerArbiterBrickPreference(t *testing.T) {
+	dsrc := NewTestDeviceSource()
+	dsrc.QuickAdd(
+		"a1000000",
+		"a1111111",
+		"/dev/foobar",
+		21000)
+	dsrc.QuickAdd(
+		"a2000000",
+		"a2222222",
+		"/dev/foobar",
+		22000)
+	dsrc.QuickAdd(
+		"a3000000",
+		"a3333333",
+		"/dev/foobar",
+		23000)
+	dsrc.QuickAdd(
+		"40000000",
+		"44444444",
+		"/dev/foobar",
+		24000)
+	dsrc.QuickAdd(
+		"50000000",
+		"55555555",
+		"/dev/foobar",
+		25000)
+	dsrc.QuickAdd(
+		"60000000",
+		"66666666",
+		"/dev/foobar",
+		26000)
+
+	opts := &TestPlacementOpts{
+		brickSize:       800,
+		brickSnapFactor: 0.3,
+		brickOwner:      "asdfasdf",
+		setSize:         3,
+		setCount:        1,
+		averageFileSize: 64 * KB,
+	}
+
+	abplacer := NewArbiterBrickPlacer()
+	abplacer.canHostArbiter = func(d *DeviceEntry, ds DeviceSource) bool {
+		// any device *can* host arbiter
+		return true
+	}
+	abplacer.canHostData = func(d *DeviceEntry, ds DeviceSource) bool {
+		// data bricks may not land on "a" devices
+		return d.Info.Id[0] != 'a'
+	}
+
+	for i := 0; i < 3; i++ {
+		ba, err := abplacer.PlaceAll(dsrc, opts, nil)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(ba.BrickSets) == 1,
+			"expected len(ba.BrickSets) == 1, got:", len(ba.BrickSets))
+		tests.Assert(t, len(ba.BrickSets[0].Bricks) == 3,
+			"expected len(ba.BrickSets[0].Bricks) == 3, got:",
+			len(ba.BrickSets[0].Bricks))
+
+		bs := ba.BrickSets[0]
+		tests.Assert(t, bs.Bricks[2].Info.DeviceId[0] == 'a',
+			"expected bs.Bricks[2].Info.DeviceId[0] == 'a', got:",
+			bs.Bricks[2].Info.DeviceId)
+	}
+}
+
 func assertNoRepeatNodesInBrickSet(t *testing.T,
 	dsrc DeviceSource, ba *BrickAllocation) {
 
