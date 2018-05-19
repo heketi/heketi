@@ -116,6 +116,8 @@ func NewKubeExecutor(config *KubeConfig) (*KubeExecutor, error) {
 		k.Fstab = config.Fstab
 	}
 
+	k.BackupLVM = config.BackupLVM
+
 	// Get namespace
 	var err error
 	if k.config.Namespace == "" {

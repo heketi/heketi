@@ -31,6 +31,7 @@ type CmdExecutor struct {
 
 	RemoteExecutor RemoteCommandTransport
 	Fstab          string
+	BackupLVM      bool
 }
 
 func (s *CmdExecutor) AccessConnection(host string) {
