@@ -76,7 +76,8 @@ func UpdateClusterInfoComplete(tx *bolt.Tx, ci *api.ClusterInfoResponse) error {
 // an error if the db cannot be read.
 func MapPendingVolumes(tx *bolt.Tx) (map[string]string, error) {
 	return mapPendingItems(tx, func(op *PendingOperationEntry, a PendingOperationAction) bool {
-		return (op.Type == OperationCreateVolume && a.Change == OpAddVolume)
+		return ((op.Type == OperationCreateVolume && a.Change == OpAddVolume) ||
+			(op.Type == OperationCreateBlockVolume && a.Change == OpAddVolume))
 	})
 }
 
