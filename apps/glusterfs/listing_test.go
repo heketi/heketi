@@ -328,3 +328,56 @@ func TestUpdateClusterInfoCompleteFakedPending(t *testing.T) {
 		return nil
 	})
 }
+
+func TestListCompleteVolumesFakedPendingBlockHosting(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		4,    // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	req := &api.BlockVolumeCreateRequest{}
+	req.Size = 1024
+
+	vol := NewBlockVolumeEntryFromRequest(req)
+	err = vol.Create(app.db, app.executor)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	app.db.View(func(tx *bolt.Tx) error {
+		vols, err := ListCompleteVolumes(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(vols) == 1, "expected len(vols) == 1, got:", len(vols))
+		return nil
+	})
+
+	// set up a fake pending op
+	app.db.Update(func(tx *bolt.Tx) error {
+		vols, err := VolumeList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		po := NewPendingOperationEntry(NEW_ID)
+		po.Type = OperationCreateBlockVolume
+		po.Actions = append(po.Actions, PendingOperationAction{
+			Change: OpAddVolume,
+			Id:     vols[0],
+		})
+		err = po.Save(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		return nil
+	})
+
+	app.db.View(func(tx *bolt.Tx) error {
+		vols, err := ListCompleteVolumes(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(vols) == 0, "expected len(vols) == 0, got:", len(vols))
+		return nil
+	})
+}
