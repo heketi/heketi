@@ -10,11 +10,14 @@
 """Test cases to check if TLS has been enabled
 """
 
+import contextlib
 import os
-import time
-import unittest
+import socket
 import subprocess
 import sys
+import time
+import unittest
+
 import requests
 
 
@@ -41,12 +44,24 @@ class HeketiServer(object):
         if self._proc.poll() is not None:
             self.dump_log()
             raise SetupError('Heketi server failed to start')
+        if not self.wait_for_heketi():
+            self.stop()
+            raise SetupError('Timed out waiting for Heketi to bind to port')
         return self
 
     def dump_log(self):
         with open(self.log_path) as fh:
             for line in fh.readlines():
                 sys.stderr.write("HEKETI-LOG: {}".format(line))
+
+    def wait_for_heketi(self):
+        for _ in range(0, 30):
+            time.sleep(1)
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            with contextlib.closing(s):
+                if s.connect_ex(('127.0.0.1', 8080)) == 0:
+                    return True
+        return False
 
     def stop(self):
         self._proc.terminate()
