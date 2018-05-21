@@ -17,6 +17,17 @@ _sudo() {
     fi
 }
 
+wait_for_heketi() {
+    for i in $(seq 0 30); do
+        sleep 1
+        ss -tlnp "( sport = :8080 )" | grep -q heketi
+        if [[ $? -eq 0 ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
 HEKETI_PID=
 start_heketi() {
     HEKETI_PID=
@@ -29,7 +40,12 @@ start_heketi() {
     rm -f heketi.db > /dev/null 2>&1
     $HEKETI_SERVER --config=config/heketi.json &
     HEKETI_PID=$!
-    sleep 2
+
+    wait_for_heketi
+    if [[ $? -ne 0 ]] ; then
+        echo "ERROR: heketi failed to listen on port 8080" >&2
+        return 1
+    fi
 }
 
 stop_heketi() {
