@@ -148,6 +148,13 @@ func (s *CmdExecutor) BrickDestroy(host string,
 		logger.Err(err)
 	}
 
+	// remove brick from fstab before we start deleting LVM items.
+	// if heketi or the node was terminated while these steps are being
+	// performed we'll orphan storage but the node should still be
+	// bootable. If we remove LVM stuff first but leave an entry in
+	// fstab referencing it, we could end up with a non-booting system.
+	s.removeBrickFromFstab(host, brick)
+
 	// Remove the LV (by device name)
 	commands = []string{
 		fmt.Sprintf("lvremove --autobackup=%v -f %v", utils.BoolToYN(s.BackupLVM), dev),
@@ -188,20 +195,6 @@ func (s *CmdExecutor) BrickDestroy(host string,
 		}
 	}
 
-	// Remove from fstab
-	// If the brick.Path contains "(/var)?/run/gluster/", there is no entry in fstab as GlusterD manages it.
-	if !(strings.HasPrefix(brick.Path, "/run/gluster/") || strings.HasPrefix(brick.Path, "/var/run/gluster/")) {
-		commands = []string{
-			fmt.Sprintf("sed -i.save \"/%v/d\" %v",
-				utils.BrickIdToName(brick.Name),
-				s.Fstab),
-		}
-		_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
-		if err != nil {
-			logger.Err(err)
-		}
-	}
-
 	// Now cleanup the mount point
 	commands = []string{
 		fmt.Sprintf("rmdir %v", brick.Path),
@@ -212,4 +205,23 @@ func (s *CmdExecutor) BrickDestroy(host string,
 	}
 
 	return spaceReclaimed, nil
+}
+
+func (s *CmdExecutor) removeBrickFromFstab(
+	host string, brick *executors.BrickRequest) error {
+
+	// If the brick.Path contains "(/var)?/run/gluster/", there is no entry in fstab as GlusterD manages it.
+	if strings.HasPrefix(brick.Path, "/run/gluster/") || strings.HasPrefix(brick.Path, "/var/run/gluster/") {
+		return nil
+	}
+	commands := []string{
+		fmt.Sprintf("sed -i.save \"/%v/d\" %v",
+			utils.BrickIdToName(brick.Name),
+			s.Fstab),
+	}
+	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	if err != nil {
+		logger.Err(err)
+	}
+	return err
 }
