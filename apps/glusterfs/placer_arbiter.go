@@ -306,11 +306,28 @@ func (bp *ArbiterBrickPlacer) tryPlaceBrickOnDevice(
 	return nil
 }
 
+type deviceFeed struct {
+	Devices <-chan string
+	Done    chan struct{}
+}
+
 type arbiterDeviceScanner struct {
-	arbiterDevs <-chan string
-	arbiterDone chan struct{}
-	dataDevs    <-chan string
-	dataDone    chan struct{}
+	arbiter deviceFeed
+	data    deviceFeed
+}
+
+func deviceFeedFromRings(id string, ring ...*SimpleAllocatorRing) deviceFeed {
+	devices := make(chan string)
+	done := make(chan struct{})
+	d := SimpleDevices{}
+	for _, r := range ring {
+		d = append(d, r.GetDeviceList(id)...)
+	}
+	generateDevices(d, devices, done)
+	return deviceFeed{
+		Devices: devices,
+		Done:    done,
+	}
 }
 
 // Scanner returns a pointer to an arbiterDeviceScanner helper object.
@@ -322,6 +339,7 @@ func (bp *ArbiterBrickPlacer) Scanner(dsrc DeviceSource) (
 
 	dataRing := NewSimpleAllocatorRing()
 	arbiterRing := NewSimpleAllocatorRing()
+	anyRing := NewSimpleAllocatorRing()
 	dnl, err := dsrc.Devices()
 	if err != nil {
 		return nil, err
@@ -333,33 +351,33 @@ func (bp *ArbiterBrickPlacer) Scanner(dsrc DeviceSource) (
 			deviceId: dan.Device.Info.Id,
 		}
 		// it is perfectly fine for a device to host data & arbiter
-		// bricks if it is so configured. Thus both the following
-		// blocks may be true.
-		if bp.canHostArbiter(dan.Device, dsrc) {
+		// bricks if it is so configured.
+		arbiterOk := bp.canHostArbiter(dan.Device, dsrc)
+		dataOk := bp.canHostData(dan.Device, dsrc)
+		switch {
+		case arbiterOk && dataOk:
+			anyRing.Add(sd)
+		case arbiterOk:
 			arbiterRing.Add(sd)
-		}
-		if bp.canHostData(dan.Device, dsrc) {
+		case dataOk:
 			dataRing.Add(sd)
+		default:
+			logger.Warning("device %v does not support arbiter or data bricks",
+				sd.deviceId)
 		}
 	}
 
 	id := utils.GenUUID()
-	dataDevs, dataDone := make(chan string), make(chan struct{})
-	generateDevices(dataRing.GetDeviceList(id), dataDevs, dataDone)
-	arbiterDevs, arbiterDone := make(chan string), make(chan struct{})
-	generateDevices(arbiterRing.GetDeviceList(id), arbiterDevs, arbiterDone)
 	return &arbiterDeviceScanner{
-		arbiterDevs: arbiterDevs,
-		arbiterDone: arbiterDone,
-		dataDevs:    dataDevs,
-		dataDone:    dataDone,
+		arbiter: deviceFeedFromRings(id, arbiterRing, anyRing),
+		data:    deviceFeedFromRings(id, dataRing, anyRing),
 	}, nil
 }
 
 // Close releases the resources held by the scanner.
 func (dscan *arbiterDeviceScanner) Close() {
-	close(dscan.arbiterDone)
-	close(dscan.dataDone)
+	close(dscan.arbiter.Done)
+	close(dscan.data.Done)
 }
 
 // Scan returns a channel that may be ranged over for eligible devices
@@ -370,9 +388,9 @@ func (dscan *arbiterDeviceScanner) Scan(index int) <-chan string {
 	// In the future we may want to be smarter here, but this
 	// works for now.
 	if index == arbiter_index {
-		return dscan.arbiterDevs
+		return dscan.arbiter.Devices
 	}
-	return dscan.dataDevs
+	return dscan.data.Devices
 }
 
 func discountBrickSize(dataBrickSize, averageFileSize uint64) (brickSize uint64,
