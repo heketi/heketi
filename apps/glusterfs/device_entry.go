@@ -574,6 +574,9 @@ func (d *DeviceEntry) DeleteBricksWithEmptyPath(tx *bolt.Tx) error {
 	godbc.Require(tx != nil)
 	var bricksToDelete []*BrickEntry
 
+	logger.Debug("Deleting bricks with empty path on device [%v].",
+		d.Info.Id)
+
 	for _, id := range d.Bricks {
 		brick, err := NewBrickEntryFromId(tx, id)
 		if err == ErrNotFound {
@@ -582,6 +585,8 @@ func (d *DeviceEntry) DeleteBricksWithEmptyPath(tx *bolt.Tx) error {
 			continue
 		}
 		if err != nil {
+			logger.LogError("Unable to fetch brick [%v] from db: %v",
+				id, err)
 			return err
 		}
 		if brick.Info.Path == "" {
@@ -589,6 +594,8 @@ func (d *DeviceEntry) DeleteBricksWithEmptyPath(tx *bolt.Tx) error {
 		}
 	}
 	for _, brick := range bricksToDelete {
+		logger.Debug("Deleting brick [%v] which has empty path.",
+			brick.Info.Id)
 		err := brick.Delete(tx)
 		if err != nil {
 			return logger.LogError("Unable to remove brick %v: %v", brick.Info.Id, err)

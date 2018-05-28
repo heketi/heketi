@@ -216,6 +216,9 @@ func addBlockFileFlagsInClusterEntry(tx *bolt.Tx) error {
 
 func (c *ClusterEntry) DeleteBricksWithEmptyPath(tx *bolt.Tx) error {
 
+	logger.Debug("Deleting bricks with empty path in cluster [%v].",
+		c.Info.Id)
+
 	for _, nodeid := range c.Info.Nodes {
 		node, err := NewNodeEntryFromId(tx, nodeid)
 		if err == ErrNotFound {

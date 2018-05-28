@@ -460,6 +460,9 @@ func NodeList(tx *bolt.Tx) ([]string, error) {
 
 func (n *NodeEntry) DeleteBricksWithEmptyPath(tx *bolt.Tx) error {
 
+	logger.Debug("Deleting bricks with empty path on node [%v].",
+		n.Info.Id)
+
 	for _, deviceid := range n.Devices {
 		device, err := NewDeviceEntryFromId(tx, deviceid)
 		if err == ErrNotFound {
