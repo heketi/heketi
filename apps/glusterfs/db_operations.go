@@ -405,7 +405,6 @@ func DeleteBricksWithEmptyPath(db *bolt.DB, all bool, clusterIDs []string, nodeI
 				if err != nil {
 					return err
 				}
-				logger.Debug("deleting bricks with empty path in cluster %v", clusterEntry.Info.Id)
 				err = clusterEntry.DeleteBricksWithEmptyPath(tx)
 				if err != nil {
 					return err
