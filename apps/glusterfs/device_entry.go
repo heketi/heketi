@@ -573,6 +573,7 @@ func markDeviceFailed(db wdb.DB, id string, force bool) error {
 func (d *DeviceEntry) DeleteBricksWithEmptyPath(tx *bolt.Tx) error {
 	godbc.Require(tx != nil)
 	var bricksToDelete []*BrickEntry
+	var bricksToRemoveFromDevice []string
 
 	logger.Debug("Deleting bricks with empty path on device [%v].",
 		d.Info.Id)
@@ -580,8 +581,8 @@ func (d *DeviceEntry) DeleteBricksWithEmptyPath(tx *bolt.Tx) error {
 	for _, id := range d.Bricks {
 		brick, err := NewBrickEntryFromId(tx, id)
 		if err == ErrNotFound {
-			logger.Warning("Ignoring nonexistent brick [%v] on "+
-				"disk [%v].", id, d.Info.Id)
+			bricksToRemoveFromDevice =
+				append(bricksToRemoveFromDevice, id)
 			continue
 		}
 		if err != nil {
@@ -593,10 +594,22 @@ func (d *DeviceEntry) DeleteBricksWithEmptyPath(tx *bolt.Tx) error {
 			bricksToDelete = append(bricksToDelete, brick)
 		}
 	}
+
+	for _, id := range bricksToRemoveFromDevice {
+		logger.Debug("Removing unreferenced brick [%v] from device [%v].",
+			id, d.Info.Id)
+		d.BrickDelete(id)
+	}
+	err := d.Save(tx)
+	if err != nil {
+		logger.LogError("Unable to save device %v: %v", d.Info.Id, err)
+		return err
+	}
+
 	for _, brick := range bricksToDelete {
 		logger.Debug("Deleting brick [%v] which has empty path.",
 			brick.Info.Id)
-		err := brick.Delete(tx)
+		err = brick.Delete(tx)
 		if err != nil {
 			return logger.LogError("Unable to remove brick %v: %v", brick.Info.Id, err)
 		}
