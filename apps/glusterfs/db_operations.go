@@ -375,6 +375,7 @@ func DbCreate(jsonfile string, dbfile string) error {
 
 	return nil
 }
+
 func DeleteBricksWithEmptyPath(db *bolt.DB, all bool, clusterIDs []string, nodeIDs []string, deviceIDs []string) error {
 
 	for _, id := range clusterIDs {
