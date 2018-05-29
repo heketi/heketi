@@ -313,6 +313,7 @@ func (v *VolumeEntry) tryAllocateBricks(
 	db wdb.DB,
 	possibleClusters []string) (brick_entries []*BrickEntry, err error) {
 
+	cerr := NewMultiClusterError("Unable to create volume on any cluster:")
 	for _, cluster := range possibleClusters {
 		// Check this cluster for space
 		brick_entries, err = v.allocBricksInCluster(db, cluster, v.Info.Size)
@@ -326,12 +327,24 @@ func (v *VolumeEntry) tryAllocateBricks(
 			err == ErrMinimumBrickSize {
 			logger.Debug("Cluster %v can not accommodate volume "+
 				"(%v), trying next cluster", cluster, err)
-			continue
+			// Map these errors to NoSpace here as that is what heketi
+			// traditionally did. Its not particularly helpful but it
+			// is more backwards compatible.
+			cerr.Add(cluster, ErrNoSpace)
+		} else if err == ErrEmptyCluster ||
+			err == ErrNoStorage {
+			logger.Debug("Issue on cluster %v: %v", cluster, err)
+			cerr.Add(cluster, err)
 		} else {
 			// A genuine error occurred - bail out
 			logger.LogError("Error calling v.allocBricksInCluster: %v", err)
 			return
 		}
+	}
+	// if our last attempt failed and we collected at least one error
+	// return the short form all the errors we collected
+	if err != nil && cerr.Len() > 0 {
+		err = cerr.Shorten()
 	}
 	return
 }
@@ -450,7 +463,10 @@ func (v *VolumeEntry) saveCreateVolume(db wdb.DB,
 		txdb := wdb.WrapTx(tx)
 		// For each cluster look for storage space for this volume
 		brick_entries, err = v.tryAllocateBricks(txdb, possibleClusters)
-		if err != nil || brick_entries == nil {
+		if err != nil {
+			return err
+		}
+		if brick_entries == nil {
 			// Map all 'valid' errors to NoSpace here:
 			// Only the last such error could get propagated down,
 			// so it does not make sense to hand the granularity on.

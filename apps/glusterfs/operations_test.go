@@ -321,7 +321,8 @@ func TestVolumeCreatePendingNoSpace(t *testing.T) {
 
 	e := vc.Build()
 	// verify that we failed to allocate due to lack of space
-	tests.Assert(t, e == ErrNoSpace, "expected e == ErrNoSpace, got", e)
+	tests.Assert(t, strings.Contains(e.Error(), ErrNoSpace.Error()),
+		"expected strings.Contains(e.Error(), ErrNoSpace.Error()) got", e)
 
 	// verify no volumes, bricks or pending ops in db
 	app.db.View(func(tx *bolt.Tx) error {
