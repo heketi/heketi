@@ -311,6 +311,10 @@ func (cds *ClusterDeviceSource) Devices() ([]DeviceAndNode, error) {
 		return nil, err
 	}
 
+	if len(cluster.Info.Nodes) == 0 {
+		return nil, ErrEmptyCluster
+	}
+
 	nodeUp := currentNodeHealthStatus()
 
 	valid := [](DeviceAndNode){}
@@ -351,6 +355,9 @@ func (cds *ClusterDeviceSource) Devices() ([]DeviceAndNode, error) {
 				cds.nodeCache[nodeId] = node
 			}
 		}
+	}
+	if len(valid) == 0 {
+		return nil, ErrNoStorage
 	}
 
 	return valid, nil
