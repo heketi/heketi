@@ -2450,3 +2450,83 @@ func TestVolumeCreateBoundarySizing(t *testing.T) {
 	err = NewVolumeEntryFromRequest(req).Create(app.db, app.executor)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 }
+
+func TestVolumeCreateMultiClusterErrorsNodes(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		3,      // clusters
+		0,      // nodes_per_cluster
+		0,      // devices_per_node,
+		500*GB, // disksize)
+	)
+
+	var clusters []string
+	app.db.View(func(tx *bolt.Tx) error {
+		var err error
+		clusters, err = ClusterList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		return nil
+	})
+
+	req := &api.VolumeCreateRequest{}
+	req.Size = 1024
+	req.Durability.Type = api.DurabilityReplicate
+	err = NewVolumeEntryFromRequest(req).Create(app.db, app.executor)
+	tests.Assert(t, err != nil, "expected err != nil, got:", err)
+
+	etext := err.Error()
+	tests.Assert(t, strings.Contains(etext, ErrEmptyCluster.Error()),
+		"expected strings.Contains(etext, ErrEmptyCluster.Error()), got:",
+		etext)
+	// verify every cluster id is listed
+	for _, cid := range clusters {
+		tests.Assert(t, strings.Contains(etext, cid),
+			"expected strings.Contains(etext, cid), got:",
+			etext)
+	}
+}
+
+func TestVolumeCreateMultiClusterErrorsDevices(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		3,      // clusters
+		3,      // nodes_per_cluster
+		0,      // devices_per_node,
+		500*GB, // disksize)
+	)
+
+	var clusters []string
+	app.db.View(func(tx *bolt.Tx) error {
+		var err error
+		clusters, err = ClusterList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		return nil
+	})
+
+	req := &api.VolumeCreateRequest{}
+	req.Size = 1024
+	req.Durability.Type = api.DurabilityReplicate
+	err = NewVolumeEntryFromRequest(req).Create(app.db, app.executor)
+	tests.Assert(t, err != nil, "expected err != nil, got:", err)
+
+	etext := err.Error()
+	tests.Assert(t, strings.Contains(etext, ErrNoStorage.Error()),
+		"expected strings.Contains(etext, ErrNoStorage.Error()), got:",
+		etext)
+	// verify every cluster id is listed
+	for _, cid := range clusters {
+		tests.Assert(t, strings.Contains(etext, cid),
+			"expected strings.Contains(etext, cid), got:",
+			etext)
+	}
+}
