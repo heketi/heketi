@@ -677,12 +677,34 @@ Can also be set using the environment variable HEKETI\_CLI\_USER.
 \fB\-v\fP, \fB\-\-version\fP[=false]
 Print version.
 .PP
-.SH EXAMPLE
+.SH EXAMPLES
 .PP
+.SS List Volumes
+.PP
+Specify the Heketi server to contact using an environment variable
+and list the volumes.
 .RS
 .nf
 $ export HEKETI\_CLI\_SERVER=http://localhost:8080
 $ heketi\-cli volume list
+.fi
+.RE
+.PP
+.SS Create a Volume
+.PP
+Create a 4 GiB volume.
+.RS
+.nf
+$ heketi\-cli volume create --size 4
+.fi
+.RE
+.PP
+.SS Create an Arbiter Volume
+.PP
+Create a 4 GiB volume that uses the arbiter feature.
+.RS
+.nf
+$ heketi\-cli volume create --size 4 --gluster-volume-options='user.heketi.arbiter true'
 .fi
 .RE
 .SH COPYRIGHT
