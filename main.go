@@ -10,7 +10,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -18,23 +17,14 @@ import (
 	"syscall"
 
 	"github.com/gorilla/mux"
-	"github.com/heketi/heketi/apps/glusterfs"
-	"github.com/heketi/heketi/middleware"
 	"github.com/spf13/cobra"
 	"github.com/urfave/negroni"
-
 	restclient "k8s.io/client-go/rest"
-)
 
-type Config struct {
-	Port                 string                   `json:"port"`
-	AuthEnabled          bool                     `json:"use_auth"`
-	JwtConfig            middleware.JwtAuthConfig `json:"jwt"`
-	BackupDbToKubeSecret bool                     `json:"backup_db_to_kube_secret"`
-	EnableTls            bool                     `json:"enable_tls"`
-	CertFile             string                   `json:"cert_file"`
-	KeyFile              string                   `json:"key_file"`
-}
+	"github.com/heketi/heketi/apps/glusterfs"
+	"github.com/heketi/heketi/middleware"
+	"github.com/heketi/heketi/server/config"
+)
 
 var (
 	HEKETI_VERSION               = "(dev)"
@@ -244,7 +234,7 @@ func init() {
 	deletePendingEntriesCmd.SilenceUsage = true
 }
 
-func setWithEnvVariables(options *Config) {
+func setWithEnvVariables(options *config.Config) {
 	// Check for user key
 	env := os.Getenv("HEKETI_USER_KEY")
 	if "" != env {
@@ -271,7 +261,7 @@ func setWithEnvVariables(options *Config) {
 	}
 }
 
-func setupApp(fp *os.File) (a *glusterfs.App) {
+func setupApp(config *config.Config) (a *glusterfs.App) {
 	defer func() {
 		err := recover()
 		if a == nil || err != nil {
@@ -280,10 +270,6 @@ func setupApp(fp *os.File) (a *glusterfs.App) {
 		}
 	}()
 
-	// Go to the beginning of the file when we pass it
-	// to the application
-	fp.Seek(0, os.SEEK_SET)
-
 	// If one really needs to disable the health monitor for
 	// the server binary we provide only this env var.
 	env := os.Getenv("HEKETI_DISABLE_HEALTH_MONITOR")
@@ -291,7 +277,7 @@ func setupApp(fp *os.File) (a *glusterfs.App) {
 		glusterfs.MonitorGlusterNodes = true
 	}
 
-	return glusterfs.NewApp(fp)
+	return glusterfs.NewApp(config.GlusterFS)
 }
 
 func main() {
@@ -306,26 +292,13 @@ func main() {
 	}
 
 	// Read configuration
-	fp, err := os.Open(configfile)
+	options, err := config.ReadConfig(configfile)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Unable to open config file %v: %v\n",
-			configfile,
-			err.Error())
-		os.Exit(1)
-	}
-	defer fp.Close()
-
-	configParser := json.NewDecoder(fp)
-	var options Config
-	if err = configParser.Decode(&options); err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Unable to parse %v: %v\n",
-			configfile,
-			err.Error())
 		os.Exit(1)
 	}
 
 	// Substitute values using any set environment variables
-	setWithEnvVariables(&options)
+	setWithEnvVariables(options)
 
 	// Use negroni to add middleware.  Here we add two
 	// middlewares: Recovery and Logger, which come with
@@ -333,7 +306,7 @@ func main() {
 	n := negroni.New(negroni.NewRecovery(), negroni.NewLogger())
 
 	// Setup a new GlusterFS application
-	app := setupApp(fp)
+	app := setupApp(options)
 
 	// Add /hello router
 	router := mux.NewRouter()
