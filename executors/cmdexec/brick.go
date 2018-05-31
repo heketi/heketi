@@ -118,7 +118,10 @@ func (s *CmdExecutor) BrickDestroy(host string,
 	godbc.Require(brick.VgId != "")
 	godbc.Require(brick.Path != "")
 
-	var spaceReclaimed bool = false
+	var (
+		umountErr      error
+		spaceReclaimed bool
+	)
 
 	// Cloned bricks do not follow 'our' VG/LV naming, detect it.
 	commands := []string{
@@ -143,8 +146,8 @@ func (s *CmdExecutor) BrickDestroy(host string,
 	commands = []string{
 		fmt.Sprintf("umount %v", brick.Path),
 	}
-	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
-	if err != nil {
+	_, umountErr = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	if umountErr != nil {
 		logger.Err(err)
 	}
 
@@ -153,7 +156,20 @@ func (s *CmdExecutor) BrickDestroy(host string,
 	// performed we'll orphan storage but the node should still be
 	// bootable. If we remove LVM stuff first but leave an entry in
 	// fstab referencing it, we could end up with a non-booting system.
-	s.removeBrickFromFstab(host, brick)
+	// Even if we failed to umount the brick, remove it from fstab
+	// so that it does not get mounted again on next reboot.
+	err = s.removeBrickFromFstab(host, brick)
+
+	// if either umount or fstab remove failed there's no point in
+	// continuing. We'll need either automated or manual recovery
+	// in the future, but we need to know something went wrong.
+	if err != nil {
+		logger.Err(err)
+		return spaceReclaimed, err
+	}
+	if umountErr != nil {
+		return spaceReclaimed, umountErr
+	}
 
 	// Remove the LV (by device name)
 	commands = []string{
