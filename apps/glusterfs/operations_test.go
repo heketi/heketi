@@ -1529,6 +1529,65 @@ func TestBlockVolumeDeleteOperationRollback(t *testing.T) {
 	})
 }
 
+func TestBlockVolumeDeleteOperationTwice(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		1,    // devices_per_node,
+		2*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	req := &api.BlockVolumeCreateRequest{}
+	req.Size = 1024
+
+	vol := NewBlockVolumeEntryFromRequest(req)
+	vc := NewBlockVolumeCreateOperation(vol, app.db)
+
+	app.db.View(func(tx *bolt.Tx) error {
+		pol, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pol) == 0, "expected len(pol) == 0, got", len(pol))
+		return nil
+	})
+
+	e := vc.Build()
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+	e = vc.Exec(app.executor)
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+	e = vc.Finalize()
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	app.db.View(func(tx *bolt.Tx) error {
+		pol, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pol) == 0, "expected len(pol) == 0, got", len(pol))
+		return nil
+	})
+
+	bdel := NewBlockVolumeDeleteOperation(vol, app.db)
+	e = bdel.Build()
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	app.db.View(func(tx *bolt.Tx) error {
+		pol, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pol) == 1, "expected len(pol) == 1, got", len(pol))
+		return nil
+	})
+
+	bdel2 := NewBlockVolumeDeleteOperation(vol, app.db)
+	e = bdel2.Build()
+	tests.Assert(t, e == ErrConflict, "expected e ErrConflict, got", e)
+}
+
 func TestDeviceRemoveOperationEmpty(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
