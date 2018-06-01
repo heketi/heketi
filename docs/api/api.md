@@ -26,6 +26,8 @@
         * [Expand a Volume](#expand-a-volume)
         * [Delete Volume](#delete-volume)
         * [List Volumes](#list-volumes)
+    * [Metrics](#metrics)
+        * [Get Metrics](#get-metrics)
 
 # Overview
 Heketi provides a RESTful management interface which can be used to manage the life cycle of GlusterFS volumes.  The goal of Heketi is to provide a simple way to create, list, and delete GlusterFS volumes in multiple storage clusters.  Heketi intelligently will manage the allocation, creation, and deletion of bricks throughout the disks in the cluster.  Heketi first needs to learn about the topologies of the clusters before satisfying any requests.  It organizes data resources into the following: Clusters, contain Nodes, which contain Devices, which will contain Bricks.
@@ -708,4 +710,42 @@ When a volume is deleted, Heketi will first stop, then destroy the volume.  Once
         "70927734601288237463aa"
     ]
 }
+```
+
+### Get Metrics
+Get current metrics for the heketi cluster. Metrics are exposed in the prometheus format.
+* **Method:** _GET_
+* **Endpoint**:`/metrics`
+* **Response HTTP Status Code**: 200
+* **TEXT Response**:
+    * Example:
+
+```
+# HELP heketi_cluster_count Number of clusters
+# TYPE heketi_cluster_count gauge
+heketi_cluster_count 1
+# HELP heketi_device_brick_count Number of bricks on device
+# TYPE heketi_device_brick_count gauge
+heketi_device_brick_count{cluster="c1",device="d1",hostname="n1"} 1
+# HELP heketi_device_count Number of devices on host
+# TYPE heketi_device_count gauge
+heketi_device_count{cluster="c1",hostname="n1"} 1
+# HELP heketi_device_free Amount of Free space available on the device
+# TYPE heketi_device_free gauge
+heketi_device_free{cluster="c1",device="d1",hostname="n1"} 1
+# HELP heketi_device_size Total size of the device
+# TYPE heketi_device_size gauge
+heketi_device_size{cluster="c1",device="d1",hostname="n1"} 2
+# HELP heketi_device_used Amount of space used on the device
+# TYPE heketi_device_used gauge
+heketi_device_used{cluster="c1",device="d1",hostname="n1"} 1
+# HELP heketi_nodes_count Number of nodes on cluster
+# TYPE heketi_nodes_count gauge
+heketi_nodes_count{cluster="c1"} 1
+# HELP heketi_up Is heketi running?
+# TYPE heketi_up gauge
+heketi_up 1
+# HELP heketi_volumes_count Number of volumes on cluster
+# TYPE heketi_volumes_count gauge
+heketi_volumes_count{cluster="c1"} 0
 ```
