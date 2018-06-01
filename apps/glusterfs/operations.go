@@ -384,12 +384,22 @@ func (vdel *VolumeDeleteOperation) ResourceUrl() string {
 // marks the db entries as such.
 func (vdel *VolumeDeleteOperation) Build() error {
 	return vdel.db.Update(func(tx *bolt.Tx) error {
+		if vdel.vol.Pending.Id != "" {
+			logger.LogError("Pending volume %v can not be deleted",
+				vdel.vol.Info.Id)
+			return ErrConflict
+		}
 		txdb := wdb.WrapTx(tx)
 		brick_entries, err := vdel.vol.deleteVolumeComponents(txdb)
 		if err != nil {
 			return err
 		}
 		for _, brick := range brick_entries {
+			if brick.Pending.Id != "" {
+				logger.LogError("Pending brick %v can not be deleted",
+					brick.Info.Id)
+				return ErrConflict
+			}
 			vdel.op.RecordDeleteBrick(brick)
 			if e := brick.Save(tx); e != nil {
 				return e
