@@ -1,6 +1,6 @@
 # set author and base
 FROM fedora
-MAINTAINER Luis Pabón <lpabon@redhat.com>
+MAINTAINER Michael Adam <obnox@redhat.com>
 
 LABEL version="1.3.1"
 LABEL description="Development build"
