@@ -9,7 +9,7 @@ LABEL description="Development build"
 ENV BUILD_HOME=/build
 ENV GOPATH=$BUILD_HOME/golang
 ENV PATH=$GOPATH/bin:$PATH
-ENV HEKETI_BRANCH="master"
+ENV HEKETI_BRANCH="release/7"
 
 # install dependencies, build and cleanup
 RUN mkdir $BUILD_HOME $GOPATH && \
