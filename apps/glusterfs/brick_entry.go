@@ -263,34 +263,28 @@ func BrickEntryUpgrade(tx *bolt.Tx) error {
 }
 
 func addVolumeIdInBrickEntry(tx *bolt.Tx) error {
-	clusters, err := ClusterList(tx)
+	volumes, err := VolumeList(tx)
 	if err != nil {
 		return err
 	}
-	for _, cluster := range clusters {
-		clusterEntry, err := NewClusterEntryFromId(tx, cluster)
+	for _, volume := range volumes {
+		volumeEntry, err := NewVolumeEntryFromId(tx, volume)
 		if err != nil {
 			return err
 		}
-		for _, volume := range clusterEntry.Info.Volumes {
-			volumeEntry, err := NewVolumeEntryFromId(tx, volume)
+		for _, brick := range volumeEntry.Bricks {
+			brickEntry, err := NewBrickEntryFromId(tx, brick)
 			if err != nil {
 				return err
 			}
-			for _, brick := range volumeEntry.Bricks {
-				brickEntry, err := NewBrickEntryFromId(tx, brick)
+			if brickEntry.Info.VolumeId == "" {
+				brickEntry.Info.VolumeId = volume
+				err = brickEntry.Save(tx)
 				if err != nil {
 					return err
 				}
-				if brickEntry.Info.VolumeId == "" {
-					brickEntry.Info.VolumeId = volume
-					err = brickEntry.Save(tx)
-					if err != nil {
-						return err
-					}
-				} else {
-					break
-				}
+			} else {
+				break
 			}
 		}
 	}
