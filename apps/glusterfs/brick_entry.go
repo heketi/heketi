@@ -274,6 +274,12 @@ func addVolumeIdInBrickEntry(tx *bolt.Tx) error {
 		}
 		for _, brick := range volumeEntry.Bricks {
 			brickEntry, err := NewBrickEntryFromId(tx, brick)
+			if err == ErrNotFound {
+				logger.Warning("Volume [%v] links to "+
+					"nonexistent brick [%v]. Ignoring.",
+					volume, brick)
+				continue
+			}
 			if err != nil {
 				return err
 			}
