@@ -1,5 +1,7 @@
 # set author and base
-FROM fedora
+# need to use fedora 27 until glide is fixed in fedora 28
+# (or we get an alternative glide)
+FROM fedora:27
 MAINTAINER Heketi Developers <heketi-devel@gluster.org>
 
 LABEL version="1.3.1"
@@ -13,7 +15,7 @@ ENV HEKETI_BRANCH="release/7"
 
 # install dependencies, build and cleanup
 RUN mkdir $BUILD_HOME $GOPATH && \
-    dnf -y install glide golang git make && \
+    dnf -y install glide golang git make mercurial && \
     dnf -y clean all && \
     mkdir -p $GOPATH/src/github.com/heketi && \
     cd $GOPATH/src/github.com/heketi && \
@@ -25,7 +27,7 @@ RUN mkdir $BUILD_HOME $GOPATH && \
     cp client/cli/go/heketi-cli /usr/bin/heketi-cli && \
     glide cc && \
     cd && rm -rf $BUILD_HOME && \
-    dnf -y remove git glide golang && \
+    dnf -y remove git glide golang mercurial && \
     dnf -y autoremove && \
     dnf -y clean all
 
