@@ -1022,6 +1022,46 @@ func (v *VolumeEntry) cloneVolumeRequest(db wdb.RODB, clonename string) (*execut
 	return vcr, sshhost, nil
 }
 
+func (v *VolumeEntry) GetDetailedStatus(db wdb.RODB, executor executors.Executor) (*api.VolumeDetailedStatusResponse, error) {
+	godbc.Require(db != nil)
+	godbc.Require(executor != nil)
+
+	var glusterDetailedStatus *executors.VolumeDetail
+	err := v.runOnHost(db, func(h string) (bool, error) {
+		var err error
+		glusterDetailedStatus, err = executor.VolumeStatusDetailed(h, v.Info.Name)
+		return false, err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var detailedStatus api.VolumeDetailedStatusResponse
+	detailedStatus.Name = glusterDetailedStatus.VolumeName
+	detailedStatus.Nodes = make([]api.NodeDetailedStatusResponse, len(glusterDetailedStatus.Nodes))
+	for i, node := range glusterDetailedStatus.Nodes {
+		detailedStatus.Nodes[i].HostName = node.HostName
+		detailedStatus.Nodes[i].Path = node.Path
+		detailedStatus.Nodes[i].PeerID = node.PeerID
+		detailedStatus.Nodes[i].Status = node.Status
+		detailedStatus.Nodes[i].Port = node.Port
+		detailedStatus.Nodes[i].Ports.TCP = node.Ports.TCP
+		detailedStatus.Nodes[i].Ports.RDMA = node.Ports.RDMA
+		detailedStatus.Nodes[i].PID = node.PID
+		detailedStatus.Nodes[i].SizeTotal = node.SizeTotal
+		detailedStatus.Nodes[i].SizeFree = node.SizeFree
+		detailedStatus.Nodes[i].Device = node.Device
+		detailedStatus.Nodes[i].BlockSize = node.BlockSize
+		detailedStatus.Nodes[i].MountOptions = node.MountOptions
+		detailedStatus.Nodes[i].FSName = node.FSName
+		detailedStatus.Nodes[i].InodeSize = node.InodeSize
+		detailedStatus.Nodes[i].InodesTotal = node.InodesTotal
+		detailedStatus.Nodes[i].InodesFree = node.InodesFree
+	}
+
+	return &detailedStatus, nil
+}
+
 type MultiClusterError struct {
 	prefix string
 	errors map[string]error
