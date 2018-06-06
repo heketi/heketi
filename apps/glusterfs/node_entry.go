@@ -462,6 +462,11 @@ func (n *NodeEntry) DeleteBricksWithEmptyPath(tx *bolt.Tx) error {
 
 	for _, deviceid := range n.Devices {
 		device, err := NewDeviceEntryFromId(tx, deviceid)
+		if err == ErrNotFound {
+			logger.Warning("Ignoring nonexisting device [%v] on "+
+				"node [%v].", deviceid, n.Info.Id)
+			continue
+		}
 		if err != nil {
 			return err
 		}
