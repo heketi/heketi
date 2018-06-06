@@ -222,6 +222,47 @@ func (a *App) VolumeInfo(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func (a *App) VolumeDetailedStatus(w http.ResponseWriter, r *http.Request) {
+	if !a.conf.VolumeStatusEnabled {
+		http.Error(w, "Feature disabled in server configuration", http.StatusServiceUnavailable)
+		return
+	}
+
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	var volume *VolumeEntry
+	err := a.db.View(func(tx *bolt.Tx) error {
+		var err error
+		volume, err = NewVolumeEntryFromId(tx, id)
+		if err == ErrNotFound || !volume.Visible() {
+			// treat an invisible entry like it doesn't exist
+			http.Error(w, "Id not found", http.StatusNotFound)
+			return ErrNotFound
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return
+	}
+
+	detailedStatus, err := volume.GetDetailedStatus(a.db, a.executor)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(detailedStatus); err != nil {
+		panic(err)
+	}
+}
+
 func (a *App) VolumeDelete(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
