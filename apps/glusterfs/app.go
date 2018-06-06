@@ -469,6 +469,12 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Pattern:     "/volumes/{id:[A-Fa-f0-9]+}",
 			HandlerFunc: a.VolumeInfo},
 		rest.Route{
+			Name:        "VolumeStatus",
+			Method:      "GET",
+			Pattern:     "/volumes/{id:[A-Fa-f0-9]+}/status",
+			HandlerFunc: a.VolumeDetailedStatus,
+		},
+		rest.Route{
 			Name:        "VolumeExpand",
 			Method:      "POST",
 			Pattern:     "/volumes/{id:[A-Fa-f0-9]+}/expand",
