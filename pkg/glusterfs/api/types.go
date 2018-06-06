@@ -217,6 +217,28 @@ type NodeInfoResponse struct {
 	DevicesInfo []DeviceInfoResponse `json:"devices"`
 }
 
+type NodeDetailedStatusResponse struct {
+	HostName string `json:"hostname"`
+	Path     string `json:"path"`
+	PeerID   string `json:"peerid"`
+	Status   int    `json:"status"`
+	Port     int    `json:"port"`
+	Ports    struct {
+		TCP  int    `json:"tcp"`
+		RDMA string `json:"rdma"`
+	} `json:"ports"`
+	PID          int    `json:"pid"`
+	SizeTotal    uint64 `json:"size_total"`
+	SizeFree     uint64 `json:"size_free"`
+	Device       string `json:"device"`
+	BlockSize    uint   `json:"block_size"`
+	MountOptions string `json:"mount_options"`
+	FSName       string `json:"fs_name"`
+	InodeSize    string `json:"inode_size"`
+	InodesTotal  uint64 `json:"inodes_total"`
+	InodesFree   uint64 `json:"inodes_free"`
+}
+
 // Cluster
 
 type ClusterFlags struct {
@@ -323,6 +345,11 @@ type VolumeInfo struct {
 type VolumeInfoResponse struct {
 	VolumeInfo
 	Bricks []BrickInfo `json:"bricks"`
+}
+
+type VolumeDetailedStatusResponse struct {
+	Name  string                       `json:"name"`
+	Nodes []NodeDetailedStatusResponse `json:"nodes"`
 }
 
 type VolumeListResponse struct {
