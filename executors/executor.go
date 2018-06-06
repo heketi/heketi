@@ -26,6 +26,7 @@ type Executor interface {
 	VolumeExpand(host string, volume *VolumeRequest) (*Volume, error)
 	VolumeReplaceBrick(host string, volume string, oldBrick *BrickInfo, newBrick *BrickInfo) error
 	VolumeInfo(host string, volume string) (*Volume, error)
+	VolumeStatusDetailed(host string, volume string) (*VolumeDetail, error)
 	VolumeClone(host string, vsr *VolumeCloneRequest) (*Volume, error)
 	VolumeSnapshot(host string, vsr *VolumeSnapshotRequest) (*Snapshot, error)
 	SnapshotCloneVolume(host string, scr *SnapshotCloneRequest) (*Volume, error)
@@ -249,4 +250,47 @@ type VolumeDoesNotExistErr struct {
 
 func (dne *VolumeDoesNotExistErr) Error() string {
 	return "Volume Does Not Exist: " + dne.Name
+}
+
+type NodePorts struct {
+	XMLName xml.Name `xml:"ports"`
+	TCP     int      `xml:"tcp"`
+	RDMA    string   `xml:"rdma"`
+}
+
+type Node struct {
+	XMLName      xml.Name  `xml:"node"`
+	HostName     string    `xml:"hostname"`
+	Path         string    `xml:"path"`
+	PeerID       string    `xml:"peerid"`
+	Status       int       `xml:"status"`
+	Port         int       `xml:"port"`
+	Ports        NodePorts `xml:"ports"`
+	PID          int       `xml:"pid"`
+	SizeTotal    uint64    `xml:"sizeTotal"`
+	SizeFree     uint64    `xml:"sizeFree"`
+	Device       string    `xml:"device"`
+	BlockSize    uint      `xml:"blockSize"`
+	MountOptions string    `xml:"mntOptions"`
+	FSName       string    `xml:"fsName"`
+	InodeSize    string    `xml:"inodeSize"`
+	InodesTotal  uint64    `xml:"inodesTotal"`
+	InodesFree   uint64    `xml:"inodesFree"`
+}
+
+type VolumeDetail struct {
+	XMLName    xml.Name `xml:"volume"`
+	VolumeName string   `xml:"volName"`
+	NodeCount  int      `xml:"nodeCount"`
+	Nodes      []Node   `xml:"node"`
+}
+
+type VolumeDetailList struct {
+	XMLName          xml.Name       `xml:"volumes"`
+	VolumeDetailList []VolumeDetail `xml:"volume"`
+}
+
+type VolStatus struct {
+	XMLName xml.Name `xml:"volStatus"`
+	Volumes VolumeDetailList
 }

@@ -29,6 +29,7 @@ type MockExecutor struct {
 	MockVolumeDestroyCheck       func(host, volume string) error
 	MockVolumeReplaceBrick       func(host string, volume string, oldBrick *executors.BrickInfo, newBrick *executors.BrickInfo) error
 	MockVolumeInfo               func(host string, volume string) (*executors.Volume, error)
+	MockVolumeStatusDetailed     func(host string, volume string) (*executors.VolumeDetail, error)
 	MockVolumeClone              func(host string, volume *executors.VolumeCloneRequest) (*executors.Volume, error)
 	MockVolumeSnapshot           func(host string, volume *executors.VolumeSnapshotRequest) (*executors.Snapshot, error)
 	MockSnapshotCloneVolume      func(host string, volume *executors.SnapshotCloneRequest) (*executors.Volume, error)
@@ -123,6 +124,21 @@ func NewMockExecutor() (*MockExecutor, error) {
 			Bricks: Bricks,
 		}
 		return vinfo, nil
+	}
+
+	m.MockVolumeStatusDetailed = func(host string, volume string) (*executors.VolumeDetail, error) {
+		nodes := []executors.Node{
+			{
+				HostName: host,
+				Path:     host + ":/mockpath",
+			},
+		}
+		volumeDetail := &executors.VolumeDetail{
+			VolumeName: volume,
+			NodeCount:  len(nodes),
+			Nodes:      nodes,
+		}
+		return volumeDetail, nil
 	}
 
 	m.MockVolumeSnapshot = func(host string, vsr *executors.VolumeSnapshotRequest) (*executors.Snapshot, error) {
@@ -251,6 +267,10 @@ func (m *MockExecutor) VolumeReplaceBrick(host string, volume string, oldBrick *
 
 func (m *MockExecutor) VolumeInfo(host string, volume string) (*executors.Volume, error) {
 	return m.MockVolumeInfo(host, volume)
+}
+
+func (m *MockExecutor) VolumeStatusDetailed(host string, volume string) (*executors.VolumeDetail, error) {
+	return m.MockVolumeStatusDetailed(host, volume)
 }
 
 func (m *MockExecutor) VolumeClone(host string, vcr *executors.VolumeCloneRequest) (*executors.Volume, error) {
