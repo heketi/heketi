@@ -197,6 +197,39 @@ func (c *Client) VolumeInfo(id string) (*api.VolumeInfoResponse, error) {
 	return &volume, nil
 }
 
+func (c *Client) VolumeStatus(id string) (*api.VolumeDetailedStatusResponse, error) {
+	// Create request
+	req, err := http.NewRequest("GET", c.host+"/volumes/"+id+"/status", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set token
+	err = c.setToken(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get info
+	r, err := c.do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Body.Close()
+	if r.StatusCode != http.StatusOK {
+		return nil, utils.GetErrorFromResponse(r)
+	}
+
+	// Read JSON response
+	var status api.VolumeDetailedStatusResponse
+	err = utils.GetJsonFromResponse(r, &status)
+	if err != nil {
+		return nil, err
+	}
+
+	return &status, nil
+}
+
 func (c *Client) VolumeDelete(id string) error {
 
 	// Create a request
