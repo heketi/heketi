@@ -46,6 +46,7 @@ func init() {
 	volumeCommand.AddCommand(volumeDeleteCommand)
 	volumeCommand.AddCommand(volumeExpandCommand)
 	volumeCommand.AddCommand(volumeInfoCommand)
+	volumeCommand.AddCommand(volumeStatusCommand)
 	volumeCommand.AddCommand(volumeListCommand)
 
 	volumeCreateCommand.Flags().IntVar(&size, "size", 0,
@@ -350,6 +351,66 @@ var volumeInfoCommand = &cobra.Command{
 			fmt.Fprintf(stdout, string(data))
 		} else {
 			fmt.Fprintf(stdout, "%v", info)
+		}
+		return nil
+
+	},
+}
+
+var volumeStatusCommand = &cobra.Command{
+	Use:     "status",
+	Short:   "Retrieves information about status of the volume",
+	Long:    "Retrieves information about status of the volume",
+	Example: "  $ heketi-cli volume status 886a86a868711bef83001",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		//ensure proper number of args
+		s := cmd.Flags().Args()
+		if len(s) < 1 {
+			return errors.New("Volume id missing")
+		}
+
+		// Set volume id
+		volumeId := cmd.Flags().Arg(0)
+
+		// Create a client to talk to Heketi
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
+
+		// Create cluster
+		status, err := heketi.VolumeStatus(volumeId)
+		if err != nil {
+			return err
+		}
+
+		if options.Json {
+			data, err := json.Marshal(status)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(stdout, string(data))
+		} else {
+			fmt.Fprintf(stdout, "Status of volume: %s (name: %s)\n", volumeId, status.Name)
+			for _, node := range status.Nodes {
+				fmt.Fprintf(stdout, "------------------------------------------------------------------------------\n")
+				fmt.Fprintf(stdout, "%-21s: Brick %s:%s\n", "Brick", node.HostName, node.Path)
+				fmt.Fprintf(stdout, "%-21s: %d\n", "TCP Port", node.Ports.TCP)
+				fmt.Fprintf(stdout, "%-21s: %s\n", "RDMA Port", node.Ports.RDMA)
+				fmt.Fprintf(stdout, "%-21s: %s\n", "Online", func() string {
+					if node.Status == 1 {
+						return "Y"
+					} else {
+						return "N"
+					}
+				}())
+				fmt.Fprintf(stdout, "%-21s: %d\n", "PID", node.PID)
+				fmt.Fprintf(stdout, "%-21s: %s\n", "File System", node.FSName)
+				fmt.Fprintf(stdout, "%-21s: %s\n", "Disk Space Free", humanReadableSize(node.SizeFree))
+				fmt.Fprintf(stdout, "%-21s: %s\n", "Total Disk Space", humanReadableSize(node.SizeTotal))
+				fmt.Fprintf(stdout, "%-21s: %d\n", "Inode Count", node.InodesTotal)
+				fmt.Fprintf(stdout, "%-21s: %d\n", "Free Inodes", node.InodesFree)
+			}
 		}
 		return nil
 

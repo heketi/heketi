@@ -111,3 +111,26 @@ func newHeketiClient() (*client.Client, error) {
 			VerifyCerts:        options.TLSCerts,
 		})
 }
+
+const (
+	_         = iota
+	KB uint64 = 1 << (10 * iota)
+	MB
+	GB
+	TB
+)
+
+func humanReadableSize(byteSize uint64) string {
+	switch {
+	case byteSize < KB:
+		return fmt.Sprintf("%d", byteSize)
+	case byteSize < MB:
+		return fmt.Sprintf("%.1fKiB", float64(byteSize)/float64(KB))
+	case byteSize < GB:
+		return fmt.Sprintf("%.1fMiB", float64(byteSize)/float64(MB))
+	case byteSize < TB:
+		return fmt.Sprintf("%.1fGiB", float64(byteSize)/float64(GB))
+	default:
+		return fmt.Sprintf("%.1fTiB", float64(byteSize)/float64(TB))
+	}
+}
