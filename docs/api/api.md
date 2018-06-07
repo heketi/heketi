@@ -23,6 +23,7 @@
     * [Volumes](#volumes)
         * [Create a Volume](#create-a-volume)
         * [Volume Information](#volume-information)
+        * [Volume Status](#volume-status)
         * [Expand a Volume](#expand-a-volume)
         * [Delete Volume](#delete-volume)
         * [List Volumes](#list-volumes)
@@ -671,6 +672,104 @@ So, it is not possible create a volume of size less than 1GiB.
             "device": "49a9bd2e40df882180479024ac4c24c8"
         }
     ]
+}
+```
+
+### Volume Status
+* **Method:** _GET_
+* **Endpoint**:`/volumes/{id}/status`
+* **Response HTTP Status Code**: 200
+* **JSON Request**: None
+* **JSON Response**:
+    * name: _string_, Name of volume
+    * nodes: _array of maps_, Status of volume on each cluster node
+        * hostname: _string_, Hostname of cluster node
+        * path: _string_, Mountpoint of volume
+        * status: _int_, Status of the volume. Value 1 means that it is online
+        * port: _int_, Currently used port
+        * ports: _array of maps_, Ports which may be used
+            * tcp: _int_, TCP port
+            * rdma: _string_, RDMA port. Has value `N/A` if not available
+        * pid: _int_, Gluster daemon PID
+        * size_total: _int_, Size of volume in bytes
+        * size_free: _int_, Free space on volume in bytes
+        * device: _string_, Block device path
+        * block_size: _int_, Size of filesystem block in bytes
+        * mount_options: _string_, Mount options of volume
+        * fs_name: _string_, Filesystem type
+        * inode_size: _string_, Explains size of filesystem inode. May equal to `fs_name`
+        * inodes_total: _int_, Total count of inodes
+        * inodes_free: _int_, Count of free inodes
+    * Example:
+
+```json
+{
+  "name": "vol_07578d152371d67db1f267cf05d144ec",
+  "nodes": [
+    {
+      "hostname": "192.168.88.223",
+      "path": "/var/lib/heketi/mounts/vg_a724d796e9650f54402651c485452cce/brick_6ceecf6aa603d5c562a4ea0fed7bb890/brick",
+      "peerid": "d00af9f7-888c-4be2-bfea-57f95f413a10",
+      "status": 1,
+      "port": 49153,
+      "ports": {
+        "tcp": 49153,
+        "rdma": "N/A"
+      },
+      "pid": 17567,
+      "size_total": 5358223360,
+      "size_free": 5324062720,
+      "device": "/dev/mapper/vg_a724d796e9650f54402651c485452cce-brick_6ceecf6aa603d5c562a4ea0fed7bb890",
+      "block_size": 4096,
+      "mount_options": "rw,seclabel,noatime,nouuid,attr2,inode64,logbsize=256k,sunit=512,swidth=512,noquota",
+      "fs_name": "xfs",
+      "inode_size": "xfs",
+      "inodes_total": 2621440,
+      "inodes_free": 2621417
+    },
+    {
+      "hostname": "192.168.88.221",
+      "path": "/var/lib/heketi/mounts/vg_c6dba216bbc2c57fa06cf3e8c8b7452c/brick_061097492a46cc4a79a59756ecb80583/brick",
+      "peerid": "6aa57558-cda5-45ed-8eb3-4b79d18d07f3",
+      "status": 1,
+      "port": 49153,
+      "ports": {
+        "tcp": 49153,
+        "rdma": "N/A"
+      },
+      "pid": 12145,
+      "size_total": 5358223360,
+      "size_free": 5324062720,
+      "device": "/dev/mapper/vg_c6dba216bbc2c57fa06cf3e8c8b7452c-brick_061097492a46cc4a79a59756ecb80583",
+      "block_size": 4096,
+      "mount_options": "rw,seclabel,noatime,nouuid,attr2,inode64,logbsize=256k,sunit=512,swidth=512,noquota",
+      "fs_name": "xfs",
+      "inode_size": "xfs",
+      "inodes_total": 2621440,
+      "inodes_free": 2621417
+    },
+    {
+      "hostname": "192.168.88.222",
+      "path": "/var/lib/heketi/mounts/vg_d01d91984f58d57bdd32f2564aeae550/brick_b96a961291ac70f83239b3fa5f990cab/brick",
+      "peerid": "4734834b-fad6-4eda-abfa-6d03cc543aa2",
+      "status": 1,
+      "port": 49153,
+      "ports": {
+        "tcp": 49153,
+        "rdma": "N/A"
+      },
+      "pid": 17606,
+      "size_total": 5358223360,
+      "size_free": 5324062720,
+      "device": "/dev/mapper/vg_d01d91984f58d57bdd32f2564aeae550-brick_b96a961291ac70f83239b3fa5f990cab",
+      "block_size": 4096,
+      "mount_options": "rw,seclabel,noatime,nouuid,attr2,inode64,logbsize=256k,sunit=512,swidth=512,noquota",
+      "fs_name": "xfs",
+      "inode_size": "xfs",
+      "inodes_total": 2621440,
+      "inodes_free": 2621417
+    }
+  ]
 }
 ```
 
