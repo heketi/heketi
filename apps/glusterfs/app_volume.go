@@ -252,17 +252,22 @@ func (a *App) VolumeDelete(w http.ResponseWriter, r *http.Request) {
 			return nil
 		}
 
-		if volume.Info.BlockInfo.BlockVolumes == nil {
-			return nil
+		for _, bvId := range volume.Info.BlockInfo.BlockVolumes {
+			_, err = NewBlockVolumeEntryFromId(tx, bvId)
+			if err == nil {
+				err = logger.LogError("Cannot delete a block hosting volume containing block volumes")
+				http.Error(w, err.Error(), http.StatusConflict)
+				return err
+			}
+			if err != ErrNotFound {
+				err = logger.LogError("Refusing to delete block-hosting volume: "+
+					"Error loading block-volume [%v]: %v", bvId, err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return err
+			}
 		}
 
-		if len(volume.Info.BlockInfo.BlockVolumes) == 0 {
-			return nil
-		}
-
-		err = logger.LogError("Cannot delete a block hosting volume containing block volumes")
-		http.Error(w, err.Error(), http.StatusConflict)
-		return err
+		return nil
 	})
 	if err != nil {
 		return
