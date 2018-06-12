@@ -161,12 +161,7 @@ func (s *CmdExecutor) VolumeDestroyCheck(host, volume string) error {
 	godbc.Require(volume != "")
 
 	// Determine if the volume is able to be deleted
-	err := s.checkForSnapshots(host, volume)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return s.checkForSnapshots(host, volume)
 }
 
 func (s *CmdExecutor) createVolumeOptionsCommand(volume *executors.VolumeRequest) []string {
