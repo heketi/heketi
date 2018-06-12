@@ -237,3 +237,11 @@ type BlockVolumeInfo struct {
 	Username          string
 	Password          string
 }
+
+type VolumeDoesNotExistErr struct {
+	Name string
+}
+
+func (dne *VolumeDoesNotExistErr) Error() string {
+	return "Volume Does Not Exist: " + dne.Name
+}
