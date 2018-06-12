@@ -505,10 +505,15 @@ func (v *VolumeEntry) deleteVolumeExec(db wdb.RODB,
 	sshhost string) (map[string]bool, error) {
 
 	// Determine if we can destroy the volume
+	volumePresent := true
 	err := executor.VolumeDestroyCheck(sshhost, v.Info.Name)
 	if err != nil {
-		logger.Err(err)
-		return nil, err
+		if _, ok := err.(*executors.VolumeDoesNotExistErr); ok {
+			volumePresent = false
+		} else {
+			logger.Err(err)
+			return nil, err
+		}
 	}
 
 	// Determine if the bricks can be destroyed
@@ -518,12 +523,16 @@ func (v *VolumeEntry) deleteVolumeExec(db wdb.RODB,
 		return nil, err
 	}
 
-	// :TODO: What if the host is no longer available, we may need to try others
-	// Stop volume
-	err = executor.VolumeDestroy(sshhost, v.Info.Name)
-	if err != nil {
-		logger.LogError("Unable to delete volume: %v", err)
-		return nil, err
+	if volumePresent {
+		// :TODO: What if the host is no longer available, we may need to try others
+		// Stop volume
+		err = executor.VolumeDestroy(sshhost, v.Info.Name)
+		if err != nil {
+			logger.LogError("Unable to delete volume: %v", err)
+			return nil, err
+		}
+	} else {
+		logger.Warning("not attempting to delete missing volume %v", v.Info.Name)
 	}
 
 	// Destroy bricks
