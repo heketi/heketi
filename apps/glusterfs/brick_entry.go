@@ -28,6 +28,12 @@ type BrickEntry struct {
 	PoolMetadataSize uint64
 	gidRequested     int64
 	Pending          PendingItem
+
+	// the following is used when tracking the
+	// bricks in cloned volumes. They follow a different
+	// scheme than the bricks created directly by Heketi.
+	LvmThinPool string
+	LvmLv       string
 }
 
 func BrickList(tx *bolt.Tx) ([]string, error) {
@@ -320,4 +326,22 @@ func (b *BrickEntry) RemoveFromDevice(tx *bolt.Tx) error {
 	}
 
 	return nil
+}
+
+// TpName returns the expected name of the lvm thin pool that
+// stores this brick.
+func (b *BrickEntry) TpName() string {
+	if b.LvmThinPool != "" {
+		return b.LvmThinPool
+	}
+	return utils.BrickIdToThinPoolName(b.Info.Id)
+}
+
+// LvName returns the expected name of the lvm lv that stores
+// this brick.
+func (b *BrickEntry) LvName() string {
+	if b.LvmLv != "" {
+		return b.LvmLv
+	}
+	return utils.BrickIdToName(b.Info.Id)
 }
