@@ -27,6 +27,8 @@ func doTestSshExecBrickCreate(t *testing.T, f *CommandFaker, s *FakeExecutor) {
 		Size:             10,
 		PoolMetadataSize: 5,
 		Path:             utils.BrickPath("xvgid", "id"),
+		TpName:           "tp_id",
+		LvName:           "brick_id",
 	}
 
 	// Mock ssh function
@@ -110,6 +112,8 @@ func TestSshExecBrickCreateWithGid(t *testing.T) {
 		PoolMetadataSize: 5,
 		Gid:              1234,
 		Path:             utils.BrickPath("xvgid", "id"),
+		TpName:           "tp_id",
+		LvName:           "brick_id",
 	}
 
 	// Mock ssh function
@@ -193,6 +197,8 @@ func TestSshExecBrickCreateSudo(t *testing.T) {
 		Size:             10,
 		PoolMetadataSize: 5,
 		Path:             utils.BrickPath("xvgid", "id"),
+		TpName:           "tp_id",
+		LvName:           "brick_id",
 	}
 
 	// Mock ssh function
@@ -277,6 +283,8 @@ func TestSshExecBrickDestroy(t *testing.T) {
 		Size:             10,
 		PoolMetadataSize: 5,
 		Path:             strings.TrimSuffix(utils.BrickPath("xvgid", "id"), "/brick"),
+		TpName:           "tp_id",
+		LvName:           "brick_id",
 	}
 
 	// Mock ssh function
@@ -320,7 +328,7 @@ func TestSshExecBrickDestroy(t *testing.T) {
 			case strings.Contains(cmd, "lvremove"):
 				tests.Assert(t,
 					cmd == "lvremove --autobackup="+utils.BoolToYN(s.BackupLVM)+" -f vg_xvgid/tp_id" ||
-						cmd == "lvremove --autobackup="+utils.BoolToYN(s.BackupLVM)+" -f /dev/vg_xvgid/brick_id", cmd)
+						cmd == "lvremove --autobackup="+utils.BoolToYN(s.BackupLVM)+" -f vg_xvgid/brick_id", cmd)
 
 			case strings.Contains(cmd, "rmdir"):
 				tests.Assert(t,
