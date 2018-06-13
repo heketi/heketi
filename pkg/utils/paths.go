@@ -12,6 +12,7 @@ package utils
 import (
 	"errors"
 	"path"
+	"strings"
 )
 
 const (
@@ -89,4 +90,10 @@ func BrickDevNode(vgId, brickId string) string {
 	return path.Join(
 		deviceMapperRoot,
 		VgIdToName(vgId)+"-"+BrickIdToName(brickId))
+}
+
+// VolumeIdToCloneLv converts a gluster volume UUID into the
+// lv name used by the gluster snapshot/clone process.
+func VolumeIdToCloneLv(gvolId string) string {
+	return strings.Replace(gvolId, "-", "", -1) + "_0"
 }

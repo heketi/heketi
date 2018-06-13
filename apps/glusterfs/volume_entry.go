@@ -932,6 +932,7 @@ func updateCloneBrickPaths(bricks []*BrickEntry,
 		logger.Debug("Updating brick %v with new path %v (had %v)",
 			brick.Id(), clonePath, origPath)
 		brick.Info.Path = clonePath
+		brick.LvmLv = utils.VolumeIdToCloneLv(clone.ID)
 	}
 	return nil
 }
