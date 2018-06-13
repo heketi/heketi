@@ -63,6 +63,9 @@ type BrickRequest struct {
 	Gid              int64
 	// Path is the brick mountpoint (named Path for symmetry with BrickInfo)
 	Path string
+	// lvm names
+	TpName string
+	LvName string
 }
 
 // Returns information about the location of the brick
