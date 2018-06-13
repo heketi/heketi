@@ -109,6 +109,31 @@ func (s *CmdExecutor) BrickCreate(host string,
 	return b, nil
 }
 
+func (s *CmdExecutor) brickStorage(host string,
+	brick *executors.BrickRequest) (string, string, error) {
+
+	// Cloned bricks do not follow 'our' VG/LV naming, detect it.
+	commands := []string{
+		fmt.Sprintf("mount | grep -w %v | cut -d\" \" -f1", brick.Path),
+	}
+	output, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	if output == nil || err != nil {
+		return "", "", fmt.Errorf("No brick mounted on %v, unable to proceed with removing", brick.Path)
+	}
+	dev := output[0]
+	// detect the thinp LV used by this brick (in "vg_.../tp_..." format)
+	commands = []string{
+		fmt.Sprintf("lvs --noheadings --separator=/ -ovg_name,pool_lv %v", dev),
+	}
+	output, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	if err != nil {
+		logger.Err(err)
+	}
+	tp := output[0]
+
+	return dev, tp, nil
+}
+
 func (s *CmdExecutor) BrickDestroy(host string,
 	brick *executors.BrickRequest) (bool, error) {
 
@@ -123,27 +148,13 @@ func (s *CmdExecutor) BrickDestroy(host string,
 		spaceReclaimed bool
 	)
 
-	// Cloned bricks do not follow 'our' VG/LV naming, detect it.
-	commands := []string{
-		fmt.Sprintf("mount | grep -w %v | cut -d\" \" -f1", brick.Path),
-	}
-	output, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
-	if output == nil || err != nil {
-		return spaceReclaimed, fmt.Errorf("No brick mounted on %v, unable to proceed with removing", brick.Path)
-	}
-	dev := output[0]
-	// detect the thinp LV used by this brick (in "vg_.../tp_..." format)
-	commands = []string{
-		fmt.Sprintf("lvs --noheadings --separator=/ -ovg_name,pool_lv %v", dev),
-	}
-	output, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	dev, tp, err := s.brickStorage(host, brick)
 	if err != nil {
-		logger.Err(err)
+		return spaceReclaimed, err
 	}
-	tp := output[0]
 
 	// Try to unmount first
-	commands = []string{
+	commands := []string{
 		fmt.Sprintf("umount %v", brick.Path),
 	}
 	_, umountErr = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
@@ -187,7 +198,7 @@ func (s *CmdExecutor) BrickDestroy(host string,
 	commands = []string{
 		fmt.Sprintf("lvs --noheadings --options=thin_count %v", tp),
 	}
-	output, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	output, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
 		logger.Err(err)
 		return spaceReclaimed, fmt.Errorf("Unable to determine number of logical volumes in "+
