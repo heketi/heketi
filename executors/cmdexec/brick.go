@@ -58,13 +58,13 @@ func (s *CmdExecutor) BrickCreate(host string,
 			utils.VgIdToName(brick.VgId),
 
 			// ThinP name
-			utils.BrickIdToThinPoolName(brick.Name),
+			brick.TpName,
 
 			// Allocation size
 			brick.Size,
 
 			// Logical Vol name
-			utils.BrickIdToName(brick.Name)),
+			brick.LvName),
 
 		// Format
 		fmt.Sprintf("mkfs.xfs -i size=512 -n size=8192 %v", devnode),
@@ -170,16 +170,19 @@ func (s *CmdExecutor) BrickDestroy(host string,
 	godbc.Require(brick.Name != "")
 	godbc.Require(brick.VgId != "")
 	godbc.Require(brick.Path != "")
+	godbc.Require(brick.TpName != "")
+	godbc.Require(brick.LvName != "")
 
 	var (
 		umountErr      error
 		spaceReclaimed bool
 	)
 
-	dev, tp, err := s.brickStorage(host, brick)
-	if err != nil {
-		return spaceReclaimed, err
-	}
+	// TODO: convert to a best effort sanity check
+	// dev, tp, err := s.brickStorage(host, brick)
+	// if err != nil {
+	// 	return spaceReclaimed, err
+	// }
 
 	// Try to unmount first
 	commands := []string{
@@ -187,7 +190,7 @@ func (s *CmdExecutor) BrickDestroy(host string,
 	}
 	_, umountErr = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if umountErr != nil {
-		logger.Err(err)
+		logger.Err(umountErr)
 	}
 
 	// remove brick from fstab before we start deleting LVM items.
@@ -197,7 +200,7 @@ func (s *CmdExecutor) BrickDestroy(host string,
 	// fstab referencing it, we could end up with a non-booting system.
 	// Even if we failed to umount the brick, remove it from fstab
 	// so that it does not get mounted again on next reboot.
-	err = s.removeBrickFromFstab(host, brick)
+	err := s.removeBrickFromFstab(host, brick)
 
 	// if either umount or fstab remove failed there's no point in
 	// continuing. We'll need either automated or manual recovery
@@ -210,7 +213,11 @@ func (s *CmdExecutor) BrickDestroy(host string,
 		return spaceReclaimed, umountErr
 	}
 
-	if err := s.deleteBrickLV(host, dev); err != nil {
+	vg := utils.VgIdToName(brick.VgId)
+	lv := fmt.Sprintf("%v/%v", vg, brick.LvName)
+	tp := fmt.Sprintf("%v/%v", vg, brick.TpName)
+
+	if err := s.deleteBrickLV(host, lv); err != nil {
 		return spaceReclaimed, err
 	}
 
