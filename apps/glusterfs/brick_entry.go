@@ -62,6 +62,7 @@ func NewBrickEntry(size, tpsize, poolMetadataSize uint64,
 	entry.Info.NodeId = nodeid
 	entry.Info.DeviceId = deviceid
 	entry.Info.VolumeId = volumeid
+	entry.LvmThinPool = utils.BrickIdToThinPoolName(entry.Info.Id)
 	entry.UpdatePath()
 
 	godbc.Ensure(entry.Info.Id != "")
@@ -96,6 +97,12 @@ func CloneBrickEntryFromId(tx *bolt.Tx, id string) (*BrickEntry, error) {
 	}
 
 	entry.Info.Id = utils.GenUUID()
+	// bricks always share a thin pool with the original brick
+	if entry.LvmThinPool == "" {
+		entry.LvmThinPool = utils.BrickIdToThinPoolName(entry.Info.Id)
+	}
+	// brick clones have their own lv name (not yet known)
+	entry.LvmLv = ""
 
 	return entry, nil
 }
