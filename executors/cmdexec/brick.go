@@ -134,6 +134,16 @@ func (s *CmdExecutor) brickStorage(host string,
 	return dev, tp, nil
 }
 
+func (s *CmdExecutor) deleteBrickLV(host, lv string) error {
+	// Remove the LV (by device name)
+	commands := []string{
+		fmt.Sprintf("lvremove --autobackup=%v -f %v",
+			utils.BoolToYN(s.BackupLVM), lv),
+	}
+	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	return err
+}
+
 func (s *CmdExecutor) BrickDestroy(host string,
 	brick *executors.BrickRequest) (bool, error) {
 
@@ -182,16 +192,8 @@ func (s *CmdExecutor) BrickDestroy(host string,
 		return spaceReclaimed, umountErr
 	}
 
-	// Remove the LV (by device name)
-	commands = []string{
-		fmt.Sprintf("lvremove --autobackup=%v -f %v", utils.BoolToYN(s.BackupLVM), dev),
-	}
-	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
-	if err != nil {
-		logger.Err(err)
-	} else {
-		// no space freed when tp sticks around
-		spaceReclaimed = false
+	if err := s.deleteBrickLV(host, dev); err != nil {
+		return spaceReclaimed, err
 	}
 
 	// Detect the number of bricks using the thin-pool
