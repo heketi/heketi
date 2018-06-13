@@ -144,6 +144,24 @@ func (s *CmdExecutor) deleteBrickLV(host, lv string) error {
 	return err
 }
 
+func (s *CmdExecutor) countThinLVsInPool(host, tp string) (int, error) {
+	// Detect the number of bricks using the thin-pool
+	commands := []string{
+		fmt.Sprintf("lvs --noheadings --options=thin_count %v", tp),
+	}
+	output, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	if err != nil {
+		logger.Err(err)
+		return 0, fmt.Errorf("Unable to determine number of logical volumes in "+
+			"thin pool %v on host %v", tp, host)
+	}
+	thin_count, err := strconv.Atoi(strings.TrimSpace(output[0]))
+	if err != nil {
+		return 0, fmt.Errorf("Failed to convert number of logical volumes in thin pool %v on host %v: %v", tp, host, err)
+	}
+	return thin_count, nil
+}
+
 func (s *CmdExecutor) BrickDestroy(host string,
 	brick *executors.BrickRequest) (bool, error) {
 
@@ -196,19 +214,9 @@ func (s *CmdExecutor) BrickDestroy(host string,
 		return spaceReclaimed, err
 	}
 
-	// Detect the number of bricks using the thin-pool
-	commands = []string{
-		fmt.Sprintf("lvs --noheadings --options=thin_count %v", tp),
-	}
-	output, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	thin_count, err := s.countThinLVsInPool(host, tp)
 	if err != nil {
-		logger.Err(err)
-		return spaceReclaimed, fmt.Errorf("Unable to determine number of logical volumes in "+
-			"thin pool %v on host %v", tp, host)
-	}
-	thin_count, err := strconv.Atoi(strings.TrimSpace(output[0]))
-	if err != nil {
-		return spaceReclaimed, fmt.Errorf("Failed to convert number of logical volumes in thin pool %v on host %v: %v", tp, host, err)
+		return spaceReclaimed, err
 	}
 
 	// If there is no brick left in the thin-pool, it can be removed
