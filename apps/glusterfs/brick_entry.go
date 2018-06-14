@@ -164,6 +164,8 @@ func (b *BrickEntry) brickRequest(path string) *executors.BrickRequest {
 	req.TpSize = b.TpSize
 	req.VgId = b.Info.DeviceId
 	req.PoolMetadataSize = b.PoolMetadataSize
+	req.TpName = b.TpName()
+	req.LvName = b.LvName()
 	// path varies depending on what it is called from
 	req.Path = path
 	return req
