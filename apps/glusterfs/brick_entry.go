@@ -156,6 +156,19 @@ func (b *BrickEntry) Unmarshal(buffer []byte) error {
 	return nil
 }
 
+func (b *BrickEntry) brickRequest(path string) *executors.BrickRequest {
+	req := &executors.BrickRequest{}
+	req.Gid = b.gidRequested
+	req.Name = b.Info.Id
+	req.Size = b.Info.Size
+	req.TpSize = b.TpSize
+	req.VgId = b.Info.DeviceId
+	req.PoolMetadataSize = b.PoolMetadataSize
+	// path varies depending on what it is called from
+	req.Path = path
+	return req
+}
+
 func (b *BrickEntry) Create(db wdb.RODB, executor executors.Executor) error {
 	godbc.Require(db != nil)
 	godbc.Require(b.TpSize > 0)
@@ -178,15 +191,7 @@ func (b *BrickEntry) Create(db wdb.RODB, executor executors.Executor) error {
 		return err
 	}
 
-	// Create request
-	req := &executors.BrickRequest{}
-	req.Gid = b.gidRequested
-	req.Name = b.Info.Id
-	req.Size = b.Info.Size
-	req.TpSize = b.TpSize
-	req.VgId = b.Info.DeviceId
-	req.PoolMetadataSize = b.PoolMetadataSize
-	req.Path = b.Info.Path
+	req := b.brickRequest(b.Info.Path)
 	// remove this some time post-refactoring
 	godbc.Require(req.Path == utils.BrickPath(req.VgId, req.Name))
 
@@ -221,14 +226,8 @@ func (b *BrickEntry) Destroy(db wdb.RODB, executor executors.Executor) (bool, er
 		return false, err
 	}
 
-	// Create request
-	req := &executors.BrickRequest{}
-	req.Name = b.Info.Id
-	req.Size = b.Info.Size
-	req.TpSize = b.TpSize
-	req.PoolMetadataSize = b.PoolMetadataSize
-	req.VgId = b.Info.DeviceId
-	req.Path = strings.TrimSuffix(b.Info.Path, "/brick")
+	req := b.brickRequest(
+		strings.TrimSuffix(b.Info.Path, "/brick"))
 
 	// Delete brick on node
 	logger.Info("Deleting brick %v", b.Info.Id)
