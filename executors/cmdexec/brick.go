@@ -191,6 +191,14 @@ func (s *CmdExecutor) BrickDestroy(host string,
 	_, umountErr = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if umountErr != nil {
 		logger.Err(umountErr)
+		// check if the brick was previously unmounted
+		out, e := s.RemoteExecutor.RemoteCommandExecute(
+			host, []string{"mount"}, 5)
+		if e == nil && len(out) == 1 && !strings.Contains(out[0], brick.Path) {
+			logger.Warning("brick path [%v] not mounted, assuming deleted",
+				brick.Path)
+			umountErr = nil
+		}
 	}
 
 	// remove brick from fstab before we start deleting LVM items.
