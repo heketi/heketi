@@ -226,12 +226,22 @@ func (s *CmdExecutor) BrickDestroy(host string,
 	tp := fmt.Sprintf("%v/%v", vg, brick.TpName)
 
 	if err := s.deleteBrickLV(host, lv); err != nil {
-		return spaceReclaimed, err
+		if errIsLvNotFound(err) {
+			logger.Warning("did not delete missing lv: %v", lv)
+		} else {
+			return spaceReclaimed, err
+		}
 	}
 
 	thin_count, err := s.countThinLVsInPool(host, tp)
 	if err != nil {
-		return spaceReclaimed, err
+		if errIsLvNotFound(err) {
+			logger.Warning("unable to count lvs in missing thin pool: %v", tp)
+			// if the thin pool is gone it can't host lvs
+			thin_count = 0
+		} else {
+			return spaceReclaimed, err
+		}
 	}
 
 	// If there is no brick left in the thin-pool, it can be removed
@@ -240,7 +250,12 @@ func (s *CmdExecutor) BrickDestroy(host string,
 			fmt.Sprintf("lvremove --autobackup=%v -f %v", utils.BoolToYN(s.BackupLVM), tp),
 		}
 		_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
-		if err != nil {
+		if errIsLvNotFound(err) {
+			logger.Warning("did not delete missing thin pool: %v", tp)
+			// if the thin pool is gone then the bricks in the db associated
+			// with it take up no space
+			spaceReclaimed = true
+		} else if err != nil {
 			logger.Err(err)
 		} else {
 			spaceReclaimed = true
@@ -276,4 +291,13 @@ func (s *CmdExecutor) removeBrickFromFstab(
 		logger.Err(err)
 	}
 	return err
+}
+
+func errIsLvNotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+	e := strings.ToLower(err.Error())
+	return (strings.Contains(e, "not found") ||
+		strings.Contains(e, "failed to find"))
 }
