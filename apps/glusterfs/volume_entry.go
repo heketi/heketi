@@ -93,12 +93,6 @@ func NewVolumeEntryFromRequest(req *api.VolumeCreateRequest) *VolumeEntry {
 	vol.Info.Size = req.Size
 	vol.Info.Block = req.Block
 
-	if vol.Info.Block {
-		vol.Info.BlockInfo.FreeSize = req.Size
-		vol.GlusterVolumeOptions = []string{"group gluster-block"}
-
-	}
-
 	// Set default durability values
 	durability := vol.Info.Durability.Type
 	switch {
@@ -143,6 +137,15 @@ func NewVolumeEntryFromRequest(req *api.VolumeCreateRequest) *VolumeEntry {
 
 	// If it is zero, then no volume options are set.
 	vol.GlusterVolumeOptions = req.GlusterVolumeOptions
+
+	if vol.Info.Block {
+		vol.Info.BlockInfo.FreeSize = req.Size
+		// prepend the gluster-block group option,
+		// so that the user-specified options can take precedence
+		vol.GlusterVolumeOptions = append(
+			[]string{"group gluster-block"},
+			vol.GlusterVolumeOptions...)
+	}
 
 	// If it is zero, then it will be assigned during volume creation
 	vol.Info.Clusters = req.Clusters
