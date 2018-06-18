@@ -67,16 +67,39 @@ stop_heketi() {
     done
 }
 
+start_gluster_nodes() {
+    if [[ "$HEKETI_TEST_GLUSTER_START" ]]; then
+        "$HEKETI_TEST_GLUSTER_START"
+        return $?
+    fi
+    start_vagrant
+}
+
+stop_gluster_nodes() {
+    if [[ "$HEKETI_TEST_GLUSTER_STOP" ]]; then
+        "$HEKETI_TEST_GLUSTER_STOP"
+        return $?
+    fi
+    teardown_vagrant
+}
+
 start_vagrant() {
+    if [[ "$HEKETI_TEST_VAGRANT" == "no" ]]; then
+        return 0
+    fi
     cd vagrant || fail "Unable to 'cd vagrant'."
     _sudo ./up.sh || fail "unable to start vagrant virtual machines"
     cd ..
 }
 
 teardown_vagrant() {
+    if [[ "$HEKETI_TEST_VAGRANT" == "no" ]]; then
+        return 0
+    fi
     cd vagrant || fail "Unable to 'cd vagrant'."
     _sudo vagrant destroy -f
     cd ..
+    force_cleanup_libvirt_disks
 }
 
 run_go_tests() {
@@ -96,11 +119,7 @@ force_cleanup_libvirt_disks() {
 }
 
 teardown() {
-    if [[ "$HEKETI_TEST_VAGRANT" != "no" ]]
-    then
-        teardown_vagrant
-        force_cleanup_libvirt_disks
-    fi
+    stop_gluster_nodes
     rm -f heketi.db > /dev/null 2>&1
 }
 
@@ -122,10 +141,7 @@ pause_test() {
 
 functional_tests() {
     setup_test_paths
-    if [[ "$HEKETI_TEST_VAGRANT" != "no" ]]
-    then
-        start_vagrant
-    fi
+    start_gluster_nodes
     start_heketi
 
     pause_test "$HEKETI_TEST_PAUSE_BEFORE"
