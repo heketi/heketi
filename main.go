@@ -395,6 +395,9 @@ func main() {
 	// Setup complete routing
 	router.NewRoute().Handler(n)
 
+	// Reset admin mode on SIGUSR2
+	admin.ResetStateOnSignal(adminss, syscall.SIGUSR2)
+
 	// Shutdown on CTRL-C signal
 	// For a better cleanup, we should shutdown the server and
 	signalch := make(chan os.Signal, 1)
