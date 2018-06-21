@@ -28,6 +28,7 @@ import (
 	"github.com/heketi/heketi/apps/glusterfs"
 	"github.com/heketi/heketi/middleware"
 	"github.com/heketi/heketi/pkg/metrics"
+	"github.com/heketi/heketi/server/admin"
 	"github.com/heketi/heketi/server/config"
 )
 
@@ -374,6 +375,10 @@ func main() {
 
 		fmt.Println("Authorization loaded")
 	}
+
+	adminss := admin.New()
+	n.Use(adminss)
+	adminss.SetRoutes(heketiRouter)
 
 	if options.BackupDbToKubeSecret {
 		// Check if running in a Kubernetes environment
