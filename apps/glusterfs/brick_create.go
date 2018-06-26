@@ -56,14 +56,16 @@ func DestroyBricks(db wdb.RODB, executor executors.Executor, brick_entries []*Br
 		go func(b *BrickEntry, r map[string]bool, m *sync.Mutex) {
 			defer sg.Done()
 			spaceReclaimed, err := b.Destroy(db, executor)
-			if err == nil {
+			if err != nil {
 				logger.LogError("error destroying brick %v: %v",
 					b.Info.Id, err)
+			} else {
 				// mark space from device as freed
 				m.Lock()
 				r[b.Info.DeviceId] = spaceReclaimed
 				m.Unlock()
 			}
+
 			sg.Err(err)
 		}(brick, reclaimed, &mutex)
 	}
