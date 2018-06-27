@@ -45,4 +45,7 @@ type GlusterFSConfig struct {
 
 	// operation retry amounts
 	RetryLimits RetryLimitConfig `json:"operation_retry_limits"`
+
+	// "volume status" is a very heavy operation
+	VolumeStatusEnabled bool `json:"volume_status_enabled"`
 }
