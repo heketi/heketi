@@ -309,6 +309,15 @@ func (v *VolumeEntry) Create(db wdb.DB,
 		executor)
 }
 
+// ModifyFreeSize adjusts the free size of a block hosting volume.
+// When taking space from the volume the value must be negative (on
+// block volume add) and positive when the space is being "freed."
+func (v *VolumeEntry) ModifyFreeSize(delta int) {
+	v.Info.BlockInfo.FreeSize += delta
+	godbc.Check(v.Info.BlockInfo.FreeSize >= 0)
+	godbc.Check(v.Info.BlockInfo.FreeSize <= v.Info.Size)
+}
+
 func (v *VolumeEntry) tryAllocateBricks(
 	db wdb.DB,
 	possibleClusters []string) (brick_entries []*BrickEntry, err error) {
