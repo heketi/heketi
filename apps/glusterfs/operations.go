@@ -342,7 +342,7 @@ func (ve *VolumeExpandOperation) Finalize() error {
 		}
 		ve.vol.Info.Size += sizeDelta
 		if ve.vol.Info.Block == true {
-			ve.vol.Info.BlockInfo.FreeSize += sizeDelta
+			ve.vol.ModifyFreeSize(sizeDelta)
 		}
 		ve.op.FinalizeVolume(ve.vol)
 		if e := ve.vol.Save(tx); e != nil {
