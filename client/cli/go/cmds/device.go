@@ -336,7 +336,7 @@ var deviceResyncCommand = &cobra.Command{
 		//set url
 		err = heketi.DeviceResync(deviceId)
 		if err == nil {
-			fmt.Fprintf(stdout, "Device %v updated\n", nodeId)
+			fmt.Fprintf(stdout, "Device %v updated\n", deviceId)
 		}
 
 		return nil
