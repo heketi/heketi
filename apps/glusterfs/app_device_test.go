@@ -540,7 +540,7 @@ func TestDeviceInfo(t *testing.T) {
 	device.Info.Id = "abc"
 	device.Info.Name = "/dev/fake1"
 	device.NodeId = "def"
-	device.StorageSet(10000)
+	device.StorageSet(10000, 10000, 0)
 	device.StorageAllocate(1000)
 
 	// Save device in the db
@@ -585,7 +585,7 @@ func TestDeviceDeleteErrors(t *testing.T) {
 	device.Info.Id = "abc"
 	device.Info.Name = "/dev/fake1"
 	device.NodeId = "def"
-	device.StorageSet(10000)
+	device.StorageSet(10000, 10000, 0)
 	device.StorageAllocate(1000)
 
 	// Save device in the db
@@ -906,7 +906,7 @@ func TestDeviceSetTags(t *testing.T) {
 	device.Info.Id = deviceId
 	device.Info.Name = "/dev/fake1"
 	device.NodeId = "def"
-	device.StorageSet(10000)
+	device.StorageSet(10000, 10000, 0)
 	device.StorageAllocate(1000)
 	err := app.db.Update(func(tx *bolt.Tx) error {
 		return device.Save(tx)

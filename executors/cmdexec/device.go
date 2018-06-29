@@ -142,8 +142,22 @@ func (s *CmdExecutor) getVgSizeFromNode(
 		return err
 	}
 
-	d.Size = free_extents * extent_size
+	allocated_extents, err :=
+		strconv.ParseUint(vginfo[VGDISPLAY_ALLOCATED_NUMBER_EXTENTS], 10, 64)
+	if err != nil {
+		return err
+	}
+
+	total_extents, err :=
+		strconv.ParseUint(vginfo[VGDISPLAY_TOTAL_NUMBER_EXTENTS], 10, 64)
+	if err != nil {
+		return err
+	}
+
+	d.TotalSize = total_extents * extent_size
+	d.FreeSize = free_extents * extent_size
+	d.UsedSize = allocated_extents * extent_size
 	d.ExtentSize = extent_size
-	logger.Debug("Size of %v in %v is %v", device, host, d.Size)
+	logger.Debug("%v in %v has TotalSize:%v, FreeSize:%v, UsedSize:%v", device, host, d.TotalSize, d.FreeSize, d.UsedSize)
 	return nil
 }

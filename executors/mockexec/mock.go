@@ -55,7 +55,9 @@ func NewMockExecutor() (*MockExecutor, error) {
 
 	m.MockDeviceSetup = func(host, device, vgid string, destroy bool) (*executors.DeviceInfo, error) {
 		d := &executors.DeviceInfo{}
-		d.Size = 500 * 1024 * 1024 // Size in KB
+		d.TotalSize = 500 * 1024 * 1024 // Size in KB
+		d.FreeSize = 500 * 1024 * 1024  // Size in KB
+		d.UsedSize = 0                  // Size in KB
 		d.ExtentSize = 4096
 		return d, nil
 	}
