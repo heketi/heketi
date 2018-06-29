@@ -329,9 +329,12 @@ func (d *DeviceEntry) BrickDelete(id string) {
 	d.Bricks = utils.SortedStringsDelete(d.Bricks, id)
 }
 
-func (d *DeviceEntry) StorageSet(amount uint64) {
-	d.Info.Storage.Free = amount
-	d.Info.Storage.Total = amount
+func (d *DeviceEntry) StorageSet(total uint64, free uint64, used uint64) {
+	godbc.Check(total == free+used)
+
+	d.Info.Storage.Total = total
+	d.Info.Storage.Free = free
+	d.Info.Storage.Used = used
 }
 
 func (d *DeviceEntry) StorageAllocate(amount uint64) {

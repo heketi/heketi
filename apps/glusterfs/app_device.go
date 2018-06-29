@@ -98,7 +98,7 @@ func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Create an entry for the device and set the size
-		device.StorageSet(info.Size)
+		device.StorageSet(info.TotalSize, info.FreeSize, info.UsedSize)
 		device.SetExtentSize(info.ExtentSize)
 
 		// Setup garbage collector on error
