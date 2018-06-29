@@ -237,7 +237,7 @@ func (v *BlockVolumeEntry) cleanupBlockVolumeCreate(db wdb.DB,
 	// best effort removal of anything on system
 	v.deleteBlockVolumeExec(db, hvname, executor)
 
-	return v.removeComponents(db)
+	return v.removeComponents(db, true)
 }
 
 func (v *BlockVolumeEntry) Create(db wdb.DB,
@@ -273,7 +273,7 @@ func (v *BlockVolumeEntry) saveCreateBlockVolume(db wdb.DB) error {
 			return err
 		}
 
-		volume.Info.BlockInfo.FreeSize = volume.Info.BlockInfo.FreeSize - v.Info.Size
+		volume.ModifyFreeSize(-v.Info.Size)
 
 		volume.BlockVolumeAdd(v.Info.Id)
 		err = volume.Save(tx)
@@ -317,7 +317,7 @@ func (v *BlockVolumeEntry) deleteBlockVolumeExec(db wdb.RODB,
 	return nil
 }
 
-func (v *BlockVolumeEntry) removeComponents(db wdb.DB) error {
+func (v *BlockVolumeEntry) removeComponents(db wdb.DB, keepSize bool) error {
 	return db.Update(func(tx *bolt.Tx) error {
 		// Remove volume from cluster
 		cluster, err := NewClusterEntryFromId(tx, v.Info.Cluster)
@@ -343,7 +343,9 @@ func (v *BlockVolumeEntry) removeComponents(db wdb.DB) error {
 			logger.Err(err)
 			// Do not return here.. keep going
 		}
-		blockHostingVolume.Info.BlockInfo.FreeSize = blockHostingVolume.Info.BlockInfo.FreeSize + v.Info.Size
+		if !keepSize {
+			blockHostingVolume.ModifyFreeSize(v.Info.Size)
+		}
 		blockHostingVolume.Save(tx)
 
 		if err != nil {

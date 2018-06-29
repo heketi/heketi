@@ -342,7 +342,7 @@ func (ve *VolumeExpandOperation) Finalize() error {
 		}
 		ve.vol.Info.Size += sizeDelta
 		if ve.vol.Info.Block == true {
-			ve.vol.Info.BlockInfo.FreeSize += sizeDelta
+			ve.vol.ModifyFreeSize(sizeDelta)
 		}
 		ve.op.FinalizeVolume(ve.vol)
 		if e := ve.vol.Save(tx); e != nil {
@@ -959,7 +959,7 @@ func (vdel *BlockVolumeDeleteOperation) Rollback(executor executors.Executor) er
 func (vdel *BlockVolumeDeleteOperation) Finalize() error {
 	return vdel.db.Update(func(tx *bolt.Tx) error {
 		txdb := wdb.WrapTx(tx)
-		if e := vdel.bvol.removeComponents(txdb); e != nil {
+		if e := vdel.bvol.removeComponents(txdb, false); e != nil {
 			logger.LogError("Failed to remove block volume from db")
 			return e
 		}
