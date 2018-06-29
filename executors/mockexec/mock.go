@@ -20,6 +20,7 @@ type MockExecutor struct {
 	MockPeerDetach               func(exec_host, newnode string) error
 	MockDeviceSetup              func(host, device, vgid string, destroy bool) (*executors.DeviceInfo, error)
 	MockDeviceTeardown           func(host, device, vgid string) error
+	MockGetDeviceInfo            func(host, device, vgid string) (*executors.DeviceInfo, error)
 	MockBrickCreate              func(host string, brick *executors.BrickRequest) (*executors.BrickInfo, error)
 	MockBrickDestroy             func(host string, brick *executors.BrickRequest) (bool, error)
 	MockVolumeCreate             func(host string, volume *executors.VolumeRequest) (*executors.Volume, error)
@@ -64,6 +65,15 @@ func NewMockExecutor() (*MockExecutor, error) {
 
 	m.MockDeviceTeardown = func(host, device, vgid string) error {
 		return nil
+	}
+
+	m.MockGetDeviceInfo = func(host, device, vgid string) (*executors.DeviceInfo, error) {
+		d := &executors.DeviceInfo{}
+		d.TotalSize = 500 * 1024 * 1024
+		d.FreeSize = 500 * 1024 * 1024
+		d.UsedSize = 0
+		d.ExtentSize = 4096
+		return d, nil
 	}
 
 	m.MockBrickCreate = func(host string, brick *executors.BrickRequest) (*executors.BrickInfo, error) {
@@ -204,7 +214,7 @@ func (m *MockExecutor) DeviceSetup(host, device, vgid string, destroy bool) (*ex
 }
 
 func (m *MockExecutor) GetDeviceInfo(host, device, vgid string) (*executors.DeviceInfo, error) {
-	return m.MockDeviceSetup(host, device, vgid, false)
+	return m.MockGetDeviceInfo(host, device, vgid)
 }
 
 func (m *MockExecutor) DeviceTeardown(host, device, vgid string) error {
