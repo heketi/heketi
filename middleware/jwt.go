@@ -22,8 +22,14 @@ import (
 	"github.com/gorilla/context"
 )
 
+// From https://github.com/dgrijalva/jwt-go/pull/139 it is understood
+// that if the machine where jwt token is generated and/or the machine
+// where jwt token is verified have any clock skew then there is a
+// possibility of getting a "Token used before issued" error. Considering
+// that we also check for expiration with delta of 5 minutes, disabling
+// iat claim until the patch is merged in jwt.
 var (
-	required_claims = []string{"iss", "iat", "exp"}
+	required_claims = []string{"iss", "exp"}
 )
 
 type JwtAuth struct {
