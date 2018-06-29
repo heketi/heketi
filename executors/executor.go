@@ -49,7 +49,9 @@ const (
 // Returns the size of the device
 type DeviceInfo struct {
 	// Size in KB
-	Size       uint64
+	TotalSize  uint64
+	FreeSize   uint64
+	UsedSize   uint64
 	ExtentSize uint64
 }
 
