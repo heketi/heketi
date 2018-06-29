@@ -151,9 +151,7 @@ func (s *CmdExecutor) countThinLVsInPool(host, tp string) (int, error) {
 	}
 	output, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
-		logger.Err(err)
-		return 0, fmt.Errorf("Unable to determine number of logical volumes in "+
-			"thin pool %v on host %v", tp, host)
+		return 0, err
 	}
 	thin_count, err := strconv.Atoi(strings.TrimSpace(output[0]))
 	if err != nil {
@@ -240,7 +238,10 @@ func (s *CmdExecutor) BrickDestroy(host string,
 			// if the thin pool is gone it can't host lvs
 			thin_count = 0
 		} else {
-			return spaceReclaimed, err
+			logger.Err(err)
+			return spaceReclaimed, fmt.Errorf(
+				"Unable to determine number of logical volumes in "+
+					"thin pool %v on host %v", tp, host)
 		}
 	}
 
