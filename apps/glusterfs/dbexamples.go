@@ -51,7 +51,7 @@ func buildCluster(app *App) {
 				}
 				dev_req.Name = fmt.Sprintf("/dev/id%v", j)
 				d := NewDeviceEntryFromRequest(dev_req)
-				d.StorageSet(1 << 30)
+				d.StorageSet(1<<30, 1<<30, 0)
 				n.DeviceAdd(d.Id())
 				if err := d.Save(tx); err != nil {
 					return err

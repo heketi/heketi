@@ -30,7 +30,7 @@ func createSampleDeviceEntry(nodeid string, disksize uint64) *DeviceEntry {
 	req.Name = "/dev/" + utils.GenUUID()[:8]
 
 	d := NewDeviceEntryFromRequest(req)
-	d.StorageSet(disksize)
+	d.StorageSet(disksize, disksize, 0)
 
 	return d
 }
@@ -589,12 +589,12 @@ func TestDeviceEntryStorage(t *testing.T) {
 	tests.Assert(t, d.Info.Storage.Total == 0)
 	tests.Assert(t, d.Info.Storage.Used == 0)
 
-	d.StorageSet(1000)
+	d.StorageSet(1000, 1000, 0)
 	tests.Assert(t, d.Info.Storage.Free == 1000)
 	tests.Assert(t, d.Info.Storage.Total == 1000)
 	tests.Assert(t, d.Info.Storage.Used == 0)
 
-	d.StorageSet(2000)
+	d.StorageSet(2000, 2000, 0)
 	tests.Assert(t, d.Info.Storage.Free == 2000)
 	tests.Assert(t, d.Info.Storage.Total == 2000)
 	tests.Assert(t, d.Info.Storage.Used == 0)
