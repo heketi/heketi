@@ -73,8 +73,8 @@ func (s *CmdExecutor) DeviceTeardown(host, device, vgid string) error {
 
 	// Setup commands
 	commands := []string{
-		fmt.Sprintf("vgremove %v", utils.VgIdToName(vgid)),
-		fmt.Sprintf("pvremove '%v'", device),
+		fmt.Sprintf("vgremove -qq %v", utils.VgIdToName(vgid)),
+		fmt.Sprintf("pvremove -qq '%v'", device),
 	}
 
 	// Execute command
