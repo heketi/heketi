@@ -142,8 +142,9 @@ func NewVolumeEntryFromRequest(req *api.VolumeCreateRequest) *VolumeEntry {
 		vol.Info.BlockInfo.FreeSize = req.Size
 		// prepend the gluster-block group option,
 		// so that the user-specified options can take precedence
+		blockoptions := strings.Split(BlockHostingVolumeOptions, ",")
 		vol.GlusterVolumeOptions = append(
-			[]string{"group gluster-block"},
+			blockoptions,
 			vol.GlusterVolumeOptions...)
 	}
 
