@@ -274,6 +274,11 @@ func (a *App) setFromEnvironmentalVariable() {
 		}
 	}
 
+	env = os.Getenv("HEKETI_BLOCK_HOSTING_VOLUME_OPTIONS")
+	if "" != env {
+		a.conf.BlockHostingVolumeOptions = env
+	}
+
 	env = os.Getenv("HEKETI_GLUSTERAPP_REBALANCE_ON_EXPANSION")
 	if env != "" {
 		value, err := strconv.ParseBool(env)
@@ -326,6 +331,11 @@ func (a *App) setBlockSettings() {
 		// Should be in GB as this is input for block hosting volume create
 		BlockHostingVolumeSize = a.conf.BlockHostingVolumeSize
 	}
+	if a.conf.BlockHostingVolumeOptions != "" {
+		logger.Info("Block: New Block Hosting Volume Options: %v", a.conf.BlockHostingVolumeOptions)
+		BlockHostingVolumeOptions = a.conf.BlockHostingVolumeOptions
+	}
+
 }
 
 // Register Routes

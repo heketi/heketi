@@ -84,6 +84,9 @@
     "auto_create_block_hosting_volume": true,
 
     "_block_hosting_volume_size": "New block hosting volume will be created in size mentioned, This is considered only if auto-create is enabled.",
-    "block_hosting_volume_size": 500
+    "block_hosting_volume_size": 500,
+
+    "_block_hosting_volume_options": "New block hosting volume will be created with the following set of options. Removing the group gluster-block option is NOT recommended. Additional options can be added next to it separated by a comma.",
+    "block_hosting_volume_options": "group gluster-block"
   }
 }
