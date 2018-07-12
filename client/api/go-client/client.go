@@ -56,12 +56,13 @@ type Client struct {
 	do func(*http.Request) (*http.Response, error)
 }
 
-//NewClient Creates a new client to access a Heketi server
+// NewClient creates a new client to access a Heketi server
 func NewClient(host, user, key string) *Client {
 	return NewClientWithRetry(host, user, key, RETRY_COUNT)
 }
 
-//NewClientWithRetry Creates a new client to access a Heketi server with retryCount
+// NewClientWithRetry creates a new client to access a Heketi server
+// with a user specified retry count.
 func NewClientWithRetry(host, user, key string, retryCount int) *Client {
 	c := &Client{}
 
@@ -252,7 +253,9 @@ func (c *Client) setToken(r *http.Request) error {
 	return nil
 }
 
-//retryOperationDo for retry operation
+// retryOperationDo performs the http request and internally
+// handles http 429 codes up to the number of retries specified
+// by the Client.
 func (c *Client) retryOperationDo(req *http.Request) (*http.Response, error) {
 	var (
 		requestBody []byte
