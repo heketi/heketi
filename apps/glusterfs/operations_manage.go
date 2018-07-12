@@ -140,8 +140,15 @@ func retryOperation(o Operation,
 func OperationHttpErrorf(
 	w http.ResponseWriter, e error, f string, v ...interface{}) {
 
+	var msg string
 	status := http.StatusInternalServerError
-	msg := fmt.Sprintf(f, v...)
+	switch e {
+	case ErrTooManyOperations:
+		status = http.StatusTooManyRequests
+		msg = "Server busy. Retry operation later."
+	default:
+		msg = fmt.Sprintf(f, v...)
+	}
 
 	http.Error(w, msg, status)
 }
