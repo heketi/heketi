@@ -51,6 +51,9 @@ type Client struct {
 
 	// configuration for TLS support
 	tlsClientConfig *tls.Config
+
+	// allow plugging in custom do wrappers
+	do func(*http.Request) (*http.Response, error)
 }
 
 //NewClient Creates a new client to access a Heketi server
@@ -69,6 +72,7 @@ func NewClientWithRetry(host, user, key string, retryCount int) *Client {
 	c.retryCount = retryCount
 	// Maximum concurrent requests
 	c.throttle = make(chan bool, MAX_CONCURRENT_REQUESTS)
+	c.do = c.retryOperationDo
 
 	return c
 }
@@ -141,8 +145,9 @@ func (c *Client) Hello() error {
 	return nil
 }
 
+// doBasic performs the core http transaction.
 // Make sure we do not run out of fds by throttling the requests
-func (c *Client) do(req *http.Request) (*http.Response, error) {
+func (c *Client) doBasic(req *http.Request) (*http.Response, error) {
 	c.throttle <- true
 	defer func() {
 		<-c.throttle
@@ -189,7 +194,7 @@ func (c *Client) waitForResponseWithTimer(r *http.Response,
 		}
 
 		// Wait for response
-		r, err = c.do(req)
+		r, err = c.doBasic(req)
 		if err != nil {
 			return nil, err
 		}
@@ -263,7 +268,7 @@ func (c *Client) retryOperationDo(req *http.Request) (*http.Response, error) {
 	// Send request
 	for i := 0; i <= c.retryCount; i++ {
 		req.Body = ioutil.NopCloser(bytes.NewReader(requestBody))
-		r, err := c.do(req)
+		r, err := c.doBasic(req)
 		if err != nil {
 			return nil, err
 		}
