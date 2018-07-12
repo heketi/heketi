@@ -608,7 +608,7 @@ func TestClientVolume(t *testing.T) {
 				defer sg.Done()
 
 				deviceReq := &api.DeviceAddRequest{}
-				deviceReq.Name = "/sd" + utils.GenUUID()
+				deviceReq.Name = "/dev/by-magic/id:" + utils.GenUUID()
 				deviceReq.NodeId = node.Id
 
 				// Create device
