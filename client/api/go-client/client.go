@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"strconv"
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
@@ -32,6 +33,10 @@ import (
 const (
 	MAX_CONCURRENT_REQUESTS = 32
 	RETRY_COUNT             = 1000
+
+	// default delay values
+	MIN_DELAY = 10
+	MAX_DELAY = 30
 )
 
 type ClientTLSOptions struct {
@@ -41,39 +46,59 @@ type ClientTLSOptions struct {
 	VerifyCerts []string
 }
 
+// Client configuration options
+type ClientOptions struct {
+	RetryEnabled bool
+	RetryCount   int
+	// control waits between retries
+	RetryMinDelay, RetryMaxDelay int
+}
+
 // Client object
 type Client struct {
 	host     string
 	key      string
 	user     string
 	throttle chan bool
-	retryCount int
 
 	// configuration for TLS support
 	tlsClientConfig *tls.Config
+
+	// general behavioral options
+	opts ClientOptions
 
 	// allow plugging in custom do wrappers
 	do func(*http.Request) (*http.Response, error)
 }
 
-// NewClient creates a new client to access a Heketi server
-func NewClient(host, user, key string) *Client {
-	return NewClientWithRetry(host, user, key, RETRY_COUNT)
+var defaultClientOptions = ClientOptions{
+	RetryEnabled:  true,
+	RetryCount:    RETRY_COUNT,
+	RetryMinDelay: MIN_DELAY,
+	RetryMaxDelay: MAX_DELAY,
 }
 
-// NewClientWithRetry creates a new client to access a Heketi server
-// with a user specified retry count.
-func NewClientWithRetry(host, user, key string, retryCount int) *Client {
+// NewClient creates a new client to access a Heketi server
+func NewClient(host, user, key string) *Client {
+	return NewClientWithOptions(host, user, key, defaultClientOptions)
+}
+
+// NewClientWithOptions creates a new client to access a Heketi server
+// with a user specified suite of options.
+func NewClientWithOptions(host, user, key string, opts ClientOptions) *Client {
 	c := &Client{}
 
 	c.key = key
 	c.host = host
 	c.user = user
-	//maximum retry for request
-	c.retryCount = retryCount
+	c.opts = opts
 	// Maximum concurrent requests
 	c.throttle = make(chan bool, MAX_CONCURRENT_REQUESTS)
-	c.do = c.retryOperationDo
+	if opts.RetryEnabled {
+		c.do = c.retryOperationDo
+	} else {
+		c.do = c.doBasic
+	}
 
 	return c
 }
@@ -269,7 +294,7 @@ func (c *Client) retryOperationDo(req *http.Request) (*http.Response, error) {
 	}
 
 	// Send request
-	for i := 0; i <= c.retryCount; i++ {
+	for i := 0; i <= c.opts.RetryCount; i++ {
 		req.Body = ioutil.NopCloser(bytes.NewReader(requestBody))
 		r, err := c.doBasic(req)
 		if err != nil {
@@ -283,8 +308,7 @@ func (c *Client) retryOperationDo(req *http.Request) (*http.Response, error) {
 				r.Body.Close()
 			}
 			//sleep before continue
-			num := random(10, 30)
-			time.Sleep(time.Second * time.Duration(num))
+			time.Sleep(c.opts.retryDelay(r))
 			continue
 
 		default:
@@ -295,6 +319,20 @@ func (c *Client) retryOperationDo(req *http.Request) (*http.Response, error) {
 	return nil, errors.New("Failed to complete requested operation")
 }
 
-func random(min, max int) int {
-	return rand.Intn(max-min) + min
+// retryDelay returns a duration for which a retry should wait
+// (after failure) before continuing.
+func (c *ClientOptions) retryDelay(r *http.Response) time.Duration {
+	var (
+		min = c.RetryMinDelay
+		max = c.RetryMaxDelay
+	)
+	if ra := r.Header.Get("Retry-After"); ra != "" {
+		// TODO: support http date
+		if i, err := strconv.Atoi(ra); err == nil {
+			s := rand.Intn(min) + i
+			return time.Second * time.Duration(s)
+		}
+	}
+	s := rand.Intn(max-min) + min
+	return time.Second * time.Duration(s)
 }
