@@ -18,8 +18,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/hex"
-	"fmt"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -248,10 +248,21 @@ func (c *Client) setToken(r *http.Request) error {
 }
 
 //retryOperationDo for retry operation
-func (c *Client) retryOperationDo(req *http.Request, requestBody []byte) (*http.Response, error) {
+func (c *Client) retryOperationDo(req *http.Request) (*http.Response, error) {
+	var (
+		requestBody []byte
+		err         error
+	)
+	if req.Body != nil {
+		requestBody, err = ioutil.ReadAll(req.Body)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// Send request
 	for i := 0; i <= c.retryCount; i++ {
-		req.Body = ioutil.NopCloser(bytes.NewBuffer(requestBody))
+		req.Body = ioutil.NopCloser(bytes.NewReader(requestBody))
 		r, err := c.do(req)
 		if err != nil {
 			return nil, err
