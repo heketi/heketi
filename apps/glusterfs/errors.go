@@ -29,4 +29,7 @@ var (
 	// well known errors for cluster device source
 	ErrEmptyCluster = errors.New("No nodes in cluster")
 	ErrNoStorage    = errors.New("No online storage devices in cluster")
+
+	// returned by code related to operations load
+	ErrTooManyOperations = errors.New("Server handling too many operations")
 )
