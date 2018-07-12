@@ -277,6 +277,72 @@ func TestBlockVolumeCreate(t *testing.T) {
 	tests.Assert(t, info.Auth == false)
 }
 
+func TestBlockVolumeCreateHACount(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Setup database
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		10,   // nodes_per_cluster
+		10,   // devices_per_node,
+		5*TB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	// BlockVolumeCreate
+	request := []byte(`{
+	"size" : 100,
+	"hacount" : 3
+    }`)
+
+	// Send request
+	r, err := http.Post(ts.URL+"/blockvolumes", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	location, err := r.Location()
+	tests.Assert(t, err == nil)
+
+	// Query queue until finished
+	var info api.BlockVolumeInfoResponse
+	for {
+		r, err = http.Get(location.String())
+		tests.Assert(t, err == nil)
+		tests.Assert(t, r.StatusCode == http.StatusOK)
+		if r.ContentLength <= 0 {
+			time.Sleep(time.Millisecond * 10)
+			continue
+		} else {
+			// Should have node information here
+			tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
+			err = utils.GetJsonFromResponse(r, &info)
+			tests.Assert(t, err == nil)
+			break
+		}
+	}
+	tests.Assert(t, info.Id != "")
+	tests.Assert(t, info.Cluster != "")
+	tests.Assert(t, info.BlockHostingVolume != "")
+	tests.Assert(t, len(info.BlockVolume.Hosts) == 3)
+	tests.Assert(t, info.BlockVolume.Iqn != "")
+	tests.Assert(t, info.BlockVolume.Password == "")
+	tests.Assert(t, info.BlockVolume.Username == "")
+	tests.Assert(t, info.Size == 100)
+	tests.Assert(t, info.Name == "blockvol_"+info.Id)
+	tests.Assert(t, info.Auth == false)
+	tests.Assert(t, info.Hacount == 3)
+}
+
 func TestBlockVolumeInfoIdNotFound(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)

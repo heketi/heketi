@@ -63,7 +63,7 @@ func (v *BlockVolumeEntry) createBlockVolumeRequest(db wdb.RODB,
 		}
 
 		if v.Info.Hacount > 0 && v.Info.Hacount <= len(bhvol.Info.Mount.GlusterFS.Hosts) {
-			for i := 0; i <= v.Info.Hacount && i < len(bhvol.Info.Mount.GlusterFS.Hosts); i++ {
+			for i := 0; i < v.Info.Hacount && i < len(bhvol.Info.Mount.GlusterFS.Hosts); i++ {
 				managehostname, e := GetManageHostnameFromStorageHostname(tx, bhvol.Info.Mount.GlusterFS.Hosts[i])
 				if e != nil {
 					return fmt.Errorf("Could not find managehostname for %v", bhvol.Info.Mount.GlusterFS.Hosts[i])
