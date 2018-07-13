@@ -41,6 +41,7 @@ type GlusterFSConfig struct {
 	IgnoreStaleOperations          bool   `json:"ignore_stale_operations"`
 	RefreshTimeMonitorGlusterNodes uint32 `json:"refresh_time_monitor_gluster_nodes"`
 	StartTimeMonitorGlusterNodes   uint32 `json:"start_time_monitor_gluster_nodes"`
+	MaxInflightOperations          uint64 `json:"max_inflight_operations"`
 
 	// operation retry amounts
 	RetryLimits RetryLimitConfig `json:"operation_retry_limits"`

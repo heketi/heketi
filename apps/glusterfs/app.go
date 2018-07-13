@@ -289,6 +289,16 @@ func (a *App) setFromEnvironmentalVariable() {
 			a.conf.KubeConfig.RebalanceOnExpansion = value
 		}
 	}
+
+	env = os.Getenv("HEKETI_MAX_INFLIGHT_OPERATIONS")
+	if env != "" {
+		value, err := strconv.ParseInt(env, 10, 64)
+		if err != nil {
+			logger.LogError("Error: While parsing HEKETI_MAX_INFLIGHT_OPERATIONS: %v", err)
+		} else {
+			a.conf.MaxInflightOperations = uint64(value)
+		}
+	}
 }
 
 func (a *App) setAdvSettings() {
