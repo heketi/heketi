@@ -151,9 +151,7 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 		vc.maxRetries = a.conf.RetryLimits.VolumeCreate
 	}
 	if err := AsyncHttpOperation(a, w, r, vc); err != nil {
-		http.Error(w,
-			fmt.Sprintf("Failed to allocate new volume: %v", err),
-			http.StatusInternalServerError)
+		OperationHttpErrorf(w, err, "Failed to allocate new volume: %v", err)
 		return
 	}
 }
@@ -275,9 +273,7 @@ func (a *App) VolumeDelete(w http.ResponseWriter, r *http.Request) {
 
 	vdel := NewVolumeDeleteOperation(volume, a.db)
 	if err := AsyncHttpOperation(a, w, r, vdel); err != nil {
-		http.Error(w,
-			fmt.Sprintf("Failed to set up volume delete: %v", err),
-			http.StatusInternalServerError)
+		OperationHttpErrorf(w, err, "Failed to set up volume delete: %v", err)
 		return
 	}
 }
@@ -330,9 +326,7 @@ func (a *App) VolumeExpand(w http.ResponseWriter, r *http.Request) {
 
 	ve := NewVolumeExpandOperation(volume, a.db, msg.Size)
 	if err := AsyncHttpOperation(a, w, r, ve); err != nil {
-		http.Error(w,
-			fmt.Sprintf("Failed to allocate volume expansion: %v", err),
-			http.StatusInternalServerError)
+		OperationHttpErrorf(w, err, "Failed to allocate volume expansion: %v", err)
 		return
 	}
 }
@@ -376,10 +370,8 @@ func (a *App) VolumeClone(w http.ResponseWriter, r *http.Request) {
 
 	op := NewVolumeCloneOperation(volume, a.db, msg.Name)
 	if err := AsyncHttpOperation(a, w, r, op); err != nil {
-		http.Error(w,
-			fmt.Sprintf("Failed clone volume "+
-				"%v: %v", vol_id, err),
-			http.StatusInternalServerError)
+		OperationHttpErrorf(w, err,
+			"Failed clone volume %v: %v", vol_id, err)
 		return
 	}
 }

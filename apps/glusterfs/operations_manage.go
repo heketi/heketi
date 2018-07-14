@@ -10,6 +10,7 @@
 package glusterfs
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/heketi/heketi/executors"
@@ -131,4 +132,16 @@ func retryOperation(o Operation,
 		err = ore.OriginalError
 	}
 	return
+}
+
+// OperationHttpErrorf writes the appropriate http error responses for
+// errors returned from AsyncHttpOperation, as well as formatting the
+// given error response string.
+func OperationHttpErrorf(
+	w http.ResponseWriter, e error, f string, v ...interface{}) {
+
+	status := http.StatusInternalServerError
+	msg := fmt.Sprintf(f, v...)
+
+	http.Error(w, msg, status)
 }

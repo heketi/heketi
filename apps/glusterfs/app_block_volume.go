@@ -11,7 +11,6 @@ package glusterfs
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/boltdb/bolt"
@@ -78,9 +77,7 @@ func (a *App) BlockVolumeCreate(w http.ResponseWriter, r *http.Request) {
 
 	bvc := NewBlockVolumeCreateOperation(blockVolume, a.db)
 	if err := AsyncHttpOperation(a, w, r, bvc); err != nil {
-		http.Error(w,
-			fmt.Sprintf("Failed to allocate new block volume: %v", err),
-			http.StatusInternalServerError)
+		OperationHttpErrorf(w, err, "Failed to allocate new block volume: %v", err)
 		return
 	}
 }
@@ -175,9 +172,7 @@ func (a *App) BlockVolumeDelete(w http.ResponseWriter, r *http.Request) {
 
 	vdel := NewBlockVolumeDeleteOperation(blockVolume, a.db)
 	if err := AsyncHttpOperation(a, w, r, vdel); err != nil {
-		http.Error(w,
-			fmt.Sprintf("Failed to set up block volume delete: %v", err),
-			http.StatusInternalServerError)
+		OperationHttpErrorf(w, err, "Failed to set up block volume delete: %v", err)
 		return
 	}
 }
