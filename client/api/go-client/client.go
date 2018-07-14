@@ -32,7 +32,7 @@ import (
 
 const (
 	MAX_CONCURRENT_REQUESTS = 32
-	RETRY_COUNT             = 1000
+	RETRY_COUNT             = 6
 
 	// default delay values
 	MIN_DELAY = 10
