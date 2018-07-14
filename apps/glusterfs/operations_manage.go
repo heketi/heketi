@@ -79,13 +79,24 @@ func AsyncHttpOperation(app *App,
 	r *http.Request,
 	op Operation) error {
 
+	// check if the request needs to be rate limited
+	if app.opcounter.ThrottleOrInc() {
+		return ErrTooManyOperations
+	}
+
 	label := op.Label()
 	if err := op.Build(); err != nil {
 		logger.LogError("%v Build Failed: %v", label, err)
+		// creating the operation db data failed. this is no longer
+		// an in-flight operation
+		app.opcounter.Dec()
 		return err
 	}
 
 	app.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
+		// decrement the op counter once the operation is done
+		// either success or failure
+		defer app.opcounter.Dec()
 		logger.Info("Started async operation: %v", label)
 		if err := op.Exec(app.executor); err != nil {
 			if _, ok := err.(OperationRetryError); ok && op.MaxRetries() > 0 {
