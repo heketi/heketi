@@ -36,6 +36,7 @@ const (
 	BOLTDB_BUCKET_BLOCKVOLUME      = "BLOCKVOLUME"
 	BOLTDB_BUCKET_DBATTRIBUTE      = "DBATTRIBUTE"
 	DB_CLUSTER_HAS_FILE_BLOCK_FLAG = "DB_CLUSTER_HAS_FILE_BLOCK_FLAG"
+	DEFAULT_OP_LIMIT               = 8
 )
 
 var (
@@ -64,6 +65,9 @@ type App struct {
 
 	// health monitor
 	nhealth *NodeHealthCache
+
+	// operations tracker
+	opcounter *OpCounter
 
 	// For testing only.  Keep access to the object
 	// not through the interface
@@ -201,6 +205,13 @@ func NewApp(conf *GlusterFSConfig) *App {
 		app.nhealth.Monitor()
 		currentNodeHealthCache = app.nhealth
 	}
+
+	// set up the operations counter
+	oplimit := app.conf.MaxInflightOperations
+	if oplimit == 0 {
+		oplimit = DEFAULT_OP_LIMIT
+	}
+	app.opcounter = &OpCounter{Limit: oplimit}
 
 	// Show application has loaded
 	logger.Info("GlusterFS Application Loaded")
