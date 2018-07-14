@@ -14,6 +14,7 @@ package client
 
 import (
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"reflect"
@@ -32,7 +33,24 @@ const (
 	TEST_ADMIN_KEY = "adminkey"
 )
 
+type clientTestMiddleware struct {
+	intercept func(w http.ResponseWriter, r *http.Request) bool
+}
+
+func (cm *clientTestMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	if cm.intercept != nil && cm.intercept(w, r) {
+		return
+	}
+	next(w, r)
+}
+
 func setupHeketiServer(app *glusterfs.App) *httptest.Server {
+	return setupHeketiServerAndMiddleware(app, nil)
+}
+
+func setupHeketiServerAndMiddleware(
+	app *glusterfs.App, m negroni.Handler) *httptest.Server {
+
 	router := mux.NewRouter()
 	app.SetRoutes(router)
 	n := negroni.New()
@@ -43,6 +61,9 @@ func setupHeketiServer(app *glusterfs.App) *httptest.Server {
 
 	// Setup middleware
 	n.Use(middleware.NewJwtAuth(jwtconfig))
+	if m != nil {
+		n.Use(m)
+	}
 	n.UseFunc(app.Auth)
 	n.UseHandler(router)
 
@@ -1038,4 +1059,89 @@ func TestNodeTags(t *testing.T) {
 	err = c.ClusterDelete(cluster.Id)
 	tests.Assert(t, err == nil)
 
+}
+
+func TestRetryAfterThrottle(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+
+	// Setup the server
+	m := &clientTestMiddleware{}
+	ts := setupHeketiServerAndMiddleware(app, m)
+	defer ts.Close()
+
+	c := NewClientWithOptions(ts.URL, "admin", TEST_ADMIN_KEY, ClientOptions{
+		RetryEnabled:  true,
+		RetryCount:    RETRY_COUNT,
+		RetryMinDelay: 1, // this is a test. we want short delays
+		RetryMaxDelay: 2,
+	})
+
+	cluster_req := &api.ClusterCreateRequest{
+		ClusterFlags: api.ClusterFlags{
+			Block: true,
+			File:  true,
+		},
+	}
+
+	cluster, err := c.ClusterCreate(cluster_req)
+	tests.Assert(t, err == nil)
+
+	ictr := 0
+	permitAfter := 2
+	retryAfterHeader := -1 // test with built in delay calculation
+	m.intercept = func(w http.ResponseWriter, r *http.Request) bool {
+		ictr++
+		if ictr >= permitAfter {
+			return false
+		}
+		if retryAfterHeader != -1 {
+			w.Header().Set("Retry-After", fmt.Sprintf("%v", retryAfterHeader))
+		}
+		http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
+		return true
+	}
+
+	nodeReq := &api.NodeAddRequest{}
+	nodeReq.ClusterId = cluster.Id
+	nodeReq.Hostnames.Manage = []string{"manage1"}
+	nodeReq.Hostnames.Storage = []string{"storage1"}
+	nodeReq.Zone = 1
+
+	// verify that the NodeAdd command had to retry a few times but succeeds
+	node, err := c.NodeAdd(nodeReq)
+	tests.Assert(t, err == nil, "expected err == nil, got", err)
+	tests.Assert(t, node != nil)
+	tests.Assert(t, ictr >= 2, "expected ictr >= 2, got", ictr)
+
+	// verify that the NodeAdd command fails after exhausting retries
+	ictr = 0
+	permitAfter = 200
+	retryAfterHeader = 0 // test with delay based on server header
+	nodeReq.Hostnames.Manage = []string{"manage2"}
+	nodeReq.Hostnames.Storage = []string{"storage2"}
+	_, err = c.NodeAdd(nodeReq)
+	tests.Assert(t, err != nil, "expected err != nil, got", err)
+	tests.Assert(t, err.Error() == "Too Many Requests", "expected err == 'Too Many Requests', got", err)
+	tests.Assert(t, ictr >= RETRY_COUNT, "expected ictr >= 2, got", ictr)
+
+	// disable internal retries
+	c = NewClientWithOptions(ts.URL, "admin", TEST_ADMIN_KEY, ClientOptions{
+		RetryEnabled:  false,
+		RetryCount:    RETRY_COUNT,
+		RetryMinDelay: 1, // this is a test. we want short delays
+		RetryMaxDelay: 2,
+	})
+
+	// verify that the NodeAdd command fails without doing retries
+	ictr = 0
+	permitAfter = 200
+	_, err = c.NodeAdd(nodeReq)
+	tests.Assert(t, err != nil, "expected err != nil, got", err)
+	tests.Assert(t, err.Error() == "Too Many Requests", "expected err == 'Too Many Requests', got", err)
+	tests.Assert(t, ictr == 1, "expected ictr == 1, got", ictr)
 }
