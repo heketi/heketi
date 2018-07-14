@@ -18,7 +18,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -294,9 +293,10 @@ func (c *Client) retryOperationDo(req *http.Request) (*http.Response, error) {
 	}
 
 	// Send request
+	var r *http.Response
 	for i := 0; i <= c.opts.RetryCount; i++ {
 		req.Body = ioutil.NopCloser(bytes.NewReader(requestBody))
-		r, err := c.doBasic(req)
+		r, err = c.doBasic(req)
 		if err != nil {
 			return nil, err
 		}
@@ -304,8 +304,11 @@ func (c *Client) retryOperationDo(req *http.Request) (*http.Response, error) {
 		case http.StatusTooManyRequests:
 			if r != nil {
 				//Read Response Body
-				ioutil.ReadAll(r.Body)
+				// I don't like discarding error here, but I cant
+				// think of something better atm
+				b, _ := ioutil.ReadAll(r.Body)
 				r.Body.Close()
+				r.Body = ioutil.NopCloser(bytes.NewReader(b))
 			}
 			//sleep before continue
 			time.Sleep(c.opts.retryDelay(r))
@@ -316,7 +319,7 @@ func (c *Client) retryOperationDo(req *http.Request) (*http.Response, error) {
 
 		}
 	}
-	return nil, errors.New("Failed to complete requested operation")
+	return r, err
 }
 
 // retryDelay returns a duration for which a retry should wait
