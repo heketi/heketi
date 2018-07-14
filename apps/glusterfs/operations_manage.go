@@ -12,9 +12,61 @@ package glusterfs
 import (
 	"fmt"
 	"net/http"
+	"sync"
 
 	"github.com/heketi/heketi/executors"
+
+	"github.com/lpabon/godbc"
 )
+
+// OpCounter is used to track and manage how many operations are being
+// processed by the server.
+type OpCounter struct {
+	// configuration
+	Limit uint64
+
+	// internals
+	lock  sync.RWMutex
+	value uint64
+}
+
+// Inc increments the internal operations counter.
+func (oc *OpCounter) Inc() {
+	oc.lock.Lock()
+	defer oc.lock.Unlock()
+	oc.value++
+}
+
+// Dec decrements the internal operations counter.
+func (oc *OpCounter) Dec() {
+	oc.lock.Lock()
+	defer oc.lock.Unlock()
+	godbc.Require(oc.value > 0)
+	oc.value--
+}
+
+// Get returns the current value of the internal operations counter.
+func (oc *OpCounter) Get() uint64 {
+	oc.lock.RLock()
+	defer oc.lock.RUnlock()
+	return oc.value
+}
+
+// ThrottleOrInc returns true if incrementing the counter would put
+// the number of operations over the limit, otherwise it increments
+// the counter and returns false. ThrottleOrInc exists to perform
+// the check and set atomically.
+func (oc *OpCounter) ThrottleOrInc() bool {
+	oc.lock.Lock()
+	defer oc.lock.Unlock()
+	if oc.value >= oc.Limit {
+		logger.Warning(
+			"operations in-flight (%v) exceeds limit (%v)", oc.value, oc.Limit)
+		return true
+	}
+	oc.value++
+	return false
+}
 
 // AsyncHttpOperation runs all the steps of an operation with the long-running
 // parts wrapped in an async http function. If AsyncHttpOperation returns nil
