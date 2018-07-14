@@ -330,8 +330,24 @@ func (a *App) DeviceSetState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Setting the state to failed can involve long running operations
+	// and thus needs to be checked for operations throttle
+	// However, we don't want to block "cheap" changes like setting
+	// the item offline
+	if msg.State == api.EntryStateFailed {
+		if a.opcounter.ThrottleOrInc() {
+			OperationHttpErrorf(w, ErrTooManyOperations, "")
+			return
+		}
+	}
+
 	// Set state
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
+		defer func() {
+			if msg.State == api.EntryStateFailed {
+				a.opcounter.Dec()
+			}
+		}()
 		err = device.SetState(a.db, a.executor, msg.State)
 		if err != nil {
 			return "", err
