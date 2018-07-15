@@ -146,6 +146,7 @@ func (s *CmdExecutor) SnapshotDestroy(host string, snapshot string) error {
 	godbc.Require(snapshot != "")
 
 	type CliOutput struct {
+		XMLName    xml.Name             `xml:"cliOutput"`
 		OpRet      int                  `xml:"opRet"`
 		OpErrno    int                  `xml:"opErrno"`
 		OpErrStr   string               `xml:"opErrstr"`

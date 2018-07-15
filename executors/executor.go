@@ -138,8 +138,13 @@ type VolumeClone struct {
 }
 
 type SnapDelete struct {
-	XMLName   xml.Name         `xml:"snapDelete"`
-	Snapshots []SnapshotStatus `xml:"snapshots"`
+	XMLName   xml.Name  `xml:"snapDelete"`
+	Snapshots Snapshots `xml:"snapshots"`
+}
+
+type Snapshots struct {
+	XMLName  xml.Name         `xml:"snapshots"`
+	Snapshot []SnapshotStatus `xml:"snapshot"`
 }
 
 type SnapshotStatus struct {
