@@ -336,3 +336,54 @@ func (c *Client) VolumeClone(id string, request *api.VolumeCloneRequest) (*api.V
 
 	return &volume, nil
 }
+
+func (c *Client) VolumeSnapshot(id string, request *api.VolumeSnapshotRequest) (*api.SnapshotInfoResponse, error) {
+	// Marshal request to JSON
+	buffer, err := json.Marshal(request)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a request
+	req, err := http.NewRequest("POST",
+		c.host+"/volumes/"+id+"/snapshot",
+		bytes.NewBuffer(buffer))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// Set token
+	err = c.setToken(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// Send request
+	r, err := c.do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Body.Close()
+	if r.StatusCode != http.StatusAccepted {
+		return nil, utils.GetErrorFromResponse(r)
+	}
+
+	// Wait for response
+	r, err = c.waitForResponseWithTimer(r, time.Second)
+	if err != nil {
+		return nil, err
+	}
+	if r.StatusCode != http.StatusOK {
+		return nil, utils.GetErrorFromResponse(r)
+	}
+
+	// Read JSON response
+	var snapshot api.SnapshotInfoResponse
+	err = utils.GetJsonFromResponse(r, &snapshot)
+	if err != nil {
+		return nil, err
+	}
+
+	return &snapshot, nil
+}

@@ -24,6 +24,8 @@ import (
 var (
 	size                 int
 	volname              string
+	snapshotName         string
+	snapshotDescription  string
 	durability           string
 	replica              int
 	disperseData         int
@@ -47,6 +49,7 @@ func init() {
 	volumeCommand.AddCommand(volumeExpandCommand)
 	volumeCommand.AddCommand(volumeInfoCommand)
 	volumeCommand.AddCommand(volumeListCommand)
+	volumeCommand.AddCommand(volumeSnapshotCommand)
 	volumeCommand.AddCommand(volumeBlockHostingRestrictionCommand)
 	volumeBlockHostingRestrictionCommand.AddCommand(volumeBlockHostingRestrictionUnlockCommand)
 	volumeBlockHostingRestrictionCommand.AddCommand(volumeBlockHostingRestrictionLockCommand)
@@ -108,6 +111,9 @@ func init() {
 	volumeCloneCommand.Flags().StringVar(&volname, "name", "",
 		"\n\tOptional: Name of the newly cloned volume.")
 	volumeCloneCommand.SilenceUsage = true
+	volumeSnapshotCommand.Flags().StringVar(&snapshotName, "snapshot-name", "", "\n\tOptional: Name of the newly created snapshot.")
+	volumeSnapshotCommand.Flags().StringVar(&snapshotDescription, "snapshot-description", "", "\n\tOptional: description of the newly created snapshot.")
+
 }
 
 var volumeCommand = &cobra.Command{
@@ -547,6 +553,57 @@ var volumeCloneCommand = &cobra.Command{
 			fmt.Fprintf(stdout, string(data))
 		} else {
 			fmt.Fprintf(stdout, "%v", volume)
+		}
+		return nil
+	},
+}
+
+var volumeSnapshotCommand = &cobra.Command{
+	Use:     "snapshot",
+	Short:   "Creates a snapshot",
+	Long:    "Creates a snapshot",
+	Example: "  $ heketi-cli volume snapshot <volumeid>",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		//ensure proper number of args
+		s := cmd.Flags().Args()
+		if len(s) < 1 {
+			return errors.New("Volume id missing")
+		}
+
+		// Set volume id
+		volumeId := cmd.Flags().Arg(0)
+
+		// Create request
+		req := &api.VolumeSnapshotRequest{}
+		if snapshotName != "" {
+			req.Name = snapshotName
+		}
+		if snapshotDescription != "" {
+			req.Description = snapshotDescription
+		}
+
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
+
+		// snapshot the volume
+		snapshot, err := heketi.VolumeSnapshot(volumeId, req)
+		if err != nil {
+			return err
+		}
+
+		if options.Json {
+			data, err := json.Marshal(snapshot)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(stdout, string(data))
+		} else {
+			fmt.Fprintf(stdout, "Id:%-35v Name:%v Description:%v \n",
+				snapshot.Id,
+				snapshot.Name,
+				snapshot.Description)
 		}
 		return nil
 	},
