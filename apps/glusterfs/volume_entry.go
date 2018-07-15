@@ -885,6 +885,10 @@ func VolumeEntryUpgrade(tx *bolt.Tx) error {
 	return nil
 }
 
+func SnapshotEntryUpgrade(tx *bolt.Tx) error {
+	return nil
+}
+
 func (v *VolumeEntry) BlockVolumeAdd(id string) {
 	v.Info.BlockInfo.BlockVolumes = append(v.Info.BlockInfo.BlockVolumes, id)
 	v.Info.BlockInfo.BlockVolumes.Sort()
@@ -1089,6 +1093,15 @@ func (v *VolumeEntry) cloneVolumeRequest(db wdb.RODB, clonename string) (*execut
 	vcr.Clone = clonename
 
 	var sshhost string
+	sshhost, err := v.getManageHost(db)
+	if err != nil {
+		return nil, "", err
+	}
+	return vcr, sshhost, nil
+}
+
+func (v *VolumeEntry) getManageHost(db wdb.RODB) (string, error) {
+	var sshhost string
 	err := db.View(func(tx *bolt.Tx) error {
 		vol, err := NewVolumeEntryFromId(tx, v.Info.Id)
 		if err != nil {
@@ -1111,14 +1124,13 @@ func (v *VolumeEntry) cloneVolumeRequest(db wdb.RODB, clonename string) (*execut
 		return nil
 	})
 	if err != nil {
-		return nil, "", err
+		return "", err
 	}
 
 	if sshhost == "" {
-		return nil, "", errors.New("failed to find host for cloning volume " + v.Info.Name)
+		return "", errors.New("failed to find host for cloning volume " + v.Info.Name)
 	}
-
-	return vcr, sshhost, nil
+	return sshhost, nil
 }
 
 type MultiClusterError struct {

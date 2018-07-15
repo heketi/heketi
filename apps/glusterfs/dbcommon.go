@@ -25,6 +25,7 @@ const (
 type Db struct {
 	Clusters          map[string]ClusterEntry          `json:"clusterentries"`
 	Volumes           map[string]VolumeEntry           `json:"volumeentries"`
+	Snapshots         map[string]SnapshotEntry         `json:"snapshots"`
 	Bricks            map[string]BrickEntry            `json:"brickentries"`
 	Nodes             map[string]NodeEntry             `json:"nodeentries"`
 	Devices           map[string]DeviceEntry           `json:"deviceentries"`
@@ -55,6 +56,11 @@ func initializeBuckets(tx *bolt.Tx) error {
 		return err
 	}
 
+	//Create Snapshot Bucket
+	_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_SNAPSHOT))
+	if err != nil {
+		logger.LogError("Unable to create snapshot bucket in DB")
+	}
 	// Create Device Bucket
 	_, err = tx.CreateBucketIfNotExists([]byte(BOLTDB_BUCKET_DEVICE))
 	if err != nil {
@@ -112,6 +118,11 @@ func UpgradeDB(tx *bolt.Tx) error {
 		return err
 	}
 
+	err = SnapshotEntryUpgrade(tx)
+	if err != nil {
+		logger.LogError("Faild to upgrade db for snapshot entries")
+		return err
+	}
 	err = DeviceEntryUpgrade(tx)
 	if err != nil {
 		logger.LogError("Failed to upgrade db for device entries")

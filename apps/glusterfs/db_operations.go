@@ -29,6 +29,7 @@ func dbDumpInternal(db *bolt.DB) (Db, error) {
 	blockvolEntryList := make(map[string]BlockVolumeEntry, 0)
 	dbattributeEntryList := make(map[string]DbAttributeEntry, 0)
 	pendingOpEntryList := make(map[string]PendingOperationEntry, 0)
+	snapshotEntryList := make(map[string]SnapshotEntry, 0)
 
 	err := db.View(func(tx *bolt.Tx) error {
 
@@ -63,6 +64,22 @@ func dbDumpInternal(db *bolt.DB) (Db, error) {
 				return err
 			}
 			brickEntryList[brickEntry.Info.Id] = *brickEntry
+		}
+
+		// Snapshot
+		logger.Debug("snapshot")
+		snapshots, err := SnapshotList(tx)
+		if err != nil {
+			return err
+		}
+
+		for _, snapshot := range snapshots {
+			logger.Debug("adding volume entry %v", snapshot)
+			snapshotEntry, err := NewSnapshotEntryFromId(tx, snapshot)
+			if err != nil {
+				return err
+			}
+			snapshotEntryList[snapshotEntry.Info.Id] = *snapshotEntry
 		}
 
 		// Cluster Bucket
@@ -202,6 +219,7 @@ func dbDumpInternal(db *bolt.DB) (Db, error) {
 	dump.BlockVolumes = blockvolEntryList
 	dump.DbAttributes = dbattributeEntryList
 	dump.PendingOperations = pendingOpEntryList
+	dump.Snapshots = snapshotEntryList
 
 	return dump, nil
 }
@@ -345,6 +363,13 @@ func DbCreate(jsonfile string, dbfile string) error {
 			err := blockvolume.Save(tx)
 			if err != nil {
 				return fmt.Errorf("Could not save blockvolume bucket: %v", err.Error())
+			}
+		}
+		for _, snapshot := range dump.Snapshots {
+			logger.Debug("adding snapshot entry %v", snapshot.Info.Id)
+			err := snapshot.Save(tx)
+			if err != nil {
+				return fmt.Errorf("Could not save snapshot bucket: %v", err.Error())
 			}
 		}
 		for _, dbattribute := range dump.DbAttributes {

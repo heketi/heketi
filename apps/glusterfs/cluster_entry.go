@@ -38,6 +38,7 @@ func NewClusterEntry() *ClusterEntry {
 	entry := &ClusterEntry{}
 	entry.Info.Nodes = make(sort.StringSlice, 0)
 	entry.Info.Volumes = make(sort.StringSlice, 0)
+	entry.Info.Snapshots = make(sort.StringSlice, 0)
 	entry.Info.BlockVolumes = make(sort.StringSlice, 0)
 	entry.Info.Block = false
 	entry.Info.File = false
@@ -127,6 +128,9 @@ func (c *ClusterEntry) Unmarshal(buffer []byte) error {
 	if c.Info.BlockVolumes == nil {
 		c.Info.BlockVolumes = make(sort.StringSlice, 0)
 	}
+	if c.Info.Snapshots == nil {
+		c.Info.Snapshots = make(sort.StringSlice, 0)
+	}
 
 	return nil
 }
@@ -165,6 +169,15 @@ func (c *ClusterEntry) BlockVolumeDelete(id string) {
 
 func (c *ClusterEntry) NodeDelete(id string) {
 	c.Info.Nodes = utils.SortedStringsDelete(c.Info.Nodes, id)
+}
+
+func (c *ClusterEntry) SnapshotAdd(id string) {
+	c.Info.Snapshots = append(c.Info.Snapshots, id)
+	c.Info.Snapshots.Sort()
+}
+
+func (c *ClusterEntry) SnapshotDelete(id string) {
+	c.Info.Snapshots = utils.SortedStringsDelete(c.Info.Snapshots, id)
 }
 
 func ClusterEntryUpgrade(tx *bolt.Tx) error {
