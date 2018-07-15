@@ -244,9 +244,10 @@ type ClusterSetFlagsRequest struct {
 }
 
 type ClusterInfoResponse struct {
-	Id      string           `json:"id"`
-	Nodes   sort.StringSlice `json:"nodes"`
-	Volumes sort.StringSlice `json:"volumes"`
+	Id        string           `json:"id"`
+	Nodes     sort.StringSlice `json:"nodes"`
+	Volumes   sort.StringSlice `json:"volumes"`
+	Snapshots sort.StringSlice `json:"snapshots"`
 	ClusterFlags
 	BlockVolumes sort.StringSlice `json:"blockvolumes"`
 }
@@ -372,6 +373,26 @@ func (vcr VolumeCloneRequest) Validate() error {
 	)
 }
 
+type VolumeSnapshotRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+}
+
+func (vscr VolumeSnapshotRequest) Validate() error {
+	return nil
+}
+
+type SnapshotListResponse struct {
+	Snapshots []string `json:"snapshots"`
+}
+
+type SnapshotDeleteRequest struct {
+}
+
+type SnapshotInfoResponse struct {
+	SnapshotInfo
+}
+
 type VolumeBlockRestrictionRequest struct {
 	Restriction BlockRestriction `json:"restriction"`
 }
@@ -480,6 +501,12 @@ func ValidateTags(v interface{}) error {
 		}
 	}
 	return nil
+}
+
+type SnapshotInfo struct {
+	originVolume VolumeInfo
+	VolumeSnapshotRequest
+	Id string `json:"id"`
 }
 
 // Constructors

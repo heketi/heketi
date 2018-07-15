@@ -254,6 +254,27 @@ func (p *PendingOperationEntry) FinalizeVolumeClone(v *VolumeEntry) {
 	return
 }
 
+func (p *PendingOperationEntry) RecordSnapshotVolume(v *VolumeEntry) {
+	p.recordChange(OpSnapshotVolume, v.Info.Id)
+	p.Type = OperationSnapshotVolume
+	v.Pending.Id = p.Id
+}
+
+func (p *PendingOperationEntry) FinalizeSnapshotVolume(v *VolumeEntry) {
+	v.Pending.Id = ""
+	return
+}
+
+func (p *PendingOperationEntry) RecordAddSnapshot(s *SnapshotEntry) {
+	p.recordChange(OpAddSnapshot, s.Info.Id)
+	s.Pending.Id = p.Id
+}
+
+func (p *PendingOperationEntry) FinalizeSnapshot(s *SnapshotEntry) {
+	s.Pending.Id = ""
+	return
+}
+
 // RecordAddHostingVolume adds tracking metadata for a file volume that hosts
 // a block volume
 func (p *PendingOperationEntry) RecordAddHostingVolume(v *VolumeEntry) {
@@ -286,6 +307,13 @@ func (p *PendingOperationEntry) RecordDeleteBlockVolume(bv *BlockVolumeEntry) {
 func (p *PendingOperationEntry) RecordRemoveDevice(d *DeviceEntry) {
 	p.recordChange(OpRemoveDevice, d.Info.Id)
 	p.Type = OperationRemoveDevice
+}
+
+// RecordRemoveSnapshot adds tracking metadata for a snapshot
+// removal operation.
+func (p *PendingOperationEntry) RecordRemoveSnapshot(s *SnapshotEntry) {
+	p.recordChange(OpRemoveSnapshot, s.Info.Id)
+	p.Type = OperationRemoveSnapshot
 }
 
 // PendingOperationUpgrade updates the heketi db with metadata needed to

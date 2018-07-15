@@ -424,3 +424,47 @@ func (a *App) VolumeSetBlockRestriction(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 }
+
+func (a *App) VolumeSnapshot(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	var snapshotRequest api.VolumeSnapshotRequest
+	err := utils.GetJsonFromRequest(r, &snapshotRequest)
+	if err != nil {
+		http.Error(w, "request unable to be parsed", http.StatusUnprocessableEntity)
+		return
+	}
+	err = snapshotRequest.Validate()
+	if err != nil {
+		http.Error(w, "validation failed: "+err.Error(),
+			http.StatusBadRequest)
+		logger.LogError("validation failed: " + err.Error())
+		return
+	}
+
+	var volume *VolumeEntry
+	err = a.db.View(func(tx *bolt.Tx) error {
+		var err error
+		volume, err = NewVolumeEntryFromId(tx, id)
+		if err == ErrNotFound {
+			http.Error(w, err.Error(), http.StatusNotFound)
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return
+	}
+	snapshot := NewSnapshotEntryFromRequest(&snapshotRequest)
+	snapshot.OriginVolumeID = id
+	snapCreateOp := NewVolumeSnapshotOperation(volume, snapshot, a.db)
+	if err := AsyncHttpOperation(a, w, r, snapCreateOp); err != nil {
+		http.Error(w,
+			fmt.Sprintf("Failed to take snapshot on volume: %v", err),
+			http.StatusInternalServerError)
+		return
+	}
+}

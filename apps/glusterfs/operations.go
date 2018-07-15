@@ -660,6 +660,190 @@ func (vc *VolumeCloneOperation) Finalize() error {
 	})
 }
 
+// VolumeSnapshotOperation implements the operation functions used to
+// create a new snapshot
+type VolumeSnapshotOperation struct {
+	OperationManager
+	noRetriesOperation
+	vol      *VolumeEntry
+	snapshot *SnapshotEntry
+}
+
+// NewVolumeSnapshotOperation returns a new VolumeSnapshotOperation populated
+// with the given volume entry and db connection and allocates a new
+// pending operation entry.
+func NewVolumeSnapshotOperation(vol *VolumeEntry, snapshot *SnapshotEntry, db wdb.DB) *VolumeSnapshotOperation {
+	return &VolumeSnapshotOperation{
+		OperationManager: OperationManager{
+			db: db,
+			op: NewPendingOperationEntry(NEW_ID),
+		},
+		vol:      vol,
+		snapshot: snapshot,
+	}
+}
+
+func (op *VolumeSnapshotOperation) Label() string {
+	return "Create volume snapshot"
+}
+
+func (op *VolumeSnapshotOperation) ResourceUrl() string {
+	return fmt.Sprintf("/snapshots/%v", op.snapshot.Info.Id)
+}
+
+func (op *VolumeSnapshotOperation) Build() error {
+	return op.db.Update(func(tx *bolt.Tx) error {
+		op.op.RecordSnapshotVolume(op.vol)
+		op.op.RecordAddSnapshot(op.snapshot)
+		if e := op.vol.Save(tx); e != nil {
+			return e
+		}
+		// add the new snapshot to the cluster
+		c, err := NewClusterEntryFromId(tx, op.vol.Info.Cluster)
+		if err != nil {
+			return err
+		}
+		c.SnapshotAdd(op.snapshot.Info.Id)
+		if err := c.Save(tx); err != nil {
+			return err
+		}
+		if err := op.snapshot.Save(tx); err != nil {
+			return err
+		}
+		if e := op.op.Save(tx); e != nil {
+			return e
+		}
+		return nil
+	})
+}
+
+func (op *VolumeSnapshotOperation) Exec(executor executors.Executor) error {
+	vsr, host, err := op.vol.snapshotVolumeRequest(op.db, op.snapshot.Info.Name, op.snapshot.Info.Description)
+	if err != nil {
+		return err
+	}
+
+	_, err = executor.VolumeSnapshot(host, vsr)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (op *VolumeSnapshotOperation) Rollback(executor executors.Executor) error {
+	return op.db.Update(func(tx *bolt.Tx) error {
+		db := wdb.WrapTx(tx)
+		op.op.FinalizeSnapshotVolume(op.vol)
+		if e := op.vol.Save(tx); e != nil {
+			return e
+		}
+
+		op.op.FinalizeSnapshot(op.snapshot)
+		if e := op.snapshot.SaveDeleteEntry(db); e != nil {
+			return e
+		}
+
+		op.op.Delete(tx)
+		return nil
+	})
+}
+
+func (op *VolumeSnapshotOperation) Finalize() error {
+	return op.db.Update(func(tx *bolt.Tx) error {
+		op.op.FinalizeSnapshotVolume(op.vol)
+		if err := op.vol.Save(tx); err != nil {
+			return err
+		}
+		op.op.FinalizeSnapshot(op.snapshot)
+		if err := op.snapshot.Save(tx); err != nil {
+			return err
+		}
+		op.op.Delete(tx)
+		return nil
+	})
+}
+
+// SnapshotDeleteOperation implements the operation functions used to
+// create a new snapshot
+type SnapshotDeleteOperation struct {
+	OperationManager
+	noRetriesOperation
+	snapshot *SnapshotEntry
+}
+
+func NewSnapshotDeleteOperation(snapshot *SnapshotEntry, db wdb.DB) *SnapshotDeleteOperation {
+	return &SnapshotDeleteOperation{
+		OperationManager: OperationManager{
+			db: db,
+			op: NewPendingOperationEntry(NEW_ID),
+		},
+		snapshot: snapshot,
+	}
+}
+func (sdel *SnapshotDeleteOperation) Label() string {
+	return "Delete snapshot"
+}
+
+func (sdel *SnapshotDeleteOperation) ResourceUrl() string {
+	return ""
+}
+
+func (sdel *SnapshotDeleteOperation) Build() error {
+	return sdel.db.Update(func(tx *bolt.Tx) error {
+		if sdel.snapshot.Pending.Id != "" {
+			logger.LogError("Pending snapshot %v can not be deleted",
+				sdel.snapshot.Info.Id)
+			return ErrConflict
+		}
+		sdel.op.RecordRemoveSnapshot(sdel.snapshot)
+		if e := sdel.snapshot.Save(tx); e != nil {
+			return e
+		}
+		if e := sdel.op.Save(tx); e != nil {
+			return e
+		}
+		return nil
+	})
+}
+
+func (sdel *SnapshotDeleteOperation) Exec(executor executors.Executor) error {
+	return sdel.db.Update(func(tx *bolt.Tx) error {
+		volumeEntry, err := NewVolumeEntryFromId(tx, sdel.snapshot.OriginVolumeID)
+		if err != nil {
+			return err
+		}
+		sshhost, err := volumeEntry.getManageHost(sdel.db)
+		if err != nil {
+			return err
+		}
+		err = executor.SnapshotDestroy(sshhost, sdel.snapshot.Info.Name)
+		return err
+	})
+}
+
+func (sdel *SnapshotDeleteOperation) Rollback(executor executors.Executor) error {
+	// currently rollback only removes the pending operation for delete volume,
+	return sdel.db.Update(func(tx *bolt.Tx) error {
+		sdel.op.FinalizeSnapshot(sdel.snapshot)
+		if e := sdel.snapshot.Save(tx); e != nil {
+			return e
+		}
+		sdel.op.Delete(tx)
+		return nil
+	})
+}
+
+func (sdel *SnapshotDeleteOperation) Finalize() error {
+	return sdel.db.Update(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
+		if err := sdel.snapshot.SaveDeleteEntry(txdb); err != nil {
+			return err
+		}
+		sdel.op.Delete(tx)
+		return nil
+	})
+}
+
 // BlockVolumeCreateOperation  implements the operation functions used to
 // create a new volume.
 type BlockVolumeCreateOperation struct {

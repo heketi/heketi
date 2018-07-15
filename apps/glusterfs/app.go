@@ -31,6 +31,7 @@ const (
 	BOLTDB_BUCKET_CLUSTER          = "CLUSTER"
 	BOLTDB_BUCKET_NODE             = "NODE"
 	BOLTDB_BUCKET_VOLUME           = "VOLUME"
+	BOLTDB_BUCKET_SNAPSHOT         = "SNAPSHOT"
 	BOLTDB_BUCKET_DEVICE           = "DEVICE"
 	BOLTDB_BUCKET_BRICK            = "BRICK"
 	BOLTDB_BUCKET_BLOCKVOLUME      = "BLOCKVOLUME"
@@ -497,7 +498,28 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Pattern:     "/volumes/{id:[A-Fa-f0-9]+}/clone",
 			HandlerFunc: a.VolumeClone},
 
-		// BlockVolumes
+		rest.Route{
+			Name:        "VolumeSnapshot",
+			Method:      "POST",
+			Pattern:     "/volumes/{id:[A-Fa-f0-9]+}/snapshot",
+			HandlerFunc: a.VolumeSnapshot},
+
+		rest.Route{
+			Name:        "SnapshotInfo",
+			Method:      "GET",
+			Pattern:     "/snapshots/{id:[A-Fa-f0-9]+}",
+			HandlerFunc: a.SnapshotInfo},
+
+		rest.Route{
+			Name:        "SnapshotList",
+			Method:      "GET",
+			Pattern:     "/snapshots/",
+			HandlerFunc: a.SnapshotList},
+		rest.Route{
+			Name:        "SnapshotDelete",
+			Method:      "DELETE",
+			Pattern:     "/snapshots/{id:[A-Fa-f0-9]+}",
+			HandlerFunc: a.SnapshotDelete},
 		rest.Route{
 			Name:        "BlockVolumeCreate",
 			Method:      "POST",
