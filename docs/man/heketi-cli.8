@@ -657,6 +657,55 @@ $ heketi-cli volume list
 .RE
 .RE
 .PP
+\fBheketi\-cli volume snapshot <VOLUME-ID>\fP
+.RS
+Take a snapshot for volume
+.PP
+ \fBExample\fP
+.RS
+.nf
+$ heketi-cli volume snapshot 886a86a868711bef83001
+.fi
+.RE
+.RE
+.PP
+.SS "Snapshot Commands"
+.PP
+\fBheketi\-cli snapshot info <SNAPSHOT-ID>\fP
+.RS
+Retrieves information about snapshot
+.PP
+\fBExample\fP
+.RS
+.nf
+$ heketi-cli snapshot info 886a86a868711bef83001
+.fi
+.RE
+.RE
+.PP
+\fBheketi\-cli snapshot list \fP
+.RS
+list the snaspshots managed by heketi
+.PP
+\fBExample\fP
+.RS
+.nf
+$ heketi-cli topology list
+.fi
+.RE
+.RE
+.PP
+\fBheketi\-cli snapshot delete <SNAPSHOT-ID>\fP
+.RS
+Delete the snapshot
+.PP
+\fBExample\fP
+.RS
+.nf
+$ heketi-cli snapshot delete 886a86a868711bef83001
+.fi
+.RE
+.RE
 .SH GLOBAL OPTIONS
 .TP
 \fB\-\-json\fP[=false]
