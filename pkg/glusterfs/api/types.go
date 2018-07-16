@@ -568,3 +568,8 @@ func (v *BlockVolumeInfoResponse) String() string {
 
 	return s
 }
+
+type OperationsInfo struct {
+	Total    uint64 `json:"total"`
+	InFlight uint64 `json:"in_flight"`
+}

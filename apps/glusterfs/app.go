@@ -538,6 +538,12 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Method:      "POST",
 			Pattern:     "/internal/logging",
 			HandlerFunc: a.SetLogLevel},
+		// Operations state on server
+		rest.Route{
+			Name:        "OperationsInfo",
+			Method:      "GET",
+			Pattern:     "/operations",
+			HandlerFunc: a.OperationsInfo},
 	}
 
 	// Register all routes from the App
