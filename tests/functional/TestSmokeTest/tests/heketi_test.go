@@ -94,6 +94,17 @@ func setupCluster(t *testing.T, numNodes int, numDisks int) {
 		storage3 = env
 		storage3ssh = storage3 + ":" + portNum
 	}
+
+	// As a testing invariant, we always expect to set up a cluster
+	// at the start of a test on a _clean_ server.
+	// Verify that there are no outstanding operations on the
+	// server. A test that needs to mess with the operations _must_
+	// clean up after itself.
+	oi, err := heketi.OperationsInfo()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, oi.Total == 0, "expected oi.Total == 0, got", oi.Total)
+	tests.Assert(t, oi.InFlight == 0, "expected oi.InFlight == 0, got", oi.Total)
+
 	// Storage systems
 	storagevms = []string{
 		storage0,
