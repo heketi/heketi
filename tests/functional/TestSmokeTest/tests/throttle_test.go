@@ -14,6 +14,7 @@ package functional
 import (
 	"sync"
 	"testing"
+	"time"
 
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
@@ -31,6 +32,8 @@ func TestThrottledOps(t *testing.T) {
 	t.Run("VolumeCreate", testThrottledVolumeCreate)
 	teardownVolumes(t)
 	t.Run("VolumeCreateFails", testThrottledVolumeCreateFails)
+	teardownVolumes(t)
+	t.Run("Removes", testThrottledRemoves)
 }
 
 func testThrottledVolumeCreate(t *testing.T) {
@@ -132,5 +135,144 @@ func testThrottledVolumeCreateFails(t *testing.T) {
 	tests.Assert(t, len(volumes.Volumes) >= 10,
 		"expected len(volumes.Volumes) == 5, got:", len(volumes.Volumes))
 	tests.Assert(t, len(volumes.Volumes) < 20,
+		"expected len(volumes.Volumes) == 5, got:", len(volumes.Volumes))
+}
+
+// testThrottledRemoves is intended to test that the throttling behaves
+// as expected for node and device remove (via SetState).
+func testThrottledRemoves(t *testing.T) {
+	// create clients with custom retry values
+	hc := client.NewClientWithOptions(heketiUrl, "", "", client.ClientOptions{
+		RetryEnabled:  true,
+		RetryCount:    60, // allow large number of retries
+		RetryMinDelay: 30, // do "slow" retries
+		RetryMaxDelay: 60,
+	})
+	hc2 := client.NewClientWithOptions(heketiUrl, "", "", client.ClientOptions{
+		RetryEnabled:  true,
+		RetryCount:    60, // allow large number of retries
+		RetryMinDelay: 2,  // allow "fast" retries
+		RetryMaxDelay: 10,
+	})
+
+	oi, err := hc.OperationsInfo()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, oi.Total == 0, "expected oi.Total == 0, got", oi.Total)
+	tests.Assert(t, oi.InFlight == 0, "expected oi.InFlight == 0, got", oi.Total)
+
+	// pick a node and a device that will be disabled later
+	var targetDevice, targetNode string
+	clusters, err := heketi.ClusterList()
+	tests.Assert(t, err == nil, err)
+	clusterInfo, err := hc.ClusterInfo(clusters.Clusters[0])
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	for _, node := range clusterInfo.Nodes {
+		nodeInfo, err := heketi.NodeInfo(node)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		if len(nodeInfo.DevicesInfo) > 0 {
+			targetDevice = nodeInfo.DevicesInfo[0].Id
+			targetNode = node
+			break
+		}
+	}
+	tests.Assert(t, targetDevice != "")
+	tests.Assert(t, targetNode != "")
+
+	// we offline the node now in order to avoid using it for volumes
+	// as we are testing the in-flight operations not device conflicts
+	stateReq := &api.StateRequest{}
+	stateReq.State = api.EntryStateOffline
+	err = hc2.NodeState(targetNode, stateReq)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	l := sync.Mutex{}
+	errCount := 0
+	volReq := &api.VolumeCreateRequest{}
+	volReq.Size = 1
+	volReq.Durability.Type = api.DurabilityDistributeOnly
+
+	// create a bunch of volume requests at once
+	sg := utils.NewStatusGroup()
+	go func() {
+		for i := 0; i < 15; i++ {
+			sg.Add(1)
+			go func() {
+				defer sg.Done()
+				_, err := hc.VolumeCreate(volReq)
+				if err != nil {
+					l.Lock()
+					defer l.Unlock()
+					errCount++
+				}
+				sg.Err(err)
+			}()
+		}
+	}()
+	sg.Add(1)
+	go func() {
+		defer sg.Done()
+		// allow for volume create requests to get in first
+		time.Sleep(500 * time.Millisecond)
+
+		// do a device remove
+		stateReq := &api.StateRequest{}
+		stateReq.State = api.EntryStateOffline
+		err := hc2.DeviceState(targetDevice, stateReq)
+		if err != nil {
+			l.Lock()
+			defer l.Unlock()
+			errCount++
+			sg.Err(err)
+			return
+		}
+
+		stateReq.State = api.EntryStateFailed
+		err = hc2.DeviceState(targetDevice, stateReq)
+		if err != nil {
+			l.Lock()
+			defer l.Unlock()
+			errCount++
+			sg.Err(err)
+			return
+		}
+
+		// pause again for a short moment
+		time.Sleep(500 * time.Millisecond)
+
+		// do a node remove
+		stateReq = &api.StateRequest{}
+		stateReq.State = api.EntryStateOffline
+		err = hc2.NodeState(targetNode, stateReq)
+		if err != nil {
+			l.Lock()
+			defer l.Unlock()
+			errCount++
+			sg.Err(err)
+			return
+		}
+
+		stateReq.State = api.EntryStateFailed
+		err = hc2.NodeState(targetNode, stateReq)
+		if err != nil {
+			l.Lock()
+			defer l.Unlock()
+			errCount++
+			sg.Err(err)
+			return
+		}
+	}()
+
+	sg.Result()
+	tests.Assert(t, errCount == 0, "expected errCount == 0, got:", errCount)
+
+	// there should not be any ops on the server now
+	oi, err = hc.OperationsInfo()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, oi.Total == 0, "expected oi.Total == 0, got", oi.Total)
+	tests.Assert(t, oi.InFlight == 0, "expected oi.InFlight == 0, got", oi.Total)
+
+	volumes, err := hc.VolumeList()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, len(volumes.Volumes) == 15,
 		"expected len(volumes.Volumes) == 5, got:", len(volumes.Volumes))
 }
