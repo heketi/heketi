@@ -96,7 +96,10 @@ client: vendor glide.lock
 run: server
 	./$(APP_NAME)
 
-test: vendor glide.lock
+test: server client vendor glide.lock
+	cp heketi tests/functional/TestDbExportImport/heketi-server
+	cp heketi client/api/python/heketi-server
+	cp client/cli/go/heketi-cli tests/functional/TestDbExportImport/heketi-cli
 	$(TESTBIN) $(TESTOPTIONS)
 
 test-functional: vendor glide.lock
@@ -105,6 +108,9 @@ test-functional: vendor glide.lock
 clean:
 	@echo Cleaning Workspace...
 	rm -rf $(APP_NAME)
+	rm -rf tests/functional/TestDbExportImport/heketi-server
+	rm -rf client/api/python/heketi-server
+	rm -rf tests/functional/TestDbExportImport/heketi-cli
 	rm -rf dist coverage packagecover.out
 	@$(MAKE) -C client/cli/go clean
 
