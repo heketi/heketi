@@ -12,9 +12,11 @@ package glusterfs
 import (
 	"fmt"
 
-	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
+	"github.com/heketi/heketi/pkg/utils"
+
+	"github.com/boltdb/bolt"
 	"github.com/lpabon/godbc"
 )
 
@@ -63,15 +65,24 @@ func (v *BlockVolumeEntry) createBlockVolumeRequest(db wdb.RODB,
 		}
 
 		if v.Info.Hacount > 0 && v.Info.Hacount <= len(bhvol.Info.Mount.GlusterFS.Hosts) {
+
+			// copy the hosts and shuffle it to avoid always giving hosts
+			// out in the same order
+			hosts := make([]string, len(bhvol.Info.Mount.GlusterFS.Hosts))
+			copy(hosts, bhvol.Info.Mount.GlusterFS.Hosts)
+			utils.SeededShuffle(len(hosts), func(i, j int) {
+				hosts[i], hosts[j] = hosts[j], hosts[i]
+			})
+
 			v.Info.BlockVolume.Hosts = nil
-			for i := 0; i < len(bhvol.Info.Mount.GlusterFS.Hosts); i++ {
-				managehostname, e := GetManageHostnameFromStorageHostname(tx, bhvol.Info.Mount.GlusterFS.Hosts[i])
+			for _, host := range hosts {
+				managehostname, e := GetManageHostnameFromStorageHostname(tx, host)
 				if e != nil {
-					return fmt.Errorf("Could not find managehostname for %v", bhvol.Info.Mount.GlusterFS.Hosts[i])
+					return fmt.Errorf("Could not find managehostname for %v", host)
 				}
 				e = executor.GlusterdCheck(managehostname)
 				if e == nil {
-					v.Info.BlockVolume.Hosts = append(v.Info.BlockVolume.Hosts, bhvol.Info.Mount.GlusterFS.Hosts[i])
+					v.Info.BlockVolume.Hosts = append(v.Info.BlockVolume.Hosts, host)
 					if len(v.Info.BlockVolume.Hosts) == v.Info.Hacount {
 						break
 					}
