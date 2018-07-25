@@ -174,6 +174,7 @@ func dbStateDump(t *testing.T) {
 }
 
 func teardownCluster(t *testing.T) {
+	fmt.Println("~~~ tearing down cluster")
 	dbStateDump(t)
 
 	clusters, err := heketi.ClusterList()
