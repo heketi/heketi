@@ -10,11 +10,16 @@
 package main
 
 import (
+	crand "crypto/rand"
 	"fmt"
+	"math"
+	"math/big"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/spf13/cobra"
@@ -281,6 +286,17 @@ func setupApp(config *config.Config) (a *glusterfs.App) {
 	return glusterfs.NewApp(config.GlusterFS)
 }
 
+func randSeed() {
+	var max big.Int
+	max.Add(big.NewInt(math.MaxInt64), big.NewInt(1))
+	n, err := crand.Int(crand.Reader, &max)
+	if err != nil {
+		rand.Seed(time.Now().UTC().UnixNano())
+	} else {
+		rand.Seed(n.Int64())
+	}
+}
+
 func main() {
 	if err := RootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -291,6 +307,9 @@ func main() {
 	if configfile == "" {
 		return
 	}
+
+	// Seed PRNG
+	randSeed()
 
 	// Read configuration
 	options, err := config.ReadConfig(configfile)
