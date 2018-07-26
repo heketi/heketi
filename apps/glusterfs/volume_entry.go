@@ -139,7 +139,7 @@ func NewVolumeEntryFromRequest(req *api.VolumeCreateRequest) *VolumeEntry {
 	vol.GlusterVolumeOptions = req.GlusterVolumeOptions
 
 	if vol.Info.Block {
-		vol.Info.BlockInfo.FreeSize = req.Size
+		vol.SetRawCapacity(req.Size)
 		// prepend the gluster-block group option,
 		// so that the user-specified options can take precedence
 		blockoptions := strings.Split(BlockHostingVolumeOptions, ",")
@@ -317,9 +317,41 @@ func (v *VolumeEntry) Create(db wdb.DB,
 // When taking space from the volume the value must be negative (on
 // block volume add) and positive when the space is being "freed."
 func (v *VolumeEntry) ModifyFreeSize(delta int) {
+	logger.Warning("ModifyFreeSize: FreeSize[%v], delta[%v]", v.Info.BlockInfo.FreeSize, delta)
+
 	v.Info.BlockInfo.FreeSize += delta
 	godbc.Check(v.Info.BlockInfo.FreeSize >= 0)
-	godbc.Check(v.Info.BlockInfo.FreeSize <= v.Info.Size)
+	godbc.Check(v.Info.BlockInfo.FreeSize+v.Info.BlockInfo.ReservedSize <= v.Info.Size)
+}
+
+func (v *VolumeEntry) ModifyReservedSize(delta int) {
+	v.Info.BlockInfo.ReservedSize += delta
+	godbc.Check(v.Info.BlockInfo.ReservedSize >= 0)
+	godbc.Check(v.Info.BlockInfo.ReservedSize+v.Info.BlockInfo.FreeSize <= v.Info.Size)
+}
+
+func ReduceRawSize(size int) int {
+	return size * 99 / 100
+}
+
+// AddRawCapacity adds raw capacity to the BlockInfo
+// FreeSize tracking, reserving one percent of the
+// raw capacity for the filesystem.
+func (v *VolumeEntry) AddRawCapacity(delta int) {
+	var freeDelta int
+	var reservedDelta int
+
+	freeDelta = ReduceRawSize(delta)
+	reservedDelta = delta - freeDelta
+
+	v.ModifyFreeSize(freeDelta)
+	v.ModifyReservedSize(reservedDelta)
+}
+
+func (v *VolumeEntry) SetRawCapacity(delta int) {
+	v.Info.BlockInfo.FreeSize = 0
+	v.Info.BlockInfo.ReservedSize = 0
+	v.AddRawCapacity(delta)
 }
 
 func (v *VolumeEntry) tryAllocateBricks(
@@ -494,7 +526,7 @@ func (v *VolumeEntry) saveCreateVolume(db wdb.DB,
 
 		// Save volume information
 		if v.Info.Block {
-			v.Info.BlockInfo.FreeSize = v.Info.Size
+			v.SetRawCapacity(v.Info.Size)
 		}
 		err := v.Save(tx)
 		if err != nil {

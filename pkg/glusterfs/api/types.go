@@ -315,6 +315,7 @@ type VolumeInfo struct {
 	} `json:"mount"`
 	BlockInfo struct {
 		FreeSize     int              `json:"freesize,omitempty"`
+		ReservedSize int              `json:"reservedsize,omitempty"`
 		BlockVolumes sort.StringSlice `json:"blockvolume,omitempty"`
 	} `json:"blockinfo,omitempty"`
 }
@@ -469,6 +470,7 @@ func (v *VolumeInfoResponse) String() string {
 		"Mount Options: backup-volfile-servers=%v\n"+
 		"Block: %v\n"+
 		"Free Size: %v\n"+
+		"Reserved Size: %v\n"+
 		"Block Volumes: %v\n"+
 		"Durability Type: %v\n",
 		v.Name,
@@ -479,6 +481,7 @@ func (v *VolumeInfoResponse) String() string {
 		v.Mount.GlusterFS.Options["backup-volfile-servers"],
 		v.Block,
 		v.BlockInfo.FreeSize,
+		v.BlockInfo.ReservedSize,
 		v.BlockInfo.BlockVolumes,
 		v.Durability.Type)
 
