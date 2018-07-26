@@ -20,6 +20,7 @@ func NewTestApp(dbfile string) *App {
 		DBfile:                    dbfile,
 		Executor:                  "mock",
 		CreateBlockHostingVolumes: true,
+		MaxInflightOperations:     64, // avoid throttling test code
 	}
 	app := NewApp(appConfig)
 	godbc.Check(app != nil)
