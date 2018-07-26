@@ -20,6 +20,7 @@ func NewTestApp(dbfile string) *App {
 		DBfile:                    dbfile,
 		Executor:                  "mock",
 		CreateBlockHostingVolumes: true,
+		BlockHostingVolumeSize:    1100,
 		MaxInflightOperations:     64, // avoid throttling test code
 	}
 	app := NewApp(appConfig)

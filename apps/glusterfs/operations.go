@@ -341,7 +341,7 @@ func (ve *VolumeExpandOperation) Finalize() error {
 		}
 		ve.vol.Info.Size += sizeDelta
 		if ve.vol.Info.Block == true {
-			ve.vol.ModifyFreeSize(sizeDelta)
+			ve.vol.AddRawCapacity(sizeDelta)
 		}
 		ve.op.FinalizeVolume(ve.vol)
 		if e := ve.vol.Save(tx); e != nil {
@@ -703,7 +703,7 @@ func (bvc *BlockVolumeCreateOperation) Build() error {
 		if len(volumes) > 0 {
 			bvc.bvol.Info.BlockHostingVolume = volumes[0].Info.Id
 			bvc.bvol.Info.Cluster = volumes[0].Info.Cluster
-		} else if bvc.bvol.Info.Size > BlockHostingVolumeSize {
+		} else if bvc.bvol.Info.Size > ReduceRawSize(BlockHostingVolumeSize) {
 			return fmt.Errorf("The size configured for "+
 				"automatic creation of block hosting volumes "+
 				"(%v) is too small to host the requested "+
