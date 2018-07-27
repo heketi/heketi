@@ -12,7 +12,6 @@ package main
 import (
 	crand "crypto/rand"
 	"fmt"
-	"math"
 	"math/big"
 	"math/rand"
 	"net/http"
@@ -297,9 +296,10 @@ func setupApp(config *config.Config) (a *glusterfs.App) {
 }
 
 func randSeed() {
-	var max big.Int
-	max.Add(big.NewInt(math.MaxInt64), big.NewInt(1))
-	n, err := crand.Int(crand.Reader, &max)
+	// from rand.Seed docs: "Seed values that have the same remainder when
+	// divided by 2^31-1 generate the same pseudo-random sequence."
+	max := big.NewInt(1<<31 - 1)
+	n, err := crand.Int(crand.Reader, max)
 	if err != nil {
 		rand.Seed(time.Now().UTC().UnixNano())
 	} else {
