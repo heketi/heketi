@@ -152,7 +152,10 @@ linux_arm64_dist:
 # NOTE: You can build the binaries for darwin or any other platform
 # golang supports. Just run: make dist GOOS=myos GOARCH=myarch
 
-release: deps_tarball linux_arm64_dist linux_arm_dist linux_amd64_dist
+linux_ppc64le_dist:
+	GOOS=linux GOARCH=ppc64le $(MAKE) dist
+
+release: deps_tarball linux_arm64_dist linux_arm_dist linux_amd64_dist linux_ppc64le_dist
 
 .PHONY: server client test clean name run version release \
 	linux_arm_dist linux_amd64_dist linux_arm64_dist \
