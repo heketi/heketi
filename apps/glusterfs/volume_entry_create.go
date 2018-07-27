@@ -55,7 +55,10 @@ func (v *VolumeEntry) updateMountInfo(db wdb.RODB) error {
 			if err != nil {
 				return err
 			}
-			hosts = append(hosts, node.StorageHostName())
+			if node.isOnline() {
+				hosts = append(hosts, node.StorageHostName())
+			}
+
 		}
 		return err
 	}); err != nil {

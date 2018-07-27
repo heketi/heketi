@@ -11,6 +11,7 @@ package glusterfs
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
@@ -391,6 +392,7 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 	// have changed
 
 	err = db.Update(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
 		err = newBrickEntry.Save(tx)
 		if err != nil {
 			return err
@@ -425,8 +427,58 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 		if err != nil {
 			return err
 		}
-		err = reReadVolEntry.Save(tx)
-		if err != nil {
+
+		updateNodeHostName := true
+		for _, brick := range reReadVolEntry.Bricks {
+			host := strings.Split(brick, ":")
+			if len(host) > 1 && host[0] == oldBrick.Host {
+				//host present in brick, no need to update hostname in volume
+				updateNodeHostName = false
+			}
+		}
+		//need to update old node hostname with another node hostname
+		if updateNodeHostName {
+			//update hosts in volumes
+			for i, h := range reReadVolEntry.Info.Mount.GlusterFS.Hosts {
+				if h == oldBrick.Host {
+					reReadVolEntry.Info.Mount.GlusterFS.Hosts[i] = newBrick.Host
+				}
+
+			}
+			//check if mount point is having the old hostname
+			mountPoint := strings.Split(reReadVolEntry.Info.Mount.GlusterFS.MountPoint, ":")
+			if len(mountPoint) > 1 && mountPoint[0] == oldBrick.Host {
+				reReadVolEntry.Info.Mount.GlusterFS.MountPoint = strings.Replace(reReadVolEntry.Info.Mount.GlusterFS.MountPoint, oldBrick.Host, newBrick.Host, 1)
+			}
+
+			//if its a block hosting volume,Get blockvolumes and update host
+			if reReadVolEntry.Info.Block {
+				for _, id := range reReadVolEntry.Info.BlockInfo.BlockVolumes {
+
+					blockEntry, err := NewBlockVolumeEntryFromId(tx, id)
+					if err != nil {
+						return err
+					}
+
+					for i, bh := range blockEntry.Info.BlockVolume.Hosts {
+						if bh == oldBrick.Host {
+							blockEntry.Info.BlockVolume.Hosts[i] = newBrick.Host
+						}
+					}
+
+					if err := blockEntry.Save(tx); err != nil {
+						return err
+					}
+				}
+			}
+
+			//update mountpoint info
+			if err = reReadVolEntry.updateMountInfo(txdb); err != nil {
+				return err
+			}
+
+		}
+		if err = reReadVolEntry.Save(tx); err != nil {
 			return err
 		}
 		return nil
