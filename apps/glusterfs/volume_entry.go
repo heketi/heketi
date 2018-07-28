@@ -317,8 +317,6 @@ func (v *VolumeEntry) Create(db wdb.DB,
 // When taking space from the volume the value must be negative (on
 // block volume add) and positive when the space is being "freed."
 func (v *VolumeEntry) ModifyFreeSize(delta int) {
-	logger.Warning("ModifyFreeSize: FreeSize[%v], delta[%v]", v.Info.BlockInfo.FreeSize, delta)
-
 	v.Info.BlockInfo.FreeSize += delta
 	godbc.Check(v.Info.BlockInfo.FreeSize >= 0)
 	godbc.Check(v.Info.BlockInfo.FreeSize+v.Info.BlockInfo.ReservedSize <= v.Info.Size)
