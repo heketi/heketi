@@ -19,6 +19,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
 	"github.com/heketi/heketi/executors"
+	"github.com/heketi/heketi/executors/injectexec"
 	"github.com/heketi/heketi/executors/kubeexec"
 	"github.com/heketi/heketi/executors/mockexec"
 	"github.com/heketi/heketi/executors/sshexec"
@@ -120,6 +121,14 @@ func NewApp(conf *GlusterFSConfig) *App {
 		app.executor, err = kubeexec.NewKubeExecutor(&app.conf.KubeConfig)
 	case "ssh", "":
 		app.executor, err = sshexec.NewSshExecutor(&app.conf.SshConfig)
+	case "inject/ssh":
+		app.executor, err = sshexec.NewSshExecutor(&app.conf.SshConfig)
+		app.executor = injectexec.NewInjectExecutor(
+			app.executor, &app.conf.InjectConfig)
+	case "inject/mock":
+		app.executor, err = mockexec.NewMockExecutor()
+		app.executor = injectexec.NewInjectExecutor(
+			app.executor, &app.conf.InjectConfig)
 	default:
 		return nil
 	}
