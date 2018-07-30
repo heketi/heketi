@@ -390,3 +390,7 @@ func canHostBlockVolume(tx *bolt.Tx, bv *BlockVolumeEntry, vol *VolumeEntry) (bo
 
 	return true, nil
 }
+
+func (v *BlockVolumeEntry) updateHosts(hosts []string) {
+	v.Info.BlockVolume.Hosts = hosts
+}
