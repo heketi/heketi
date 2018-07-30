@@ -40,18 +40,27 @@ func (v *VolumeEntry) createVolume(db wdb.RODB,
 	return nil
 }
 
-func (v *VolumeEntry) updateMountInfo(db wdb.RODB) error {
-	godbc.Require(v.Info.Cluster != "")
+func (v *VolumeEntry) updateHostandMountPoint(hosts []string, deletedHost string) {
 
-	// Get all brick hosts
+	v.Info.Mount.GlusterFS.Hosts = hosts
+	// Save volume information
+	if strings.Contains(v.Info.Mount.GlusterFS.MountPoint, deletedHost) {
+		v.Info.Mount.GlusterFS.MountPoint = fmt.Sprintf("%v:%v",
+			hosts[0], v.Info.Name)
+	}
+	v.Info.Mount.GlusterFS.Options["backup-volfile-servers"] =
+		strings.Join(hosts[1:], ",")
+}
+
+func getHostsFromCluster(db wdb.RODB, clusterID string) ([]string, error) {
 	hosts := []string{}
 	if err := db.View(func(tx *bolt.Tx) error {
-		cluster, err := NewClusterEntryFromId(tx, v.Info.Cluster)
+		cluster, err := NewClusterEntryFromId(tx, clusterID)
 		if err != nil {
 			return err
 		}
-		for _, nodeId := range cluster.Info.Nodes {
-			node, err := NewNodeEntryFromId(tx, nodeId)
+		for _, nodeID := range cluster.Info.Nodes {
+			node, err := NewNodeEntryFromId(tx, nodeID)
 			if err != nil {
 				return err
 			}
@@ -59,9 +68,19 @@ func (v *VolumeEntry) updateMountInfo(db wdb.RODB) error {
 		}
 		return err
 	}); err != nil {
-		return err
+		return []string{}, err
 	}
 
+	return hosts, nil
+}
+func (v *VolumeEntry) updateMountInfo(db wdb.RODB) error {
+	godbc.Require(v.Info.Cluster != "")
+
+	// Get all brick hosts
+	hosts, err := getHostsFromCluster(db, v.Info.Cluster)
+	if err != nil {
+		return err
+	}
 	v.Info.Mount.GlusterFS.Hosts = hosts
 
 	// Save volume information
