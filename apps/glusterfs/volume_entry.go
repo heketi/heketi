@@ -418,11 +418,34 @@ func (v *VolumeEntry) cleanupCreateVolume(db wdb.DB,
 
 	// from a quick read its "safe" to unconditionally try to delete
 	// bricks. TODO: find out if that is true with functional tests
-	DestroyBricks(db, executor, brick_entries)
+	reclaimed, err := DestroyBricks(db, executor, brick_entries)
+	if err != nil {
+		logger.LogError("failed to destory bricks during cleanup: %v", err)
+	}
 	return db.Update(func(tx *bolt.Tx) error {
 		for _, brick := range brick_entries {
 			v.removeBrickFromDb(tx, brick)
 		}
+		// update the device' free/used space after removing bricks
+		for _, b := range brick_entries {
+			if reclaim, found := reclaimed[b.Info.DeviceId]; found {
+				if !reclaim {
+					// nothing reclaimed, no need to update the DeviceEntry
+					continue
+				}
+
+				device, err := NewDeviceEntryFromId(tx, b.Info.DeviceId)
+				if err != nil {
+					logger.Err(err)
+					return err
+				}
+
+				// Deallocate space on device
+				device.StorageFree(device.SpaceNeeded(b.Info.Size, float64(v.Info.Snapshot.Factor)).Total)
+				device.Save(tx)
+			}
+		}
+
 		if v.Info.Cluster != "" {
 			cluster, err := NewClusterEntryFromId(tx, v.Info.Cluster)
 			if err == nil {
