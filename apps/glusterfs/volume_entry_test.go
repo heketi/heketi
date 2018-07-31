@@ -2530,3 +2530,80 @@ func TestVolumeCreateMultiClusterErrorsDevices(t *testing.T) {
 			etext)
 	}
 }
+
+func TestVolumeCreateRollbackSpaceReclaimed(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	mockerror := errors.New("MOCK")
+	app.xo.MockVolumeCreate = func(host string, volume *executors.VolumeRequest) (*executors.Volume, error) {
+		return nil, mockerror
+	}
+
+	err := setupSampleDbWithTopology(app,
+		2,    // clusters
+		3,    // nodes_per_cluster
+		4,    // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got", err)
+
+	err = app.db.View(func(tx *bolt.Tx) error {
+		devices, e := DeviceList(tx)
+		if e != nil {
+			return e
+		}
+
+		for _, id := range devices {
+			device, e := NewDeviceEntryFromId(tx, id)
+			if e != nil {
+				return e
+			}
+			tests.Assert(t, device.Info.Storage.Free == 6*TB, id, device)
+		}
+		return nil
+	})
+	tests.Assert(t, err == nil, "expected err == nil, got", err)
+
+	req := &api.VolumeCreateRequest{}
+	req.Size = 1024
+	req.Durability.Type = api.DurabilityReplicate
+	req.Durability.Replicate.Replica = 3
+
+	vol := NewVolumeEntryFromRequest(req)
+	vc := NewVolumeCreateOperation(vol, app.db)
+
+	e := vc.Build()
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	e = vc.Exec(app.executor)
+	tests.Assert(t, e != nil, "expected e != nil, got", e)
+
+	e = vc.Rollback(app.executor)
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	err = app.db.View(func(tx *bolt.Tx) error {
+		pol, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pol) == 0, "expected len(pol) == 0, got", len(pol))
+
+		devices, e := DeviceList(tx)
+		if e != nil {
+			return e
+		}
+
+		for _, id := range devices {
+			device, e := NewDeviceEntryFromId(tx, id)
+			if e != nil {
+				return e
+			}
+			tests.Assert(t, device.Info.Storage.Free == 6*TB, id, device)
+		}
+		return nil
+	})
+	tests.Assert(t, err == nil, "expected err == nil, got", err)
+}
