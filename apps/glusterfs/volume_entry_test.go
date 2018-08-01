@@ -2607,3 +2607,75 @@ func TestVolumeCreateRollbackSpaceReclaimed(t *testing.T) {
 	})
 	tests.Assert(t, err == nil, "expected err == nil, got", err)
 }
+
+func TestBlockVolumeCreateRollbackSpaceReclaimed(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	mockerror := errors.New("MOCK")
+	app.xo.MockBlockVolumeCreate = func(host string, blockVolume *executors.BlockVolumeRequest) (*executors.BlockVolumeInfo, error) {
+		return nil, mockerror
+	}
+
+	err := setupSampleDbWithTopology(app,
+		2,    // clusters
+		3,    // nodes_per_cluster
+		4,    // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got", err)
+
+	err = app.db.View(func(tx *bolt.Tx) error {
+		devices, e := DeviceList(tx)
+		if e != nil {
+			return e
+		}
+
+		for _, id := range devices {
+			device, e := NewDeviceEntryFromId(tx, id)
+			if e != nil {
+				return e
+			}
+			tests.Assert(t, device.Info.Storage.Free == 6*TB, id, device)
+		}
+		return nil
+	})
+	tests.Assert(t, err == nil, "expected err == nil, got", err)
+	bv := createSampleBlockVolumeEntry(500)
+	bv.Info.Name = "myvol"
+	bc := NewBlockVolumeCreateOperation(bv, app.db)
+
+	e := bc.Build()
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	e = bc.Exec(app.executor)
+	tests.Assert(t, e != nil, "expected e != nil, got", e)
+
+	e = bc.Rollback(app.executor)
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	err = app.db.View(func(tx *bolt.Tx) error {
+		pol, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pol) == 0, "expected len(pol) == 0, got", len(pol))
+
+		devices, e := DeviceList(tx)
+		if e != nil {
+			return e
+		}
+
+		for _, id := range devices {
+			device, e := NewDeviceEntryFromId(tx, id)
+			if e != nil {
+				return e
+			}
+			tests.Assert(t, device.Info.Storage.Free == 6*TB, id, device)
+		}
+		return nil
+	})
+	tests.Assert(t, err == nil, "expected err == nil, got", err)
+}
