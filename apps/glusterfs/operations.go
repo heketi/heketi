@@ -712,6 +712,14 @@ func (bvc *BlockVolumeCreateOperation) Build() error {
 				"manually.",
 				BlockHostingVolumeSize, bvc.bvol.Info.Size)
 		} else {
+			if found, err := hasPendingBlockHostingVolume(tx); found {
+				logger.Warning(
+					"temporarily rejecting block volume request:" +
+						" pending block-hosting-volume found")
+				return ErrTooManyOperations
+			} else if err != nil {
+				return err
+			}
 			vol, err := NewVolumeEntryForBlockHosting(clusters)
 			if err != nil {
 				return err
