@@ -12,10 +12,11 @@
 // You may not use this file except in compliance with those terms.
 //
 
-package client_tls_test
+package testutils
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path"
@@ -23,12 +24,18 @@ import (
 	"time"
 )
 
+type ServerCfg struct {
+	ServerDir string
+	HeketiBin string
+	LogPath   string
+	ConfPath  string
+	DbPath    string
+	KeepDB    bool
+}
+
 type ServerCtl struct {
-	serverDir string
-	heketiBin string
-	logPath   string
-	dbPath    string
-	keepDB    bool
+	ServerCfg
+
 	// the real stuff
 	cmd       *exec.Cmd
 	cmdExited bool
@@ -43,29 +50,47 @@ func getEnvValue(k, val string) string {
 	return val
 }
 
-func NewServerCtlFromEnv(dir string) *ServerCtl {
-	return &ServerCtl{
-		serverDir: getEnvValue("HEKETI_SERVER_DIR", dir),
-		heketiBin: getEnvValue("HEKETI_SERVER", "./heketi-server"),
-		logPath:   getEnvValue("HEKETI_LOG", "./heketi.log"),
-		dbPath:    getEnvValue("HEKETI_DB_PATH", "./heketi.db"),
+func NewServerCfgFromEnv(dirDefault string) *ServerCfg {
+	return &ServerCfg{
+		ServerDir: getEnvValue("HEKETI_SERVER_DIR", dirDefault),
+		HeketiBin: getEnvValue("HEKETI_SERVER", "./heketi-server"),
+		LogPath:   getEnvValue("HEKETI_LOG", ""),
+		DbPath:    getEnvValue("HEKETI_DB_PATH", "./heketi.db"),
+		ConfPath:  getEnvValue("HEKETI_CONF_PATH", "heketi.json"),
 	}
 }
 
+func NewServerCtlFromEnv(dirDefault string) *ServerCtl {
+	return NewServerCtl(NewServerCfgFromEnv(dirDefault))
+}
+
+func NewServerCtl(cfg *ServerCfg) *ServerCtl {
+	return &ServerCtl{ServerCfg: *cfg}
+}
+
 func (s *ServerCtl) Start() error {
-	if !s.keepDB {
+	if !s.KeepDB {
 		// do not preserve the heketi db between server instances
-		os.Remove(path.Join(s.serverDir, s.dbPath))
+		os.Remove(path.Join(s.ServerDir, s.DbPath))
 	}
-	f, err := os.OpenFile(s.logPath, os.O_TRUNC|os.O_CREATE|os.O_RDWR, 0644)
-	if err != nil {
-		return err
+	if s.LogPath == "" {
+		s.logF = nil
+	} else {
+		f, err := os.OpenFile(s.LogPath, os.O_TRUNC|os.O_CREATE|os.O_RDWR, 0644)
+		if err != nil {
+			return err
+		}
+		s.logF = f
 	}
-	s.logF = f
-	s.cmd = exec.Command(s.heketiBin, "--config=heketi.json")
-	s.cmd.Dir = s.serverDir
-	s.cmd.Stdout = f
-	s.cmd.Stderr = f
+	s.cmd = exec.Command(s.HeketiBin, fmt.Sprintf("--config=%v", s.ConfPath))
+	s.cmd.Dir = s.ServerDir
+	if s.logF == nil {
+		s.cmd.Stdout = os.Stdout
+		s.cmd.Stderr = os.Stderr
+	} else {
+		s.cmd.Stdout = s.logF
+		s.cmd.Stderr = s.logF
+	}
 	if err := s.cmd.Start(); err != nil {
 		return err
 	}
