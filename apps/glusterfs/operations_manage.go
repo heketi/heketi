@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/heketi/heketi/executors"
 
@@ -97,6 +98,7 @@ func AsyncHttpOperation(app *App,
 		// decrement the op counter once the operation is done
 		// either success or failure
 		defer app.opcounter.Dec()
+		time.Sleep(10 * time.Second)
 		logger.Info("Started async operation: %v", label)
 		if err := op.Exec(app.executor); err != nil {
 			if _, ok := err.(OperationRetryError); ok && op.MaxRetries() > 0 {
