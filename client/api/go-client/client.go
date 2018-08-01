@@ -55,10 +55,11 @@ type ClientOptions struct {
 
 // Client object
 type Client struct {
-	host     string
-	key      string
-	user     string
-	throttle chan bool
+	host       string
+	key        string
+	user       string
+	throttle   chan bool
+	httpClient *http.Client
 
 	// configuration for TLS support
 	tlsClientConfig *tls.Config
@@ -93,6 +94,11 @@ func NewClientWithOptions(host, user, key string, opts ClientOptions) *Client {
 	c.opts = opts
 	// Maximum concurrent requests
 	c.throttle = make(chan bool, MAX_CONCURRENT_REQUESTS)
+	c.httpClient = &http.Client{}
+	c.httpClient.Transport = &http.Transport{
+		MaxIdleConnsPerHost: 0,
+	}
+	c.httpClient.CheckRedirect = c.checkRedirect
 	if opts.RetryEnabled {
 		c.do = c.retryOperationDo
 	} else {
@@ -178,14 +184,7 @@ func (c *Client) doBasic(req *http.Request) (*http.Response, error) {
 		<-c.throttle
 	}()
 
-	httpClient := &http.Client{}
-	if c.tlsClientConfig != nil {
-		httpClient.Transport = &http.Transport{
-			TLSClientConfig: c.tlsClientConfig,
-		}
-	}
-	httpClient.CheckRedirect = c.checkRedirect
-	return httpClient.Do(req)
+	return c.httpClient.Do(req)
 }
 
 // This function is called by the http package if it detects that it needs to
