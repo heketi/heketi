@@ -307,3 +307,24 @@ func PendingOperationUpgrade(tx *bolt.Tx) error {
 	// so simply save the entry to record that this db now has them
 	return entry.Save(tx)
 }
+
+// MarkPendingOperationsStale iterates through all the pending operations
+// in the DB and ensures they are marked as stale operations.
+func MarkPendingOperationsStale(tx *bolt.Tx) error {
+	pops, err := PendingOperationList(tx)
+	if err != nil {
+		return err
+	}
+	for _, id := range pops {
+		pop, err := NewPendingOperationEntryFromId(tx, id)
+		if err != nil {
+			return err
+		}
+		// don't bother updating ops that are already stale
+		if pop.Status != StaleOperation {
+			pop.Status = StaleOperation
+			pop.Save(tx)
+		}
+	}
+	return nil
+}
