@@ -20,10 +20,18 @@ import (
 	"github.com/lpabon/godbc"
 )
 
+type OperationStatus string
+
 const (
 	NEW_ID                    = ""
 	BOLTDB_BUCKET_PENDING_OPS = "PENDING_OPERATIONS"
 	DB_HAS_PENDING_OPS_BUCKET = "DB_HAS_PENDING_OPS_BUCKET"
+)
+
+// define constants for OperationStatus
+const (
+	NewOperation   OperationStatus = ""
+	StaleOperation OperationStatus = "stale"
 )
 
 var (
@@ -34,6 +42,9 @@ var (
 // PendingOperationEntry tracks pending operations within the Heketi db.
 type PendingOperationEntry struct {
 	PendingOperation
+
+	// tracking the status of operations
+	Status OperationStatus
 }
 
 // PendingOperationList returns the IDs of all pending operation entries
@@ -76,11 +87,13 @@ func NewPendingOperationEntry(id string) *PendingOperationEntry {
 	if id == NEW_ID {
 		id = utils.GenUUID()
 	}
-	entry := &PendingOperationEntry{PendingOperation{
-		PendingItem: PendingItem{id},
-		Timestamp:   operationTimestamp(),
-		Actions:     []PendingOperationAction{},
-	}}
+	entry := &PendingOperationEntry{
+		PendingOperation: PendingOperation{
+			PendingItem: PendingItem{id},
+			Timestamp:   operationTimestamp(),
+			Actions:     []PendingOperationAction{},
+		},
+	}
 	return entry
 }
 
