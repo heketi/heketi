@@ -115,10 +115,10 @@ func (j *JwtAuth) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.Ha
 		errmsg := fmt.Sprintf("Invalid JWT token: %s", err)
 		// annoying that the types don't actually match
 		if err.Error() == jwt.ErrSignatureInvalid.Error() {
-			errmsg += "\n(client and server secrets may not match)"
+			errmsg += " (client and server secrets may not match)"
 		}
 		if strings.Contains(err.Error(), "used before issued") {
-			errmsg += "\n(client and server clocks may differ)"
+			errmsg += " (client and server clocks may differ)"
 		}
 		http.Error(w, errmsg, http.StatusUnauthorized)
 		return
