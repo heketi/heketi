@@ -2856,3 +2856,85 @@ func TestBlockVolumesCreateRejectPendingBHV(t *testing.T) {
 		return nil
 	})
 }
+
+func TestBlockVolumesCreatePendingBHVIgnoredItems(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		1,    // devices_per_node,
+		3*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	req := &api.BlockVolumeCreateRequest{}
+	req.Size = 10
+
+	vol1 := NewBlockVolumeEntryFromRequest(req)
+	vc1 := NewBlockVolumeCreateOperation(vol1, app.db)
+	vol2 := NewBlockVolumeEntryFromRequest(req)
+	vc2 := NewBlockVolumeCreateOperation(vol2, app.db)
+
+	// verify that there are no volumes yet
+	app.db.View(func(tx *bolt.Tx) error {
+		vl, e := VolumeList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(vl) == 0, "expected len(vl) == 0, got", len(vl))
+		pol, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pol) == 0, "expected len(pol) == 0, got", len(pol))
+		return nil
+	})
+
+	e := vc1.Build()
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	// make the current pending operation stale
+	e = app.ServerReset()
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	// verify that the pending volume exists
+	app.db.View(func(tx *bolt.Tx) error {
+		vl, e := VolumeList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(vl) == 1, "expected len(vl) == 1, got", len(vl))
+		pol, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pol) == 1, "expected len(pol) == 1, got", len(pol))
+		return nil
+	})
+
+	// create a pending (new) non-block volume
+	req2 := &api.VolumeCreateRequest{}
+	req2.Size = 5
+	vol := NewVolumeEntryFromRequest(req2)
+	vco := NewVolumeCreateOperation(vol, app.db)
+	e = vco.Build()
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	e = vc2.Build()
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	e = vc2.Exec(app.executor)
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	e = vc2.Finalize()
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	// verify that there is now a BHV (and a stale one)
+	app.db.View(func(tx *bolt.Tx) error {
+		vl, e := VolumeList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(vl) == 3, "expected len(vl) == 3, got", len(vl))
+		pol, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pol) == 2, "expected len(pol) == 2, got", len(pol))
+		return nil
+	})
+}
