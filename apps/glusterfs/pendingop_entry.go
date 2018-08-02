@@ -328,3 +328,21 @@ func MarkPendingOperationsStale(tx *bolt.Tx) error {
 	}
 	return nil
 }
+
+// PendingOperationStateCount returns a mapping of pending operation
+// statuses to the count of the operations of that status in the db.
+func PendingOperationStateCount(tx *bolt.Tx) (map[OperationStatus]int, error) {
+	pops, err := PendingOperationList(tx)
+	if err != nil {
+		return nil, err
+	}
+	count := map[OperationStatus]int{}
+	for _, id := range pops {
+		pop, err := NewPendingOperationEntryFromId(tx, id)
+		if err != nil {
+			return nil, err
+		}
+		count[pop.Status] += 1
+	}
+	return count, nil
+}
