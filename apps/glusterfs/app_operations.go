@@ -27,6 +27,12 @@ func (a *App) OperationsInfo(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		info.Total = uint64(len(ops))
+		m, err := PendingOperationStateCount(tx)
+		if err != nil {
+			return err
+		}
+		info.New = uint64(m[NewOperation])
+		info.Stale = uint64(m[StaleOperation])
 		return nil
 	})
 	if err != nil {
