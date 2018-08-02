@@ -2788,3 +2788,68 @@ func TestBlockVolumeCloneFails(t *testing.T) {
 	err = RunOperation(cloneOp, app.executor)
 	tests.Assert(t, err == ErrCloneBlockVol, "expected err == ErrCloneBlockVol, got:", err)
 }
+
+func TestAppServerResetStaleOps(t *testing.T) {
+	dbfile := tests.Tempfile()
+	defer os.Remove(dbfile)
+
+	// create a app that will only be used to set up the test
+	app := NewTestApp(dbfile)
+	tests.Assert(t, app != nil)
+
+	// pretend first server startup
+	err := app.ServerReset()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	err = setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		1,    // devices_per_node,
+		1*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	// create pending operations that we will "orphan"
+	req := &api.VolumeCreateRequest{}
+	req.Size = 1
+
+	vol1 := NewVolumeEntryFromRequest(req)
+	vc1 := NewVolumeCreateOperation(vol1, app.db)
+	err = vc1.Build()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	vol2 := NewVolumeEntryFromRequest(req)
+	vc2 := NewVolumeCreateOperation(vol2, app.db)
+	err = vc2.Build()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	app.db.View(func(tx *bolt.Tx) error {
+		pol, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pol) == 2, "expected len(pol) == 2, got", len(pol))
+		for _, poid := range pol {
+			po, e := NewPendingOperationEntryFromId(tx, poid)
+			tests.Assert(t, e == nil, "expected e == nil, got", e)
+			tests.Assert(t, po.Status == NewOperation,
+				"expected po.Status == NewOperation, got:", po.Status)
+		}
+		return nil
+	})
+
+	// pretend the server was restarted
+	err = app.ServerReset()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	app.db.View(func(tx *bolt.Tx) error {
+		pol, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pol) == 2, "expected len(pol) == 2, got", len(pol))
+		for _, poid := range pol {
+			po, e := NewPendingOperationEntryFromId(tx, poid)
+			tests.Assert(t, e == nil, "expected e == nil, got", e)
+			tests.Assert(t, po.Status == StaleOperation,
+				"expected po.Status == NewOperation, got:", po.Status)
+		}
+		return nil
+	})
+}
