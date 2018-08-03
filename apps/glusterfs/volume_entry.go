@@ -139,7 +139,13 @@ func NewVolumeEntryFromRequest(req *api.VolumeCreateRequest) *VolumeEntry {
 	vol.GlusterVolumeOptions = req.GlusterVolumeOptions
 
 	if vol.Info.Block {
-		vol.SetRawCapacity(req.Size)
+		if err := vol.SetRawCapacity(req.Size); err != nil {
+			logger.Err(err)
+			// we can either panic here or return nil. We panic because
+			// returning nil is most likely going to lead to nil
+			// dereference panics anyway
+			panic(err)
+		}
 		// prepend the gluster-block group option,
 		// so that the user-specified options can take precedence
 		blockoptions := strings.Split(BlockHostingVolumeOptions, ",")
@@ -316,16 +322,36 @@ func (v *VolumeEntry) Create(db wdb.DB,
 // ModifyFreeSize adjusts the free size of a block hosting volume.
 // When taking space from the volume the value must be negative (on
 // block volume add) and positive when the space is being "freed."
-func (v *VolumeEntry) ModifyFreeSize(delta int) {
+func (v *VolumeEntry) ModifyFreeSize(delta int) error {
+	logger.Debug("Modifying free size: FreeSize=[%v] delta=[%v]",
+		v.Info.BlockInfo.FreeSize, delta)
 	v.Info.BlockInfo.FreeSize += delta
-	godbc.Check(v.Info.BlockInfo.FreeSize >= 0)
-	godbc.Check(v.Info.BlockInfo.FreeSize+v.Info.BlockInfo.ReservedSize <= v.Info.Size)
+	if v.Info.BlockInfo.FreeSize < 0 {
+		return logger.Err(fmt.Errorf(
+			"Volume %v free size may not be set less than zero", v.Info.Id))
+	}
+	if v.Info.BlockInfo.FreeSize+v.Info.BlockInfo.ReservedSize > v.Info.Size {
+		return logger.Err(fmt.Errorf(
+			"Volume %v free size may not be set greater than %v",
+			v.Info.Id, v.Info.Size))
+	}
+	return nil
 }
 
-func (v *VolumeEntry) ModifyReservedSize(delta int) {
+func (v *VolumeEntry) ModifyReservedSize(delta int) error {
+	logger.Debug("Modifying reserved size: ReservedSize=[%v] delta=[%v]",
+		v.Info.BlockInfo.ReservedSize, delta)
 	v.Info.BlockInfo.ReservedSize += delta
-	godbc.Check(v.Info.BlockInfo.ReservedSize >= 0)
-	godbc.Check(v.Info.BlockInfo.ReservedSize+v.Info.BlockInfo.FreeSize <= v.Info.Size)
+	if v.Info.BlockInfo.ReservedSize < 0 {
+		return logger.Err(fmt.Errorf(
+			"Volume %v reserved size may not be set less than zero", v.Info.Id))
+	}
+	if v.Info.BlockInfo.ReservedSize+v.Info.BlockInfo.FreeSize > v.Info.Size {
+		return logger.Err(fmt.Errorf(
+			"Volume %v reserved size may not be set greater than %v",
+			v.Info.Id, v.Info.Size))
+	}
+	return nil
 }
 
 func ReduceRawSize(size int) int {
@@ -335,21 +361,26 @@ func ReduceRawSize(size int) int {
 // AddRawCapacity adds raw capacity to the BlockInfo
 // FreeSize tracking, reserving one percent of the
 // raw capacity for the filesystem.
-func (v *VolumeEntry) AddRawCapacity(delta int) {
+func (v *VolumeEntry) AddRawCapacity(delta int) error {
 	var freeDelta int
 	var reservedDelta int
 
 	freeDelta = ReduceRawSize(delta)
 	reservedDelta = delta - freeDelta
 
-	v.ModifyFreeSize(freeDelta)
-	v.ModifyReservedSize(reservedDelta)
+	if err := v.ModifyFreeSize(freeDelta); err != nil {
+		return err
+	}
+	if err := v.ModifyReservedSize(reservedDelta); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (v *VolumeEntry) SetRawCapacity(delta int) {
+func (v *VolumeEntry) SetRawCapacity(delta int) error {
 	v.Info.BlockInfo.FreeSize = 0
 	v.Info.BlockInfo.ReservedSize = 0
-	v.AddRawCapacity(delta)
+	return v.AddRawCapacity(delta)
 }
 
 func (v *VolumeEntry) tryAllocateBricks(
@@ -547,7 +578,9 @@ func (v *VolumeEntry) saveCreateVolume(db wdb.DB,
 
 		// Save volume information
 		if v.Info.Block {
-			v.SetRawCapacity(v.Info.Size)
+			if err := v.SetRawCapacity(v.Info.Size); err != nil {
+				return err
+			}
 		}
 		err := v.Save(tx)
 		if err != nil {
