@@ -2679,3 +2679,78 @@ func TestBlockVolumeCreateRollbackSpaceReclaimed(t *testing.T) {
 	})
 	tests.Assert(t, err == nil, "expected err == nil, got", err)
 }
+
+func TestVolumeEntryBlockCapacityLimits(t *testing.T) {
+	var (
+		err   error
+		v     *VolumeEntry
+		mkVol = func() *VolumeEntry {
+			v := NewVolumeEntry()
+			v.Info.Name = "Foo"
+			v.Info.Size = 100
+			v.Info.Block = true
+			return v
+		}
+	)
+
+	t.Run("AddCapacityOver", func(t *testing.T) {
+		v = mkVol()
+		v.SetRawCapacity(100)
+		err = v.AddRawCapacity(5)
+		tests.Assert(t, err != nil, "expected err != nil, got", err)
+	})
+	t.Run("AddCapacity", func(t *testing.T) {
+		v = mkVol()
+		v.SetRawCapacity(95)
+		err = v.AddRawCapacity(5)
+		tests.Assert(t, err == nil, "expected err == nil, got", err)
+	})
+	t.Run("SetCapacityOver", func(t *testing.T) {
+		v = mkVol()
+		err = v.SetRawCapacity(101)
+		tests.Assert(t, err != nil, "expected err != nil, got", err)
+	})
+	t.Run("TakeFreeSpace", func(t *testing.T) {
+		v = mkVol()
+		v.SetRawCapacity(100)
+		err = v.ModifyFreeSize(-10)
+		tests.Assert(t, err == nil, "expected err == nil, got", err)
+	})
+	t.Run("ReturnFreeSpace", func(t *testing.T) {
+		v = mkVol()
+		v.SetRawCapacity(95)
+		err = v.ModifyFreeSize(1)
+		tests.Assert(t, err == nil, "expected err == nil, got", err)
+	})
+	t.Run("TakeTooMuchFreeSpace", func(t *testing.T) {
+		v = mkVol()
+		v.SetRawCapacity(100)
+		err = v.ModifyFreeSize(-1000)
+		tests.Assert(t, err != nil, "expected err != nil, got", err)
+	})
+	t.Run("ReturnTooMuchFreeSpace", func(t *testing.T) {
+		v = mkVol()
+		v.SetRawCapacity(100)
+		err = v.ModifyFreeSize(1)
+		tests.Assert(t, err != nil, "expected err != nil, got", err)
+	})
+	t.Run("TakeFreeSpaceInvalidSize", func(t *testing.T) {
+		v = mkVol()
+		v.SetRawCapacity(100)
+		v.Info.Size = 50
+		err = v.ModifyFreeSize(-1)
+		tests.Assert(t, err != nil, "expected err != nil, got", err)
+	})
+	t.Run("TakeTooMuchReservedSpace", func(t *testing.T) {
+		v = mkVol()
+		v.SetRawCapacity(100)
+		err = v.ModifyReservedSize(-200)
+		tests.Assert(t, err != nil, "expected err != nil, got", err)
+	})
+	t.Run("ReturnTooMuchReservedSpace", func(t *testing.T) {
+		v = mkVol()
+		v.SetRawCapacity(100)
+		err = v.ModifyReservedSize(2)
+		tests.Assert(t, err != nil, "expected err != nil, got", err)
+	})
+}
