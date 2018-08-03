@@ -341,7 +341,9 @@ func (ve *VolumeExpandOperation) Finalize() error {
 		}
 		ve.vol.Info.Size += sizeDelta
 		if ve.vol.Info.Block == true {
-			ve.vol.AddRawCapacity(sizeDelta)
+			if e := ve.vol.AddRawCapacity(sizeDelta); e != nil {
+				return e
+			}
 		}
 		ve.op.FinalizeVolume(ve.vol)
 		if e := ve.vol.Save(tx); e != nil {
