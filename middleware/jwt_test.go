@@ -165,7 +165,7 @@ func TestJwtMissingClaims(t *testing.T) {
 	// Create test server
 	ts := httptest.NewServer(n)
 
-	// Create token with missing 'iss' claim
+	// Create token with missing 'exp' claim
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"iss": "admin",
 	})
@@ -176,7 +176,7 @@ func TestJwtMissingClaims(t *testing.T) {
 	req, err := http.NewRequest("GET", ts.URL, nil)
 	tests.Assert(t, err == nil)
 
-	// Miss 'bearer' string
+	// Add 'bearer' string
 	req.Header.Set("Authorization", "bearer "+tokenString)
 	r, err := http.DefaultClient.Do(req)
 	tests.Assert(t, err == nil)
@@ -222,7 +222,7 @@ func TestJwtInvalidToken(t *testing.T) {
 	req, err := http.NewRequest("GET", ts.URL, nil)
 	tests.Assert(t, err == nil)
 
-	// Miss 'bearer' string
+	// Add 'bearer' string
 	req.Header.Set("Authorization", "bearer "+tokenString)
 	r, err := http.DefaultClient.Do(req)
 	tests.Assert(t, err == nil)
@@ -386,7 +386,7 @@ func TestJwt(t *testing.T) {
 	req, err := http.NewRequest("GET", ts.URL, nil)
 	tests.Assert(t, err == nil)
 
-	// Miss 'bearer' string
+	// Add 'bearer' string
 	req.Header.Set("Authorization", "bearer "+tokenString)
 	r, err := http.DefaultClient.Do(req)
 	tests.Assert(t, err == nil)
@@ -455,7 +455,7 @@ func TestJwtLeewayIAT(t *testing.T) {
 	req, err := http.NewRequest("GET", ts.URL, nil)
 	tests.Assert(t, err == nil)
 
-	// Miss 'bearer' string
+	// Add 'bearer' string
 	req.Header.Set("Authorization", "bearer "+tokenString)
 	r, err := http.DefaultClient.Do(req)
 	tests.Assert(t, err == nil)
@@ -839,7 +839,7 @@ func TestJwtUnknownUser(t *testing.T) {
 	req, err := http.NewRequest("GET", ts.URL, nil)
 	tests.Assert(t, err == nil)
 
-	// Miss 'bearer' string
+	// Add 'bearer' string
 	req.Header.Set("Authorization", "bearer "+tokenString)
 	r, err := http.DefaultClient.Do(req)
 	tests.Assert(t, err == nil)
@@ -892,7 +892,7 @@ func TestJwtInvalidKeys(t *testing.T) {
 	req, err := http.NewRequest("GET", ts.URL, nil)
 	tests.Assert(t, err == nil)
 
-	// Miss 'bearer' string
+	// Add 'bearer' string
 	req.Header.Set("Authorization", "bearer "+tokenString)
 	r, err := http.DefaultClient.Do(req)
 	tests.Assert(t, err == nil)
@@ -921,7 +921,7 @@ func TestJwtInvalidKeys(t *testing.T) {
 	req, err = http.NewRequest("GET", ts.URL, nil)
 	tests.Assert(t, err == nil)
 
-	// Miss 'bearer' string
+	// Add 'bearer' string
 	req.Header.Set("Authorization", "bearer "+tokenString)
 	r, err = http.DefaultClient.Do(req)
 	tests.Assert(t, err == nil)
