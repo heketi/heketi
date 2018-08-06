@@ -383,6 +383,48 @@ func (v *VolumeEntry) SetRawCapacity(delta int) error {
 	return v.AddRawCapacity(delta)
 }
 
+// TotalSizeBlockVolumes returns the total size of the block volumes that
+// the given volume is hosting. This function iterates over the block
+// volumes in the db to calculate the total.
+func (v *VolumeEntry) TotalSizeBlockVolumes(tx *bolt.Tx) (int, error) {
+	if !v.Info.Block {
+		return 0, fmt.Errorf(
+			"Volume %v is not a block hosting volume", v.Info.Id)
+	}
+	bvsum := 0
+	for _, bvid := range v.Info.BlockInfo.BlockVolumes {
+		bvol, err := NewBlockVolumeEntryFromId(tx, bvid)
+		if err != nil {
+			return 0, err
+		}
+		// currently pending block volumes do not deduct space from
+		// the block hosting volume
+		if bvol.Pending.Id != "" {
+			continue
+		}
+		bvsum += bvol.Info.Size
+	}
+	return bvsum, nil
+}
+
+// blockHostingSizeIsCorrect returns true if the total size of the volume
+// is equal to the sum of the used, free and reserved block hosting size values.
+// The used size must be provided and should be calculated based on the sizes
+// of the block volumes.
+func (v *VolumeEntry) blockHostingSizeIsCorrect(used int) bool {
+	logger.Debug("volume [%v]: comparing %v == %v + %v + %v",
+		v.Info.Id, v.Info.Size,
+		used, v.Info.BlockInfo.FreeSize, v.Info.BlockInfo.ReservedSize)
+	unused := v.Info.BlockInfo.FreeSize + v.Info.BlockInfo.ReservedSize
+	if v.Info.Size != (used + unused) {
+		logger.Warning("detected volume [%v] has size %v != %v + %v + %v",
+			v.Info.Id, v.Info.Size,
+			used, v.Info.BlockInfo.FreeSize, v.Info.BlockInfo.ReservedSize)
+		return false
+	}
+	return true
+}
+
 func (v *VolumeEntry) tryAllocateBricks(
 	db wdb.DB,
 	possibleClusters []string) (brick_entries []*BrickEntry, err error) {
