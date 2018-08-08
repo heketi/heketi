@@ -291,7 +291,7 @@ func randSeed() {
 	max := big.NewInt(1<<31 - 1)
 	n, err := crand.Int(crand.Reader, max)
 	if err != nil {
-		rand.Seed(time.Now().UTC().UnixNano())
+		rand.Seed(time.Now().UnixNano())
 	} else {
 		rand.Seed(n.Int64())
 	}
