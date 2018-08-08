@@ -34,6 +34,10 @@ type BrickEntry struct {
 	// scheme than the bricks created directly by Heketi.
 	LvmThinPool string
 	LvmLv       string
+
+	// currently sub type is only used when the brick is first created
+	// this is only exported for placer use and db serialization
+	SubType BrickSubType
 }
 
 func BrickList(tx *bolt.Tx) ([]string, error) {
@@ -352,4 +356,10 @@ func (b *BrickEntry) LvName() string {
 		return b.LvmLv
 	}
 	return utils.BrickIdToName(b.Info.Id)
+}
+
+// BrickType returns the sub-type of a brick. SubType helps determine
+// brick formatting, etc.
+func (b *BrickEntry) BrickType() BrickSubType {
+	return b.SubType
 }
