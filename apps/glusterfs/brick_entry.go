@@ -160,7 +160,7 @@ func (b *BrickEntry) Unmarshal(buffer []byte) error {
 	return nil
 }
 
-func (b *BrickEntry) brickRequest(path string) *executors.BrickRequest {
+func (b *BrickEntry) brickRequest(path string, create bool) *executors.BrickRequest {
 	req := &executors.BrickRequest{}
 	req.Gid = b.gidRequested
 	req.Name = b.Info.Id
@@ -172,6 +172,19 @@ func (b *BrickEntry) brickRequest(path string) *executors.BrickRequest {
 	req.LvName = b.LvName()
 	// path varies depending on what it is called from
 	req.Path = path
+	// figure out how to format brick via subtype
+	switch b.BrickType() {
+	case NormalSubType:
+		req.Format = executors.NormalFormat
+	case ArbiterSubType:
+		req.Format = executors.ArbiterFormat
+	default:
+		// this can only happen if we try to directly create a brick for
+		// an entry that was not created by a current placer
+		if create {
+			panic("Can not create a brick of unknown type")
+		}
+	}
 	return req
 }
 
@@ -197,7 +210,7 @@ func (b *BrickEntry) Create(db wdb.RODB, executor executors.Executor) error {
 		return err
 	}
 
-	req := b.brickRequest(b.Info.Path)
+	req := b.brickRequest(b.Info.Path, true)
 	// remove this some time post-refactoring
 	godbc.Require(req.Path == utils.BrickPath(req.VgId, req.Name))
 
@@ -233,7 +246,7 @@ func (b *BrickEntry) Destroy(db wdb.RODB, executor executors.Executor) (bool, er
 	}
 
 	req := b.brickRequest(
-		strings.TrimSuffix(b.Info.Path, "/brick"))
+		strings.TrimSuffix(b.Info.Path, "/brick"), false)
 
 	// Delete brick on node
 	logger.Info("Deleting brick %v", b.Info.Id)
