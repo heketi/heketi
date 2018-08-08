@@ -972,19 +972,86 @@ func TestVolumeExpandSizeTooSmall(t *testing.T) {
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	// VolumeCreate JSON Request
-	request := []byte(`{
-        "expand_size" : 0
-    }`)
+	// Create a cluster
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		10,   // nodes_per_cluster
+		10,   // devices_per_node,
+		5*TB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	// Create a volume
+	v := createSampleReplicaVolumeEntry(100, 2)
+	tests.Assert(t, v != nil)
+	err = v.Create(app.db, app.executor)
+	tests.Assert(t, err == nil)
+
+	// JSON Request
+	request := []byte(`{ "expand_size": 0 }`)
 
 	// Send request
-	r, err := http.Post(ts.URL+"/volumes", "application/json", bytes.NewBuffer(request))
+	r, err := http.Post(ts.URL+"/volumes/"+v.Info.Id+"/expand",
+		"application/json",
+		bytes.NewBuffer(request))
 	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusBadRequest)
+	tests.Assert(t, r.StatusCode == http.StatusBadRequest,
+		"expected r.StatusCode == http.StatusUnprocessableEntity, got:", r.StatusCode)
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, r.ContentLength))
 	tests.Assert(t, err == nil)
 	r.Body.Close()
-	tests.Assert(t, strings.Contains(string(body), "size: cannot be blank"), string(body))
+	tests.Assert(t,
+		strings.Contains(string(body), "expand_size: cannot be blank"),
+		`expected "expand_size: cannot be blank", got:`,
+		string(body))
+}
+
+func TestVolumeExpandSizeTooBig(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Create a cluster
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		10,   // nodes_per_cluster
+		10,   // devices_per_node,
+		5*TB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	// Create a volume
+	v := createSampleReplicaVolumeEntry(100, 2)
+	tests.Assert(t, v != nil)
+	err = v.Create(app.db, app.executor)
+	tests.Assert(t, err == nil)
+
+	// JSON Request
+	request := []byte(`{ "expand_size": 100000000000000000000 }`)
+
+	// Send request
+	r, err := http.Post(ts.URL+"/volumes/"+v.Info.Id+"/expand",
+		"application/json",
+		bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusUnprocessableEntity,
+		"expected r.StatusCode == http.StatusUnprocessableEntity, got:", r.StatusCode)
+	body, err := ioutil.ReadAll(io.LimitReader(r.Body, r.ContentLength))
+	tests.Assert(t, err == nil)
+	r.Body.Close()
+	tests.Assert(t,
+		strings.Contains(string(body), "unable to be parsed"),
+		`expected "unable to be parsed", got:`,
+		string(body))
 }
 
 func TestVolumeExpand(t *testing.T) {
