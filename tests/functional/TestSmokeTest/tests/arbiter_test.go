@@ -14,6 +14,8 @@ package functional
 import (
 	"fmt"
 	"os"
+	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -277,6 +279,10 @@ func testArbiterCreateAndVerify(t *testing.T) {
 	}
 	_, err = s.ConnectAndExec(storage0ssh, cmd, 10, true)
 	tests.Assert(t, err == nil, "No bricks marked as arbiter")
+
+	vi, err := heketi.VolumeInfo(vcr.Id)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	checkArbiterFormatting(t, vi)
 }
 
 // Test that a volume not flagged for arbiter support does
@@ -425,4 +431,30 @@ func testArbiterReplaceArbiterBrick(t *testing.T) {
 	tests.Assert(t, !strings.Contains(o[0], path),
 		"expected output not to contain old brick path",
 		"output:", o, "path:", path)
+
+	checkArbiterFormatting(t, vi)
+}
+
+func checkArbiterFormatting(t *testing.T, vol *api.VolumeInfoResponse) {
+	s := ssh.NewSshExecWithKeyFile(
+		logger, "vagrant", "../config/insecure_private_key")
+	re := regexp.MustCompile("(imaxpct=[0-9]+)")
+
+	r := sort.StringSlice{}
+	for _, b := range vol.Bricks {
+		ni, err := heketi.NodeInfo(b.NodeId)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		host := ni.Hostnames.Manage[0] + ":" + portNum
+		cmd := fmt.Sprintf("xfs_info %v", b.Path)
+		o, err := s.ConnectAndExec(host, []string{cmd}, 10, true)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		match := re.FindString(o[0])
+		tests.Assert(t, match != "", "expected match got empty string")
+		r = append(r, match)
+	}
+	r.Sort()
+	tests.Assert(t, len(r) == 3)
+	tests.Assert(t, r[0] == "imaxpct=100")
+	tests.Assert(t, r[1] == "imaxpct=25")
+	tests.Assert(t, r[2] == "imaxpct=25")
 }
