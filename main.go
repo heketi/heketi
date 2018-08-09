@@ -12,7 +12,6 @@ package main
 import (
 	crand "crypto/rand"
 	"fmt"
-	"math"
 	"math/big"
 	"math/rand"
 	"net/http"
@@ -270,8 +269,11 @@ func setWithEnvVariables(options *config.Config) {
 func setupApp(config *config.Config) (a *glusterfs.App) {
 	defer func() {
 		err := recover()
-		if a == nil || err != nil {
+		if a == nil {
 			fmt.Fprintln(os.Stderr, "ERROR: Unable to start application")
+			os.Exit(1)
+		} else if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: Unable to start application: %s\n", err)
 			os.Exit(1)
 		}
 	}()
@@ -294,11 +296,12 @@ func setupApp(config *config.Config) (a *glusterfs.App) {
 }
 
 func randSeed() {
-	var max big.Int
-	max.Add(big.NewInt(math.MaxInt64), big.NewInt(1))
-	n, err := crand.Int(crand.Reader, &max)
+	// from rand.Seed docs: "Seed values that have the same remainder when
+	// divided by 2^31-1 generate the same pseudo-random sequence."
+	max := big.NewInt(1<<31 - 1)
+	n, err := crand.Int(crand.Reader, max)
 	if err != nil {
-		rand.Seed(time.Now().UTC().UnixNano())
+		rand.Seed(time.Now().UnixNano())
 	} else {
 		rand.Seed(n.Int64())
 	}
