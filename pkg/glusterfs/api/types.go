@@ -292,6 +292,7 @@ type VolumeCreateRequest struct {
 		Enable bool    `json:"enable"`
 		Factor float32 `json:"factor"`
 	} `json:"snapshot"`
+	SecureCommunications *SecureCommunications `json:"secure_communications,omitempty"`
 }
 
 func (volCreateRequest VolumeCreateRequest) Validate() error {
