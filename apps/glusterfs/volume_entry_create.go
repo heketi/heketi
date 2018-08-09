@@ -136,5 +136,29 @@ func (v *VolumeEntry) createVolumeRequest(db wdb.RODB,
 	vr.GlusterVolumeOptions = v.GlusterVolumeOptions
 	vr.Arbiter = v.HasArbiterOption()
 
+	// Enable secure communications if config provided
+	if v.SecureCommunications != nil && v.SecureCommunications.Enable {
+		vr.GlusterVolumeOptions = append(vr.GlusterVolumeOptions, "client.ssl on")
+		vr.GlusterVolumeOptions = append(vr.GlusterVolumeOptions, "server.ssl on")
+
+		if len(v.SecureCommunications.AllowedIdentities) > 0 {
+			vr.GlusterVolumeOptions = append(vr.GlusterVolumeOptions,
+				fmt.Sprintf("auth.ssl-allow '%s'",
+					strings.Join(v.SecureCommunications.AllowedIdentities, ",")))
+		} else {
+			vr.GlusterVolumeOptions = append(vr.GlusterVolumeOptions, "auth.ssl-allow '*'")
+		}
+
+		if v.SecureCommunications.CertificateDepth != nil {
+			vr.GlusterVolumeOptions = append(vr.GlusterVolumeOptions,
+				fmt.Sprintf("ssl.certificate-depth %d", *v.SecureCommunications.CertificateDepth))
+		}
+
+		if v.SecureCommunications.CipherList != nil {
+			vr.GlusterVolumeOptions = append(vr.GlusterVolumeOptions,
+				fmt.Sprintf("ssl.cipher-list '%s'", *v.SecureCommunications.CipherList))
+		}
+	}
+
 	return vr, sshhost, nil
 }

@@ -134,6 +134,9 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vol := NewVolumeEntryFromRequest(&msg)
+	if vol.SecureCommunications == nil {
+		vol.SecureCommunications = a.conf.SecureCommunications
+	}
 
 	if uint64(msg.Size)*GB < vol.Durability.MinVolumeSize() {
 		http.Error(w, fmt.Sprintf("Requested volume size (%v GB) is "+

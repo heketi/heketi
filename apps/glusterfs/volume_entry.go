@@ -64,6 +64,7 @@ type VolumeEntry struct {
 	Durability           VolumeDurability `json:"-"`
 	GlusterVolumeOptions []string
 	Pending              PendingItem
+	SecureCommunications *api.SecureCommunications
 }
 
 func VolumeList(tx *bolt.Tx) ([]string, error) {
@@ -150,6 +151,8 @@ func NewVolumeEntryFromRequest(req *api.VolumeCreateRequest) *VolumeEntry {
 
 	// If it is zero, then it will be assigned during volume creation
 	vol.Info.Clusters = req.Clusters
+
+	vol.SecureCommunications = req.SecureCommunications
 
 	return vol
 }
