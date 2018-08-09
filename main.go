@@ -286,7 +286,14 @@ func setupApp(config *config.Config) (a *glusterfs.App) {
 		glusterfs.MonitorGlusterNodes = true
 	}
 
-	return glusterfs.NewApp(config.GlusterFS)
+	a = glusterfs.NewApp(config.GlusterFS)
+	if a != nil {
+		if err := a.ServerReset(); err != nil {
+			fmt.Fprintln(os.Stderr, "ERROR: Failed to reset server application")
+			os.Exit(1)
+		}
+	}
+	return a
 }
 
 func randSeed() {

@@ -394,3 +394,33 @@ func canHostBlockVolume(tx *bolt.Tx, bv *BlockVolumeEntry, vol *VolumeEntry) (bo
 func (v *BlockVolumeEntry) updateHosts(hosts []string) {
 	v.Info.BlockVolume.Hosts = hosts
 }
+
+// hasPendingBlockHostingVolume returns true if the db contains pending
+// block hosting volumes.
+func hasPendingBlockHostingVolume(tx *bolt.Tx) (bool, error) {
+	pmap, err := MapPendingVolumes(tx)
+	if err != nil {
+		return false, err
+	}
+	// filter out any volumes that are not marked for block
+	for volId, popId := range pmap {
+		vol, err := NewVolumeEntryFromId(tx, volId)
+		if err != nil {
+			return false, err
+		}
+		if !vol.Info.Block {
+			// drop volumes that are not BHVs
+			delete(pmap, volId)
+		}
+		pop, err := NewPendingOperationEntryFromId(tx, popId)
+		if err != nil {
+			return false, err
+		}
+		if pop.Status != NewOperation {
+			// drop pending operations that are not being worked on
+			// e.g. stale pending ops
+			delete(pmap, volId)
+		}
+	}
+	return (len(pmap) != 0), nil
+}
