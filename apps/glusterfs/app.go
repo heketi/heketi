@@ -593,6 +593,23 @@ func (a *App) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Invalid path or request", http.StatusNotFound)
 }
 
+// ServerReset resets the app and its components to the state desired
+// after the server process has restarted. The intent of this function
+// is to perform cleanup & reset tasks that are needed by the server
+// process only (should not be used by other callers of the app).
+// This should be as part of the start-up of the server instance.
+func (a *App) ServerReset() error {
+	// currently this code just resets the operations in the db
+	// to stale
+	return a.db.Update(func(tx *bolt.Tx) error {
+		if err := MarkPendingOperationsStale(tx); err != nil {
+			logger.LogError("failed to mark operations stale: %v", err)
+			return err
+		}
+		return nil
+	})
+}
+
 // currentNodeHealthStatus returns a map of node ids to the most
 // recently known health status (true is up, false is not up).
 // If a node is not found in the map its status is unknown.
