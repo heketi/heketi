@@ -272,6 +272,13 @@ type VolumeDurabilityInfo struct {
 	Disperse  DisperseDurability `json:"disperse,omitempty"`
 }
 
+type SecureCommunications struct {
+	Enable            bool     `json:"enable"`
+	AllowedIdentities []string `json:"allowed_identities"`
+	CertificateDepth  *int     `json:"certificate_depth"`
+	CipherList        *string  `json:"cipher_list"`
+}
+
 type VolumeCreateRequest struct {
 	// Size in GiB
 	Size                 int                  `json:"size"`
