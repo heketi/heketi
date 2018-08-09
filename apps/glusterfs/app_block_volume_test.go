@@ -203,7 +203,7 @@ func TestBlockVolumeLargerThanBlockHostingVolume(t *testing.T) {
 	// blockhosting volume and any new blockhosting volume that can
 	// be created
 	request = []byte(`{
-        "size" : 1600
+        "size" : 1079
     }`)
 	r, err = http.Post(ts.URL+"/blockvolumes", "application/json", bytes.NewBuffer(request))
 	tests.Assert(t, err == nil)
@@ -213,7 +213,32 @@ func TestBlockVolumeLargerThanBlockHostingVolume(t *testing.T) {
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, r.ContentLength))
 	tests.Assert(t, err == nil)
 	r.Body.Close()
-	tests.Assert(t, strings.Contains(string(body), "Failed to allocate new block volume: The size configured for automatic creation of block hosting volumes (1100) is too small to host the requested block volume of size 1600. Please create a sufficiently large block hosting volume manually."), "got", string(body))
+	tests.Assert(t, strings.Contains(string(body), "Failed to allocate new block volume: The size configured for automatic creation of block hosting volumes (1100) is too small to host the requested block volume of size 1079. Please create a sufficiently large block hosting volume manually."), "got", string(body))
+
+	//check are we able to create a block volume size except reserved 2%
+	request = []byte(`{
+        "size" : 1077
+    }`)
+	r, err = http.Post(ts.URL+"/blockvolumes", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	location, err = r.Location()
+	tests.Assert(t, err == nil)
+
+	for {
+		r, err = http.Get(location.String())
+		tests.Assert(t, err == nil)
+		if r.Header.Get("X-Pending") == "true" {
+			tests.Assert(t, r.StatusCode == http.StatusOK)
+			time.Sleep(time.Millisecond * 10)
+		} else {
+			tests.Assert(t, r.StatusCode == http.StatusOK, "got", r.StatusCode)
+			err := utils.GetJsonFromResponse(r, &info)
+			tests.Assert(t, err == nil)
+			tests.Assert(t, info.Id != "")
+			break
+		}
+	}
 }
 
 func TestBlockVolumeCreate(t *testing.T) {
