@@ -38,6 +38,10 @@ var (
 	kubePv               bool
 	glusterVolumeOptions string
 	block                bool
+	secureCommunications bool
+	certificateDepth     int
+	cipherList           string
+	authAllow            []string
 )
 
 func init() {
@@ -94,6 +98,14 @@ func init() {
 	volumeCreateCommand.Flags().BoolVar(&block, "block", false,
 		"\n\tOptional: Create a block-hosting volume. Intended to host"+
 			"\n\tloopback files to be exported as block devices.")
+	volumeCreateCommand.Flags().BoolVar(&secureCommunications, "secure-communications", false,
+		"\n\tOptional: Enable secure communications for volume.")
+	volumeCreateCommand.Flags().IntVar(&certificateDepth, "certificate-depth", 0,
+		"\n\tOptional: SSL certificate depth for secure communications.")
+	volumeCreateCommand.Flags().StringVar(&cipherList, "cipher-list", "",
+		"\n\tOptional: Cipher suite for secure communications.")
+	volumeCreateCommand.Flags().StringSliceVar(&authAllow, "auth-allow", []string{"*"},
+		"\n\tOptional: Identities allowed to SSL-authenticate for volume.")
 	volumeCreateCommand.SilenceUsage = true
 	volumeDeleteCommand.SilenceUsage = true
 	volumeExpandCommand.SilenceUsage = true
@@ -138,6 +150,9 @@ var volumeCreateCommand = &cobra.Command{
 
   * Create a 100GiB distributed volume which supports performance related volume options.
       $ heketi-cli volume create --size=100 --durability=none --gluster-volume-options="performance.rda-cache-limit 10MB","performance.nl-cache-positive-entry no"
+
+  * Create a 100GiB volume with secure communications enabled.
+      $ heketi-cli volume create --size=100 --secure-communications --auth-allow '*' --cipher-list="HIGH:!SSLv2" --certificate-depth=2
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Check volume size
@@ -182,6 +197,25 @@ var volumeCreateCommand = &cobra.Command{
 		if snapshotFactor > 1.0 {
 			req.Snapshot.Factor = float32(snapshotFactor)
 			req.Snapshot.Enable = true
+		}
+
+		if secureCommunications {
+			req.SecureCommunications = &api.SecureCommunications{
+				Enable:            true,
+				AllowedIdentities: authAllow,
+			}
+			if cipherList != "" {
+				req.SecureCommunications.CipherList = &cipherList
+			}
+			if certificateDepth > 0 {
+				req.SecureCommunications.CertificateDepth = &certificateDepth
+			}
+		}
+		// if explicitly set to false, send request with "enable = false"
+		if cmd.Flag("secure-communications").Changed && !secureCommunications {
+			req.SecureCommunications = &api.SecureCommunications{
+				Enable: false,
+			}
 		}
 
 		// Create a client
