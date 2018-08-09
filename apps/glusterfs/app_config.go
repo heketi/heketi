@@ -12,6 +12,7 @@ package glusterfs
 import (
 	"github.com/heketi/heketi/executors/kubeexec"
 	"github.com/heketi/heketi/executors/sshexec"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 )
 
 type RetryLimitConfig struct {
@@ -45,4 +46,7 @@ type GlusterFSConfig struct {
 
 	// operation retry amounts
 	RetryLimits RetryLimitConfig `json:"operation_retry_limits"`
+
+	// secure communications
+	SecureCommunications *api.SecureCommunications `json:"secure_communications"`
 }

@@ -87,6 +87,21 @@
     "block_hosting_volume_size": 500,
 
     "_block_hosting_volume_options": "New block hosting volume will be created with the following set of options. Removing the group gluster-block option is NOT recommended. Additional options can be added next to it separated by a comma.",
-    "block_hosting_volume_options": "group gluster-block"
+    "block_hosting_volume_options": "group gluster-block",
+
+    "_secure_communications": "Secure communication settings for newly created volumes.",
+    "secure_communications": {
+      "_enable": "enable secure communications for newly created volumes",
+      "enable": true,
+
+      "_allowed_identities": "identities allowed to authenticate on volume",
+      "allowed_identities": ["*"],
+
+      "_certificate_depth": "ssl certificate depth, optional",
+      "certificate_depth": 2,
+
+      "_cipher_list": "ssl cipher list, optional",
+      "cipher_list": "HIGH:!SSLv2"
+    }
   }
 }
