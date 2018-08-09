@@ -272,7 +272,9 @@ func (v *BlockVolumeEntry) saveCreateBlockVolume(db wdb.DB) error {
 			return err
 		}
 
-		volume.ModifyFreeSize(-v.Info.Size)
+		if err := volume.ModifyFreeSize(-v.Info.Size); err != nil {
+			return err
+		}
 
 		volume.BlockVolumeAdd(v.Info.Id)
 		err = volume.Save(tx)
@@ -343,7 +345,9 @@ func (v *BlockVolumeEntry) removeComponents(db wdb.DB, keepSize bool) error {
 			// Do not return here.. keep going
 		}
 		if !keepSize {
-			blockHostingVolume.ModifyFreeSize(v.Info.Size)
+			if err := blockHostingVolume.ModifyFreeSize(v.Info.Size); err != nil {
+				return err
+			}
 		}
 		blockHostingVolume.Save(tx)
 
