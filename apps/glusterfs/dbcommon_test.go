@@ -82,8 +82,8 @@ func TestFixIncorrectBlockHostingFreeSize(t *testing.T) {
 			// verify it was corrected
 			vol, e = NewVolumeEntryFromId(tx, volId)
 			tests.Assert(t, e == nil, "expected e == nil, got", e)
-			tests.Assert(t, vol.Info.BlockInfo.FreeSize == 65,
-				"expected vol.Info.BlockInfo.FreeSize == 65, got:",
+			tests.Assert(t, vol.Info.BlockInfo.FreeSize == 54,
+				"expected vol.Info.BlockInfo.FreeSize == 54, got:",
 				vol.Info.BlockInfo.FreeSize)
 			return nil
 		})
@@ -100,8 +100,8 @@ func TestFixIncorrectBlockHostingFreeSize(t *testing.T) {
 			// verify it is ok
 			vol, e := NewVolumeEntryFromId(tx, volId)
 			tests.Assert(t, e == nil, "expected e == nil, got", e)
-			tests.Assert(t, vol.Info.BlockInfo.FreeSize == 65,
-				"expected vol.Info.BlockInfo.FreeSize == 65, got:",
+			tests.Assert(t, vol.Info.BlockInfo.FreeSize == 54,
+				"expected vol.Info.BlockInfo.FreeSize == 54, got:",
 				vol.Info.BlockInfo.FreeSize)
 			return nil
 		})
