@@ -269,8 +269,11 @@ func setWithEnvVariables(options *config.Config) {
 func setupApp(config *config.Config) (a *glusterfs.App) {
 	defer func() {
 		err := recover()
-		if a == nil || err != nil {
+		if a == nil {
 			fmt.Fprintln(os.Stderr, "ERROR: Unable to start application")
+			os.Exit(1)
+		} else if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: Unable to start application: %s\n", err)
 			os.Exit(1)
 		}
 	}()
