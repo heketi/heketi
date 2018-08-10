@@ -26,7 +26,7 @@
 		"auto_create_block_hosting_volume": true,
 	
 		"_block_hosting_volume_size": "New block hosting volume will be created in size mentioned, This is considered only if auto-create is enabled.",
-		"block_hosting_volume_size": 100
+		"block_hosting_volume_size": 200
 		
 	}
 }

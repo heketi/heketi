@@ -27,23 +27,36 @@ func TestBlockVolumeOperation(t *testing.T) {
 
 	req := &api.BlockVolumeCreateRequest{}
 	//check it is not possible to create block volume if  size is greated then block hosting volume
-	req.Size = 101
+	req.Size = 201
 
 	_, err := heketi.BlockVolumeCreate(req)
 	tests.Assert(t, err != nil, "expected err != nil, got:", err)
 
 	//check it is not possible to create block volume as same size of block hosting volume
-	req.Size = 100
+	req.Size = 200
 	_, err = heketi.BlockVolumeCreate(req)
 	tests.Assert(t, err != nil, "expected err != nil, got:", err)
 
-	// 1% is reserved in blockhosting volume, we should be able to create
-	//block volumes of total size 98 GB
-	req.Size = 2
+	//check it is not possible to create block volume of size 197
+	req.Size = 197
+	_, err = heketi.BlockVolumeCreate(req)
+	tests.Assert(t, err != nil, "expected err != nil, got:", err)
+
+	//check it is possible to create and delete block volume of size 196
+	req.Size = 196
+	vol, err := heketi.BlockVolumeCreate(req)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	err = heketi.BlockVolumeDelete(vol.Id)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	// 2% is reserved in blockhosting volume, we should be able to create
+	//block volumes of total size 196 GB
+	req.Size = 4
 	for i := 1; i <= 49; i++ {
 		vol, err := heketi.BlockVolumeCreate(req)
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
-		tests.Assert(t, vol.Size == 2, "expected vol.Size == 2 got:", vol.Size)
+		tests.Assert(t, vol.Size == 4, "expected vol.Size == 4 got:", vol.Size)
 	}
 
 	volList, err := heketi.BlockVolumeList()
@@ -53,7 +66,7 @@ func TestBlockVolumeOperation(t *testing.T) {
 	for _, ID := range volList.BlockVolumes {
 		volInfo, err := heketi.BlockVolumeInfo(ID)
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
-		tests.Assert(t, volInfo.Size == 2, "expected volInfo.Size == 2 got:", volInfo.Size)
+		tests.Assert(t, volInfo.Size == 4, "expected volInfo.Size == 4 got:", volInfo.Size)
 
 		err = heketi.BlockVolumeDelete(ID)
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
