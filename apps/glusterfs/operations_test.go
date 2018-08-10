@@ -1066,7 +1066,7 @@ func TestBlockVolumeCreateOperationTooLargeSizeRequested(t *testing.T) {
 	})
 
 	e := vc.Build()
-	error_string := "The size configured for automatic creation of block hosting volumes (1100) is too small to host the requested block volume of size 1100. Please create a sufficiently large block hosting volume manually."
+	error_string := "The size configured for automatic creation of block hosting volumes (1100) is too small to host the requested block volume of size 1100. The available size on this block hosting volume, minus overhead, is 1078. Please create a sufficiently large block hosting volume manually."
 	tests.Assert(t, e != nil, "expected e != nil, got nil")
 	tests.Assert(t, e.Error() == error_string,
 		"expected '", error_string, "', got '", e.Error(), "'")
