@@ -36,7 +36,6 @@ func getKeyFile(file string) (key ssh.Signer, err error) {
 	}
 	key, err = ssh.ParsePrivateKey(buf)
 	if err != nil {
-		fmt.Print(err)
 		return
 	}
 	return
@@ -84,7 +83,7 @@ func NewSshExecWithKeyFile(logger *utils.Logger, user string, file string) *SshE
 
 	// Now in the main function DO:
 	if key, err = getKeyFile(file); err != nil {
-		fmt.Println("Unable to get keyfile")
+		logger.LogError("Unable to get keyfile: %v", err)
 		return nil
 	}
 	// Define the Client Config as :
