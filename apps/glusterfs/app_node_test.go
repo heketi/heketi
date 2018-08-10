@@ -680,6 +680,7 @@ func TestNodeInfo(t *testing.T) {
 
 	var info api.NodeInfoResponse
 	err = utils.GetJsonFromResponse(r, &info)
+	tests.Assert(t, err == nil)
 	tests.Assert(t, info.Id == node.Info.Id)
 	tests.Assert(t, info.Hostnames.Manage[0] == node.Info.Hostnames.Manage[0])
 	tests.Assert(t, len(info.Hostnames.Manage) == len(node.Info.Hostnames.Manage))

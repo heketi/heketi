@@ -10,7 +10,6 @@
 package glusterfs
 
 import (
-	"bytes"
 	"net/http/httptest"
 	"os"
 	"strings"
@@ -23,79 +22,34 @@ import (
 	"github.com/heketi/tests"
 )
 
-func TestAppBadConfigData(t *testing.T) {
-	data := []byte(`{ bad json }`)
-	app := NewApp(bytes.NewBuffer(data))
-	tests.Assert(t, app == nil)
-
-	data = []byte(`{}`)
-	app = NewApp(bytes.NewReader(data))
-	tests.Assert(t, app == nil)
-
-	data = []byte(`{
-		"glusterfs" : {}
-		}`)
-	app = NewApp(bytes.NewReader(data))
-	tests.Assert(t, app == nil)
-}
-
-func TestAppUnknownExecutorInConfig(t *testing.T) {
-	data := []byte(`{
-		"glusterfs" : {
-			"executor" : "unknown value here"
-		}
-		}`)
-	app := NewApp(bytes.NewReader(data))
-	tests.Assert(t, app == nil)
-}
-
-func TestAppUnknownAllocatorInConfig(t *testing.T) {
-	data := []byte(`{
-		"glusterfs" : {
-			"allocator" : "unknown value here"
-		}
-		}`)
-	app := NewApp(bytes.NewReader(data))
-	tests.Assert(t, app == nil)
-}
-
-func TestAppBadDbLocation(t *testing.T) {
-	data := []byte(`{
-		"glusterfs" : {
-			"db" : "/badlocation"
-		}
-	}`)
-	app := NewApp(bytes.NewReader(data))
-	tests.Assert(t, app == nil)
-}
-
 func TestAppAdvsettings(t *testing.T) {
 
 	dbfile := tests.Tempfile()
 	defer os.Remove(dbfile)
 	os.Setenv("HEKETI_EXECUTOR", "mock")
 	defer os.Unsetenv("HEKETI_EXECUTOR")
+	os.Setenv("HEKETI_DB_PATH", dbfile)
+	defer os.Unsetenv("HEKETI_DB_PATH")
 
-	data := []byte(`{
-		"glusterfs" : {
-			"executor" : "crazyexec",
-			"allocator" : "simple",
-			"db" : "` + dbfile + `",
-			"brick_max_size_gb" : 1024,
-			"brick_min_size_gb" : 4,
-			"max_bricks_per_volume" : 33
-		}
-	}`)
+	conf := &GlusterFSConfig{
+		Executor:     "crazyexec",
+		Allocator:    "simple",
+		DBfile:       "/path/to/nonexistent/heketi.db",
+		BrickMaxSize: 1024,
+		BrickMinSize: 4,
+		BrickMaxNum:  33,
+	}
 
 	bmax, bmin, bnum := BrickMaxSize, BrickMinSize, BrickMaxNum
 	defer func() {
 		BrickMaxSize, BrickMinSize, BrickMaxNum = bmax, bmin, bnum
 	}()
 
-	app := NewApp(bytes.NewReader(data))
+	app := NewApp(conf)
 	defer app.Close()
 	tests.Assert(t, app != nil)
 	tests.Assert(t, app.conf.Executor == "mock")
+	tests.Assert(t, app.conf.DBfile == dbfile)
 	tests.Assert(t, BrickMaxNum == 33)
 	tests.Assert(t, BrickMaxSize == 1*TB)
 	tests.Assert(t, BrickMinSize == 4*GB)
@@ -116,17 +70,15 @@ func TestAppLogLevel(t *testing.T) {
 
 	logger.SetLevel(utils.LEVEL_DEBUG)
 	for _, level := range levels {
-		data := []byte(`{
-			"glusterfs" : {
-				"executor" : "mock",
-				"allocator" : "simple",
-				"db" : "` + dbfile + `",
-				"loglevel" : "` + level + `"
-			}
-		}`)
+		conf := &GlusterFSConfig{
+			Executor:  "mock",
+			Allocator: "simple",
+			DBfile:    dbfile,
+			Loglevel:  level,
+		}
 
-		app := NewApp(bytes.NewReader(data))
-		tests.Assert(t, app != nil, level, string(data))
+		app := NewApp(conf)
+		tests.Assert(t, app != nil, "expected app != nil, got:", app)
 
 		switch level {
 		case "none":
@@ -147,16 +99,14 @@ func TestAppLogLevel(t *testing.T) {
 
 	// Test that an unknown value does not change the loglevel
 	logger.SetLevel(utils.LEVEL_NOLOG)
-	data := []byte(`{
-			"glusterfs" : {
-				"executor" : "mock",
-				"allocator" : "simple",
-				"db" : "` + dbfile + `",
-				"loglevel" : "blah"
-			}
-		}`)
+	conf := &GlusterFSConfig{
+		Executor:  "mock",
+		Allocator: "simple",
+		DBfile:    dbfile,
+		Loglevel:  "blah",
+	}
 
-	app := NewApp(bytes.NewReader(data))
+	app := NewApp(conf)
 	defer app.Close()
 	tests.Assert(t, app != nil)
 	tests.Assert(t, logger.Level() == utils.LEVEL_NOLOG)
@@ -168,13 +118,11 @@ func TestAppReadOnlyDb(t *testing.T) {
 	defer os.Remove(dbfile)
 
 	// First, create a db
-	data := []byte(`{
-		"glusterfs": {
-			"executor" : "mock",
-			"db" : "` + dbfile + `"
-		}
-	}`)
-	app := NewApp(bytes.NewReader(data))
+	conf := &GlusterFSConfig{
+		Executor: "mock",
+		DBfile:   dbfile,
+	}
+	app := NewApp(conf)
 	tests.Assert(t, app != nil)
 	tests.Assert(t, app.dbReadOnly == false)
 	app.Close()
@@ -188,7 +136,7 @@ func TestAppReadOnlyDb(t *testing.T) {
 	tests.Assert(t, db != nil)
 
 	// Now open it again and notice how it opened
-	app = NewApp(bytes.NewReader(data))
+	app = NewApp(conf)
 	defer app.Close()
 	tests.Assert(t, app != nil)
 	tests.Assert(t, app.dbReadOnly == true)
@@ -228,26 +176,27 @@ func TestAppBlockSettings(t *testing.T) {
 	defer os.Remove(dbfile)
 	os.Setenv("HEKETI_EXECUTOR", "mock")
 	defer os.Unsetenv("HEKETI_EXECUTOR")
+	os.Setenv("HEKETI_DB_PATH", dbfile)
+	defer os.Unsetenv("HEKETI_DB_PATH")
 
-	data := []byte(`{
-		"glusterfs" : {
-			"executor" : "crazyexec",
-			"allocator" : "simple",
-			"db" : "` + dbfile + `",
-			"auto_create_block_hosting_volume" : true,
-			"block_hosting_volume_size" : 500
-		}
-	}`)
+	conf := &GlusterFSConfig{
+		Executor:  "crazyexec",
+		Allocator: "simple",
+		DBfile:    "/path/to/nonexistent/heketi.db",
+		CreateBlockHostingVolumes: true,
+		BlockHostingVolumeSize:    500,
+	}
 
 	blockauto, blocksize := CreateBlockHostingVolumes, BlockHostingVolumeSize
 	defer func() {
 		CreateBlockHostingVolumes, BlockHostingVolumeSize = blockauto, blocksize
 	}()
 
-	app := NewApp(bytes.NewReader(data))
+	app := NewApp(conf)
 	defer app.Close()
 	tests.Assert(t, app != nil)
 	tests.Assert(t, app.conf.Executor == "mock")
+	tests.Assert(t, app.conf.DBfile == dbfile)
 	tests.Assert(t, CreateBlockHostingVolumes == true)
 	tests.Assert(t, BlockHostingVolumeSize == 500)
 }

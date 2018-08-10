@@ -15,6 +15,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
+	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 )
@@ -289,7 +290,6 @@ func (a *App) NodeDelete(w http.ResponseWriter, r *http.Request) {
 
 		// Remove from db
 		err = a.db.Update(func(tx *bolt.Tx) error {
-
 			// Get Cluster
 			cluster, err := NewClusterEntryFromId(tx, node.Info.ClusterId)
 			if err == ErrNotFound {
@@ -320,6 +320,11 @@ func (a *App) NodeDelete(w http.ResponseWriter, r *http.Request) {
 				return err
 			}
 
+			err = refreshVolumeNodes(tx, node)
+			if err != nil {
+				logger.Err(err)
+				return err
+			}
 			return nil
 
 		})
@@ -334,6 +339,57 @@ func (a *App) NodeDelete(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func refreshVolumeNodes(tx *bolt.Tx, node *NodeEntry) error {
+	clusterID := node.Info.ClusterId
+	deletedNodeHostName := node.StorageHostName()
+	txdb := wdb.WrapTx(tx)
+	// Get Cluster
+	cluster, err := NewClusterEntryFromId(tx, clusterID)
+	if err != nil {
+		logger.Critical("Cluster id %v is expected be in db. Pointed to by node %v",
+			clusterID,
+			clusterID)
+		return err
+	}
+
+	hosts, err := getHostsFromCluster(txdb, clusterID)
+	if err != nil {
+		return err
+	}
+	for _, volID := range cluster.Info.Volumes {
+		volEntry, err := NewVolumeEntryFromId(tx, volID)
+		if err != nil {
+			logger.LogError("Get volume entry for ID %s Failed with error %s", volID, err.Error())
+			continue
+		}
+		if volEntry.Info.Block {
+			for _, id := range volEntry.Info.BlockInfo.BlockVolumes {
+
+				blockEntry, err := NewBlockVolumeEntryFromId(tx, id)
+				if err != nil {
+					logger.LogError("Get block volume entry for ID %s Failed with error %s", id, err.Error())
+					continue
+				}
+
+				blockEntry.updateHosts(hosts)
+
+				if err := blockEntry.Save(tx); err != nil {
+					logger.LogError("Save block entry for ID %s Failed with error %s", id, err.Error())
+					continue
+				}
+			}
+		}
+		//update mountpoint info
+		volEntry.updateHostandMountPoint(hosts, deletedNodeHostName)
+
+		if err = volEntry.Save(tx); err != nil {
+			logger.LogError("Save volume entry for ID  %s Failed with error %s", volEntry.Info.Id, err.Error())
+			continue
+		}
+	}
+
+	return nil
+}
 func (a *App) NodeSetState(w http.ResponseWriter, r *http.Request) {
 	// Get the id from the URL
 	vars := mux.Vars(r)
@@ -371,8 +427,24 @@ func (a *App) NodeSetState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Setting the state to failed can involve long running operations
+	// and thus needs to be checked for operations throttle
+	// However, we don't want to block "cheap" changes like setting
+	// the item offline
+	if msg.State == api.EntryStateFailed {
+		if a.opcounter.ThrottleOrInc() {
+			OperationHttpErrorf(w, ErrTooManyOperations, "")
+			return
+		}
+	}
+
 	// Set state
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
+		defer func() {
+			if msg.State == api.EntryStateFailed {
+				a.opcounter.Dec()
+			}
+		}()
 		err = node.SetState(a.db, a.executor, msg.State)
 		if err != nil {
 			return "", err

@@ -12,6 +12,7 @@ package glusterfs
 import (
 	"bytes"
 	"encoding/gob"
+	"strings"
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
@@ -27,6 +28,12 @@ type BrickEntry struct {
 	PoolMetadataSize uint64
 	gidRequested     int64
 	Pending          PendingItem
+
+	// the following is used when tracking the
+	// bricks in cloned volumes. They follow a different
+	// scheme than the bricks created directly by Heketi.
+	LvmThinPool string
+	LvmLv       string
 }
 
 func BrickList(tx *bolt.Tx) ([]string, error) {
@@ -55,6 +62,7 @@ func NewBrickEntry(size, tpsize, poolMetadataSize uint64,
 	entry.Info.NodeId = nodeid
 	entry.Info.DeviceId = deviceid
 	entry.Info.VolumeId = volumeid
+	entry.LvmThinPool = utils.BrickIdToThinPoolName(entry.Info.Id)
 	entry.UpdatePath()
 
 	godbc.Ensure(entry.Info.Id != "")
@@ -74,6 +82,27 @@ func NewBrickEntryFromId(tx *bolt.Tx, id string) (*BrickEntry, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	return entry, nil
+}
+
+func CloneBrickEntryFromId(tx *bolt.Tx, id string) (*BrickEntry, error) {
+	godbc.Require(tx != nil)
+	godbc.Require(id != "")
+
+	entry := &BrickEntry{}
+	err := EntryLoad(tx, entry, id)
+	if err != nil {
+		return nil, err
+	}
+
+	entry.Info.Id = utils.GenUUID()
+	// bricks always share a thin pool with the original brick
+	if entry.LvmThinPool == "" {
+		entry.LvmThinPool = utils.BrickIdToThinPoolName(entry.Info.Id)
+	}
+	// brick clones have their own lv name (not yet known)
+	entry.LvmLv = ""
 
 	return entry, nil
 }
@@ -127,6 +156,21 @@ func (b *BrickEntry) Unmarshal(buffer []byte) error {
 	return nil
 }
 
+func (b *BrickEntry) brickRequest(path string) *executors.BrickRequest {
+	req := &executors.BrickRequest{}
+	req.Gid = b.gidRequested
+	req.Name = b.Info.Id
+	req.Size = b.Info.Size
+	req.TpSize = b.TpSize
+	req.VgId = b.Info.DeviceId
+	req.PoolMetadataSize = b.PoolMetadataSize
+	req.TpName = b.TpName()
+	req.LvName = b.LvName()
+	// path varies depending on what it is called from
+	req.Path = path
+	return req
+}
+
 func (b *BrickEntry) Create(db wdb.RODB, executor executors.Executor) error {
 	godbc.Require(db != nil)
 	godbc.Require(b.TpSize > 0)
@@ -149,15 +193,7 @@ func (b *BrickEntry) Create(db wdb.RODB, executor executors.Executor) error {
 		return err
 	}
 
-	// Create request
-	req := &executors.BrickRequest{}
-	req.Gid = b.gidRequested
-	req.Name = b.Info.Id
-	req.Size = b.Info.Size
-	req.TpSize = b.TpSize
-	req.VgId = b.Info.DeviceId
-	req.PoolMetadataSize = b.PoolMetadataSize
-	req.Path = b.Info.Path
+	req := b.brickRequest(b.Info.Path)
 	// remove this some time post-refactoring
 	godbc.Require(req.Path == utils.BrickPath(req.VgId, req.Name))
 
@@ -170,7 +206,7 @@ func (b *BrickEntry) Create(db wdb.RODB, executor executors.Executor) error {
 	return nil
 }
 
-func (b *BrickEntry) Destroy(db wdb.RODB, executor executors.Executor) error {
+func (b *BrickEntry) Destroy(db wdb.RODB, executor executors.Executor) (bool, error) {
 
 	godbc.Require(db != nil)
 	godbc.Require(b.TpSize > 0)
@@ -189,24 +225,20 @@ func (b *BrickEntry) Destroy(db wdb.RODB, executor executors.Executor) error {
 		return nil
 	})
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	// Create request
-	req := &executors.BrickRequest{}
-	req.Name = b.Info.Id
-	req.Size = b.Info.Size
-	req.TpSize = b.TpSize
-	req.VgId = b.Info.DeviceId
+	req := b.brickRequest(
+		strings.TrimSuffix(b.Info.Path, "/brick"))
 
 	// Delete brick on node
 	logger.Info("Deleting brick %v", b.Info.Id)
-	err = executor.BrickDestroy(host, req)
+	spaceReclaimed, err := executor.BrickDestroy(host, req)
 	if err != nil {
-		return err
+		return spaceReclaimed, err
 	}
 
-	return nil
+	return spaceReclaimed, nil
 }
 
 func (b *BrickEntry) DestroyCheck(db wdb.RODB, executor executors.Executor) error {
@@ -226,19 +258,9 @@ func (b *BrickEntry) DestroyCheck(db wdb.RODB, executor executors.Executor) erro
 		godbc.Check(host != "")
 		return nil
 	})
-	if err != nil {
-		return err
-	}
 
-	// Create request
-	req := &executors.BrickRequest{}
-	req.Name = b.Info.Id
-	req.Size = b.Info.Size
-	req.TpSize = b.TpSize
-	req.VgId = b.Info.DeviceId
-
-	// Check brick on node
-	return executor.BrickDestroyCheck(host, req)
+	// TODO: any additional checks in the DB? The detection of the VG/LV and its users is done in cmdexec.BrickDestroy()
+	return err
 }
 
 // Size consumed on device
@@ -255,34 +277,34 @@ func BrickEntryUpgrade(tx *bolt.Tx) error {
 }
 
 func addVolumeIdInBrickEntry(tx *bolt.Tx) error {
-	clusters, err := ClusterList(tx)
+	volumes, err := VolumeList(tx)
 	if err != nil {
 		return err
 	}
-	for _, cluster := range clusters {
-		clusterEntry, err := NewClusterEntryFromId(tx, cluster)
+	for _, volume := range volumes {
+		volumeEntry, err := NewVolumeEntryFromId(tx, volume)
 		if err != nil {
 			return err
 		}
-		for _, volume := range clusterEntry.Info.Volumes {
-			volumeEntry, err := NewVolumeEntryFromId(tx, volume)
+		for _, brick := range volumeEntry.Bricks {
+			brickEntry, err := NewBrickEntryFromId(tx, brick)
+			if err == ErrNotFound {
+				logger.Warning("Volume [%v] links to "+
+					"nonexistent brick [%v]. Ignoring.",
+					volume, brick)
+				continue
+			}
 			if err != nil {
 				return err
 			}
-			for _, brick := range volumeEntry.Bricks {
-				brickEntry, err := NewBrickEntryFromId(tx, brick)
+			if brickEntry.Info.VolumeId == "" {
+				brickEntry.Info.VolumeId = volume
+				err = brickEntry.Save(tx)
 				if err != nil {
 					return err
 				}
-				if brickEntry.Info.VolumeId == "" {
-					brickEntry.Info.VolumeId = volume
-					err = brickEntry.Save(tx)
-					if err != nil {
-						return err
-					}
-				} else {
-					break
-				}
+			} else {
+				break
 			}
 		}
 	}
@@ -291,4 +313,43 @@ func addVolumeIdInBrickEntry(tx *bolt.Tx) error {
 
 func (b *BrickEntry) UpdatePath() {
 	b.Info.Path = utils.BrickPath(b.Info.DeviceId, b.Info.Id)
+}
+
+func (b *BrickEntry) RemoveFromDevice(tx *bolt.Tx) error {
+	// Access device
+	device, err := NewDeviceEntryFromId(tx, b.Info.DeviceId)
+	if err != nil {
+		logger.Err(err)
+		return err
+	}
+
+	// Delete brick from device
+	device.BrickDelete(b.Info.Id)
+
+	// Save device
+	err = device.Save(tx)
+	if err != nil {
+		logger.Err(err)
+		return err
+	}
+
+	return nil
+}
+
+// TpName returns the expected name of the lvm thin pool that
+// stores this brick.
+func (b *BrickEntry) TpName() string {
+	if b.LvmThinPool != "" {
+		return b.LvmThinPool
+	}
+	return utils.BrickIdToThinPoolName(b.Info.Id)
+}
+
+// LvName returns the expected name of the lvm lv that stores
+// this brick.
+func (b *BrickEntry) LvName() string {
+	if b.LvmLv != "" {
+		return b.LvmLv
+	}
+	return utils.BrickIdToName(b.Info.Id)
 }

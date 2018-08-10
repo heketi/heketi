@@ -12,8 +12,10 @@ package cmdexec
 import (
 	"encoding/xml"
 	"fmt"
+	"strings"
 
 	"github.com/heketi/heketi/executors"
+	"github.com/heketi/heketi/pkg/utils"
 	"github.com/lpabon/godbc"
 )
 
@@ -160,12 +162,7 @@ func (s *CmdExecutor) VolumeDestroyCheck(host, volume string) error {
 	godbc.Require(volume != "")
 
 	// Determine if the volume is able to be deleted
-	err := s.checkForSnapshots(host, volume)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return s.checkForSnapshots(host, volume)
 }
 
 func (s *CmdExecutor) createVolumeOptionsCommand(volume *executors.VolumeRequest) []string {
@@ -217,6 +214,9 @@ func (s *CmdExecutor) checkForSnapshots(host, volume string) error {
 
 	// Structure used to unmarshal XML from snapshot gluster cli
 	type CliOutput struct {
+		OpRet    int    `xml:"opRet"`
+		OpErrno  int    `xml:"opErrno"`
+		OpErrStr string `xml:"opErrstr"`
 		SnapList struct {
 			Count int `xml:"count"`
 		} `xml:"snapList"`
@@ -235,6 +235,11 @@ func (s *CmdExecutor) checkForSnapshots(host, volume string) error {
 	err = xml.Unmarshal([]byte(output[0]), &snapInfo)
 	if err != nil {
 		return fmt.Errorf("Unable to determine snapshot information from volume %v: %v", volume, err)
+	}
+
+	if strings.Contains(snapInfo.OpErrStr, "does not exist") &&
+		strings.Contains(snapInfo.OpErrStr, volume) {
+		return &executors.VolumeDoesNotExistErr{Name: volume}
 	}
 
 	if snapInfo.SnapList.Count > 0 {
@@ -292,6 +297,74 @@ func (s *CmdExecutor) VolumeReplaceBrick(host string, volume string, oldBrick *e
 
 	return nil
 
+}
+
+func (s *CmdExecutor) VolumeClone(host string, vcr *executors.VolumeCloneRequest) (*executors.Volume, error) {
+	godbc.Require(host != "")
+	godbc.Require(vcr != nil)
+
+	vsr := executors.VolumeSnapshotRequest{
+		Volume:   vcr.Volume,
+		Snapshot: "tmpsnap_" + utils.GenUUID(),
+	}
+
+	snap, err := s.VolumeSnapshot(host, &vsr)
+	if err != nil {
+		return nil, err
+	}
+
+	// we do not want activated snapshots sticking around
+	defer s.SnapshotDestroy(host, snap.Name)
+
+	scr := executors.SnapshotCloneRequest{
+		Snapshot: snap.Name,
+		Volume:   vcr.Clone,
+	}
+
+	vol, err := s.SnapshotCloneVolume(host, &scr)
+	if err != nil {
+		return nil, err
+	}
+
+	return vol, nil
+}
+
+func (s *CmdExecutor) VolumeSnapshot(host string, vsr *executors.VolumeSnapshotRequest) (*executors.Snapshot, error) {
+	godbc.Require(host != "")
+	godbc.Require(vsr != nil)
+
+	type CliOutput struct {
+		OpRet      int                  `xml:"opRet"`
+		OpErrno    int                  `xml:"opErrno"`
+		OpErrStr   string               `xml:"opErrstr"`
+		SnapCreate executors.SnapCreate `xml:"snapCreate"`
+	}
+
+	command := []string{
+		fmt.Sprintf("gluster --mode=script --xml snapshot create %v %v no-timestamp", vsr.Snapshot, vsr.Volume),
+		// TODO: set the snapshot description if vsr.Description is non-empty
+	}
+
+	output, err := s.RemoteExecutor.RemoteCommandExecute(host, command, 10)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to create snapshot of volume %v: %v", vsr.Volume, err)
+	}
+
+	var snapCreate CliOutput
+	err = xml.Unmarshal([]byte(output[0]), &snapCreate)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to parse output of creating snapshot of volume %v: %v", vsr.Volume, err)
+	}
+	logger.Debug("snapCreate: %+v\n", snapCreate)
+
+	if snapCreate.OpRet != 0 {
+		return nil, fmt.Errorf("Failed to create snapshot of volume %v: %v", vsr.Volume, snapCreate.OpErrStr)
+	}
+
+	snap := &snapCreate.SnapCreate.Snapshot
+	logger.Debug("snapshot: %+v\n", snap)
+
+	return snap, nil
 }
 
 func (s *CmdExecutor) HealInfo(host string, volume string) (*executors.HealInfo, error) {

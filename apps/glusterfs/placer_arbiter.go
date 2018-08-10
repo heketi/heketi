@@ -103,6 +103,12 @@ func (bp *ArbiterBrickPlacer) PlaceAll(
 		if err != nil {
 			return r, err
 		}
+		if bs.IsSparse() {
+			return r, fmt.Errorf("Did not fully populate brick set")
+		}
+		if ds.IsSparse() {
+			return r, fmt.Errorf("Did not fully populate device set")
+		}
 		r.BrickSets = append(r.BrickSets, bs)
 		r.DeviceSets = append(r.DeviceSets, ds)
 	}
@@ -171,15 +177,20 @@ func (bp *ArbiterBrickPlacer) newSets(
 	pred DeviceFilter) (*BrickSet, *DeviceSet, error) {
 
 	ssize := opts.SetSize()
-	bs := NewBrickSet(ssize)
-	ds := NewDeviceSet(ssize)
+	bs := NewSparseBrickSet(ssize)
+	ds := NewSparseDeviceSet(ssize)
 	dscan, err := bp.Scanner(dsrc)
 	if err != nil {
 		return nil, nil, err
 	}
 	defer dscan.Close()
 
-	for index := 0; index < ssize; index++ {
+	// work backwards from the last item in the brick set (typically index 2)
+	// in order to place the most special brick, the arbiter brick, first.
+	// Placing the arbiter brick first means we get a more reliable distribution
+	// of bricks because the nodes will not be taken by the two data
+	// bricks before we try to place the arbiter brick.
+	for index := ssize - 1; index >= 0; index-- {
 		aopts := newArbiterOpts(opts)
 		if e := aopts.discount(index); e != nil {
 			return bs, ds, e
@@ -243,7 +254,8 @@ func (bp *ArbiterBrickPlacer) tryPlaceBrickOnDevice(
 	index int,
 	device *DeviceEntry) error {
 
-	logger.Debug("Trying to place brick on device %v", device.Info.Id)
+	logger.Debug("Trying to place brick on device %v (node %v)",
+		device.Info.Id, device.NodeId)
 
 	for i, b := range bs.Bricks {
 		// do not check the brick in the brick set for the current
@@ -251,7 +263,10 @@ func (bp *ArbiterBrickPlacer) tryPlaceBrickOnDevice(
 		// populated. If this is a replace, we will have the old brick
 		// at the index and we are OK with re-using its node (as the
 		// standard placer does)
-		if i == index {
+		// If b is nil, it means that this is a "sparse" brick set and
+		// we have not tried allocating a brick for that index yet,
+		// so there's nothing to check.
+		if i == index || b == nil {
 			continue
 		}
 		if b.Info.NodeId == device.NodeId {
@@ -291,11 +306,28 @@ func (bp *ArbiterBrickPlacer) tryPlaceBrickOnDevice(
 	return nil
 }
 
+type deviceFeed struct {
+	Devices <-chan string
+	Done    chan struct{}
+}
+
 type arbiterDeviceScanner struct {
-	arbiterDevs <-chan string
-	arbiterDone chan struct{}
-	dataDevs    <-chan string
-	dataDone    chan struct{}
+	arbiter deviceFeed
+	data    deviceFeed
+}
+
+func deviceFeedFromRings(id string, ring ...*SimpleAllocatorRing) deviceFeed {
+	devices := make(chan string)
+	done := make(chan struct{})
+	d := SimpleDevices{}
+	for _, r := range ring {
+		d = append(d, r.GetDeviceList(id)...)
+	}
+	generateDevices(d, devices, done)
+	return deviceFeed{
+		Devices: devices,
+		Done:    done,
+	}
 }
 
 // Scanner returns a pointer to an arbiterDeviceScanner helper object.
@@ -307,6 +339,7 @@ func (bp *ArbiterBrickPlacer) Scanner(dsrc DeviceSource) (
 
 	dataRing := NewSimpleAllocatorRing()
 	arbiterRing := NewSimpleAllocatorRing()
+	anyRing := NewSimpleAllocatorRing()
 	dnl, err := dsrc.Devices()
 	if err != nil {
 		return nil, err
@@ -318,33 +351,33 @@ func (bp *ArbiterBrickPlacer) Scanner(dsrc DeviceSource) (
 			deviceId: dan.Device.Info.Id,
 		}
 		// it is perfectly fine for a device to host data & arbiter
-		// bricks if it is so configured. Thus both the following
-		// blocks may be true.
-		if bp.canHostArbiter(dan.Device, dsrc) {
+		// bricks if it is so configured.
+		arbiterOk := bp.canHostArbiter(dan.Device, dsrc)
+		dataOk := bp.canHostData(dan.Device, dsrc)
+		switch {
+		case arbiterOk && dataOk:
+			anyRing.Add(sd)
+		case arbiterOk:
 			arbiterRing.Add(sd)
-		}
-		if bp.canHostData(dan.Device, dsrc) {
+		case dataOk:
 			dataRing.Add(sd)
+		default:
+			logger.Warning("device %v does not support arbiter or data bricks",
+				sd.deviceId)
 		}
 	}
 
 	id := utils.GenUUID()
-	dataDevs, dataDone := make(chan string), make(chan struct{})
-	generateDevices(dataRing.GetDeviceList(id), dataDevs, dataDone)
-	arbiterDevs, arbiterDone := make(chan string), make(chan struct{})
-	generateDevices(arbiterRing.GetDeviceList(id), arbiterDevs, arbiterDone)
 	return &arbiterDeviceScanner{
-		arbiterDevs: arbiterDevs,
-		arbiterDone: arbiterDone,
-		dataDevs:    dataDevs,
-		dataDone:    dataDone,
+		arbiter: deviceFeedFromRings(id, arbiterRing, anyRing),
+		data:    deviceFeedFromRings(id, dataRing, anyRing),
 	}, nil
 }
 
 // Close releases the resources held by the scanner.
 func (dscan *arbiterDeviceScanner) Close() {
-	close(dscan.arbiterDone)
-	close(dscan.dataDone)
+	close(dscan.arbiter.Done)
+	close(dscan.data.Done)
 }
 
 // Scan returns a channel that may be ranged over for eligible devices
@@ -355,18 +388,30 @@ func (dscan *arbiterDeviceScanner) Scan(index int) <-chan string {
 	// In the future we may want to be smarter here, but this
 	// works for now.
 	if index == arbiter_index {
-		return dscan.arbiterDevs
+		return dscan.arbiter.Devices
 	}
-	return dscan.dataDevs
+	return dscan.data.Devices
 }
 
-func discountBrickSize(dataBrickSize, averageFileSize uint64) (uint64, error) {
+func discountBrickSize(dataBrickSize, averageFileSize uint64) (brickSize uint64,
+	err error) {
+
 	if dataBrickSize < averageFileSize {
 		return 0, fmt.Errorf(
 			"Average file size (%v) is greater than Brick size (%v)",
 			averageFileSize, dataBrickSize)
 	}
-	return (dataBrickSize / averageFileSize), nil
+
+	brickSize = dataBrickSize / averageFileSize
+
+	if brickSize < 16*MB {
+		logger.Info("Increasing calculated arbiter brickSize (%vKiB) "+
+			"to 16MiB, the minimum XFS filsystem size with 4KiB "+
+			"blocks.", brickSize)
+		brickSize = 16 * MB
+	}
+
+	return brickSize, nil
 }
 
 func deviceHasArbiterTag(d *DeviceEntry, dsrc DeviceSource, v ...string) bool {

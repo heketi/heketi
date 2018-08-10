@@ -14,4 +14,5 @@ type CmdConfig struct {
 	Sudo                 bool   `json:"sudo"`
 	SnapShotLimit        int    `json:"snapshot_limit"`
 	RebalanceOnExpansion bool   `json:"rebalance_on_expansion"`
+	BackupLVM            bool   `json:"backup_lvm_metadata"`
 }

@@ -14,7 +14,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 )
 
@@ -38,7 +37,10 @@ var logLevelGetCommand = &cobra.Command{
 	Long:    "Get Heketi server Log Level",
 	Example: `  $ heketi-cli loglevel get`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 		llinfo, err := heketi.LogLevelGet()
 		if err == nil {
 			fmt.Fprintf(stdout, "%s\n", llinfo.LogLevel["glusterfs"])
@@ -59,8 +61,11 @@ var logLevelSetCommand = &cobra.Command{
 		if len(args) > 1 {
 			return fmt.Errorf("too many arguments")
 		}
-		heketi := client.NewClient(options.Url, options.User, options.Key)
-		err := heketi.LogLevelSet(&api.LogLevelInfo{
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
+		err = heketi.LogLevelSet(&api.LogLevelInfo{
 			LogLevel: map[string]string{"glusterfs": args[0]},
 		})
 		if err == nil {

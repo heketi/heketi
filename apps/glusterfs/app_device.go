@@ -92,13 +92,13 @@ func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 
 		// Setup device on node
 		info, err := a.executor.DeviceSetup(node.ManageHostName(),
-			device.Info.Name, device.Info.Id)
+			device.Info.Name, device.Info.Id, msg.DestroyData)
 		if err != nil {
 			return "", err
 		}
 
 		// Create an entry for the device and set the size
-		device.StorageSet(info.Size)
+		device.StorageSet(info.TotalSize, info.FreeSize, info.UsedSize)
 		device.SetExtentSize(info.ExtentSize)
 
 		// Setup garbage collector on error
@@ -330,8 +330,24 @@ func (a *App) DeviceSetState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Setting the state to failed can involve long running operations
+	// and thus needs to be checked for operations throttle
+	// However, we don't want to block "cheap" changes like setting
+	// the item offline
+	if msg.State == api.EntryStateFailed {
+		if a.opcounter.ThrottleOrInc() {
+			OperationHttpErrorf(w, ErrTooManyOperations, "")
+			return
+		}
+	}
+
 	// Set state
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
+		defer func() {
+			if msg.State == api.EntryStateFailed {
+				a.opcounter.Dec()
+			}
+		}()
 		err = device.SetState(a.db, a.executor, msg.State)
 		if err != nil {
 			return "", err
@@ -346,8 +362,9 @@ func (a *App) DeviceResync(w http.ResponseWriter, r *http.Request) {
 	deviceId := vars["id"]
 
 	var (
-		device *DeviceEntry
-		node   *NodeEntry
+		device        *DeviceEntry
+		node          *NodeEntry
+		brickSizesSum uint64
 	)
 
 	// Get device info from DB
@@ -360,6 +377,13 @@ func (a *App) DeviceResync(w http.ResponseWriter, r *http.Request) {
 		node, err = NewNodeEntryFromId(tx, device.NodeId)
 		if err != nil {
 			return err
+		}
+		for _, brick := range device.Bricks {
+			brickEntry, err := NewBrickEntryFromId(tx, brick)
+			if err != nil {
+				return err
+			}
+			brickSizesSum += brickEntry.Info.Size
 		}
 		return nil
 	})
@@ -383,20 +407,6 @@ func (a *App) DeviceResync(w http.ResponseWriter, r *http.Request) {
 			return "", err
 		}
 
-		// Note that method GetDeviceInfo returns the free disk space available for allocation.
-		// The free disk space is equal to the total disk space only if we haven't already
-		// allocated space, because every allocation decreases the free disk space returned
-		// by method GetDeviceInfo. In order to calculate a new total space we need to sum
-		// the free disk space and the space used by heketi.
-		if device.Info.Storage.Total == info.Size+device.Info.Storage.Used {
-			logger.Info("Device %v is up to date", device.Info.Id)
-			return "", nil
-		}
-
-		logger.Debug("Free space of '%v' (%v) has changed %v -> %v", device.Info.Name, device.Info.Id,
-			device.Info.Storage.Free, info.Size)
-
-		// Update device
 		err = a.db.Update(func(tx *bolt.Tx) error {
 
 			// Reload device in current transaction
@@ -406,14 +416,15 @@ func (a *App) DeviceResync(w http.ResponseWriter, r *http.Request) {
 				return err
 			}
 
-			newFreeSize := info.Size
-			newTotalSize := newFreeSize + device.Info.Storage.Used
+			if brickSizesSum != info.UsedSize {
+				logger.Info("Sum of sizes of all bricks on the device:%v differs from used size from LVM:%v", brickSizesSum, info.UsedSize)
+				logger.Info("Database needs cleaning")
+			}
 
-			logger.Info("Updating device %v, total: %v -> %v, free: %v -> %v", device.Info.Name,
-				device.Info.Storage.Total, newTotalSize, device.Info.Storage.Free, newFreeSize)
+			logger.Info("Updating device %v, total: %v -> %v, free: %v -> %v, used: %v -> %v", device.Info.Name,
+				device.Info.Storage.Total, info.TotalSize, device.Info.Storage.Free, info.FreeSize, device.Info.Storage.Used, info.UsedSize)
 
-			device.Info.Storage.Total = newTotalSize
-			device.Info.Storage.Free = newFreeSize
+			device.StorageSet(info.TotalSize, info.FreeSize, info.UsedSize)
 
 			// Save updated device
 			err = device.Save(tx)

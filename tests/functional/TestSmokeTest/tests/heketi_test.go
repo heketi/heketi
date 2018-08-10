@@ -94,6 +94,17 @@ func setupCluster(t *testing.T, numNodes int, numDisks int) {
 		storage3 = env
 		storage3ssh = storage3 + ":" + portNum
 	}
+
+	// As a testing invariant, we always expect to set up a cluster
+	// at the start of a test on a _clean_ server.
+	// Verify that there are no outstanding operations on the
+	// server. A test that needs to mess with the operations _must_
+	// clean up after itself.
+	oi, err := heketi.OperationsInfo()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, oi.Total == 0, "expected oi.Total == 0, got", oi.Total)
+	tests.Assert(t, oi.InFlight == 0, "expected oi.InFlight == 0, got", oi.Total)
+
 	// Storage systems
 	storagevms = []string{
 		storage0,
@@ -149,7 +160,23 @@ func setupCluster(t *testing.T, numNodes int, numDisks int) {
 	}
 }
 
+func dbStateDump(t *testing.T) {
+	if t.Failed() {
+		fmt.Println("~~~~~ dumping db state prior to teardown ~~~~~")
+		dump, err := heketi.DbDump()
+		if err != nil {
+			fmt.Printf("Unable to get db dump: %v\n", err)
+		} else {
+			fmt.Printf("\n%v\n", dump)
+		}
+		fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+	}
+}
+
 func teardownCluster(t *testing.T) {
+	fmt.Println("~~~ tearing down cluster")
+	dbStateDump(t)
+
 	clusters, err := heketi.ClusterList()
 	tests.Assert(t, err == nil, err)
 
@@ -229,14 +256,14 @@ func TestHeketiSmokeTest(t *testing.T) {
 	for i := 0; i < 2; i++ {
 
 		volReq := &api.VolumeCreateRequest{}
-		volReq.Size = 4000
+		volReq.Size = 2500
 		volReq.Snapshot.Enable = true
 		volReq.Snapshot.Factor = 1.5
 		volReq.Durability.Type = api.DurabilityReplicate
 
 		volInfo, err := heketi.VolumeCreate(volReq)
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
-		tests.Assert(t, volInfo.Size == 4000)
+		tests.Assert(t, volInfo.Size == 2500)
 		tests.Assert(t, volInfo.Mount.GlusterFS.MountPoint != "")
 		tests.Assert(t, volInfo.Name != "")
 
@@ -540,7 +567,7 @@ func TestRemoveDeviceVsVolumeCreate(t *testing.T) {
 func TestHeketiVolumeExpandWithGid(t *testing.T) {
 	// Setup the VM storage topology
 	teardownCluster(t)
-	setupCluster(t, 4, 8)
+	setupCluster(t, 3, 8)
 	defer teardownCluster(t)
 
 	// Create a volume
@@ -577,9 +604,6 @@ func TestHeketiVolumeExpandWithGid(t *testing.T) {
 	tests.Assert(t, err == nil, "Brick found with different Gid")
 	_, err = vagrantexec.ConnectAndExec(storage2ssh, cmd, 10, true)
 	tests.Assert(t, err == nil, "Brick found with different Gid")
-	_, err = vagrantexec.ConnectAndExec(storage3ssh, cmd, 10, true)
-	tests.Assert(t, err == nil, "Brick found with different Gid")
-
 }
 
 func TestHeketiVolumeCreateWithOptions(t *testing.T) {

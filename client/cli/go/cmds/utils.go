@@ -16,6 +16,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 )
 
@@ -98,4 +99,15 @@ func rmTagsCommand(cmd *cobra.Command,
 	}
 
 	return submitTags(id, req)
+}
+
+func newHeketiClient() (*client.Client, error) {
+	return client.NewClientTLS(
+		options.Url,
+		options.User,
+		options.Key,
+		&client.ClientTLSOptions{
+			InsecureSkipVerify: options.InsecureTLS,
+			VerifyCerts:        options.TLSCerts,
+		})
 }

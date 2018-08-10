@@ -20,6 +20,7 @@ ifeq ($(GOARCH),$(GOHOSTARCH))
 endif
 endif
 GLIDEPATH := $(shell command -v glide 2> /dev/null)
+HGPATH := $(shell command -v hg 2> /dev/null)
 DIR=.
 
 ifeq (master,$(BRANCH))
@@ -69,6 +70,11 @@ ifndef GLIDEPATH
 	$(info by running: curl https://glide.sh/get | sh.)
 	$(info )
 	$(error glide is required to continue)
+endif
+ifndef HGPATH
+	$(info Please install mercurial/hg.)
+	$(info glide needs to fetch pkgs from a mercurial repository.)
+	$(error mercurial/hg is required to continue)
 endif
 	echo "Installing vendor directory"
 	glide install -v

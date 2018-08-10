@@ -165,13 +165,15 @@ func (dev Device) Validate() error {
 
 type DeviceAddRequest struct {
 	Device
-	NodeId string `json:"node"`
+	NodeId      string `json:"node"`
+	DestroyData bool   `json:"destroydata,omitempty"`
 }
 
 func (devAddReq DeviceAddRequest) Validate() error {
 	return validation.ValidateStruct(&devAddReq,
 		validation.Field(&devAddReq.Device, validation.Required),
 		validation.Field(&devAddReq.NodeId, validation.Required, validation.By(ValidateUUID)),
+		validation.Field(&devAddReq.DestroyData, validation.In(true, false)),
 	)
 }
 
@@ -313,6 +315,7 @@ type VolumeInfo struct {
 	} `json:"mount"`
 	BlockInfo struct {
 		FreeSize     int              `json:"freesize,omitempty"`
+		ReservedSize int              `json:"reservedsize,omitempty"`
 		BlockVolumes sort.StringSlice `json:"blockvolume,omitempty"`
 	} `json:"blockinfo,omitempty"`
 }
@@ -333,6 +336,16 @@ type VolumeExpandRequest struct {
 func (volExpandReq VolumeExpandRequest) Validate() error {
 	return validation.ValidateStruct(&volExpandReq,
 		validation.Field(&volExpandReq.Size, validation.Required, validation.Min(1)),
+	)
+}
+
+type VolumeCloneRequest struct {
+	Name string `json:"name,omitempty"`
+}
+
+func (vcr VolumeCloneRequest) Validate() error {
+	return validation.ValidateStruct(&vcr,
+		validation.Field(&vcr.Name, validation.Match(volumeNameRe)),
 	)
 }
 
@@ -457,6 +470,7 @@ func (v *VolumeInfoResponse) String() string {
 		"Mount Options: backup-volfile-servers=%v\n"+
 		"Block: %v\n"+
 		"Free Size: %v\n"+
+		"Reserved Size: %v\n"+
 		"Block Volumes: %v\n"+
 		"Durability Type: %v\n",
 		v.Name,
@@ -467,6 +481,7 @@ func (v *VolumeInfoResponse) String() string {
 		v.Mount.GlusterFS.Options["backup-volfile-servers"],
 		v.Block,
 		v.BlockInfo.FreeSize,
+		v.BlockInfo.ReservedSize,
 		v.BlockInfo.BlockVolumes,
 		v.Durability.Type)
 
@@ -555,4 +570,12 @@ func (v *BlockVolumeInfoResponse) String() string {
 	*/
 
 	return s
+}
+
+type OperationsInfo struct {
+	Total    uint64 `json:"total"`
+	InFlight uint64 `json:"in_flight"`
+	// state based counts:
+	Stale uint64 `json:"stale"`
+	New   uint64 `json:"new"`
 }

@@ -16,7 +16,6 @@ import (
 	"os"
 	"strings"
 
-	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/spf13/cobra"
 )
@@ -30,8 +29,13 @@ const (
 var jsonConfigFile string
 
 // Config file
-type ConfigFileDevice struct {
+type ConfigFileDeviceOptions struct {
 	api.Device
+	DestroyData bool `json:"destroydata,omitempty"`
+}
+
+type ConfigFileDevice struct {
+	ConfigFileDeviceOptions
 }
 type ConfigFileNode struct {
 	Devices []*ConfigFileDevice `json:"devices"`
@@ -59,13 +63,18 @@ func (device *ConfigFileDevice) UnmarshalJSON(b []byte) error {
 		device.Name = s
 		return nil
 	}
-	var d api.Device
+
+	// ConfigFileDevice embeds the ConfigFileDeviceOptions struct which has
+	// additional members compared to the standard api.Device. Structuring
+	// it this way, prevents a recursive call to UnmarshalJSON().
+	var d ConfigFileDeviceOptions
 	err = json.Unmarshal(b, &d)
 	if err != nil {
 		return err
 	}
 	device.Name = d.Name
 	device.Tags = d.Tags
+	device.DestroyData = d.DestroyData
 	return nil
 }
 
@@ -144,7 +153,10 @@ var topologyLoadCommand = &cobra.Command{
 		}
 
 		// Create client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		// Load current topolgy
 		heketiTopology, err := heketi.TopologyInfo()
@@ -244,6 +256,7 @@ var topologyLoadCommand = &cobra.Command{
 						req.Name = device.Name
 						req.NodeId = nodeInfo.Id
 						req.Tags = device.Tags
+						req.DestroyData = device.DestroyData
 						err := heketi.DeviceAdd(req)
 						if err != nil {
 							fmt.Fprintf(stdout, "Unable to add device: %v\n", err)
@@ -266,7 +279,10 @@ var topologyInfoCommand = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		// Create a client to talk to Heketi
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		// Create Topology
 		topoinfo, err := heketi.TopologyInfo()

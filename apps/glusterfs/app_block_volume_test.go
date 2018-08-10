@@ -11,11 +11,14 @@ package glusterfs
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -210,7 +213,7 @@ func TestBlockVolumeLargerThanBlockHostingVolume(t *testing.T) {
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, r.ContentLength))
 	tests.Assert(t, err == nil)
 	r.Body.Close()
-	tests.Assert(t, strings.Contains(string(body), "Failed to allocate new block volume: The size configured for automatic creation of block hosting volumes (1024) is too small to host the requested block volume of size 1600. Please create a sufficiently large block hosting volume manually."), "got", string(body))
+	tests.Assert(t, strings.Contains(string(body), "Failed to allocate new block volume: The size configured for automatic creation of block hosting volumes (1100) is too small to host the requested block volume of size 1600. Please create a sufficiently large block hosting volume manually."), "got", string(body))
 }
 
 func TestBlockVolumeCreate(t *testing.T) {
@@ -275,6 +278,256 @@ func TestBlockVolumeCreate(t *testing.T) {
 	tests.Assert(t, info.Size == 100)
 	tests.Assert(t, info.Name == "blockvol_"+info.Id)
 	tests.Assert(t, info.Auth == false)
+}
+
+func blockVolumeTestResult(t *testing.T, r *http.Response) api.BlockVolumeInfoResponse {
+	var info api.BlockVolumeInfoResponse
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	location, err := r.Location()
+	tests.Assert(t, err == nil)
+
+	// Query queue until finished
+	for {
+		r, err = http.Get(location.String())
+		tests.Assert(t, err == nil)
+		tests.Assert(t, r.StatusCode == http.StatusOK)
+		if r.ContentLength <= 0 {
+			time.Sleep(time.Millisecond * 10)
+			continue
+		} else {
+			// Should have node information here
+			tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
+			err = utils.GetJsonFromResponse(r, &info)
+			tests.Assert(t, err == nil)
+			break
+		}
+	}
+	return info
+}
+
+func TestBlockVolumeCreateHACount(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Setup database
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		10,   // nodes_per_cluster
+		10,   // devices_per_node,
+		5*TB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	// BlockVolumeCreate
+	request := []byte(`{
+	"size" : 100,
+	"hacount" : 3
+    }`)
+
+	// Send request
+	r, err := http.Post(ts.URL+"/blockvolumes", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	info := blockVolumeTestResult(t, r)
+
+	tests.Assert(t, info.Id != "")
+	tests.Assert(t, info.Cluster != "")
+	tests.Assert(t, info.BlockHostingVolume != "")
+	tests.Assert(t, len(info.BlockVolume.Hosts) == 3)
+	tests.Assert(t, info.BlockVolume.Iqn != "")
+	tests.Assert(t, info.BlockVolume.Password == "")
+	tests.Assert(t, info.BlockVolume.Username == "")
+	tests.Assert(t, info.Size == 100)
+	tests.Assert(t, info.Name == "blockvol_"+info.Id)
+	tests.Assert(t, info.Auth == false)
+	tests.Assert(t, info.Hacount == 3)
+}
+
+func makeGlusterdCheck(available map[string]bool) func(string) error {
+	return func(host string) error {
+		if _, exists := available[host]; !exists {
+			// every second host is unavailable
+			available[host] = (len(available) % 2) == 0
+		}
+		if !available[host] {
+			return fmt.Errorf("host %s unavailable", host)
+		}
+		return nil
+	}
+}
+
+func countTrue(m map[string]bool) int {
+	counter := 0
+	for _, v := range m {
+		if v {
+			counter++
+		}
+	}
+	return counter
+}
+
+func TestBlockVolumeCreateHACountHostUnavailableSuccess(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	hostAvailable := make(map[string]bool)
+	app.xo.MockGlusterdCheck = makeGlusterdCheck(hostAvailable)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Setup database
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		5,    // nodes_per_cluster
+		10,   // devices_per_node,
+		5*TB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	// BlockVolumeCreate
+	request := []byte(`{
+	"size" : 100,
+	"hacount" : 3
+    }`)
+
+	// Send request
+	r, err := http.Post(ts.URL+"/blockvolumes", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+
+	info := blockVolumeTestResult(t, r)
+	tests.Assert(t, info.Id != "")
+	tests.Assert(t, info.Cluster != "")
+	tests.Assert(t, info.BlockHostingVolume != "")
+	tests.Assert(t, len(info.BlockVolume.Hosts) == 3)
+	tests.Assert(t, info.BlockVolume.Iqn != "")
+	tests.Assert(t, info.BlockVolume.Password == "")
+	tests.Assert(t, info.BlockVolume.Username == "")
+	tests.Assert(t, info.Size == 100)
+	tests.Assert(t, info.Name == "blockvol_"+info.Id)
+	tests.Assert(t, info.Auth == false)
+	tests.Assert(t, info.Hacount == 3)
+	tests.Assert(t, len(hostAvailable) == 5)
+	tests.Assert(t, countTrue(hostAvailable) == 3)
+}
+
+func TestBlockVolumeCreateHACountHostUnavailableFail(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	hostAvailable := make(map[string]bool)
+	app.xo.MockGlusterdCheck = makeGlusterdCheck(hostAvailable)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Setup database
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		4,    // nodes_per_cluster
+		10,   // devices_per_node,
+		5*TB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	// BlockVolumeCreate
+	request := []byte(`{
+	"size" : 100,
+	"hacount" : 3
+    }`)
+
+	// Send request
+	r, err := http.Post(ts.URL+"/blockvolumes", "application/json", bytes.NewBuffer(request))
+	tests.Assert(t, err == nil)
+	tests.Assert(t, r.StatusCode == http.StatusAccepted)
+	location, err := r.Location()
+	tests.Assert(t, err == nil)
+
+	// Query queue until finished
+	for {
+		r, err = http.Get(location.String())
+		tests.Assert(t, err == nil)
+		if r.StatusCode == http.StatusInternalServerError {
+			break
+		}
+		tests.Assert(t, r.StatusCode == http.StatusOK)
+		tests.Assert(t, r.ContentLength <= 0)
+		time.Sleep(time.Millisecond * 10)
+	}
+	tests.Assert(t, len(hostAvailable) == 4)
+	tests.Assert(t, countTrue(hostAvailable) == 2)
+}
+
+func TestBlockVolumeCreateHAShuffled(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+	router := mux.NewRouter()
+	app.SetRoutes(router)
+
+	// Setup the server
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	// Setup database
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		10,   // nodes_per_cluster
+		10,   // devices_per_node,
+		5*TB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+
+	// BlockVolumeCreate
+	request := []byte(`{"size": 100, "hacount": 3}`)
+
+	// reset a static seed to make test deterministic
+	rand.Seed(42)
+	var prevHosts []string
+	changed := false
+	for i := 0; i < 5; i++ {
+		r, err := http.Post(ts.URL+"/blockvolumes", "application/json", bytes.NewBuffer(request))
+		tests.Assert(t, err == nil)
+		info := blockVolumeTestResult(t, r)
+
+		// check that the hosts counts are as expected and match the ha counts
+		// verify that we do not get the same hosts every time this function is
+		// called.
+		tests.Assert(t, len(info.BlockVolume.Hosts) == 3)
+		tests.Assert(t, info.Hacount == 3)
+		if prevHosts != nil && !reflect.DeepEqual(prevHosts, info.BlockVolume.Hosts) {
+			changed = true
+			break
+		}
+		prevHosts = info.BlockVolume.Hosts
+	}
+	tests.Assert(t, changed)
 }
 
 func TestBlockVolumeInfoIdNotFound(t *testing.T) {

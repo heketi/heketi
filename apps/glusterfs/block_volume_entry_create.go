@@ -11,6 +11,7 @@ package glusterfs
 
 import (
 	"fmt"
+	"math/rand"
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
@@ -63,7 +64,8 @@ func (v *BlockVolumeEntry) createBlockVolumeRequest(db wdb.RODB,
 		}
 
 		if v.Info.Hacount > 0 && v.Info.Hacount <= len(bhvol.Info.Mount.GlusterFS.Hosts) {
-			for i := 0; i <= v.Info.Hacount && i < len(bhvol.Info.Mount.GlusterFS.Hosts); i++ {
+			v.Info.BlockVolume.Hosts = nil
+			for _, i := range rand.Perm(len(bhvol.Info.Mount.GlusterFS.Hosts)) {
 				managehostname, e := GetManageHostnameFromStorageHostname(tx, bhvol.Info.Mount.GlusterFS.Hosts[i])
 				if e != nil {
 					return fmt.Errorf("Could not find managehostname for %v", bhvol.Info.Mount.GlusterFS.Hosts[i])
@@ -71,6 +73,9 @@ func (v *BlockVolumeEntry) createBlockVolumeRequest(db wdb.RODB,
 				e = executor.GlusterdCheck(managehostname)
 				if e == nil {
 					v.Info.BlockVolume.Hosts = append(v.Info.BlockVolume.Hosts, bhvol.Info.Mount.GlusterFS.Hosts[i])
+					if len(v.Info.BlockVolume.Hosts) == v.Info.Hacount {
+						break
+					}
 				}
 			}
 			if len(v.Info.BlockVolume.Hosts) < v.Info.Hacount {

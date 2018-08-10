@@ -31,10 +31,11 @@ TAGS_DELETE = 'delete'
 
 class HeketiClient(object):
 
-    def __init__(self, host, user, key):
+    def __init__(self, host, user, key, verify=True):
         self.host = host
         self.user = user
         self.key = key
+        self.verify = verify
 
     def _set_token_in_header(self, method, uri, headers={}):
         claims = {}
@@ -61,7 +62,7 @@ class HeketiClient(object):
         uri = '/hello'
 
         headers = self._set_token_in_header(method, uri)
-        r = requests.get(self.host + uri, headers=headers)
+        r = requests.get(self.host + uri, headers=headers, verify=self.verify)
         return r.status_code == requests.codes.ok
 
     def _make_request(self, method, uri, data={}, headers={}):
@@ -74,7 +75,8 @@ class HeketiClient(object):
         r = requests.request(method,
                              self.host + uri,
                              headers=headers,
-                             data=json.dumps(data))
+                             data=json.dumps(data),
+                             verify=self.verify)
 
         r.raise_for_status()
 
@@ -91,7 +93,8 @@ class HeketiClient(object):
             headers = self._set_token_in_header('GET', queue_uri)
             q = requests.get(self.host + queue_uri,
                              headers=headers,
-                             allow_redirects=False)
+                             allow_redirects=False,
+                             verify=self.verify)
 
             # Raise an exception when the request fails
             q.raise_for_status()

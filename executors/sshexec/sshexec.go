@@ -112,6 +112,8 @@ func NewSshExecutor(config *SshConfig) (*SshExecutor, error) {
 		s.Fstab = config.Fstab
 	}
 
+	s.BackupLVM = config.BackupLVM
+
 	// Save the configuration
 	s.config = config
 

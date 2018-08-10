@@ -11,7 +11,6 @@ package glusterfs
 
 import (
 	"fmt"
-	"net/http"
 
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
@@ -341,6 +340,11 @@ func (ve *VolumeExpandOperation) Finalize() error {
 			}
 		}
 		ve.vol.Info.Size += sizeDelta
+		if ve.vol.Info.Block == true {
+			if e := ve.vol.AddRawCapacity(sizeDelta); e != nil {
+				return e
+			}
+		}
 		ve.op.FinalizeVolume(ve.vol)
 		if e := ve.vol.Save(tx); e != nil {
 			return e
@@ -356,7 +360,8 @@ func (ve *VolumeExpandOperation) Finalize() error {
 type VolumeDeleteOperation struct {
 	OperationManager
 	noRetriesOperation
-	vol *VolumeEntry
+	vol       *VolumeEntry
+	reclaimed map[string]bool // gets set in Exec(), space_reclaimed = reclaimed[DeviceId]
 }
 
 func NewVolumeDeleteOperation(
@@ -383,12 +388,22 @@ func (vdel *VolumeDeleteOperation) ResourceUrl() string {
 // marks the db entries as such.
 func (vdel *VolumeDeleteOperation) Build() error {
 	return vdel.db.Update(func(tx *bolt.Tx) error {
+		if vdel.vol.Pending.Id != "" {
+			logger.LogError("Pending volume %v can not be deleted",
+				vdel.vol.Info.Id)
+			return ErrConflict
+		}
 		txdb := wdb.WrapTx(tx)
 		brick_entries, err := vdel.vol.deleteVolumeComponents(txdb)
 		if err != nil {
 			return err
 		}
 		for _, brick := range brick_entries {
+			if brick.Pending.Id != "" {
+				logger.LogError("Pending brick %v can not be deleted",
+					brick.Info.Id)
+				return ErrConflict
+			}
 			vdel.op.RecordDeleteBrick(brick)
 			if e := brick.Save(tx); e != nil {
 				return e
@@ -413,7 +428,7 @@ func (vdel *VolumeDeleteOperation) Exec(executor executors.Executor) error {
 	if err != nil {
 		return err
 	}
-	err = vdel.vol.deleteVolumeExec(vdel.db, executor, brick_entries, sshhost)
+	vdel.reclaimed, err = vdel.vol.deleteVolumeExec(vdel.db, executor, brick_entries, sshhost)
 	if err != nil {
 		logger.LogError("Error executing delete volume: %v", err)
 	}
@@ -453,16 +468,194 @@ func (vdel *VolumeDeleteOperation) Rollback(executor executors.Executor) error {
 func (vdel *VolumeDeleteOperation) Finalize() error {
 	return vdel.db.Update(func(tx *bolt.Tx) error {
 		txdb := wdb.WrapTx(tx)
+
 		brick_entries, err := bricksFromOp(txdb, vdel.op, vdel.vol.Info.Gid)
 		if err != nil {
 			logger.LogError("Failed to get bricks from op: %v", err)
 			return err
 		}
+
+		// update the device' free/used space after removing bricks
+		for _, b := range brick_entries {
+			for dev_id, reclaimed := range vdel.reclaimed {
+				if b.Info.DeviceId != dev_id {
+					continue
+				}
+				if !reclaimed {
+					// nothing reclaimed, no need to update the DeviceEntry
+					continue
+				}
+
+				device, err := NewDeviceEntryFromId(tx, dev_id)
+				if err != nil {
+					logger.Err(err)
+					return err
+				}
+
+				// Deallocate space on device
+				device.StorageFree(device.SpaceNeeded(b.Info.Size, float64(vdel.vol.Info.Snapshot.Factor)).Total)
+				device.Save(tx)
+			}
+		}
+
 		if err := vdel.vol.saveDeleteVolume(txdb, brick_entries); err != nil {
 			return err
 		}
 
 		vdel.op.Delete(tx)
+		return nil
+	})
+}
+
+// VolumeCloneOperation implements the operation functions used to
+// clone an existing volume.
+type VolumeCloneOperation struct {
+	OperationManager
+	noRetriesOperation
+
+	// The volume to use as source for the clone
+	vol *VolumeEntry
+	// Optional name for the new volume
+	clonename string
+	// The newly cloned volume, will be set in Exec()
+	clone *VolumeEntry
+	// The bricks for the clone
+	bricks []*BrickEntry
+	// The devices of the bricks
+	devices []*DeviceEntry
+}
+
+func NewVolumeCloneOperation(
+	vol *VolumeEntry, db wdb.DB, clonename string) *VolumeCloneOperation {
+
+	return &VolumeCloneOperation{
+		OperationManager: OperationManager{
+			db: db,
+			op: NewPendingOperationEntry(NEW_ID),
+		},
+		vol:       vol,
+		clonename: clonename,
+		clone:     nil,
+	}
+}
+
+func (vc *VolumeCloneOperation) Label() string {
+	return "Create Clone of a Volume"
+}
+
+func (vc *VolumeCloneOperation) ResourceUrl() string {
+	return fmt.Sprintf("/volumes/%v", vc.clone.Info.Id)
+}
+
+func (vc *VolumeCloneOperation) Build() error {
+	return vc.db.Update(func(tx *bolt.Tx) error {
+		vc.op.RecordCloneVolume(vc.vol)
+		clone, bricks, devices, err := vc.vol.prepareVolumeClone(tx, vc.clonename)
+		if err != nil {
+			return err
+		}
+		vc.clone = clone
+		vc.bricks = bricks
+		vc.devices = devices
+		vc.op.RecordAddVolumeClone(vc.clone)
+		// record new bricks
+		for _, b := range bricks {
+			vc.op.RecordAddBrick(b)
+			if e := b.Save(tx); e != nil {
+				return e
+			}
+		}
+		// save device updates
+		for _, d := range vc.devices {
+			if e := d.Save(tx); e != nil {
+				return e
+			}
+		}
+		// record changes to parent volume
+		if e := vc.vol.Save(tx); e != nil {
+			return e
+		}
+		// add the new volume to the cluster
+		c, err := NewClusterEntryFromId(tx, vc.clone.Info.Cluster)
+		if err != nil {
+			return err
+		}
+		c.VolumeAdd(vc.clone.Info.Id)
+		if err := c.Save(tx); err != nil {
+			return err
+		}
+		// save the pending operation
+		if e := vc.op.Save(tx); e != nil {
+			return e
+		}
+		return nil
+	})
+}
+
+func (vc *VolumeCloneOperation) Exec(executor executors.Executor) error {
+	vcr, host, err := vc.vol.cloneVolumeRequest(vc.db, vc.clone.Info.Name)
+	if err != nil {
+		return err
+	}
+
+	// get all details of the original volume (order of bricks etc)
+	orig, err := executor.VolumeInfo(host, vc.vol.Info.Name)
+	if err != nil {
+		return err
+	}
+
+	clone, err := executor.VolumeClone(host, vcr)
+	if err != nil {
+		return err
+	}
+
+	if err := updateCloneBrickPaths(vc.bricks, orig, clone); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (vc *VolumeCloneOperation) Rollback(executor executors.Executor) error {
+	return vc.db.Update(func(tx *bolt.Tx) error {
+		vc.op.FinalizeVolumeClone(vc.vol)
+		if e := vc.vol.Save(tx); e != nil {
+			return e
+		}
+
+		// TODO: Bricks and a snapshot may have been created in the
+		// executor. These will need to be removed again. The
+		// CmdExecutor.VolumeClone() operation will need to be moved up
+		// to a higher level. This can easiest be done when the
+		// advanced Snapshot*() operations are available.
+
+		vc.op.Delete(tx)
+		return nil
+	})
+}
+
+func (vc *VolumeCloneOperation) Finalize() error {
+	return vc.db.Update(func(tx *bolt.Tx) error {
+		vc.op.FinalizeVolumeClone(vc.vol)
+		if err := vc.vol.Save(tx); err != nil {
+			return err
+		}
+		// finalize the new clone
+		vc.op.FinalizeVolume(vc.clone)
+		if err := vc.clone.Save(tx); err != nil {
+			return err
+		}
+		// finalize the new bricks
+		for _, b := range vc.bricks {
+			vc.op.FinalizeBrick(b)
+			b.Save(tx)
+		}
+		// the DeviceEntry of each brick was updated too
+		for _, d := range vc.devices {
+			// because the bricks are cloned, they do not take extra space
+			d.Save(tx)
+		}
+
+		vc.op.Delete(tx)
 		return nil
 	})
 }
@@ -512,7 +705,7 @@ func (bvc *BlockVolumeCreateOperation) Build() error {
 		if len(volumes) > 0 {
 			bvc.bvol.Info.BlockHostingVolume = volumes[0].Info.Id
 			bvc.bvol.Info.Cluster = volumes[0].Info.Cluster
-		} else if bvc.bvol.Info.Size > BlockHostingVolumeSize {
+		} else if bvc.bvol.Info.Size > ReduceRawSize(BlockHostingVolumeSize) {
 			return fmt.Errorf("The size configured for "+
 				"automatic creation of block hosting volumes "+
 				"(%v) is too small to host the requested "+
@@ -521,6 +714,14 @@ func (bvc *BlockVolumeCreateOperation) Build() error {
 				"manually.",
 				BlockHostingVolumeSize, bvc.bvol.Info.Size)
 		} else {
+			if found, err := hasPendingBlockHostingVolume(tx); found {
+				logger.Warning(
+					"temporarily rejecting block volume request:" +
+						" pending block-hosting-volume found")
+				return ErrTooManyOperations
+			} else if err != nil {
+				return err
+			}
 			vol, err := NewVolumeEntryForBlockHosting(clusters)
 			if err != nil {
 				return err
@@ -723,6 +924,11 @@ func (vdel *BlockVolumeDeleteOperation) ResourceUrl() string {
 // marks the db entries as such.
 func (vdel *BlockVolumeDeleteOperation) Build() error {
 	return vdel.db.Update(func(tx *bolt.Tx) error {
+		if vdel.bvol.Pending.Id != "" {
+			logger.LogError("Pending block volume %v can not be deleted",
+				vdel.bvol.Info.Id)
+			return ErrConflict
+		}
 		vdel.op.RecordDeleteBlockVolume(vdel.bvol)
 		if e := vdel.op.Save(tx); e != nil {
 			return e
@@ -762,7 +968,7 @@ func (vdel *BlockVolumeDeleteOperation) Rollback(executor executors.Executor) er
 func (vdel *BlockVolumeDeleteOperation) Finalize() error {
 	return vdel.db.Update(func(tx *bolt.Tx) error {
 		txdb := wdb.WrapTx(tx)
-		if e := vdel.bvol.removeComponents(txdb); e != nil {
+		if e := vdel.bvol.removeComponents(txdb, false); e != nil {
 			logger.LogError("Failed to remove block volume from db")
 			return e
 		}
@@ -954,123 +1160,5 @@ func expandSizeFromOp(op *PendingOperationEntry) (sizeGB int, e error) {
 	}
 	e = fmt.Errorf("no OpExpandVolume action in pending op: %v",
 		op.Id)
-	return
-}
-
-// AsyncHttpOperation runs all the steps of an operation with the long-running
-// parts wrapped in an async http function. If AsyncHttpOperation returns nil
-// then it has started the async function and the caller should respond to the
-// client with success - otherwise an error object is returned. In the async
-// function the Exec and Finalize or Rollback steps of the operation will be
-// performed.
-func AsyncHttpOperation(app *App,
-	w http.ResponseWriter,
-	r *http.Request,
-	op Operation) error {
-
-	label := op.Label()
-	if err := op.Build(); err != nil {
-		logger.LogError("%v Build Failed: %v", label, err)
-		return err
-	}
-
-	app.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
-		logger.Info("Started async operation: %v", label)
-		if err := op.Exec(app.executor); err != nil {
-			if _, ok := err.(OperationRetryError); ok && op.MaxRetries() > 0 {
-				logger.Warning("%v Exec requested retry", label)
-				err := retryOperation(op, app.executor)
-				if err != nil {
-					return "", err
-				}
-				return op.ResourceUrl(), nil
-			}
-			if rerr := op.Rollback(app.executor); rerr != nil {
-				logger.LogError("%v Rollback error: %v", label, rerr)
-			}
-			logger.LogError("%v Failed: %v", label, err)
-			return "", err
-		}
-		if err := op.Finalize(); err != nil {
-			logger.LogError("%v Finalize failed: %v", label, err)
-			return "", err
-		}
-		logger.Info("%v succeeded", label)
-		return op.ResourceUrl(), nil
-	})
-	return nil
-}
-
-// RunOperation performs all steps of an Operation and returns
-// an error if any of those steps fail. This function is meant to
-// make it easy to run an operation outside of the rest endpoints
-// and should only be used in test code.
-func RunOperation(o Operation,
-	executor executors.Executor) (err error) {
-
-	label := o.Label()
-	defer func() {
-		if err != nil {
-			logger.LogError("Error in %v: %v", label, err)
-		}
-	}()
-
-	logger.Info("Running %v", o.Label())
-	if err := o.Build(); err != nil {
-		logger.LogError("%v Build Failed: %v", label, err)
-		return err
-	}
-	if err := o.Exec(executor); err != nil {
-		if _, ok := err.(OperationRetryError); ok && o.MaxRetries() > 0 {
-			logger.Warning("%v Exec requested retry", label)
-			return retryOperation(o, executor)
-		}
-		if rerr := o.Rollback(executor); rerr != nil {
-			logger.LogError("%v Rollback error: %v", label, rerr)
-		}
-		logger.LogError("%v Failed: %v", label, err)
-		return err
-	}
-	if err := o.Finalize(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func retryOperation(o Operation,
-	executor executors.Executor) (err error) {
-
-	label := o.Label()
-	max := o.MaxRetries()
-	for i := 0; i < max; i++ {
-		logger.Info("Retry %v (%v)", label, i+1)
-		if e := o.Rollback(executor); e != nil {
-			// when retrying rollback must succeed cleanly or it
-			// is not safe to retry
-			logger.LogError("%v Rollback error: %v", label, e)
-			return e
-		}
-		if e := o.Build(); e != nil {
-			logger.LogError("%v Build Failed: %v", label, e)
-			return e
-		}
-		err = o.Exec(executor)
-		if err == nil {
-			// exec succeeded. Finalize it and we're outta here.
-			return o.Finalize()
-		}
-		logger.LogError("%v Failed: %v", label, err)
-		if _, ok := err.(OperationRetryError); !ok {
-			break
-		}
-	}
-	if e := o.Rollback(executor); e != nil {
-		logger.LogError("%v Rollback error: %v", label, e)
-	}
-	// if we exceeded our retries, pull the "real" error out
-	// of the retry error so we return that
-	if ore, ok := err.(OperationRetryError); ok {
-		err = ore.OriginalError
-	}
 	return
 }

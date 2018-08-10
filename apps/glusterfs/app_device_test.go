@@ -445,7 +445,7 @@ func TestDeviceAddCleansUp(t *testing.T) {
 	// Mock the device setup to return an error, which will
 	// cause the cleanup.
 	deviceSetupFn := app.xo.MockDeviceSetup
-	app.xo.MockDeviceSetup = func(host, device, vgid string) (*executors.DeviceInfo, error) {
+	app.xo.MockDeviceSetup = func(host, device, vgid string, destroy bool) (*executors.DeviceInfo, error) {
 		return nil, ErrDbAccess
 	}
 
@@ -540,7 +540,7 @@ func TestDeviceInfo(t *testing.T) {
 	device.Info.Id = "abc"
 	device.Info.Name = "/dev/fake1"
 	device.NodeId = "def"
-	device.StorageSet(10000)
+	device.StorageSet(10000, 10000, 0)
 	device.StorageAllocate(1000)
 
 	// Save device in the db
@@ -585,7 +585,7 @@ func TestDeviceDeleteErrors(t *testing.T) {
 	device.Info.Id = "abc"
 	device.Info.Name = "/dev/fake1"
 	device.NodeId = "def"
-	device.StorageSet(10000)
+	device.StorageSet(10000, 10000, 0)
 	device.StorageAllocate(1000)
 
 	// Save device in the db
@@ -703,6 +703,7 @@ func TestDeviceState(t *testing.T) {
 
 	var info api.DeviceInfoResponse
 	err = utils.GetJsonFromResponse(r, &info)
+	tests.Assert(t, err == nil)
 	tests.Assert(t, info.Id == device.Id)
 	tests.Assert(t, info.Name == device.Name)
 	tests.Assert(t, info.State == "offline")
@@ -741,6 +742,7 @@ func TestDeviceState(t *testing.T) {
 	tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
 
 	err = utils.GetJsonFromResponse(r, &info)
+	tests.Assert(t, err == nil)
 	tests.Assert(t, info.Id == device.Id)
 	tests.Assert(t, info.Name == device.Name)
 	tests.Assert(t, info.State == "online")
@@ -764,6 +766,7 @@ func TestDeviceState(t *testing.T) {
 	tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
 
 	err = utils.GetJsonFromResponse(r, &info)
+	tests.Assert(t, err == nil)
 	tests.Assert(t, info.Id == device.Id)
 	tests.Assert(t, info.Name == device.Name)
 	tests.Assert(t, info.State == "online")
@@ -786,13 +789,12 @@ func TestDeviceSync(t *testing.T) {
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	var total, used, newFree uint64
-	total = 200 * 1024 * 1024
-	used = 100 * 1024 * 1024
-	newFree = 500 * 1024 * 1024 // see mockexec
-
 	nodeId := utils.GenUUID()
 	deviceId := utils.GenUUID()
+
+	var total uint64 = 600 * 1024 * 1024
+	var used uint64 = 250 * 1024 * 1024
+	var free uint64 = 350 * 1024 * 1024
 
 	// Init test database
 	err := app.db.Update(func(tx *bolt.Tx) error {
@@ -806,8 +808,8 @@ func TestDeviceSync(t *testing.T) {
 		device.Info.Id = deviceId
 		device.Info.Name = "/dev/abc"
 		device.NodeId = nodeId
-		device.StorageSet(total)
-		device.StorageAllocate(used)
+		device.StorageSet(total, total, 0)
+		device.StorageAllocate(100)
 
 		if err := device.Save(tx); err != nil {
 			return err
@@ -830,6 +832,14 @@ func TestDeviceSync(t *testing.T) {
 	})
 	tests.Assert(t, err == nil)
 
+	app.xo.MockGetDeviceInfo = func(host, device, vgid string) (*executors.DeviceInfo, error) {
+		d := &executors.DeviceInfo{}
+		d.TotalSize = total
+		d.FreeSize = free
+		d.UsedSize = used
+		d.ExtentSize = 4096
+		return d, nil
+	}
 	r, err := http.Get(ts.URL + "/devices/" + deviceId + "/resync")
 	tests.Assert(t, err == nil)
 	tests.Assert(t, r.StatusCode == http.StatusAccepted)
@@ -853,12 +863,13 @@ func TestDeviceSync(t *testing.T) {
 	err = app.db.View(func(tx *bolt.Tx) error {
 		device, err := NewDeviceEntryFromId(tx, deviceId)
 		tests.Assert(t, err == nil)
-		tests.Assert(t, device.Info.Storage.Total == newFree+used)
-		tests.Assert(t, device.Info.Storage.Free == newFree)
+		tests.Assert(t, device.Info.Storage.Total == total, "expected:", total, "got:", device.Info.Storage.Total)
+		tests.Assert(t, device.Info.Storage.Free == free)
 		tests.Assert(t, device.Info.Storage.Used == used)
 		return nil
 	})
 	tests.Assert(t, err == nil)
+
 }
 
 func TestDeviceSyncIdNotFound(t *testing.T) {
@@ -903,7 +914,7 @@ func TestDeviceSetTags(t *testing.T) {
 	device.Info.Id = deviceId
 	device.Info.Name = "/dev/fake1"
 	device.NodeId = "def"
-	device.StorageSet(10000)
+	device.StorageSet(10000, 10000, 0)
 	device.StorageAllocate(1000)
 	err := app.db.Update(func(tx *bolt.Tx) error {
 		return device.Save(tx)

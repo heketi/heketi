@@ -209,19 +209,19 @@ func TestArbiterBrickPlacer(t *testing.T) {
 		"10000000",
 		"11111111",
 		"/dev/foobar",
-		11000)
+		100*GB)
 	dsrc.QuickAdd(
 		"20000000",
 		"22222222",
 		"/dev/foobar",
-		12000)
+		100*GB)
 	dsrc.QuickAdd(
 		"30000000",
 		"33333333",
 		"/dev/foobar",
-		13000)
+		100*GB)
 	opts := &TestPlacementOpts{
-		brickSize:       800,
+		brickSize:       10 * GB,
 		brickSnapFactor: 0.3,
 		brickOwner:      "asdfasdf",
 		setSize:         3,
@@ -381,17 +381,17 @@ func TestArbiterBrickPlacerBrickOnArbiterDevice(t *testing.T) {
 func TestArbiterBrickPlacerBrickThreeSets(t *testing.T) {
 	dsrc := NewTestDeviceSource()
 	addDev := dsrc.MultiAdd("10000000")
-	addDev("11111111", "/dev/d1", 10001)
-	addDev("21111111", "/dev/d2", 10002)
-	addDev("31111111", "/dev/d3", 10003)
+	addDev("11111111", "/dev/d1", 20001)
+	addDev("21111111", "/dev/d2", 20002)
+	addDev("31111111", "/dev/d3", 20003)
 	addDev = dsrc.MultiAdd("20000000")
-	addDev("41111111", "/dev/d1", 10001)
-	addDev("51111111", "/dev/d2", 10002)
-	addDev("61111111", "/dev/d3", 10003)
+	addDev("41111111", "/dev/d1", 20001)
+	addDev("51111111", "/dev/d2", 20002)
+	addDev("61111111", "/dev/d3", 20003)
 	addDev = dsrc.MultiAdd("30000000")
-	addDev("71111111", "/dev/d1", 10001)
-	addDev("81111111", "/dev/d2", 10002)
-	addDev("91111111", "/dev/d3", 10003)
+	addDev("71111111", "/dev/d1", 20001)
+	addDev("81111111", "/dev/d2", 20002)
+	addDev("91111111", "/dev/d3", 20003)
 
 	opts := &TestPlacementOpts{
 		brickSize:       800,
@@ -407,30 +407,32 @@ func TestArbiterBrickPlacerBrickThreeSets(t *testing.T) {
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, len(ba.BrickSets) == 3,
 		"expected len(ba.BrickSets) == 3, got:", len(ba.BrickSets))
+
+	assertNoRepeatNodesInBrickSet(t, dsrc, ba)
 }
 
 func TestArbiterBrickPlacerBrickThreeSetsOnArbiterDevice(t *testing.T) {
 	dsrc := NewTestDeviceSource()
 	addDev := dsrc.MultiAdd("10000000")
 	// data nodes
-	addDev("11111111", "/dev/d1", 10001)
-	addDev("21111111", "/dev/d2", 10002)
+	addDev("11111111", "/dev/d1", 100*GB)
+	addDev("21111111", "/dev/d2", 100*GB)
 	addDev = dsrc.MultiAdd("20000000")
-	addDev("31111111", "/dev/d1", 10001)
-	addDev("41111111", "/dev/d2", 10002)
+	addDev("31111111", "/dev/d1", 100*GB)
+	addDev("41111111", "/dev/d2", 100*GB)
 	addDev = dsrc.MultiAdd("30000000")
-	addDev("51111111", "/dev/d1", 10001)
-	addDev("61111111", "/dev/d2", 10002)
+	addDev("51111111", "/dev/d1", 100*GB)
+	addDev("61111111", "/dev/d2", 100*GB)
 	addDev = dsrc.MultiAdd("40000000")
-	addDev("71111111", "/dev/d1", 10001)
-	addDev("81111111", "/dev/d2", 10002)
+	addDev("71111111", "/dev/d1", 100*GB)
+	addDev("81111111", "/dev/d2", 100*GB)
 	// arbiter nodes
 	addDev = dsrc.MultiAdd("50000000")
-	addDev("a1111111", "/dev/d1", 10001)
+	addDev("a1111111", "/dev/d1", 100*GB)
 	addDev = dsrc.MultiAdd("60000000")
-	addDev("a2111111", "/dev/d1", 10001)
+	addDev("a2111111", "/dev/d1", 100*GB)
 	addDev = dsrc.MultiAdd("70000000")
-	addDev("a3111111", "/dev/d1", 10001)
+	addDev("a3111111", "/dev/d1", 100*GB)
 	// the above configuration is pretty artificial and reflects
 	// a downside to the current approach. because of the
 	// non-deterministic way the ring provides devices and
@@ -441,7 +443,7 @@ func TestArbiterBrickPlacerBrickThreeSetsOnArbiterDevice(t *testing.T) {
 	// improve this but not now and not for this test. :-\
 
 	opts := &TestPlacementOpts{
-		brickSize:       800,
+		brickSize:       10 * GB,
 		brickSnapFactor: 0.3,
 		brickOwner:      "asdfasdf",
 		setSize:         3,
@@ -471,6 +473,7 @@ func TestArbiterBrickPlacerBrickThreeSetsOnArbiterDevice(t *testing.T) {
 			}
 		}
 	}
+	assertNoRepeatNodesInBrickSet(t, dsrc, ba)
 }
 
 func TestArbiterBrickPlacerSimpleReplace(t *testing.T) {
@@ -521,6 +524,9 @@ func TestArbiterBrickPlacerSimpleReplace(t *testing.T) {
 	tests.Assert(t, len(ba2.BrickSets[0].Bricks) == 3,
 		"expected len(ba2.BrickSets[0].Bricks) == 3, got:",
 		len(ba2.BrickSets[0].Bricks))
+
+	assertNoRepeatNodesInBrickSet(t, dsrc, ba)
+	assertNoRepeatNodesInBrickSet(t, dsrc, ba2)
 
 	bs1 := ba.BrickSets[0]
 	bs2 := ba2.BrickSets[0]
@@ -750,4 +756,93 @@ func TestArbiterBrickPlacerReplaceTooFewArbiter(t *testing.T) {
 	tests.Assert(t, len(ba2.BrickSets[0].Bricks) == 3,
 		"expected len(ba2.BrickSets[0].Bricks) == 3, got:",
 		len(ba2.BrickSets[0].Bricks))
+}
+
+func TestArbiterBrickPlacerArbiterBrickPreference(t *testing.T) {
+	dsrc := NewTestDeviceSource()
+	dsrc.QuickAdd(
+		"a1000000",
+		"a1111111",
+		"/dev/foobar",
+		21000)
+	dsrc.QuickAdd(
+		"a2000000",
+		"a2222222",
+		"/dev/foobar",
+		22000)
+	dsrc.QuickAdd(
+		"a3000000",
+		"a3333333",
+		"/dev/foobar",
+		23000)
+	dsrc.QuickAdd(
+		"40000000",
+		"44444444",
+		"/dev/foobar",
+		24000)
+	dsrc.QuickAdd(
+		"50000000",
+		"55555555",
+		"/dev/foobar",
+		25000)
+	dsrc.QuickAdd(
+		"60000000",
+		"66666666",
+		"/dev/foobar",
+		26000)
+
+	opts := &TestPlacementOpts{
+		brickSize:       800,
+		brickSnapFactor: 0.3,
+		brickOwner:      "asdfasdf",
+		setSize:         3,
+		setCount:        1,
+		averageFileSize: 64 * KB,
+	}
+
+	abplacer := NewArbiterBrickPlacer()
+	abplacer.canHostArbiter = func(d *DeviceEntry, ds DeviceSource) bool {
+		// any device *can* host arbiter
+		return true
+	}
+	abplacer.canHostData = func(d *DeviceEntry, ds DeviceSource) bool {
+		// data bricks may not land on "a" devices
+		return d.Info.Id[0] != 'a'
+	}
+
+	for i := 0; i < 3; i++ {
+		ba, err := abplacer.PlaceAll(dsrc, opts, nil)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(ba.BrickSets) == 1,
+			"expected len(ba.BrickSets) == 1, got:", len(ba.BrickSets))
+		tests.Assert(t, len(ba.BrickSets[0].Bricks) == 3,
+			"expected len(ba.BrickSets[0].Bricks) == 3, got:",
+			len(ba.BrickSets[0].Bricks))
+
+		bs := ba.BrickSets[0]
+		tests.Assert(t, bs.Bricks[2].Info.DeviceId[0] == 'a',
+			"expected bs.Bricks[2].Info.DeviceId[0] == 'a', got:",
+			bs.Bricks[2].Info.DeviceId)
+	}
+}
+
+func assertNoRepeatNodesInBrickSet(t *testing.T,
+	dsrc DeviceSource, ba *BrickAllocation) {
+
+	// this check is only for arbiter tests so we can assume that there
+	// will be exactly 3 bricks in a brickset on successful placement
+	for _, bs := range ba.BrickSets {
+		d0, err := dsrc.Device(bs.Bricks[0].Info.DeviceId)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		d1, err := dsrc.Device(bs.Bricks[1].Info.DeviceId)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		d2, err := dsrc.Device(bs.Bricks[2].Info.DeviceId)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, d0.NodeId != d1.NodeId,
+			"bricks 0 1 placed on same node:", d0.NodeId)
+		tests.Assert(t, d1.NodeId != d2.NodeId,
+			"bricks 1 2 placed on same node:", d1.NodeId)
+		tests.Assert(t, d2.NodeId != d0.NodeId,
+			"bricks 2 0 placed on same node:", d2.NodeId)
+	}
 }

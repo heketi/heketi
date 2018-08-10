@@ -206,7 +206,7 @@ type replacementItems struct {
 
 func (v *VolumeEntry) prepForBrickReplacement(db wdb.DB,
 	executor executors.Executor,
-	oldBrickId string) (ri replacementItems, err error) {
+	oldBrickId string) (ri replacementItems, node string, err error) {
 
 	var oldBrickEntry *BrickEntry
 	var oldDeviceEntry *DeviceEntry
@@ -233,7 +233,7 @@ func (v *VolumeEntry) prepForBrickReplacement(db wdb.DB,
 		return
 	}
 
-	node := oldBrickNodeEntry.ManageHostName()
+	node = oldBrickNodeEntry.ManageHostName()
 	err = executor.GlusterdCheck(node)
 	if err != nil {
 		node, err = GetVerifiedManageHostname(db, executor, oldBrickNodeEntry.Info.ClusterId)
@@ -311,7 +311,7 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 		return fmt.Errorf("replace brick is not supported for volume durability type %v", v.Info.Durability.Type)
 	}
 
-	ri, err := v.prepForBrickReplacement(
+	ri, node, err := v.prepForBrickReplacement(
 		db, executor, oldBrickId)
 	if err != nil {
 		return err
@@ -374,7 +374,6 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 	newBrick.Path = newBrickEntry.Info.Path
 	newBrick.Host = newBrickNodeEntry.StorageHostName()
 
-	node := oldBrickNodeEntry.ManageHostName()
 	err = executor.VolumeReplaceBrick(node, v.Info.Name, &oldBrick, &newBrick)
 	if err != nil {
 		return err
@@ -383,7 +382,10 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 	// After this point we should not call any defer func()
 	// We don't have a *revert* of replace brick operation
 
-	_ = oldBrickEntry.Destroy(db, executor)
+	spaceReclaimed, err := oldBrickEntry.Destroy(db, executor)
+	if err != nil {
+		logger.LogError("Error destroying old brick: %v", err)
+	}
 
 	// We must read entries from db again as state on disk might
 	// have changed
@@ -401,6 +403,17 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 		err = reReadNewDeviceEntry.Save(tx)
 		if err != nil {
 			return err
+		}
+		if spaceReclaimed {
+			oldDevice2, err := NewDeviceEntryFromId(tx, oldBrickEntry.Info.DeviceId)
+			if err != nil {
+				return err
+			}
+			oldDevice2.StorageFree(oldBrickEntry.TotalSize())
+			err = oldDevice2.Save(tx)
+			if err != nil {
+				return err
+			}
 		}
 
 		reReadVolEntry, err := NewVolumeEntryFromId(tx, newBrickEntry.Info.VolumeId)
@@ -486,22 +499,7 @@ func (v *VolumeEntry) allocBricks(
 }
 
 func (v *VolumeEntry) removeBrickFromDb(tx *bolt.Tx, brick *BrickEntry) error {
-
-	// Access device
-	device, err := NewDeviceEntryFromId(tx, brick.Info.DeviceId)
-	if err != nil {
-		logger.Err(err)
-		return err
-	}
-
-	// Deallocate space on device
-	device.StorageFree(brick.TotalSize())
-
-	// Delete brick from device
-	device.BrickDelete(brick.Info.Id)
-
-	// Save device
-	err = device.Save(tx)
+	err := brick.RemoveFromDevice(tx)
 	if err != nil {
 		logger.Err(err)
 		return err

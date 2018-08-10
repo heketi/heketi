@@ -24,4 +24,12 @@ var (
 	ErrAccessList       = errors.New("Unable to access list")
 	ErrKeyExists        = errors.New("Key already exists in the database")
 	ErrNoReplacement    = errors.New("No Replacement was found for resource requested to be removed")
+	ErrCloneBlockVol    = errors.New("Cloning of block hosting volumes is not supported")
+
+	// well known errors for cluster device source
+	ErrEmptyCluster = errors.New("No nodes in cluster")
+	ErrNoStorage    = errors.New("No online storage devices in cluster")
+
+	// returned by code related to operations load
+	ErrTooManyOperations = errors.New("Server handling too many operations")
 )

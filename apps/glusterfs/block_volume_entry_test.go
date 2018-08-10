@@ -343,6 +343,7 @@ func TestBlockVolumeEntryDestroy(t *testing.T) {
 
 		// Check there are no bricks
 		bricks, err := BrickList(tx)
+		tests.Assert(t, err == nil)
 		tests.Assert(t, len(bricks) == 0)
 
 		return nil

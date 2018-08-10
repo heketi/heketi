@@ -17,8 +17,20 @@ _sudo() {
     fi
 }
 
+wait_for_heketi() {
+    for i in $(seq 0 30); do
+        sleep 1
+        ss -tlnp "( sport = :8080 )" | grep -q heketi
+        if [[ $? -eq 0 ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
 HEKETI_PID=
 start_heketi() {
+    HEKETI_PID=
     ( cd "$HEKETI_SERVER_BUILD_DIR" && make && cp heketi "$HEKETI_SERVER" )
     if [ $? -ne 0 ] ; then
         fail "Unable to build Heketi"
@@ -28,7 +40,31 @@ start_heketi() {
     rm -f heketi.db > /dev/null 2>&1
     $HEKETI_SERVER --config=config/heketi.json &
     HEKETI_PID=$!
-    sleep 2
+
+    wait_for_heketi
+    if [[ $? -ne 0 ]] ; then
+        echo "ERROR: heketi failed to listen on port 8080" >&2
+        return 1
+    fi
+}
+
+stop_heketi() {
+    if [[ -z "$HEKETI_PID" ]]; then
+        # heketi pid was not set, nothing to stop
+        return 0
+    fi
+
+    kill "$HEKETI_PID"
+    sleep 0.2
+    for i in $(seq 1 5); do
+        if [[ ! -d "/proc/${HEKETI_PID}" ]]; then
+            break
+        fi
+        echo "WARNING: Heketi server may still be running."
+        ps -f "$HEKETI_PID"
+        kill "$HEKETI_PID"
+        sleep 1
+    done
 }
 
 start_vagrant() {
@@ -45,8 +81,9 @@ teardown_vagrant() {
 
 run_go_tests() {
     cd tests || fail "Unable to 'cd tests'."
-    go test -timeout=1h -tags functional -v
+    time go test -timeout=2h -tags functional -v
     gotest_result=$?
+    echo "~~~ go test exited with ${gotest_result}"
     cd ..
 }
 
@@ -94,7 +131,7 @@ functional_tests() {
     run_go_tests
     pause_test "$HEKETI_TEST_PAUSE_AFTER"
 
-    kill $HEKETI_PID
+    stop_heketi
     if [[ "$HEKETI_TEST_CLEANUP" != "no" ]]
     then
         teardown

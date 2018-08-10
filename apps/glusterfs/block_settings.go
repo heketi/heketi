@@ -13,5 +13,6 @@ var (
 	// Default block settings
 	CreateBlockHostingVolumes = false
 	// Default 1 TB
-	BlockHostingVolumeSize = 1024
+	BlockHostingVolumeSize    = 1024
+	BlockHostingVolumeOptions = "group gluster-block"
 )

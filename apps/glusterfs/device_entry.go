@@ -329,9 +329,12 @@ func (d *DeviceEntry) BrickDelete(id string) {
 	d.Bricks = utils.SortedStringsDelete(d.Bricks, id)
 }
 
-func (d *DeviceEntry) StorageSet(amount uint64) {
-	d.Info.Storage.Free = amount
-	d.Info.Storage.Total = amount
+func (d *DeviceEntry) StorageSet(total uint64, free uint64, used uint64) {
+	godbc.Check(total == free+used)
+
+	d.Info.Storage.Total = total
+	d.Info.Storage.Free = free
+	d.Info.Storage.Used = used
 }
 
 func (d *DeviceEntry) StorageAllocate(amount uint64) {
@@ -571,9 +574,19 @@ func (d *DeviceEntry) DeleteBricksWithEmptyPath(tx *bolt.Tx) error {
 	godbc.Require(tx != nil)
 	var bricksToDelete []*BrickEntry
 
+	logger.Debug("Deleting bricks with empty path on device [%v].",
+		d.Info.Id)
+
 	for _, id := range d.Bricks {
 		brick, err := NewBrickEntryFromId(tx, id)
+		if err == ErrNotFound {
+			logger.Warning("Ignoring nonexistent brick [%v] on "+
+				"disk [%d].", id, d.Info.Id)
+			continue
+		}
 		if err != nil {
+			logger.LogError("Unable to fetch brick [%v] from db: %v",
+				id, err)
 			return err
 		}
 		if brick.Info.Path == "" {
@@ -581,6 +594,8 @@ func (d *DeviceEntry) DeleteBricksWithEmptyPath(tx *bolt.Tx) error {
 		}
 	}
 	for _, brick := range bricksToDelete {
+		logger.Debug("Deleting brick [%v] which has empty path.",
+			brick.Info.Id)
 		err := brick.Delete(tx)
 		if err != nil {
 			return logger.LogError("Unable to remove brick %v: %v", brick.Info.Id, err)

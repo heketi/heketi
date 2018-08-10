@@ -16,7 +16,6 @@ import (
 	"os"
 	"strings"
 
-	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/kubernetes"
 	"github.com/spf13/cobra"
@@ -100,6 +99,11 @@ func init() {
 	volumeExpandCommand.SilenceUsage = true
 	volumeInfoCommand.SilenceUsage = true
 	volumeListCommand.SilenceUsage = true
+
+	volumeCommand.AddCommand(volumeCloneCommand)
+	volumeCloneCommand.Flags().StringVar(&volname, "name", "",
+		"\n\tOptional: Name of the newly cloned volume.")
+	volumeCloneCommand.SilenceUsage = true
 }
 
 var volumeCommand = &cobra.Command{
@@ -181,7 +185,10 @@ var volumeCreateCommand = &cobra.Command{
 		}
 
 		// Create a client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		// Add volume
 		volume, err := heketi.VolumeCreate(req)
@@ -247,10 +254,13 @@ var volumeDeleteCommand = &cobra.Command{
 		volumeId := cmd.Flags().Arg(0)
 
 		// Create a client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		//set url
-		err := heketi.VolumeDelete(volumeId)
+		err = heketi.VolumeDelete(volumeId)
 		if err == nil {
 			fmt.Fprintf(stdout, "Volume %v deleted\n", volumeId)
 		}
@@ -281,7 +291,10 @@ var volumeExpandCommand = &cobra.Command{
 		req.Size = expandSize
 
 		// Create client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		// Expand volume
 		volume, err := heketi.VolumeExpand(id, req)
@@ -318,7 +331,10 @@ var volumeInfoCommand = &cobra.Command{
 		volumeId := cmd.Flags().Arg(0)
 
 		// Create a client to talk to Heketi
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		// Create cluster
 		info, err := heketi.VolumeInfo(volumeId)
@@ -347,7 +363,10 @@ var volumeListCommand = &cobra.Command{
 	Example: "  $ heketi-cli volume list",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Create a client
-		heketi := client.NewClient(options.Url, options.User, options.Key)
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
 
 		// List volumes
 		list, err := heketi.VolumeList()
@@ -380,6 +399,51 @@ var volumeListCommand = &cobra.Command{
 			}
 		}
 
+		return nil
+	},
+}
+
+var volumeCloneCommand = &cobra.Command{
+	Use:     "clone",
+	Short:   "Creates a clone",
+	Long:    "Creates a clone",
+	Example: "  $ heketi-cli volume clone 886a86a868711bef83001",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		//ensure proper number of args
+		s := cmd.Flags().Args()
+		if len(s) < 1 {
+			return errors.New("Volume id missing")
+		}
+
+		// Set volume id
+		volumeId := cmd.Flags().Arg(0)
+
+		// Create request
+		req := &api.VolumeCloneRequest{}
+		if volname != "" {
+			req.Name = volname
+		}
+
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
+
+		// Clone the volume
+		volume, err := heketi.VolumeClone(volumeId, req)
+		if err != nil {
+			return err
+		}
+
+		if options.Json {
+			data, err := json.Marshal(volume)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(stdout, string(data))
+		} else {
+			fmt.Fprintf(stdout, "%v", volume)
+		}
 		return nil
 	},
 }

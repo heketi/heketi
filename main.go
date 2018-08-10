@@ -10,31 +10,26 @@
 package main
 
 import (
-	"encoding/json"
+	crand "crypto/rand"
 	"fmt"
+	"math/big"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/heketi/heketi/apps/glusterfs"
-	"github.com/heketi/heketi/middleware"
 	"github.com/spf13/cobra"
 	"github.com/urfave/negroni"
-
 	restclient "k8s.io/client-go/rest"
-)
 
-type Config struct {
-	Port                 string                   `json:"port"`
-	AuthEnabled          bool                     `json:"use_auth"`
-	JwtConfig            middleware.JwtAuthConfig `json:"jwt"`
-	BackupDbToKubeSecret bool                     `json:"backup_db_to_kube_secret"`
-	EnableTls            bool                     `json:"enable_tls"`
-	CertFile             string                   `json:"cert_file"`
-	KeyFile              string                   `json:"key_file"`
-}
+	"github.com/heketi/heketi/apps/glusterfs"
+	"github.com/heketi/heketi/middleware"
+	"github.com/heketi/heketi/pkg/metrics"
+	"github.com/heketi/heketi/server/config"
+)
 
 var (
 	HEKETI_VERSION               = "(dev)"
@@ -244,7 +239,7 @@ func init() {
 	deletePendingEntriesCmd.SilenceUsage = true
 }
 
-func setWithEnvVariables(options *Config) {
+func setWithEnvVariables(options *config.Config) {
 	// Check for user key
 	env := os.Getenv("HEKETI_USER_KEY")
 	if "" != env {
@@ -271,18 +266,17 @@ func setWithEnvVariables(options *Config) {
 	}
 }
 
-func setupApp(fp *os.File) (a *glusterfs.App) {
+func setupApp(config *config.Config) (a *glusterfs.App) {
 	defer func() {
 		err := recover()
-		if a == nil || err != nil {
+		if a == nil {
 			fmt.Fprintln(os.Stderr, "ERROR: Unable to start application")
+			os.Exit(1)
+		} else if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: Unable to start application: %s\n", err)
 			os.Exit(1)
 		}
 	}()
-
-	// Go to the beginning of the file when we pass it
-	// to the application
-	fp.Seek(0, os.SEEK_SET)
 
 	// If one really needs to disable the health monitor for
 	// the server binary we provide only this env var.
@@ -291,7 +285,26 @@ func setupApp(fp *os.File) (a *glusterfs.App) {
 		glusterfs.MonitorGlusterNodes = true
 	}
 
-	return glusterfs.NewApp(fp)
+	a = glusterfs.NewApp(config.GlusterFS)
+	if a != nil {
+		if err := a.ServerReset(); err != nil {
+			fmt.Fprintln(os.Stderr, "ERROR: Failed to reset server application")
+			os.Exit(1)
+		}
+	}
+	return a
+}
+
+func randSeed() {
+	// from rand.Seed docs: "Seed values that have the same remainder when
+	// divided by 2^31-1 generate the same pseudo-random sequence."
+	max := big.NewInt(1<<31 - 1)
+	n, err := crand.Int(crand.Reader, max)
+	if err != nil {
+		rand.Seed(time.Now().UnixNano())
+	} else {
+		rand.Seed(n.Int64())
+	}
 }
 
 func main() {
@@ -305,27 +318,17 @@ func main() {
 		return
 	}
 
-	// Read configuration
-	fp, err := os.Open(configfile)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Unable to open config file %v: %v\n",
-			configfile,
-			err.Error())
-		os.Exit(1)
-	}
-	defer fp.Close()
+	// Seed PRNG
+	randSeed()
 
-	configParser := json.NewDecoder(fp)
-	var options Config
-	if err = configParser.Decode(&options); err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Unable to parse %v: %v\n",
-			configfile,
-			err.Error())
+	// Read configuration
+	options, err := config.ReadConfig(configfile)
+	if err != nil {
 		os.Exit(1)
 	}
 
 	// Substitute values using any set environment variables
-	setWithEnvVariables(&options)
+	setWithEnvVariables(options)
 
 	// Use negroni to add middleware.  Here we add two
 	// middlewares: Recovery and Logger, which come with
@@ -333,7 +336,7 @@ func main() {
 	n := negroni.New(negroni.NewRecovery(), negroni.NewLogger())
 
 	// Setup a new GlusterFS application
-	app := setupApp(fp)
+	app := setupApp(options)
 
 	// Add /hello router
 	router := mux.NewRouter()
@@ -343,6 +346,8 @@ func main() {
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprint(w, "Hello from Heketi")
 		})
+
+	router.Methods("GET").Path("/metrics").Name("Metrics").HandlerFunc(metrics.NewMetricsHandler(app))
 
 	// Create a router and do not allow any routes
 	// unless defined.
