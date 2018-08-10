@@ -13,8 +13,11 @@
 package cmds
 
 import (
+	"fmt"
 	"os"
 	"text/template"
+
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 
 	"github.com/spf13/cobra"
 )
@@ -60,10 +63,65 @@ var operationsInfoCommand = &cobra.Command{
 	},
 }
 
+var modeCommand = &cobra.Command{
+	Use:   "mode",
+	Short: "Manage server mode",
+	Long:  "Manage server mode",
+}
+
+var getModeCommand = &cobra.Command{
+	Use:     "get",
+	Short:   "Print current server mode",
+	Long:    "Print current server mode",
+	Example: `  $ heketi-cli server operations info`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
+		adminStatus, err := heketi.AdminStatusGet()
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%v\n", adminStatus.State)
+		return nil
+	},
+}
+
+var setModeCommand = &cobra.Command{
+	Use:     "set [normal|local-client|read-only]",
+	Short:   "Print current server mode",
+	Long:    "Print current server mode",
+	Example: `  $ heketi-cli server operations info`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) < 1 {
+			return fmt.Errorf("missing mode argument")
+		}
+		if len(args) > 1 {
+			return fmt.Errorf("too many arguments")
+		}
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
+		value := api.AdminState(args[0])
+		err = heketi.AdminStatusSet(&api.AdminStatus{State: value})
+		return err
+	},
+}
+
 func init() {
 	RootCmd.AddCommand(serverCommand)
+	// operations command(s)
 	serverCommand.AddCommand(operationsCommand)
 	operationsCommand.SilenceUsage = true
 	operationsCommand.AddCommand(operationsInfoCommand)
 	operationsInfoCommand.SilenceUsage = true
+	// admin mode command(s)
+	serverCommand.AddCommand(modeCommand)
+	modeCommand.SilenceUsage = true
+	modeCommand.AddCommand(getModeCommand)
+	getModeCommand.SilenceUsage = true
+	modeCommand.AddCommand(setModeCommand)
+	setModeCommand.SilenceUsage = true
 }

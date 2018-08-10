@@ -579,3 +579,22 @@ type OperationsInfo struct {
 	Stale uint64 `json:"stale"`
 	New   uint64 `json:"new"`
 }
+
+type AdminState string
+
+const (
+	AdminStateNormal   AdminState = "normal"
+	AdminStateReadOnly AdminState = "read-only"
+	AdminStateLocal    AdminState = "local-client"
+)
+
+type AdminStatus struct {
+	State AdminState `json:"state"`
+}
+
+func (as AdminStatus) Validate() error {
+	return validation.ValidateStruct(&as,
+		validation.Field(&as.State,
+			validation.Required,
+			validation.In(AdminStateNormal, AdminStateReadOnly, AdminStateLocal)))
+}
