@@ -36,6 +36,13 @@ func (s *CmdExecutor) BrickCreate(host string,
 	brickPath := brick.Path
 	mountPath := utils.BrickMountFromPath(brickPath)
 
+	var xfsInodeOptions string
+	if brick.Format == executors.ArbiterFormat {
+		xfsInodeOptions = "maxpct=100"
+	} else {
+		xfsInodeOptions = "size=512"
+	}
+
 	// Create command set to execute on the node
 	devnode := utils.BrickDevNode(brick.VgId, brick.Name)
 	commands := []string{
@@ -67,7 +74,7 @@ func (s *CmdExecutor) BrickCreate(host string,
 			brick.LvName),
 
 		// Format
-		fmt.Sprintf("mkfs.xfs -i size=512 -n size=8192 %v", devnode),
+		fmt.Sprintf("mkfs.xfs -i %v -n size=8192 %v", xfsInodeOptions, devnode),
 
 		// Fstab
 		fmt.Sprintf("awk \"BEGIN {print \\\"%v %v xfs rw,inode64,noatime,nouuid 1 2\\\" >> \\\"%v\\\"}\"",
