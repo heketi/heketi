@@ -579,6 +579,11 @@ These APIs inform Heketi to create a network file system of a certain size avail
         * factor: _float32_, _optional_, Snapshot reserved space factor.  When creating a volume with snapshot enabled, the size of the brick will be set to _factor * brickSize_, where brickSize is automatically determined to satisfy the volume size request.  If omitted, it will default to _1.5_.
             * Requirement: Value must be greater than one.
     * clusters: _array of string_, _optional_, UUIDs of clusters where the volume should be created.  If omitted, each cluster will be checked until one is found that can satisfy the request.
+    * secure_communications: _map_, _optional_, Secure communications between client and server settings, overrides default values from config.
+        * enable: _bool_, Disable or enable secure communications,
+        * allowed_identities, _array of string_, _optional_, Client identities allowed to authenticate for given volume. All allowed by default.
+        * certificate_depth, _int_, _optional_, SSL certificate depth.
+        * cipher_list, _string_, _optional_, Allowed SSL cipher suites.
     * Example:
 
 ```json
@@ -597,7 +602,13 @@ These APIs inform Heketi to create a network file system of a certain size avail
     "clusters": [
         "2f84c71240f43e16808bc64b05ad0d06",
         "5a2c52d04075373e80dbfa1e291ba0de"
-    ]
+    ],
+    "secure_communications": {
+        "enable": true,
+        "allowed_identities": ["*"],
+        "certificate_depth": 2,
+        "cipher_list": "HIGH:!SSLv2"
+    }
 }
 ```
 Note:
