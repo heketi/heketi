@@ -34,8 +34,18 @@ if [[ -d "${HEKETI_PATH}" ]]; then
     stat "${HEKETI_PATH}/heketi.db" | tee -a "${HEKETI_PATH}/container.log"
     # Workaround for scenario where a lock on the heketi.db has not been
     # released.
-    flock -w 60 "${HEKETI_PATH}/heketi.db" true
-    if [[ $? -ne 0 ]]; then
+    # This code uses a non-blocking flock in a loop rather than a blocking
+    # lock with timeout due to issues with current gluster and flock
+    # ( see rhbz#1613260 )
+    for _ in $(seq 1 60); do
+        flock --nonblock "${HEKETI_PATH}/heketi.db" true
+        flock_status=$?
+        if [[ $flock_status -eq 0 ]]; then
+            break
+        fi
+        sleep 1
+    done
+    if [[ $flock_status -ne 0 ]]; then
         echo "Database file is read-only" | tee -a "${HEKETI_PATH}/container.log"
     fi
 else
