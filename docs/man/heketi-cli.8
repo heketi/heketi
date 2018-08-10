@@ -470,7 +470,7 @@ $ heketi-cli topology info
 .RE
 .SS "Volume Commands"
 .PP
-\fBheketi\-cli volume create \-\-clusters=<CLUSTER-IDS> \-\-disperse-data=<DISPERSION-VALUE> \-\-durability=<TYPE> \-\-name=<VOLUME-NAME> \-\-redundancy=<REDUNDENCY-VALUE> \-\-replica=<REPLICA-VALUE> \-\-size=<VOLUME-SIZE> \-\-snapshot-factor=<SNAPSHOT-FACTOR-VALUE>\fP
+\fBheketi\-cli volume create \-\-clusters=<CLUSTER-IDS> \-\-disperse-data=<DISPERSION-VALUE> \-\-durability=<TYPE> \-\-name=<VOLUME-NAME> \-\-redundancy=<REDUNDENCY-VALUE> \-\-replica=<REPLICA-VALUE> \-\-size=<VOLUME-SIZE> \-\-snapshot-factor=<SNAPSHOT-FACTOR-VALUE> \-\-secure-communications \-\-auth-allow='*' \-\-cipher-list="HIGH:!SSLv2" \-\-certificate-depth=2\fP
 .RS
 Create a GlusterFS volume
 .PP
@@ -532,6 +532,18 @@ Optional: Amount of storage to allocate for snapshot support.
 Must be greater 1.0.
 For example if a 10TiB volume requires 5TiB of snapshot storage, then snapshot\-factor would be set to 1.5.
 If the value is set to 1, then snapshots will not be enabled for this volume.
+.TP
+\fB\-\-secure-communications\fP[=false]
+Optional: Enable or disable secure communications for volume.
+.TP
+\fB\-\-auth-allow\fP='*'
+Optional: Identities allowed to SSL-authenticate for volume.
+.TP
+\fB\-\-cipher-list\fP="HIGH:!SSLv2"
+Optional: Cipher suites for secure communications.
+.TP
+\fB\-\-certificate-depth\fP=2
+Optional: SSL certificate depth for secure communications.
 .RE
 .PP
 \fBNote:\fP
