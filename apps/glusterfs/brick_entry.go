@@ -290,6 +290,10 @@ func BrickEntryUpgrade(tx *bolt.Tx) error {
 	if err != nil {
 		return err
 	}
+	err = addSubTypeFieldFlagForBrickEntry(tx)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -324,6 +328,23 @@ func addVolumeIdInBrickEntry(tx *bolt.Tx) error {
 				break
 			}
 		}
+	}
+	return nil
+}
+
+func addSubTypeFieldFlagForBrickEntry(tx *bolt.Tx) error {
+	entry, err := NewDbAttributeEntryFromKey(tx, DB_BRICK_HAS_SUBTYPE_FIELD)
+	// This key won't exist if we are introducing the feature now
+	if err != nil && err != ErrNotFound {
+		return err
+	}
+
+	if err == ErrNotFound {
+		// no flag in db. create it with default of "yes"
+		entry = NewDbAttributeEntry()
+		entry.Key = DB_BRICK_HAS_SUBTYPE_FIELD
+		entry.Value = "yes"
+		return entry.Save(tx)
 	}
 	return nil
 }
