@@ -376,7 +376,8 @@ func (v *BlockVolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error
 // database operation fails.
 func canHostBlockVolume(tx *bolt.Tx, bv *BlockVolumeEntry, vol *VolumeEntry) (bool, error) {
 	if vol.Info.BlockInfo.FreeSize < bv.Info.Size {
-		logger.Warning("Free size is less than the block volume requested")
+		logger.Warning("Free size %v is less than the requested block volume size %v",
+			vol.Info.BlockInfo.FreeSize, bv.Info.Size)
 		return false, nil
 	}
 
