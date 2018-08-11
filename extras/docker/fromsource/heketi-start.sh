@@ -1,4 +1,8 @@
 #!/bin/bash
+#
+# HEKETI_TOPOLOGY_FILE can be passed as an environment variable with the
+# filename of the initial topology.json. In case the heketi.db does not exist
+# yet, this file will be used to populate the database.
 
 : "${HEKETI_PATH:=/var/lib/heketi}"
 : "${BACKUPDB_PATH:=/backupdb}"
@@ -74,4 +78,33 @@ if [[ -d "${BACKUPDB_PATH}" ]]; then
     fi
 fi
 
-/usr/bin/heketi --config=/etc/heketi/heketi.json
+# if the heketi.db does not exist and HEKETI_TOPOLOGY_FILE is set, start the
+# heketi service in the background and load the topology. Once done, move the
+# heketi service back to the foreground again.
+if [[ "$(stat -c %s ${HEKETI_PATH}/heketi.db)" == 0 && -n "${HEKETI_TOPOLOGY_FILE}" ]]; then
+    # start hketi in the background
+    /usr/bin/heketi --config=/etc/heketi/heketi.json &
+
+    # wait until heketi replies
+    while ! curl http://localhost:8080/hello; do
+        sleep 0.5
+    done
+
+    # load the topology
+    if [[ -n "${HEKETI_ADMIN_KEY}" ]]; then
+        HEKETI_SECRET_ARG="--secret='${HEKETI_ADMIN_KEY}'"
+    fi
+    heketi-cli --user=admin "${HEKETI_SECRET_ARG}" topology load --json="${HEKETI_TOPOLOGY_FILE}"
+    if [[ $? -ne 0 ]]; then
+        # something failed, need to exit with an error
+        kill %1
+        echo "failed to load topology from ${HEKETI_TOPOLOGY_FILE}"
+        exit 1
+    fi
+
+    # bring heketi back to the foreground
+    fg %1
+else
+    # just start in the foreground
+    exec /usr/bin/heketi --config=/etc/heketi/heketi.json
+fi
