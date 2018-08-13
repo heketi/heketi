@@ -297,6 +297,11 @@ func (bp *ArbiterBrickPlacer) tryPlaceBrickOnDevice(
 			brickSize, snapFactor, device.Info.Id)
 		return tryPlaceAgain
 	}
+	if index == arbiter_index {
+		brick.SubType = ArbiterSubType
+	} else {
+		brick.SubType = NormalSubType
+	}
 
 	if opts.recordBrick {
 		device.BrickAdd(brick.Id())

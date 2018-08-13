@@ -134,6 +134,13 @@ func UpgradeDB(tx *bolt.Tx) error {
 		return err
 	}
 
+	err = fixIncorrectBlockHostingFreeSize(tx)
+	if err != nil {
+		logger.LogError(
+			"Failed to fix incorrect sizes for block hosting volumes %v", err)
+		return err
+	}
+
 	return nil
 }
 
@@ -174,4 +181,49 @@ func OpenDB(dbfilename string, ReadOnly bool) (dbhandle *bolt.DB, err error) {
 	}
 	return dbhandle, err
 
+}
+
+// fixIncorrectBlockHostingFreeSize attempts to fix invalid block hosting volume
+// free size amounts by checking them against the block volumes.
+func fixIncorrectBlockHostingFreeSize(tx *bolt.Tx) error {
+	vols, err := VolumeList(tx)
+	if err != nil {
+		return err
+	}
+	for _, vid := range vols {
+		vol, err := NewVolumeEntryFromId(tx, vid)
+		if err != nil {
+			return err
+		}
+		if !vol.Info.Block {
+			continue // ignore non-block hosting volumes
+		}
+		bvsum, err := vol.TotalSizeBlockVolumes(tx)
+		if err != nil {
+			return err
+		}
+		if !vol.blockHostingSizeIsCorrect(bvsum) {
+			newSize := vol.Info.Size - (vol.Info.BlockInfo.ReservedSize + bvsum)
+			if newSize < 0 {
+				logger.Warning(
+					"new size [%v] is invalid, not changing volume [%v]",
+					newSize, vol.Info.Id)
+				continue
+			}
+			if newSize > vol.Info.Size {
+				logger.Warning(
+					"new size [%v] is too large [>%v], not changing volume [%v]",
+					newSize, vol.Info.Size, vol.Info.Id)
+				continue
+			}
+			logger.Info("changing free size of volume [%v] to [%v]",
+				vol.Info.Id, newSize)
+			vol.Info.BlockInfo.FreeSize = newSize
+			err = vol.Save(tx)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

@@ -2530,3 +2530,227 @@ func TestVolumeCreateMultiClusterErrorsDevices(t *testing.T) {
 			etext)
 	}
 }
+
+func TestVolumeCreateRollbackSpaceReclaimed(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	mockerror := errors.New("MOCK")
+	app.xo.MockVolumeCreate = func(host string, volume *executors.VolumeRequest) (*executors.Volume, error) {
+		return nil, mockerror
+	}
+
+	err := setupSampleDbWithTopology(app,
+		2,    // clusters
+		3,    // nodes_per_cluster
+		4,    // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got", err)
+
+	err = app.db.View(func(tx *bolt.Tx) error {
+		devices, e := DeviceList(tx)
+		if e != nil {
+			return e
+		}
+
+		for _, id := range devices {
+			device, e := NewDeviceEntryFromId(tx, id)
+			if e != nil {
+				return e
+			}
+			tests.Assert(t, device.Info.Storage.Free == 6*TB, id, device)
+		}
+		return nil
+	})
+	tests.Assert(t, err == nil, "expected err == nil, got", err)
+
+	req := &api.VolumeCreateRequest{}
+	req.Size = 1024
+	req.Durability.Type = api.DurabilityReplicate
+	req.Durability.Replicate.Replica = 3
+
+	vol := NewVolumeEntryFromRequest(req)
+	vc := NewVolumeCreateOperation(vol, app.db)
+
+	e := vc.Build()
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	e = vc.Exec(app.executor)
+	tests.Assert(t, e != nil, "expected e != nil, got", e)
+
+	e = vc.Rollback(app.executor)
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	err = app.db.View(func(tx *bolt.Tx) error {
+		pol, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pol) == 0, "expected len(pol) == 0, got", len(pol))
+
+		devices, e := DeviceList(tx)
+		if e != nil {
+			return e
+		}
+
+		for _, id := range devices {
+			device, e := NewDeviceEntryFromId(tx, id)
+			if e != nil {
+				return e
+			}
+			tests.Assert(t, device.Info.Storage.Free == 6*TB, id, device)
+		}
+		return nil
+	})
+	tests.Assert(t, err == nil, "expected err == nil, got", err)
+}
+
+func TestBlockVolumeCreateRollbackSpaceReclaimed(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	mockerror := errors.New("MOCK")
+	app.xo.MockBlockVolumeCreate = func(host string, blockVolume *executors.BlockVolumeRequest) (*executors.BlockVolumeInfo, error) {
+		return nil, mockerror
+	}
+
+	err := setupSampleDbWithTopology(app,
+		2,    // clusters
+		3,    // nodes_per_cluster
+		4,    // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got", err)
+
+	err = app.db.View(func(tx *bolt.Tx) error {
+		devices, e := DeviceList(tx)
+		if e != nil {
+			return e
+		}
+
+		for _, id := range devices {
+			device, e := NewDeviceEntryFromId(tx, id)
+			if e != nil {
+				return e
+			}
+			tests.Assert(t, device.Info.Storage.Free == 6*TB, id, device)
+		}
+		return nil
+	})
+	tests.Assert(t, err == nil, "expected err == nil, got", err)
+	bv := createSampleBlockVolumeEntry(500)
+	bv.Info.Name = "myvol"
+	bc := NewBlockVolumeCreateOperation(bv, app.db)
+
+	e := bc.Build()
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	e = bc.Exec(app.executor)
+	tests.Assert(t, e != nil, "expected e != nil, got", e)
+
+	e = bc.Rollback(app.executor)
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	err = app.db.View(func(tx *bolt.Tx) error {
+		pol, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pol) == 0, "expected len(pol) == 0, got", len(pol))
+
+		devices, e := DeviceList(tx)
+		if e != nil {
+			return e
+		}
+
+		for _, id := range devices {
+			device, e := NewDeviceEntryFromId(tx, id)
+			if e != nil {
+				return e
+			}
+			tests.Assert(t, device.Info.Storage.Free == 6*TB, id, device)
+		}
+		return nil
+	})
+	tests.Assert(t, err == nil, "expected err == nil, got", err)
+}
+
+func TestVolumeEntryBlockCapacityLimits(t *testing.T) {
+	var (
+		err   error
+		v     *VolumeEntry
+		mkVol = func() *VolumeEntry {
+			v := NewVolumeEntry()
+			v.Info.Name = "Foo"
+			v.Info.Size = 100
+			v.Info.Block = true
+			return v
+		}
+	)
+
+	t.Run("AddCapacityOver", func(t *testing.T) {
+		v = mkVol()
+		v.SetRawCapacity(100)
+		err = v.AddRawCapacity(5)
+		tests.Assert(t, err != nil, "expected err != nil, got", err)
+	})
+	t.Run("AddCapacity", func(t *testing.T) {
+		v = mkVol()
+		v.SetRawCapacity(95)
+		err = v.AddRawCapacity(5)
+		tests.Assert(t, err == nil, "expected err == nil, got", err)
+	})
+	t.Run("SetCapacityOver", func(t *testing.T) {
+		v = mkVol()
+		err = v.SetRawCapacity(101)
+		tests.Assert(t, err != nil, "expected err != nil, got", err)
+	})
+	t.Run("TakeFreeSpace", func(t *testing.T) {
+		v = mkVol()
+		v.SetRawCapacity(100)
+		err = v.ModifyFreeSize(-10)
+		tests.Assert(t, err == nil, "expected err == nil, got", err)
+	})
+	t.Run("ReturnFreeSpace", func(t *testing.T) {
+		v = mkVol()
+		v.SetRawCapacity(95)
+		err = v.ModifyFreeSize(1)
+		tests.Assert(t, err == nil, "expected err == nil, got", err)
+	})
+	t.Run("TakeTooMuchFreeSpace", func(t *testing.T) {
+		v = mkVol()
+		v.SetRawCapacity(100)
+		err = v.ModifyFreeSize(-1000)
+		tests.Assert(t, err != nil, "expected err != nil, got", err)
+	})
+	t.Run("ReturnTooMuchFreeSpace", func(t *testing.T) {
+		v = mkVol()
+		v.SetRawCapacity(100)
+		err = v.ModifyFreeSize(1)
+		tests.Assert(t, err != nil, "expected err != nil, got", err)
+	})
+	t.Run("TakeFreeSpaceInvalidSize", func(t *testing.T) {
+		v = mkVol()
+		v.SetRawCapacity(100)
+		v.Info.Size = 50
+		err = v.ModifyFreeSize(-1)
+		tests.Assert(t, err != nil, "expected err != nil, got", err)
+	})
+	t.Run("TakeTooMuchReservedSpace", func(t *testing.T) {
+		v = mkVol()
+		v.SetRawCapacity(100)
+		err = v.ModifyReservedSize(-200)
+		tests.Assert(t, err != nil, "expected err != nil, got", err)
+	})
+	t.Run("ReturnTooMuchReservedSpace", func(t *testing.T) {
+		v = mkVol()
+		v.SetRawCapacity(100)
+		err = v.ModifyReservedSize(2)
+		tests.Assert(t, err != nil, "expected err != nil, got", err)
+	})
+}

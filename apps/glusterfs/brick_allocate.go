@@ -204,6 +204,8 @@ func tryAllocateBrickOnDevice(
 		logger.Debug(
 			"Unable to place a brick of size %v & factor %v on device %v",
 			brickSize, snapFactor, device.Info.Id)
+	} else {
+		brick.SubType = NormalSubType
 	}
 	return brick
 }

@@ -12,7 +12,6 @@ package main
 import (
 	crand "crypto/rand"
 	"fmt"
-	"math"
 	"math/big"
 	"math/rand"
 	"net/http"
@@ -29,6 +28,7 @@ import (
 	"github.com/heketi/heketi/apps/glusterfs"
 	"github.com/heketi/heketi/middleware"
 	"github.com/heketi/heketi/pkg/metrics"
+	"github.com/heketi/heketi/server/admin"
 	"github.com/heketi/heketi/server/config"
 )
 
@@ -270,8 +270,11 @@ func setWithEnvVariables(options *config.Config) {
 func setupApp(config *config.Config) (a *glusterfs.App) {
 	defer func() {
 		err := recover()
-		if a == nil || err != nil {
+		if a == nil {
 			fmt.Fprintln(os.Stderr, "ERROR: Unable to start application")
+			os.Exit(1)
+		} else if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: Unable to start application: %s\n", err)
 			os.Exit(1)
 		}
 	}()
@@ -283,15 +286,23 @@ func setupApp(config *config.Config) (a *glusterfs.App) {
 		glusterfs.MonitorGlusterNodes = true
 	}
 
-	return glusterfs.NewApp(config.GlusterFS)
+	a = glusterfs.NewApp(config.GlusterFS)
+	if a != nil {
+		if err := a.ServerReset(); err != nil {
+			fmt.Fprintln(os.Stderr, "ERROR: Failed to reset server application")
+			os.Exit(1)
+		}
+	}
+	return a
 }
 
 func randSeed() {
-	var max big.Int
-	max.Add(big.NewInt(math.MaxInt64), big.NewInt(1))
-	n, err := crand.Int(crand.Reader, &max)
+	// from rand.Seed docs: "Seed values that have the same remainder when
+	// divided by 2^31-1 generate the same pseudo-random sequence."
+	max := big.NewInt(1<<31 - 1)
+	n, err := crand.Int(crand.Reader, max)
 	if err != nil {
-		rand.Seed(time.Now().UTC().UnixNano())
+		rand.Seed(time.Now().UnixNano())
 	} else {
 		rand.Seed(n.Int64())
 	}
@@ -365,6 +376,10 @@ func main() {
 		fmt.Println("Authorization loaded")
 	}
 
+	adminss := admin.New()
+	n.Use(adminss)
+	adminss.SetRoutes(heketiRouter)
+
 	if options.BackupDbToKubeSecret {
 		// Check if running in a Kubernetes environment
 		_, err = restclient.InClusterConfig()
@@ -379,6 +394,9 @@ func main() {
 
 	// Setup complete routing
 	router.NewRoute().Handler(n)
+
+	// Reset admin mode on SIGUSR2
+	admin.ResetStateOnSignal(adminss, syscall.SIGUSR2)
 
 	// Shutdown on CTRL-C signal
 	// For a better cleanup, we should shutdown the server and

@@ -272,7 +272,9 @@ func (v *BlockVolumeEntry) saveCreateBlockVolume(db wdb.DB) error {
 			return err
 		}
 
-		volume.ModifyFreeSize(-v.Info.Size)
+		if err := volume.ModifyFreeSize(-v.Info.Size); err != nil {
+			return err
+		}
 
 		volume.BlockVolumeAdd(v.Info.Id)
 		err = volume.Save(tx)
@@ -343,7 +345,9 @@ func (v *BlockVolumeEntry) removeComponents(db wdb.DB, keepSize bool) error {
 			// Do not return here.. keep going
 		}
 		if !keepSize {
-			blockHostingVolume.ModifyFreeSize(v.Info.Size)
+			if err := blockHostingVolume.ModifyFreeSize(v.Info.Size); err != nil {
+				return err
+			}
 		}
 		blockHostingVolume.Save(tx)
 
@@ -372,7 +376,8 @@ func (v *BlockVolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error
 // database operation fails.
 func canHostBlockVolume(tx *bolt.Tx, bv *BlockVolumeEntry, vol *VolumeEntry) (bool, error) {
 	if vol.Info.BlockInfo.FreeSize < bv.Info.Size {
-		logger.Warning("Free size is less than the block volume requested")
+		logger.Warning("Free size %v is less than the requested block volume size %v",
+			vol.Info.BlockInfo.FreeSize, bv.Info.Size)
 		return false, nil
 	}
 
@@ -389,4 +394,38 @@ func canHostBlockVolume(tx *bolt.Tx, bv *BlockVolumeEntry, vol *VolumeEntry) (bo
 	}
 
 	return true, nil
+}
+
+func (v *BlockVolumeEntry) updateHosts(hosts []string) {
+	v.Info.BlockVolume.Hosts = hosts
+}
+
+// hasPendingBlockHostingVolume returns true if the db contains pending
+// block hosting volumes.
+func hasPendingBlockHostingVolume(tx *bolt.Tx) (bool, error) {
+	pmap, err := MapPendingVolumes(tx)
+	if err != nil {
+		return false, err
+	}
+	// filter out any volumes that are not marked for block
+	for volId, popId := range pmap {
+		vol, err := NewVolumeEntryFromId(tx, volId)
+		if err != nil {
+			return false, err
+		}
+		if !vol.Info.Block {
+			// drop volumes that are not BHVs
+			delete(pmap, volId)
+		}
+		pop, err := NewPendingOperationEntryFromId(tx, popId)
+		if err != nil {
+			return false, err
+		}
+		if pop.Status != NewOperation {
+			// drop pending operations that are not being worked on
+			// e.g. stale pending ops
+			delete(pmap, volId)
+		}
+	}
+	return (len(pmap) != 0), nil
 }

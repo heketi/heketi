@@ -25,6 +25,7 @@ import (
 	"github.com/heketi/heketi/middleware"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/server/admin"
 	"github.com/heketi/tests"
 	"github.com/urfave/negroni"
 )
@@ -59,11 +60,15 @@ func setupHeketiServerAndMiddleware(
 	jwtconfig.Admin.PrivateKey = TEST_ADMIN_KEY
 	jwtconfig.User.PrivateKey = "userkey"
 
+	adminss := admin.New()
+	adminss.SetRoutes(router)
+
 	// Setup middleware
 	n.Use(middleware.NewJwtAuth(jwtconfig))
 	if m != nil {
 		n.Use(m)
 	}
+	n.Use(adminss)
 	n.UseFunc(app.Auth)
 	n.UseHandler(router)
 
@@ -608,7 +613,7 @@ func TestClientVolume(t *testing.T) {
 				defer sg.Done()
 
 				deviceReq := &api.DeviceAddRequest{}
-				deviceReq.Name = "/sd" + utils.GenUUID()
+				deviceReq.Name = "/dev/by-magic/id:" + utils.GenUUID()
 				deviceReq.NodeId = node.Id
 
 				// Create device
@@ -1144,4 +1149,43 @@ func TestRetryAfterThrottle(t *testing.T) {
 	tests.Assert(t, err != nil, "expected err != nil, got", err)
 	tests.Assert(t, err.Error() == "Too Many Requests", "expected err == 'Too Many Requests', got", err)
 	tests.Assert(t, ictr == 1, "expected ictr == 1, got", ictr)
+}
+
+func TestAdminStatus(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+
+	// Setup the server
+	ts := setupHeketiServer(app)
+	defer ts.Close()
+
+	c := NewClient(ts.URL, "admin", TEST_ADMIN_KEY)
+	tests.Assert(t, c != nil, "NewClient failed:", c)
+
+	as, err := c.AdminStatusGet()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, as.State == api.AdminStateNormal,
+		"expected as.State == api.AdminStateNormal, got:", as.State)
+
+	as.State = api.AdminStateLocal
+	err = c.AdminStatusSet(as)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	as, err = c.AdminStatusGet()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, as.State == api.AdminStateLocal,
+		"expected as.State == api.AdminStateNormal, got:", as.State)
+
+	as.State = api.AdminStateNormal
+	err = c.AdminStatusSet(as)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	as, err = c.AdminStatusGet()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, as.State == api.AdminStateNormal,
+		"expected as.State == api.AdminStateNormal, got:", as.State)
 }

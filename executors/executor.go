@@ -56,6 +56,13 @@ type DeviceInfo struct {
 	ExtentSize uint64
 }
 
+type BrickFormatType int
+
+const (
+	NormalFormat BrickFormatType = iota
+	ArbiterFormat
+)
+
 // Brick description
 type BrickRequest struct {
 	VgId             string
@@ -69,6 +76,7 @@ type BrickRequest struct {
 	// lvm names
 	TpName string
 	LvName string
+	Format BrickFormatType
 }
 
 // Returns information about the location of the brick
