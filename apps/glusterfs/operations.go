@@ -341,7 +341,9 @@ func (ve *VolumeExpandOperation) Finalize() error {
 		}
 		ve.vol.Info.Size += sizeDelta
 		if ve.vol.Info.Block == true {
-			ve.vol.AddRawCapacity(sizeDelta)
+			if e := ve.vol.AddRawCapacity(sizeDelta); e != nil {
+				return e
+			}
 		}
 		ve.op.FinalizeVolume(ve.vol)
 		if e := ve.vol.Save(tx); e != nil {
@@ -699,19 +701,29 @@ func (bvc *BlockVolumeCreateOperation) Build() error {
 		if err != nil {
 			return err
 		}
-
+		reducedSize := ReduceRawSize(BlockHostingVolumeSize)
 		if len(volumes) > 0 {
 			bvc.bvol.Info.BlockHostingVolume = volumes[0].Info.Id
 			bvc.bvol.Info.Cluster = volumes[0].Info.Cluster
-		} else if bvc.bvol.Info.Size > ReduceRawSize(BlockHostingVolumeSize) {
+		} else if bvc.bvol.Info.Size > reducedSize {
 			return fmt.Errorf("The size configured for "+
 				"automatic creation of block hosting volumes "+
 				"(%v) is too small to host the requested "+
-				"block volume of size %v. Please create a "+
+				"block volume of size %v. The available "+
+				"size on this block hosting volume, minus overhead, is %v. "+
+				"Please create a "+
 				"sufficiently large block hosting volume "+
 				"manually.",
-				BlockHostingVolumeSize, bvc.bvol.Info.Size)
+				BlockHostingVolumeSize, bvc.bvol.Info.Size, reducedSize)
 		} else {
+			if found, err := hasPendingBlockHostingVolume(tx); found {
+				logger.Warning(
+					"temporarily rejecting block volume request:" +
+						" pending block-hosting-volume found")
+				return ErrTooManyOperations
+			} else if err != nil {
+				return err
+			}
 			vol, err := NewVolumeEntryForBlockHosting(clusters)
 			if err != nil {
 				return err

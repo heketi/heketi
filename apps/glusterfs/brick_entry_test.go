@@ -204,6 +204,7 @@ func TestBrickEntryCreate(t *testing.T) {
 	// Create a brick
 	b := NewBrickEntry(size, tpsize, poolMetadataSize,
 		deviceid, nodeid, gid, volumeid)
+	b.SubType = NormalSubType
 	n := NewNodeEntry()
 	n.Info.Id = nodeid
 	n.Info.Hostnames.Manage = []string{"manage"}

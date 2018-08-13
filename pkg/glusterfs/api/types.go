@@ -28,7 +28,7 @@ import (
 var (
 	// Restricting the deviceName to much smaller subset of Unix Path
 	// as unix path takes almost everything except NULL
-	deviceNameRe = regexp.MustCompile("^/[a-zA-Z0-9_./-]+$")
+	deviceNameRe = regexp.MustCompile("^/[a-zA-Z0-9_.:/-]+$")
 
 	// Volume name constraints decided by looking at
 	// "cli_validate_volname" function in cli-cmd-parser.c of gluster code
@@ -583,4 +583,26 @@ func (v *BlockVolumeInfoResponse) String() string {
 type OperationsInfo struct {
 	Total    uint64 `json:"total"`
 	InFlight uint64 `json:"in_flight"`
+	// state based counts:
+	Stale uint64 `json:"stale"`
+	New   uint64 `json:"new"`
+}
+
+type AdminState string
+
+const (
+	AdminStateNormal   AdminState = "normal"
+	AdminStateReadOnly AdminState = "read-only"
+	AdminStateLocal    AdminState = "local-client"
+)
+
+type AdminStatus struct {
+	State AdminState `json:"state"`
+}
+
+func (as AdminStatus) Validate() error {
+	return validation.ValidateStruct(&as,
+		validation.Field(&as.State,
+			validation.Required,
+			validation.In(AdminStateNormal, AdminStateReadOnly, AdminStateLocal)))
 }
