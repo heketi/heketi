@@ -149,12 +149,12 @@ linux_arm_dist:
 linux_arm64_dist:
 	GOOS=linux GOARCH=arm64 $(MAKE) dist
 
-darwin_amd64_dist:
-	GOOS=darwin GOARCH=amd64 $(MAKE) dist
+# NOTE: You can build the binaries for darwin or any other platform
+# golang supports. Just run: make dist GOOS=myos GOARCH=myarch
 
-release: deps_tarball darwin_amd64_dist linux_arm64_dist linux_arm_dist linux_amd64_dist
+release: deps_tarball linux_arm64_dist linux_arm_dist linux_amd64_dist
 
 .PHONY: server client test clean name run version release \
-	darwin_amd64_dist linux_arm_dist linux_amd64_dist linux_arm64_dist \
+	linux_arm_dist linux_amd64_dist linux_arm64_dist \
 	heketi clean_vendor deps_tarball all dist \
 	test-functional
