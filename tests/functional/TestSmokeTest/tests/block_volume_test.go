@@ -159,7 +159,7 @@ func TestBlockVolumeAlreadyDeleted(t *testing.T) {
 	hvol, err := heketi.VolumeInfo(bvol.BlockHostingVolume)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	host := storage0ssh
+	host := cenv.SshHost(0)
 	cmd := fmt.Sprintf("gluster-block delete %v/%v --json",
 		hvol.Name, bvol.Name)
 	s := ssh.NewSshExecWithKeyFile(
@@ -194,7 +194,7 @@ func TestBlockVolumeDeleteFailureConditions(t *testing.T) {
 	_, err = heketi.BlockVolumeInfo(bvol.Id)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	downHosts := []string{storage1ssh, storage2ssh}
+	downHosts := []string{cenv.SshHost(1), cenv.SshHost(2)}
 
 	var cmds []string
 	s := ssh.NewSshExecWithKeyFile(
