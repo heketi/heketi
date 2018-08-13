@@ -277,7 +277,7 @@ func testArbiterCreateAndVerify(t *testing.T) {
 	cmd := []string{
 		fmt.Sprintf("gluster volume info %v | grep -q \"^Brick.* .arbiter.\"", vcr.Name),
 	}
-	_, err = s.ConnectAndExec(storage0ssh, cmd, 10, true)
+	_, err = s.ConnectAndExec(cenv.SshHost(0), cmd, 10, true)
 	tests.Assert(t, err == nil, "No bricks marked as arbiter")
 
 	vi, err := heketi.VolumeInfo(vcr.Id)
@@ -302,7 +302,7 @@ func testNonArbiterIsNotArbiter(t *testing.T) {
 	cmd := []string{
 		fmt.Sprintf("gluster volume info %v | grep -q \"^Brick.* .arbiter.\"", vcr.Name),
 	}
-	_, err = s.ConnectAndExec(storage0ssh, cmd, 10, true)
+	_, err = s.ConnectAndExec(cenv.SshHost(0), cmd, 10, true)
 	tests.Assert(t, err != nil, "Bricks marked as arbiter")
 }
 
@@ -385,7 +385,7 @@ func testArbiterReplaceArbiterBrick(t *testing.T) {
 	cmd := []string{
 		fmt.Sprintf("gluster volume info %v | grep \"^Brick.* .arbiter.\"", vcr.Name),
 	}
-	o, err := s.ConnectAndExec(storage0ssh, cmd, 10, true)
+	o, err := s.ConnectAndExec(cenv.SshHost(0), cmd, 10, true)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, strings.Contains(o[0], path),
 		"expected output to contain brick path",
@@ -427,7 +427,7 @@ func testArbiterReplaceArbiterBrick(t *testing.T) {
 	cmd = []string{
 		fmt.Sprintf("gluster volume info %v | grep \"^Brick.* .arbiter.\"", vcr.Name),
 	}
-	o, err = s.ConnectAndExec(storage0ssh, cmd, 10, true)
+	o, err = s.ConnectAndExec(cenv.SshHost(0), cmd, 10, true)
 	tests.Assert(t, !strings.Contains(o[0], path),
 		"expected output not to contain old brick path",
 		"output:", o, "path:", path)
@@ -444,7 +444,7 @@ func checkArbiterFormatting(t *testing.T, vol *api.VolumeInfoResponse) {
 	for _, b := range vol.Bricks {
 		ni, err := heketi.NodeInfo(b.NodeId)
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
-		host := ni.Hostnames.Manage[0] + ":" + portNum
+		host := ni.Hostnames.Manage[0] + ":" + cenv.SSHPort
 		cmd := fmt.Sprintf("xfs_info %v", b.Path)
 		o, err := s.ConnectAndExec(host, []string{cmd}, 10, true)
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
