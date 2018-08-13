@@ -26,76 +26,61 @@ import (
 	"github.com/heketi/tests"
 )
 
-var (
-	// The heketi server must be running on the host
+type ClusterEnv struct {
+	Nodes   []string
+	SSHPort string
+	Disks   []string
 
-	// VMs
-	storage0    = "192.168.10.100"
-	storage1    = "192.168.10.101"
-	storage2    = "192.168.10.102"
-	storage3    = "192.168.10.103"
-	portNum     = "22"
-	storage0ssh = storage0 + ":" + portNum
-	storage1ssh = storage1 + ":" + portNum
-	storage2ssh = storage2 + ":" + portNum
-	storage3ssh = storage3 + ":" + portNum
+	HeketiUrl string
+}
 
-	// Heketi client
-	heketiUrl = "http://localhost:8080"
-	heketi    = client.NewClientNoAuth(heketiUrl)
-
-	// Storage systems
-	storagevms = []string{
-		storage0,
-		storage1,
-		storage2,
-		storage3,
-	}
-
-	// Disks on each system
-	disks = []string{
-		"/dev/vdb",
-		"/dev/vdc",
-		"/dev/vdd",
-		"/dev/vde",
-
-		"/dev/vdf",
-		"/dev/vdg",
-		"/dev/vdh",
-		"/dev/vdi",
-	}
-)
-
-func setupCluster(t *testing.T, numNodes int, numDisks int) {
-	tests.Assert(t, heketi != nil)
-
-	// Get ssh port first, we need it to create
-	// storageXssh variables
+func (ce *ClusterEnv) Update() {
+	// update the port from the env
 	env := os.Getenv("HEKETI_TEST_STORAGEPORT")
 	if "" != env {
-		portNum = env
+		ce.SSHPort = env
 	}
 
-	env = os.Getenv("HEKETI_TEST_STORAGE0")
-	if "" != env {
-		storage0 = env
-		storage0ssh = storage0 + ":" + portNum
+	// update the node IPs from the env
+	for i := 0; i < len(ce.Nodes); i++ {
+		key := fmt.Sprintf("HEKETI_TEST_STORAGE%v", i)
+		value := os.Getenv(key)
+		if "" != value {
+			ce.Nodes[i] = value
+		}
 	}
-	env = os.Getenv("HEKETI_TEST_STORAGE1")
-	if "" != env {
-		storage1 = env
-		storage1ssh = storage1 + ":" + portNum
+}
+
+func (ce *ClusterEnv) client() *client.Client {
+	return client.NewClientNoAuth(ce.HeketiUrl)
+}
+
+func (ce *ClusterEnv) SshHost(index int) string {
+	return ce.Nodes[index] + ":" + ce.SSHPort
+}
+
+// Setup creates a new test cluster using default cluster parameters
+// and the given number of nodes and disks. The test environment
+// must already be set up with a sufficient number of nodes and disks.
+func (ce *ClusterEnv) Setup(t *testing.T, numNodes, numDisks int) {
+	// Create a cluster
+	req := &api.ClusterCreateRequest{
+		ClusterFlags: api.ClusterFlags{
+			Block: true,
+			File:  true,
+		},
 	}
-	env = os.Getenv("HEKETI_TEST_STORAGE2")
-	if "" != env {
-		storage2 = env
-		storage2ssh = storage2 + ":" + portNum
-	}
-	env = os.Getenv("HEKETI_TEST_STORAGE3")
-	if "" != env {
-		storage3 = env
-		storage3ssh = storage3 + ":" + portNum
-	}
+	ce.SetupWithCluster(t, req, numNodes, numDisks)
+}
+
+// SetupWithCluster creates a new test cluster using the provided
+// cluster parameters and the given number of nodes and disks.
+// The test environment must already be set up with a sufficient
+// number of nodes and disks.
+func (ce *ClusterEnv) SetupWithCluster(
+	t *testing.T, req *api.ClusterCreateRequest, numNodes, numDisks int) {
+
+	heketi := ce.client()
 
 	// As a testing invariant, we always expect to set up a cluster
 	// at the start of a test on a _clean_ server.
@@ -107,22 +92,7 @@ func setupCluster(t *testing.T, numNodes int, numDisks int) {
 	tests.Assert(t, oi.Total == 0, "expected oi.Total == 0, got", oi.Total)
 	tests.Assert(t, oi.InFlight == 0, "expected oi.InFlight == 0, got", oi.Total)
 
-	// Storage systems
-	storagevms = []string{
-		storage0,
-		storage1,
-		storage2,
-		storage3,
-	}
-	// Create a cluster
-	cluster_req := &api.ClusterCreateRequest{
-		ClusterFlags: api.ClusterFlags{
-			Block: true,
-			File:  true,
-		},
-	}
-
-	cluster, err := heketi.ClusterCreate(cluster_req)
+	cluster, err := heketi.ClusterCreate(req)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	// hardcoded limits from the lists above
@@ -131,7 +101,7 @@ func setupCluster(t *testing.T, numNodes int, numDisks int) {
 	tests.Assert(t, numDisks <= 8)
 
 	// Add nodes
-	for index, hostname := range storagevms[:numNodes] {
+	for index, hostname := range ce.Nodes[:numNodes] {
 		nodeReq := &api.NodeAddRequest{}
 		nodeReq.ClusterId = cluster.Id
 		nodeReq.Hostnames.Manage = []string{hostname}
@@ -143,7 +113,7 @@ func setupCluster(t *testing.T, numNodes int, numDisks int) {
 
 		// Add devices
 		sg := utils.NewStatusGroup()
-		for _, disk := range disks[:numDisks] {
+		for _, disk := range ce.Disks[:numDisks] {
 			sg.Add(1)
 			go func(d string) {
 				defer sg.Done()
@@ -162,7 +132,8 @@ func setupCluster(t *testing.T, numNodes int, numDisks int) {
 	}
 }
 
-func dbStateDump(t *testing.T) {
+func (ce *ClusterEnv) StateDump(t *testing.T) {
+	heketi := ce.client()
 	if t.Failed() {
 		fmt.Println("~~~~~ dumping db state prior to teardown ~~~~~")
 		dump, err := heketi.DbDump()
@@ -175,9 +146,10 @@ func dbStateDump(t *testing.T) {
 	}
 }
 
-func teardownCluster(t *testing.T) {
+func (ce *ClusterEnv) Teardown(t *testing.T) {
+	heketi := ce.client()
 	fmt.Println("~~~ tearing down cluster")
-	dbStateDump(t)
+	ce.StateDump(t)
 
 	clusters, err := heketi.ClusterList()
 	tests.Assert(t, err == nil, err)
