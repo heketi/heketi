@@ -107,6 +107,11 @@ func (s *ServerCtl) Start() error {
 }
 
 func (s *ServerCtl) IsAlive() bool {
+	if s.cmd == nil {
+		// no s.cmd object so server was never started
+		// needed when this function is called prior to Start
+		return false
+	}
 	if err := s.cmd.Process.Signal(syscall.Signal(0)); err != nil {
 		return false
 	}
@@ -125,4 +130,50 @@ func (s *ServerCtl) Stop() error {
 	}
 	s.logF.Close()
 	return nil
+}
+
+// Tester is an interface that can be expose a minimal
+// set of functionally from testing.T.
+type Tester interface {
+	Fatalf(format string, args ...interface{})
+}
+
+// ServerStarted asserts that the server s is in the started
+// state regardless of state prior to the call. If
+// the server fails to start the function triggers a test
+// failure (through the Tester interface).
+func ServerStarted(t Tester, s *ServerCtl) {
+	if s.IsAlive() {
+		return
+	}
+	if err := s.Start(); err != nil {
+		t.Fatalf("heketi server is not started: %v", err)
+	}
+}
+
+// ServerStopped asserts that the server s is in the stopped
+// state regardless of state prior to the call. If
+// the server fails to stop the function triggers a test
+// failure (through the Tester interface).
+func ServerStopped(t Tester, s *ServerCtl) {
+	if !s.IsAlive() {
+		return
+	}
+	if err := s.Stop(); err != nil {
+		t.Fatalf("heketi server is not stopped: %v", err)
+	}
+}
+
+// ServerRestarted asserts that the server is started but
+// that any existing instance is first stopped. If any
+// steps fails the function triggers a test failure
+// (through the TestSuite interface).
+func ServerRestarted(t Tester, s *ServerCtl) {
+	if s.IsAlive() {
+		ServerStopped(t, s)
+	}
+	if s.IsAlive() {
+		t.Fatalf("heketi server should have been stopped")
+	}
+	ServerStarted(t, s)
 }
