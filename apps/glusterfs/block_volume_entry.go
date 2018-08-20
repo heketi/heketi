@@ -233,8 +233,10 @@ func (v *BlockVolumeEntry) cleanupBlockVolumeCreate(db wdb.DB,
 		return err
 	}
 
-	// best effort removal of anything on system
-	v.deleteBlockVolumeExec(db, hvname, executor)
+	err = v.deleteBlockVolumeExec(db, hvname, executor)
+	if err != nil {
+		return err
+	}
 
 	return v.removeComponents(db, true)
 }
