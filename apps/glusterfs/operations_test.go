@@ -2938,3 +2938,64 @@ func TestBlockVolumesCreatePendingBHVIgnoredItems(t *testing.T) {
 		return nil
 	})
 }
+
+func TestBlockVolumeCreateRollbackCleanupFailure(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		2,    // clusters
+		3,    // nodes_per_cluster
+		4,    // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	req := &api.BlockVolumeCreateRequest{}
+	req.Size = 1024
+
+	vol := NewBlockVolumeEntryFromRequest(req)
+	vc := NewBlockVolumeCreateOperation(vol, app.db)
+
+	// verify that there are no volumes, bricks or pending operations
+	app.db.View(func(tx *bolt.Tx) error {
+		vl, e := VolumeList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(vl) == 0, "expected len(vl) == 0, got", len(vl))
+		pol, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pol) == 0, "expected len(pol) == 0, got", len(pol))
+		return nil
+	})
+
+	e := vc.Build()
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	// now we're going to pretend exec failed and inject an
+	// error condition into BlockVolumeDestroy
+	app.xo.MockBlockVolumeDestroy = func(host, bhv, volume string) error {
+		return fmt.Errorf("fake error")
+	}
+
+	e = vc.Rollback(app.executor)
+	tests.Assert(t, e != nil, "expected e != nil, got", e)
+
+	// verify that the pending items remain in the db due to rollback
+	// failure
+	app.db.View(func(tx *bolt.Tx) error {
+		vl, e := VolumeList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(vl) == 1, "expected len(vl) == 1, got", len(vl))
+		bl, e := BlockVolumeList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(bl) == 1, "expected len(bl) == 1, got", len(bl))
+		pol, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pol) == 1, "expected len(pol) == 1, got", len(pol))
+		return nil
+	})
+}
