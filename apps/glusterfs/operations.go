@@ -361,7 +361,7 @@ type VolumeDeleteOperation struct {
 	OperationManager
 	noRetriesOperation
 	vol       *VolumeEntry
-	reclaimed map[string]bool // gets set in Exec(), space_reclaimed = reclaimed[DeviceId]
+	reclaimed ReclaimMap // gets set by Exec() call
 }
 
 func NewVolumeDeleteOperation(
