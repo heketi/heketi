@@ -581,7 +581,7 @@ func (d *DeviceEntry) DeleteBricksWithEmptyPath(tx *bolt.Tx) error {
 		brick, err := NewBrickEntryFromId(tx, id)
 		if err == ErrNotFound {
 			logger.Warning("Ignoring nonexistent brick [%v] on "+
-				"disk [%d].", id, d.Info.Id)
+				"disk [%v].", id, d.Info.Id)
 			continue
 		}
 		if err != nil {
