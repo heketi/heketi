@@ -84,3 +84,52 @@ func teardownBlock(t *testing.T) {
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	}
 }
+
+func TestBlockVolumeCreateManyAtOnce(t *testing.T) {
+
+	// Setup the VM storage topology
+	setupCluster(t, 3, 4)
+	defer teardownCluster(t)
+	defer teardownBlock(t)
+
+	// pre-create a block hosting volume that will not be able
+	// to hold all of our requests
+	volReq := &api.VolumeCreateRequest{}
+	volReq.Size = 10
+	volReq.Durability.Type = api.DurabilityReplicate
+	volReq.Durability.Replicate.Replica = 3
+	volReq.Block = true
+
+	_, err := heketi.VolumeCreate(volReq)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	blockReq := &api.BlockVolumeCreateRequest{}
+	blockReq.Size = 3
+
+	type result struct {
+		index int
+		err   error
+	}
+
+	count := 5
+	results := make(chan result, count)
+	defer close(results)
+	for i := 0; i < count; i++ {
+		go func(i int) {
+			logger.Info("sending block request to server (%v)", i)
+			_, err := heketi.BlockVolumeCreate(blockReq)
+			logger.Info("got result: %v @ %v", err, i)
+			results <- result{i, err}
+		}(i)
+	}
+
+	ra := make([]result, count)
+	for i := 0; i < count; i++ {
+		logger.Info("Waiting for result [%v] ...", i)
+		ra[i] = <-results
+	}
+	for _, r := range ra {
+		tests.Assert(t, r.err == nil,
+			"expected r.err == nil, got:", r.err, "@", r.index)
+	}
+}
