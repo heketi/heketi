@@ -3101,3 +3101,113 @@ func TestBlockVolumeCreateOperationOveruse(t *testing.T) {
 		return nil
 	})
 }
+
+func TestBlockVolumeCreateOperationLockedBHV(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	app.conf.CreateBlockHostingVolumes = false
+	app.setBlockSettings()
+	CreateBlockHostingVolumes = false
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		1,    // devices_per_node,
+		3*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	// first we create a volume to host the block volume
+	// Using size=150 so that only one 100 block volume should
+	// be able to be placed on this hosting volume
+	vreq := &api.VolumeCreateRequest{}
+	vreq.Size = 150
+	vreq.Block = true
+	vreq.Durability.Type = api.DurabilityReplicate
+	vreq.Durability.Replicate.Replica = 3
+
+	vol := NewVolumeEntryFromRequest(vreq)
+	vc := NewVolumeCreateOperation(vol, app.db)
+
+	e := vc.Build()
+	tests.Assert(t, e == nil, "expected e == nil, got:", e)
+	e = vc.Exec(app.executor)
+	tests.Assert(t, e == nil, "expected e == nil, got:", e)
+	e = vc.Finalize()
+	tests.Assert(t, e == nil, "expected e == nil, got:", e)
+
+	app.db.View(func(tx *bolt.Tx) error {
+		bvl, e := BlockVolumeList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(bvl) == 0, "expected len(bvl) == 0, got", len(bvl))
+		vl, e := VolumeList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(vl) == 1, "expected len(vl) == 1, got:", len(vl))
+		po, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(po) == 0, "expected len(po) == 0, got:", len(po))
+		return nil
+	})
+
+	breq := &api.BlockVolumeCreateRequest{}
+	breq.Size = 2
+
+	bvol1 := NewBlockVolumeEntryFromRequest(breq)
+	bco1 := NewBlockVolumeCreateOperation(bvol1, app.db)
+	e = bco1.Build()
+	tests.Assert(t, e == nil, "expected e == nil, got:", e)
+	e = bco1.Exec(app.executor)
+	tests.Assert(t, e == nil, "expected e == nil, got:", e)
+	e = bco1.Finalize()
+	tests.Assert(t, e == nil, "expected e == nil, got:", e)
+
+	// check that block vol created successfully
+	app.db.View(func(tx *bolt.Tx) error {
+		bvl, e := BlockVolumeList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(bvl) == 1, "expected len(bvl) == 1, got", len(bvl))
+		vl, e := VolumeList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(vl) == 1, "expected len(vl) == 1, got:", len(vl))
+		po, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(po) == 0, "expected len(po) == 0, got:", len(po))
+		return nil
+	})
+
+	// now set volume to locked
+	app.db.Update(func(tx *bolt.Tx) error {
+		vl, e := VolumeList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(vl) == 1, "expected len(vl) == 1, got", len(vl))
+		vol, e := NewVolumeEntryFromId(tx, vl[0])
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		vol.Info.BlockInfo.Restriction = api.Locked
+		e = vol.Save(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		return nil
+	})
+
+	bvol2 := NewBlockVolumeEntryFromRequest(breq)
+	bco2 := NewBlockVolumeCreateOperation(bvol2, app.db)
+	e = bco2.Build()
+	tests.Assert(t, e != nil, "expected e != nil, got:", e)
+
+	// check that db state is unchanged
+	app.db.View(func(tx *bolt.Tx) error {
+		bvl, e := BlockVolumeList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(bvl) == 1, "expected len(bvl) == 1, got", len(bvl))
+		vl, e := VolumeList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(vl) == 1, "expected len(vl) == 1, got:", len(vl))
+		po, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(po) == 0, "expected len(po) == 0, got:", len(po))
+		return nil
+	})
+}
