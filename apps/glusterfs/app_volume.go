@@ -375,3 +375,47 @@ func (a *App) VolumeClone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+func (a *App) VolumeSetBlockRestriction(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	var volume *VolumeEntry
+	// Unmarshal JSON
+	var msg api.VolumeBlockRestrictionRequest
+	err := utils.GetJsonFromRequest(r, &msg)
+	if err != nil {
+		http.Error(w, "request unable to be parsed", 422)
+		return
+	}
+	err = msg.Validate()
+	if err != nil {
+		http.Error(w, "validation failed: "+err.Error(), http.StatusBadRequest)
+		logger.LogError("validation failed: " + err.Error())
+		return
+	}
+
+	// Check for valid id, return immediately if not valid
+	err = a.db.View(func(tx *bolt.Tx) error {
+		volume, err = NewVolumeEntryFromId(tx, id)
+		if err == ErrNotFound || !volume.Visible() {
+			// treat an invisible volume like it doesn't exist
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return err
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return
+	}
+
+	vsbro := NewVolumeSetBlockRestrictionOperation(volume, a.db, msg.Restriction)
+	if err := AsyncHttpOperation(a, w, r, vsbro); err != nil {
+		OperationHttpErrorf(w, err, "Failed to set block restriction: %v", err)
+		return
+	}
+}
