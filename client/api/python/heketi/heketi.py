@@ -253,6 +253,29 @@ class HeketiClient(object):
         req = self._make_request('DELETE', uri)
         return req.status_code == requests.codes.NO_CONTENT
 
+    def block_volume_list(self):
+        uri = '/blockvolumes'
+        req = self._make_request('GET', uri)
+        if req.status_code == requests.codes.ok:
+            return req.json()
+
+    def block_volume_info(self, volume_id):
+        uri = '/blockvolumes/' + volume_id
+        req = self._make_request('GET', uri)
+        if req.status_code == requests.codes.ok:
+            return req.json()
+
+    def block_volume_create(self, volume_options={}):
+        uri = '/blockvolumes'
+        req = self._make_request('POST', uri, volume_options)
+        if req.status_code == requests.codes.ok:
+            return req.json()
+
+    def block_volume_delete(self, volume_id):
+        uri = '/blockvolumes/' + volume_id
+        req = self._make_request('DELETE', uri)
+        return req.status_code == requests.codes.NO_CONTENT
+
     def db_dump(self):
         uri = '/db/dump'
         req = self._make_request('GET', uri)
