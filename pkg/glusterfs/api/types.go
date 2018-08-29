@@ -358,6 +358,16 @@ func (vcr VolumeCloneRequest) Validate() error {
 	)
 }
 
+type VolumeBlockRestrictionRequest struct {
+	Restriction BlockRestriction `json:"restriction"`
+}
+
+func (vbrr VolumeBlockRestrictionRequest) Validate() error {
+	return validation.ValidateStruct(&vbrr,
+		validation.Field(&vbrr.Restriction,
+			validation.In(Unrestricted, Locked)))
+}
+
 // BlockVolume
 
 type BlockVolumeCreateRequest struct {
