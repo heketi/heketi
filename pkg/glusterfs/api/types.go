@@ -310,6 +310,20 @@ const (
 	LockedByUpdate BlockRestriction = "locked-by-update"
 )
 
+func (br BlockRestriction) String() string {
+	switch br {
+	case Unrestricted:
+		return "unlocked"
+	case Locked:
+		return "locked"
+	case LockedByUpdate:
+		return "locked-by-update"
+	default:
+		return "unknown"
+
+	}
+}
+
 type VolumeInfo struct {
 	VolumeCreateRequest
 	Id      string `json:"id"`
@@ -490,6 +504,7 @@ func (v *VolumeInfoResponse) String() string {
 		"Block: %v\n"+
 		"Free Size: %v\n"+
 		"Reserved Size: %v\n"+
+		"Block Hosting Restriction: %v\n"+
 		"Block Volumes: %v\n"+
 		"Durability Type: %v\n",
 		v.Name,
@@ -501,6 +516,7 @@ func (v *VolumeInfoResponse) String() string {
 		v.Block,
 		v.BlockInfo.FreeSize,
 		v.BlockInfo.ReservedSize,
+		v.BlockInfo.Restriction,
 		v.BlockInfo.BlockVolumes,
 		v.Durability.Type)
 
