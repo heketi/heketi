@@ -1189,3 +1189,74 @@ func TestAdminStatus(t *testing.T) {
 	tests.Assert(t, as.State == api.AdminStateNormal,
 		"expected as.State == api.AdminStateNormal, got:", as.State)
 }
+
+func TestVolumeSetBlockRestriction(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+
+	// Setup the server
+	ts := setupHeketiServer(app)
+	defer ts.Close()
+
+	// Create cluster
+	c := NewClient(ts.URL, "admin", TEST_ADMIN_KEY)
+	tests.Assert(t, c != nil)
+	cluster_req := &api.ClusterCreateRequest{
+		ClusterFlags: api.ClusterFlags{
+			Block: true,
+			File:  true,
+		},
+	}
+	cluster, err := c.ClusterCreate(cluster_req)
+	tests.Assert(t, err == nil)
+
+	// Create node request packet
+	for n := 0; n < 4; n++ {
+		nodeReq := &api.NodeAddRequest{}
+		nodeReq.ClusterId = cluster.Id
+		nodeReq.Hostnames.Manage = []string{"manage" + fmt.Sprintf("%v", n)}
+		nodeReq.Hostnames.Storage = []string{"storage" + fmt.Sprintf("%v", n)}
+		nodeReq.Zone = n + 1
+
+		// Create node
+		node, err := c.NodeAdd(nodeReq)
+		tests.Assert(t, err == nil)
+
+		deviceReq := &api.DeviceAddRequest{}
+		deviceReq.Name = "/dev/by-magic/id:" + utils.GenUUID()
+		deviceReq.NodeId = node.Id
+
+		// Create device
+		err = c.DeviceAdd(deviceReq)
+		tests.Assert(t, err == nil)
+	}
+
+	// Create a volume
+	volumeReq := &api.VolumeCreateRequest{}
+	volumeReq.Size = 10
+	volumeReq.Block = true
+	volume, err := c.VolumeCreate(volumeReq)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, volume.Id != "")
+	tests.Assert(t, volume.Size == volumeReq.Size)
+
+	v2, err := c.VolumeSetBlockRestriction(
+		volume.Id,
+		&api.VolumeBlockRestrictionRequest{
+			Restriction: api.Locked,
+		})
+	tests.Assert(t, err == nil)
+	tests.Assert(t, v2.BlockInfo.Restriction == api.Locked)
+
+	v2, err = c.VolumeSetBlockRestriction(
+		volume.Id,
+		&api.VolumeBlockRestrictionRequest{
+			Restriction: api.Unrestricted,
+		})
+	tests.Assert(t, err == nil)
+	tests.Assert(t, v2.BlockInfo.Restriction == api.Unrestricted)
+}
