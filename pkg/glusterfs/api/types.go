@@ -313,7 +313,7 @@ const (
 func (br BlockRestriction) String() string {
 	switch br {
 	case Unrestricted:
-		return "unlocked"
+		return "(none)"
 	case Locked:
 		return "locked"
 	case LockedByUpdate:
