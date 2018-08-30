@@ -49,7 +49,7 @@ func doTestSshExecBrickCreate(t *testing.T, f *CommandFaker, s *FakeExecutor) {
 
 			case 1:
 				tests.Assert(t,
-					cmd == "lvcreate --autobackup="+utils.BoolToYN(s.BackupLVM)+" --poolmetadatasize 5K "+
+					cmd == "lvcreate -qq --autobackup="+utils.BoolToYN(s.BackupLVM)+" --poolmetadatasize 5K "+
 						"--chunksize 256K --size 100K --thin vg_xvgid/tp_id --virtualsize 10K --name brick_id", cmd)
 
 			case 2:
@@ -134,7 +134,7 @@ func TestSshExecBrickCreateWithGid(t *testing.T) {
 
 			case 1:
 				tests.Assert(t,
-					cmd == "lvcreate --autobackup="+utils.BoolToYN(s.BackupLVM)+" --poolmetadatasize 5K "+
+					cmd == "lvcreate -qq --autobackup="+utils.BoolToYN(s.BackupLVM)+" --poolmetadatasize 5K "+
 						"--chunksize 256K --size 100K --thin vg_xvgid/tp_id --virtualsize 10K --name brick_id", cmd)
 
 			case 2:
@@ -220,7 +220,7 @@ func TestSshExecBrickCreateSudo(t *testing.T) {
 
 			case 1:
 				tests.Assert(t,
-					cmd == "lvcreate --autobackup="+utils.BoolToYN(s.BackupLVM)+" --poolmetadatasize 5K "+
+					cmd == "lvcreate -qq --autobackup="+utils.BoolToYN(s.BackupLVM)+" --poolmetadatasize 5K "+
 						"--chunksize 256K --size 100K --thin vg_xvgid/tp_id --virtualsize 10K --name brick_id", cmd)
 
 			case 2:
