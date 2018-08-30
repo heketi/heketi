@@ -748,6 +748,10 @@ func (bvc *BlockVolumeCreateOperation) Build() error {
 			bvc.bvol.Info.Cluster = vol.Info.Cluster
 		}
 
+		if e := bvc.bvol.saveNewEntry(txdb); e != nil {
+			return e
+		}
+
 		// we've figured out what block-volume, hosting volume, and bricks we
 		// will be using for the next phase of the operation, save our pending sate
 		bvc.op.RecordAddBlockVolume(bvc.bvol)
@@ -851,11 +855,13 @@ func (bvc *BlockVolumeCreateOperation) Finalize() error {
 			}
 		}
 
-		// traditionally (that is before operations existed) the block volumes
-		// were updating most of their metadata after exec. This is only
-		// noteworthy because it is different from regular volumes which
-		// do most of those updates upfront.
-		if e := bvc.bvol.saveCreateBlockVolume(txdb); e != nil {
+		// block volume properties are mutated by the results coming
+		// back during exec. These properties need to be saved back
+		// to the db.
+		// This is only noteworthy because it is different from regular
+		// volumes which determines everything up front. Here certain
+		// values are determined by gluster-block commands.
+		if e := bvc.bvol.Save(tx); e != nil {
 			return e
 		}
 

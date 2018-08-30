@@ -233,10 +233,12 @@ func (v *BlockVolumeEntry) cleanupBlockVolumeCreate(db wdb.DB,
 		return err
 	}
 
-	// best effort removal of anything on system
-	v.deleteBlockVolumeExec(db, hvname, executor)
+	err = v.deleteBlockVolumeExec(db, hvname, executor)
+	if err != nil {
+		return err
+	}
 
-	return v.removeComponents(db, true)
+	return v.removeComponents(db, false)
 }
 
 func (v *BlockVolumeEntry) Create(db wdb.DB,
@@ -247,7 +249,7 @@ func (v *BlockVolumeEntry) Create(db wdb.DB,
 		executor)
 }
 
-func (v *BlockVolumeEntry) saveCreateBlockVolume(db wdb.DB) error {
+func (v *BlockVolumeEntry) saveNewEntry(db wdb.DB) error {
 	return db.Update(func(tx *bolt.Tx) error {
 
 		err := v.Save(tx)
@@ -275,6 +277,8 @@ func (v *BlockVolumeEntry) saveCreateBlockVolume(db wdb.DB) error {
 		if err := volume.ModifyFreeSize(-v.Info.Size); err != nil {
 			return err
 		}
+		logger.Debug("Reduced free size on volume %v by %v",
+			volume.Info.Id, v.Info.Size)
 
 		volume.BlockVolumeAdd(v.Info.Id)
 		err = volume.Save(tx)

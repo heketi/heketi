@@ -51,7 +51,7 @@ func (s *CmdExecutor) BrickCreate(host string,
 		fmt.Sprintf("mkdir -p %v", mountPath),
 
 		// Setup the LV
-		fmt.Sprintf("lvcreate --autobackup=%v --poolmetadatasize %vK --chunksize 256K --size %vK --thin %v/%v --virtualsize %vK --name %v",
+		fmt.Sprintf("lvcreate -qq --autobackup=%v --poolmetadatasize %vK --chunksize 256K --size %vK --thin %v/%v --virtualsize %vK --name %v",
 			// backup LVM metadata
 			utils.BoolToYN(s.BackupLVM),
 
