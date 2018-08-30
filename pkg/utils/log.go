@@ -14,7 +14,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"runtime"
 	"strings"
 
 	"github.com/lpabon/godbc"
@@ -45,7 +44,7 @@ type Logger struct {
 }
 
 func logWithLongFile(l *log.Logger, format string, v ...interface{}) {
-	_, file, line, _ := runtime.Caller(2)
+	_, file, line := TraceSkip(2)
 
 	// Shorten the path.
 	// From
