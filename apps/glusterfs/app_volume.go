@@ -219,7 +219,6 @@ func (a *App) VolumeInfo(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(info); err != nil {
 		panic(err)
 	}
-
 }
 
 func (a *App) VolumeDelete(w http.ResponseWriter, r *http.Request) {
@@ -238,7 +237,11 @@ func (a *App) VolumeDelete(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return err
 		}
-
+		if volume.Info.Protected {
+			err := fmt.Errorf("Cannot delete a protected volume")
+			http.Error(w, err.Error(), http.StatusConflict)
+			return err
+		}
 		if volume.Info.Name == db.HeketiStorageVolumeName {
 			err := fmt.Errorf("Cannot delete volume containing the Heketi database")
 			http.Error(w, err.Error(), http.StatusConflict)
@@ -328,6 +331,47 @@ func (a *App) VolumeExpand(w http.ResponseWriter, r *http.Request) {
 	if err := AsyncHttpOperation(a, w, r, ve); err != nil {
 		OperationHttpErrorf(w, err, "Failed to allocate volume expansion: %v", err)
 		return
+	}
+}
+
+func (a *App) VolumeProtect(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	vol_id := vars["id"]
+	var msg api.VolumeProtectRequest
+	err := utils.GetJsonFromRequest(r, &msg)
+	if err != nil {
+		http.Error(w, "request unable to be parsed", http.StatusUnprocessableEntity)
+		return
+	}
+	var info *api.VolumeInfoResponse
+	var volume *VolumeEntry
+	err = a.db.Update(func(tx *bolt.Tx) error {
+		var err error
+		volume, err = NewVolumeEntryFromId(tx, vol_id)
+		if err == ErrNotFound {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return err
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+		volume.Info.Protected = msg.Protect
+		volume.Save(tx)
+		info, err = volume.NewInfoResponse(tx)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return
+	}
+
+	// write msg
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(info); err != nil {
+		panic(err)
 	}
 }
 

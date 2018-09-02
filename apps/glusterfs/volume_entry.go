@@ -190,6 +190,7 @@ func NewVolumeEntryFromClone(v *VolumeEntry, name string) *VolumeEntry {
 	entry.Info.Mount = v.Info.Mount
 	entry.Info.Size = v.Info.Size
 	entry.Info.Snapshot = v.Info.Snapshot
+	entry.Info.Protected = v.Info.Protected
 	copy(entry.Info.Mount.GlusterFS.Hosts, v.Info.Mount.GlusterFS.Hosts)
 	entry.Info.Mount.GlusterFS.MountPoint = v.Info.Mount.GlusterFS.Hosts[0] + ":" + entry.Info.Name
 	entry.Info.Mount.GlusterFS.Options = v.Info.Mount.GlusterFS.Options
@@ -229,6 +230,7 @@ func (v *VolumeEntry) NewInfoResponse(tx *bolt.Tx) (*api.VolumeInfoResponse, err
 	info.GlusterVolumeOptions = v.GlusterVolumeOptions
 	info.Block = v.Info.Block
 	info.BlockInfo = v.Info.BlockInfo
+	info.Protected = v.Info.Protected
 
 	for _, brickid := range v.BricksIds() {
 		brick, err := NewBrickEntryFromId(tx, brickid)

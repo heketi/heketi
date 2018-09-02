@@ -48,6 +48,8 @@ func init() {
 	volumeCommand.AddCommand(volumeInfoCommand)
 	volumeCommand.AddCommand(volumeListCommand)
 	volumeCommand.AddCommand(volumeBlockHostingRestrictionCommand)
+	volumeCommand.AddCommand(volumeProtectCommand)
+	volumeCommand.AddCommand(volumeUnprotectCommand)
 	volumeBlockHostingRestrictionCommand.AddCommand(volumeBlockHostingRestrictionUnlockCommand)
 	volumeBlockHostingRestrictionCommand.AddCommand(volumeBlockHostingRestrictionLockCommand)
 
@@ -101,6 +103,8 @@ func init() {
 	volumeDeleteCommand.SilenceUsage = true
 	volumeExpandCommand.SilenceUsage = true
 	volumeInfoCommand.SilenceUsage = true
+	volumeProtectCommand.SilenceUsage = true
+	volumeUnprotectCommand.SilenceUsage = true
 	volumeListCommand.SilenceUsage = true
 	volumeBlockHostingRestrictionCommand.SilenceUsage = true
 
@@ -504,6 +508,92 @@ var volumeListCommand = &cobra.Command{
 		}
 
 		return nil
+	},
+}
+
+var volumeProtectCommand = &cobra.Command{
+	Use:     "protect",
+	Short:   "Protects a volume from deletion",
+	Long:    "Protects a volume from deletion",
+	Example: "  $ heketi-cli volume protect 60d46d518074b13a04ce1022c8c7193c",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		//ensure proper number of args
+		s := cmd.Flags().Args()
+		if len(s) < 1 {
+			return errors.New("Volume id missing")
+		}
+
+		// Set volume id
+		volumeId := cmd.Flags().Arg(0)
+
+		// Create a client to talk to Heketi
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
+		// Create request
+		req := &api.VolumeProtectRequest{true}
+
+		// Protect volume
+		info, err := heketi.VolumeProtect(volumeId, req)
+		if err != nil {
+			return err
+		}
+
+		if options.Json {
+			data, err := json.Marshal(info)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(stdout, string(data))
+		} else {
+			fmt.Fprintf(stdout, "%v", info)
+		}
+		return nil
+
+	},
+}
+
+var volumeUnprotectCommand = &cobra.Command{
+	Use:     "unprotect",
+	Short:   "Unprotects a volume from deletion",
+	Long:    "Unprotects a volume from deletion",
+	Example: "  $ heketi-cli volume unprotect 60d46d518074b13a04ce1022c8c7193c",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		//ensure proper number of args
+		s := cmd.Flags().Args()
+		if len(s) < 1 {
+			return errors.New("Volume id missing")
+		}
+
+		// Set volume id
+		volumeId := cmd.Flags().Arg(0)
+
+		// Create a client to talk to Heketi
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
+		// Create request
+		req := &api.VolumeProtectRequest{false}
+
+		// Protect volume
+		info, err := heketi.VolumeProtect(volumeId, req)
+		if err != nil {
+			return err
+		}
+
+		if options.Json {
+			data, err := json.Marshal(info)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(stdout, string(data))
+		} else {
+			fmt.Fprintf(stdout, "%v", info)
+		}
+		return nil
+
 	},
 }
 

@@ -326,9 +326,10 @@ func (br BlockRestriction) String() string {
 
 type VolumeInfo struct {
 	VolumeCreateRequest
-	Id      string `json:"id"`
-	Cluster string `json:"cluster"`
-	Mount   struct {
+	Id        string `json:"id"`
+	Cluster   string `json:"cluster"`
+	Protected bool   `json:"protected"`
+	Mount     struct {
 		GlusterFS struct {
 			Hosts      []string          `json:"hosts"`
 			MountPoint string            `json:"device"`
@@ -370,6 +371,10 @@ func (vcr VolumeCloneRequest) Validate() error {
 	return validation.ValidateStruct(&vcr,
 		validation.Field(&vcr.Name, validation.Match(volumeNameRe)),
 	)
+}
+
+type VolumeProtectRequest struct {
+	Protect bool `json:"protect"`
 }
 
 type VolumeBlockRestrictionRequest struct {
@@ -506,7 +511,8 @@ func (v *VolumeInfoResponse) String() string {
 		"Reserved Size: %v\n"+
 		"Block Hosting Restriction: %v\n"+
 		"Block Volumes: %v\n"+
-		"Durability Type: %v\n",
+		"Durability Type: %v\n"+
+		"Protected: %v\n",
 		v.Name,
 		v.Size,
 		v.Id,
@@ -518,7 +524,9 @@ func (v *VolumeInfoResponse) String() string {
 		v.BlockInfo.ReservedSize,
 		v.BlockInfo.Restriction,
 		v.BlockInfo.BlockVolumes,
-		v.Durability.Type)
+		v.Durability.Type,
+		v.Protected,
+	)
 
 	switch v.Durability.Type {
 	case DurabilityEC:

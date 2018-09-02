@@ -490,6 +490,13 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Pattern:     "/volumes/{id:[A-Fa-f0-9]+}/block-restriction",
 			HandlerFunc: a.VolumeSetBlockRestriction},
 
+		// Volume Protection
+		rest.Route{
+			Name:        "VolumeProtect",
+			Method:      "POST",
+			Pattern:     "/volumes/{id:[A-Fa-f0-9]+}/protect",
+			HandlerFunc: a.VolumeProtect},
+
 		// Volume Cloning
 		rest.Route{
 			Name:        "VolumeClone",

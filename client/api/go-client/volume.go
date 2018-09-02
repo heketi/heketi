@@ -288,6 +288,47 @@ func (c *Client) VolumeDelete(id string) error {
 	return nil
 }
 
+func (c *Client) VolumeProtect(id string, request *api.VolumeProtectRequest) (*api.VolumeInfoResponse, error) {
+
+	// Marshal request to JSON
+	buffer, err := json.Marshal(request)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create request
+	req, err := http.NewRequest("POST", c.host+"/volumes/"+id+"/protect", bytes.NewBuffer(buffer))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// Set token
+	err = c.setToken(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get info
+	r, err := c.do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Body.Close()
+	if r.StatusCode != http.StatusOK {
+		return nil, utils.GetErrorFromResponse(r)
+	}
+
+	// Read JSON response
+	var volume api.VolumeInfoResponse
+	err = utils.GetJsonFromResponse(r, &volume)
+	if err != nil {
+		return nil, err
+	}
+
+	return &volume, nil
+}
+
 func (c *Client) VolumeClone(id string, request *api.VolumeCloneRequest) (*api.VolumeInfoResponse, error) {
 	// Marshal request to JSON
 	buffer, err := json.Marshal(request)
