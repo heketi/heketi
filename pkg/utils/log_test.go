@@ -13,9 +13,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/heketi/tests"
 	"strings"
 	"testing"
+
+	"github.com/heketi/tests"
 )
 
 func TestLogLevel(t *testing.T) {
@@ -66,8 +67,8 @@ func TestLogDebug(t *testing.T) {
 	fileinfo := strings.Split(testbuffer.String(), " ")[4]
 	filename := strings.Split(fileinfo, ":")[0]
 
-	// Need to check that it starts with /src/github.com
-	tests.Assert(t, strings.HasPrefix(filename, "/src/github.com/"))
+	// Need to check that it starts with heketi/
+	tests.Assert(t, strings.HasPrefix(filename, "heketi/"))
 	tests.Assert(t, strings.HasSuffix(filename, "/pkg/utils/log_test.go"))
 	testbuffer.Reset()
 
