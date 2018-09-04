@@ -315,7 +315,11 @@ func (v *BlockVolumeEntry) deleteBlockVolumeExec(db wdb.RODB,
 	logger.Debug("Using executor host [%v]", executorhost)
 
 	err = executor.BlockVolumeDestroy(executorhost, hvname, v.Info.Name)
-	if err != nil {
+	if _, ok := err.(*executors.VolumeDoesNotExistErr); ok {
+		logger.Warning(
+			"Block volume %v (%v) does not exist: assuming already deleted",
+			v.Info.Id, v.Info.Name)
+	} else if err != nil {
 		logger.LogError("Unable to delete volume: %v", err)
 		return err
 	}
