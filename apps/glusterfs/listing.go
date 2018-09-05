@@ -51,6 +51,20 @@ func ListCompleteBlockVolumes(tx *bolt.Tx) ([]string, error) {
 	return removeKeysFromList(v, p), nil
 }
 
+// UpdateVolumeInfoComplete updates the given VolumeInfoResponse object so
+// that it only contains references to complete block volumes.
+func UpdateVolumeInfoComplete(tx *bolt.Tx, vi *api.VolumeInfoResponse) error {
+	pblk, err := MapPendingBlockVolumes(tx)
+	if err != nil {
+		return err
+	}
+
+	if len(pblk) > 0 {
+		vi.BlockInfo.BlockVolumes = removeKeysFromList(vi.BlockInfo.BlockVolumes, pblk)
+	}
+	return nil
+}
+
 // UpdateClusterInfoComplete updates the given ClusterInfoResponse object so
 // that it only contains references to complete volumes, etc.
 func UpdateClusterInfoComplete(tx *bolt.Tx, ci *api.ClusterInfoResponse) error {
