@@ -33,8 +33,8 @@ func ListCompleteVolumes(tx *bolt.Tx) ([]string, error) {
 	return removeKeysFromList(v, p), nil
 }
 
-// ListCompleteBlockVolumes returns a list of block volume ID strings for bricks
-// that are not pending.
+// ListCompleteBlockVolumes returns a list of block volume ID strings for
+// block volumes that are not pending.
 func ListCompleteBlockVolumes(tx *bolt.Tx) ([]string, error) {
 	p, err := MapPendingBlockVolumes(tx)
 	if err != nil {
