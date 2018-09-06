@@ -11,9 +11,11 @@
 package functional
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/utils/ssh"
 	"github.com/heketi/tests"
 )
 
@@ -132,4 +134,39 @@ func TestBlockVolumeCreateManyAtOnce(t *testing.T) {
 		tests.Assert(t, r.err == nil,
 			"expected r.err == nil, got:", r.err, "@", r.index)
 	}
+}
+
+func TestBlockVolumeAlreadyDeleted(t *testing.T) {
+
+	// Setup the VM storage topology
+	setupCluster(t, 3, 4)
+	defer teardownCluster(t)
+	defer teardownBlock(t)
+
+	blockReq := &api.BlockVolumeCreateRequest{}
+	blockReq.Size = 3
+	blockReq.Hacount = 3
+
+	type result struct {
+		index int
+		err   error
+	}
+
+	bvol, err := heketi.BlockVolumeCreate(blockReq)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	hvol, err := heketi.VolumeInfo(bvol.BlockHostingVolume)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	host := storage0ssh
+	cmd := fmt.Sprintf("gluster-block delete %v/%v --json",
+		hvol.Name, bvol.Name)
+	s := ssh.NewSshExecWithKeyFile(
+		logger, "vagrant", "../config/insecure_private_key")
+	o, err := s.ConnectAndExec(host, []string{cmd}, 10, true)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, len(o) == 1, "expected len(o) == 1, got:", len(o))
+
+	err = heketi.BlockVolumeDelete(bvol.Id)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 }
