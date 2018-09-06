@@ -88,7 +88,11 @@ func (s *CmdExecutor) BlockVolumeDestroy(host string, blockHostingVolumeName str
 	godbc.Require(blockVolumeName != "")
 
 	commands := []string{
-		fmt.Sprintf("gluster-block delete %v/%v --json >&2", blockHostingVolumeName, blockVolumeName),
+		// this ugly hack exists so that heketi can extract the error message
+		// from stderr if the command exits non-zero but can scrape the
+		// stdout for errors in case the exit code is zero but the
+		// command still fails (this was found to happen in some cases)
+		fmt.Sprintf("bash -c \"set -o pipefail && gluster-block delete %v/%v --json |tee /dev/stderr\"", blockHostingVolumeName, blockVolumeName),
 	}
 
 	type CliOutput struct {
