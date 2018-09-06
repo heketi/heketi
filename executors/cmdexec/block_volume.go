@@ -111,6 +111,10 @@ func (s *CmdExecutor) BlockVolumeDestroy(host string, blockHostingVolumeName str
 	}
 
 	if blockVolumeDelete.Result == "FAIL" {
+		if strings.Contains(blockVolumeDelete.ErrMsg, "doesn't exist") &&
+			strings.Contains(blockVolumeDelete.ErrMsg, blockVolumeName) {
+			return &executors.VolumeDoesNotExistErr{Name: blockVolumeName}
+		}
 		err := logger.LogError("%v", blockVolumeDelete.ErrMsg)
 		return err
 	}

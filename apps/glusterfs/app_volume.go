@@ -207,6 +207,11 @@ func (a *App) VolumeInfo(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return err
 		}
+		err = UpdateVolumeInfoComplete(tx, info)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
 
 		return nil
 	})

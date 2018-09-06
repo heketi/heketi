@@ -3211,3 +3211,76 @@ func TestBlockVolumeCreateOperationLockedBHV(t *testing.T) {
 		return nil
 	})
 }
+
+// TestBlockVolumeCreateInsufficientHosts checks both that the
+// function fails due to insufficient hosts being online for
+// the requested HA count, and that no block volumes are left
+// in the db when we roll-back the operation.
+func TestBlockVolumeCreateInsufficientHosts(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		2,    // clusters
+		3,    // nodes_per_cluster
+		4,    // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	req := &api.BlockVolumeCreateRequest{}
+	req.Size = 1024
+	req.Hacount = 3
+
+	vol := NewBlockVolumeEntryFromRequest(req)
+	vc := NewBlockVolumeCreateOperation(vol, app.db)
+
+	// verify that there are no volumes, bricks or pending operations
+	app.db.View(func(tx *bolt.Tx) error {
+		vl, e := VolumeList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(vl) == 0, "expected len(vl) == 0, got", len(vl))
+		pol, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pol) == 0, "expected len(pol) == 0, got", len(pol))
+		return nil
+	})
+
+	// now we're going to pretend exec failed and inject an
+	// error condition into BlockVolumeDestroy
+	zapHosts := map[string]bool{}
+	app.xo.MockGlusterdCheck = func(host string) error {
+		if len(zapHosts) == 0 {
+			// we zap whatever the first host we see
+			zapHosts[host] = true
+		}
+		if zapHosts[host] {
+			return fmt.Errorf("you shall not pass")
+		}
+		return nil
+	}
+	app.xo.MockBlockVolumeDestroy = func(host, bhv, volume string) error {
+		return &executors.VolumeDoesNotExistErr{Name: volume}
+	}
+
+	e := RunOperation(vc, app.executor)
+	tests.Assert(t, e != nil, "expected e != nil, got", e)
+
+	// verify that everything got cleaned up
+	app.db.View(func(tx *bolt.Tx) error {
+		vl, e := VolumeList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(vl) == 0, "expected len(vl) == 0, got", len(vl))
+		bl, e := BlockVolumeList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(bl) == 0, "expected len(bl) == 0, got", len(bl))
+		pol, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pol) == 0, "expected len(pol) == 0, got", len(pol))
+		return nil
+	})
+}
