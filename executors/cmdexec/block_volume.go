@@ -117,15 +117,14 @@ func (s *CmdExecutor) BlockVolumeDestroy(host string, blockHostingVolumeName str
 	}
 	var blockVolumeDelete CliOutput
 	if e := json.Unmarshal([]byte(errOutput), &blockVolumeDelete); e != nil {
-		parseErr := logger.LogError(
-			"Unable to parse output from block volume delete: %v",
-			blockVolumeName)
-		if r.Err == nil {
-			return parseErr
-		} else {
+		if r.Err != nil {
 			return r.Err
 		}
+
+		return logger.LogError("Unable to parse output from block "+
+			"volume delete: %v", e)
 	}
+
 	if blockVolumeDelete.Result == "FAIL" {
 		if strings.Contains(blockVolumeDelete.ErrMsg, "doesn't exist") &&
 			strings.Contains(blockVolumeDelete.ErrMsg, blockVolumeName) {
