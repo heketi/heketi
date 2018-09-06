@@ -13,6 +13,7 @@ package functional
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils/ssh"
@@ -167,6 +168,89 @@ func TestBlockVolumeAlreadyDeleted(t *testing.T) {
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, len(o) == 1, "expected len(o) == 1, got:", len(o))
 
+	err = heketi.BlockVolumeDelete(bvol.Id)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+}
+
+func TestBlockVolumeDeleteFailureConditions(t *testing.T) {
+
+	// Setup the VM storage topology
+	setupCluster(t, 3, 4)
+	defer teardownCluster(t)
+	defer teardownBlock(t)
+
+	blockReq := &api.BlockVolumeCreateRequest{}
+	blockReq.Size = 3
+	blockReq.Hacount = 3
+
+	type result struct {
+		index int
+		err   error
+	}
+
+	bvol, err := heketi.BlockVolumeCreate(blockReq)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	_, err = heketi.BlockVolumeInfo(bvol.Id)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	downHosts := []string{storage1ssh, storage2ssh}
+
+	var cmds []string
+	s := ssh.NewSshExecWithKeyFile(
+		logger, "vagrant", "../config/insecure_private_key")
+	stopServices := func(both bool) {
+		logger.Info("Stopping services for test")
+		for _, host := range downHosts {
+			cmds = []string{
+				"systemctl stop gluster-blockd",
+			}
+			if both {
+				cmds = append(cmds, "systemctl stop glusterd")
+			}
+			_, err := s.ConnectAndExec(host, cmds, 10, true)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		}
+		time.Sleep(time.Second * 5)
+	}
+	startServices := func() {
+		logger.Info("Starting services back up")
+		for _, host := range downHosts {
+			cmds = []string{
+				"systemctl start glusterd",
+				"systemctl start gluster-blockd",
+			}
+			_, err := s.ConnectAndExec(host, cmds, 10, true)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		}
+		time.Sleep(time.Second * 5)
+	}
+
+	defer startServices()
+
+	l, err := heketi.BlockVolumeList()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, len(l.BlockVolumes) == 1,
+		"expected len(l.BlockVolumes) == 1, got:", len(l.BlockVolumes))
+
+	stopServices(false)
+	// we need to try a few times in order to potentially run the command
+	// on different gluster nodes. 10 is a nice round number
+	for i := 0; i < 10; i++ {
+		err = heketi.BlockVolumeDelete(bvol.Id)
+		tests.Assert(t, err != nil, "expected err != nil, got:", err)
+	}
+
+	stopServices(true)
+	for i := 0; i < 10; i++ {
+		err = heketi.BlockVolumeDelete(bvol.Id)
+		tests.Assert(t, err != nil, "expected err != nil, got:", err)
+	}
+
+	startServices()
+	_, err = heketi.BlockVolumeInfo(bvol.Id)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	logger.Info("Doing real delete")
 	err = heketi.BlockVolumeDelete(bvol.Id)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 }
