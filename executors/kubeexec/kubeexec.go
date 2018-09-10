@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/lpabon/godbc"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/api"
@@ -27,7 +28,7 @@ import (
 	"github.com/heketi/heketi/executors/cmdexec"
 	"github.com/heketi/heketi/pkg/kubernetes"
 	"github.com/heketi/heketi/pkg/logging"
-	"github.com/lpabon/godbc"
+	rex "github.com/heketi/heketi/pkg/remoteexec"
 )
 
 const (
@@ -169,12 +170,34 @@ func (k *KubeExecutor) RemoteCommandExecute(host string,
 		timeoutMinutes)
 }
 
+func (k *KubeExecutor) ExecCommands(
+	host string, commands []string,
+	timeoutMinutes int) (rex.Results, error) {
+
+	// Throttle
+	k.AccessConnection(host)
+	defer k.FreeConnection(host)
+
+	// Execute
+	return k.execCommands(host, "pods", commands, timeoutMinutes)
+}
+
 func (k *KubeExecutor) ConnectAndExec(host, resource string,
 	commands []string,
 	timeoutMinutes int) ([]string, error) {
 
-	// Used to return command output
-	buffers := make([]string, len(commands))
+	results, err := k.execCommands(host, resource, commands, timeoutMinutes)
+	if err != nil {
+		return nil, err
+	}
+	return results.SquashErrors()
+}
+
+func (k *KubeExecutor) execCommands(
+	host, resource string, commands []string,
+	timeoutMinutes int) (rex.Results, error) {
+
+	results := make(rex.Results, len(commands))
 
 	// Get pod name
 	var (
@@ -238,17 +261,32 @@ func (k *KubeExecutor) ConnectAndExec(host, resource string,
 			Stdout:             &b,
 			Stderr:             &berr,
 		})
-		if err != nil {
-			logger.LogError("Failed to run command [%v] on %v: Err[%v]: Stdout [%v]: Stderr [%v]",
-				command, podName, err, b.String(), berr.String())
-			return nil, fmt.Errorf("%v", berr.String())
+		r := rex.Result{
+			Completed: true,
+			Output:    b.String(),
+			ErrOutput: berr.String(),
+			Err:       err,
 		}
-		logger.Debug("Host: %v Pod: %v Command: %v\nResult: %v", host, podName, command, b.String())
-		buffers[index] = b.String()
-
+		if err == nil {
+			logger.Debug(
+				"Ran command [%v] on %v: Stdout [%v]: Stderr [%v]",
+				command, podName, r.Output, r.ErrOutput)
+		} else {
+			logger.LogError(
+				"Failed to run command [%v] on %v: Err[%v]: Stdout [%v]: Stderr [%v]",
+				command, podName, err, r.Output, r.ErrOutput)
+			// TODO: extract the real error code if possible
+			r.ExitStatus = 1
+		}
+		results[index] = r
+		if r.ExitStatus != 0 {
+			// stop running commands on error
+			// TODO: make caller configurable?)
+			return results, nil
+		}
 	}
 
-	return buffers, nil
+	return results, nil
 }
 
 func (k *KubeExecutor) RebalanceOnExpansion() bool {
