@@ -15,25 +15,26 @@ import (
 
 	"github.com/heketi/heketi/executors/cmdexec"
 	"github.com/heketi/heketi/pkg/logging"
+	rex "github.com/heketi/heketi/pkg/remoteexec"
 	"github.com/heketi/tests"
 )
 
 // Mock SSH calls
 type FakeSsh struct {
-	FakeConnectAndExec func(host string,
+	FakeExecCommands func(host string,
 		commands []string,
 		timeoutMinutes int,
-		useSudo bool) ([]string, error)
+		useSudo bool) (rex.Results, error)
 }
 
 func NewFakeSsh() *FakeSsh {
 	f := &FakeSsh{}
 
-	f.FakeConnectAndExec = func(host string,
+	f.FakeExecCommands = func(host string,
 		commands []string,
 		timeoutMinutes int,
-		useSudo bool) ([]string, error) {
-		return []string{""}, nil
+		useSudo bool) (rex.Results, error) {
+		return rex.Results{}, nil
 	}
 
 	return f
@@ -43,7 +44,15 @@ func (f *FakeSsh) ConnectAndExec(host string,
 	commands []string,
 	timeoutMinutes int,
 	useSudo bool) ([]string, error) {
-	return f.FakeConnectAndExec(host, commands, timeoutMinutes, useSudo)
+	return []string{}, nil
+
+}
+
+func (f *FakeSsh) ExecCommands(host string,
+	commands []string,
+	timeoutMinutes int,
+	useSudo bool) (rex.Results, error) {
+	return f.FakeExecCommands(host, commands, timeoutMinutes, useSudo)
 
 }
 
