@@ -15,14 +15,17 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/lpabon/godbc"
+
 	"github.com/heketi/heketi/executors/cmdexec"
 	"github.com/heketi/heketi/pkg/logging"
+	rex "github.com/heketi/heketi/pkg/remoteexec"
 	"github.com/heketi/heketi/pkg/remoteexec/ssh"
-	"github.com/lpabon/godbc"
 )
 
 type Ssher interface {
 	ConnectAndExec(host string, commands []string, timeoutMinutes int, useSudo bool) ([]string, error)
+	ExecCommands(host string, commands []string, timeoutMinutes int, useSudo bool) (rex.Results, error)
 }
 
 type SshExecutor struct {
@@ -145,6 +148,17 @@ func (s *SshExecutor) RemoteCommandExecute(host string,
 
 	// Execute
 	return s.exec.ConnectAndExec(host+":"+s.port, commands, timeoutMinutes, s.config.Sudo)
+}
+
+func (s *SshExecutor) ExecCommands(
+	host string, commands []string, timeoutMinutes int) (rex.Results, error) {
+
+	// Throttle
+	s.AccessConnection(host)
+	defer s.FreeConnection(host)
+
+	// Execute
+	return s.exec.ExecCommands(host+":"+s.port, commands, timeoutMinutes, s.config.Sudo)
 }
 
 func (s *SshExecutor) RebalanceOnExpansion() bool {
