@@ -22,6 +22,7 @@ import (
 	"github.com/heketi/heketi/pkg/idgen"
 	"github.com/heketi/heketi/pkg/sortedstrings"
 	"github.com/lpabon/godbc"
+	"github.com/pkg/errors"
 )
 
 type NodeEntry struct {
@@ -175,7 +176,7 @@ func (n *NodeEntry) Register(tx *bolt.Tx) error {
 			}
 
 			// Return that we found a conflict
-			return fmt.Errorf("Hostname %v already used by node with id %v\n",
+			return errors.Errorf("Hostname %v already used by node with id %v\n",
 				h, conflictId)
 		} else if err != nil {
 			return err
@@ -199,7 +200,7 @@ func (n *NodeEntry) Register(tx *bolt.Tx) error {
 			}
 
 			// Return that we found a conflict
-			return fmt.Errorf("Hostname %v already used by node with id %v\n",
+			return errors.Errorf("Hostname %v already used by node with id %v\n",
 				h, conflictId)
 		} else if err != nil {
 			return err
@@ -293,11 +294,11 @@ func (n *NodeEntry) SetState(db wdb.DB, e executors.Executor,
 		case api.EntryStateFailed:
 			return nil
 		case api.EntryStateOnline:
-			return fmt.Errorf("Cannot move a failed/removed node to online state")
+			return errors.Errorf("Cannot move a failed/removed node to online state")
 		case api.EntryStateOffline:
-			return fmt.Errorf("Cannot move a failed/removed node to offline state")
+			return errors.Errorf("Cannot move a failed/removed node to offline state")
 		default:
-			return fmt.Errorf("Unknown state type: %v", s)
+			return errors.Errorf("Unknown state type: %v", s)
 		}
 
 	// Node is in enabled/online state
@@ -320,9 +321,9 @@ func (n *NodeEntry) SetState(db wdb.DB, e executors.Executor,
 				return err
 			}
 		case api.EntryStateFailed:
-			return fmt.Errorf("Node must be offline before remove operation is performed, node:%v", n.Info.Id)
+			return errors.Errorf("Node must be offline before remove operation is performed, node:%v", n.Info.Id)
 		default:
-			return fmt.Errorf("Unknown state type: %v", s)
+			return errors.Errorf("Unknown state type: %v", s)
 		}
 
 	// Node is in disabled/offline state
@@ -376,7 +377,7 @@ func (n *NodeEntry) SetState(db wdb.DB, e executors.Executor,
 			}
 
 		default:
-			return fmt.Errorf("Unknown state type: %v", s)
+			return errors.Errorf("Unknown state type: %v", s)
 		}
 	}
 	return nil

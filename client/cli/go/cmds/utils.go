@@ -10,10 +10,9 @@
 package cmds
 
 import (
-	"errors"
-	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	client "github.com/heketi/heketi/client/api/go-client"
@@ -43,7 +42,7 @@ func setTagsCommand(cmd *cobra.Command,
 	for _, t := range s[1:] {
 		parts := strings.SplitN(t, ":", 2)
 		if len(parts) < 2 {
-			return fmt.Errorf(
+			return errors.Errorf(
 				"expected colon (:) between tag name and value, got: %v",
 				t)
 		}

@@ -10,8 +10,7 @@
 package kube
 
 import (
-	"fmt"
-
+	"github.com/pkg/errors"
 	restclient "k8s.io/client-go/rest"
 	client "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	coreclient "k8s.io/kubernetes/pkg/client/clientset_generated/clientset/typed/core/v1"
@@ -54,14 +53,14 @@ func NewKubeConnWithConfig(l logger, rc *restclient.Config) (*KubeConn, error) {
 	// Get a raw REST client.  This is still needed for kube-exec
 	restCore, err := coreclient.NewForConfig(k.kubeConfig)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to create a client connection: %v", err)
+		return nil, errors.Errorf("Unable to create a client connection: %v", err)
 	}
 	k.rest = restCore.RESTClient()
 
 	// Get a Go-client for Kubernetes
 	k.kube, err = client.NewForConfig(k.kubeConfig)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to create a client set: %v", err)
+		return nil, errors.Errorf("Unable to create a client set: %v", err)
 	}
 	return k, nil
 }
@@ -73,7 +72,7 @@ func NewKubeConn(l logger) (*KubeConn, error) {
 	// Create a Kube client configuration using pkg callback
 	rc, err := InClusterConfig()
 	if err != nil {
-		return nil, fmt.Errorf(
+		return nil, errors.Errorf(
 			"Unable to create configuration for Kubernetes: %v", err)
 	}
 	return NewKubeConnWithConfig(l, rc)

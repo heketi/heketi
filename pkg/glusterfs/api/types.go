@@ -23,6 +23,7 @@ import (
 
 	"github.com/go-ozzo/ozzo-validation"
 	"github.com/go-ozzo/ozzo-validation/is"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -45,7 +46,7 @@ func ValidateUUID(value interface{}) error {
 	s, _ := value.(string)
 	err := validation.Validate(s, validation.RuneLength(32, 32), is.Hexadecimal)
 	if err != nil {
-		return fmt.Errorf("%v is not a valid UUID", s)
+		return errors.Errorf("%v is not a valid UUID", s)
 	}
 	return nil
 }
@@ -64,7 +65,7 @@ func ValidateEntryState(value interface{}) error {
 	s, _ := value.(EntryState)
 	err := validation.Validate(s, validation.Required, validation.In(EntryStateOnline, EntryStateOffline, EntryStateFailed))
 	if err != nil {
-		return fmt.Errorf("%v is not valid state", s)
+		return errors.Errorf("%v is not valid state", s)
 	}
 	return nil
 }
@@ -81,7 +82,7 @@ func ValidateDurabilityType(value interface{}) error {
 	s, _ := value.(DurabilityType)
 	err := validation.Validate(s, validation.Required, validation.In(DurabilityReplicate, DurabilityDistributeOnly, DurabilityEC))
 	if err != nil {
-		return fmt.Errorf("%v is not a valid durability type", s)
+		return errors.Errorf("%v is not a valid durability type", s)
 	}
 	return nil
 }
@@ -114,7 +115,7 @@ func ValidateManagementHostname(value interface{}) error {
 	for _, fqdn := range s {
 		err := validation.Validate(fqdn, validation.Required, is.Host)
 		if err != nil {
-			return fmt.Errorf("%v is not a valid manage hostname", s)
+			return errors.Errorf("%v is not a valid manage hostname", s)
 		}
 	}
 	return nil
@@ -125,7 +126,7 @@ func ValidateStorageHostname(value interface{}) error {
 	for _, ip := range s {
 		err := validation.Validate(ip, validation.Required, is.Host)
 		if err != nil {
-			return fmt.Errorf("%v is not a valid storage hostname", s)
+			return errors.Errorf("%v is not a valid storage hostname", s)
 		}
 	}
 	return nil
@@ -459,24 +460,24 @@ func (tcr TagsChangeRequest) Validate() error {
 func ValidateTags(v interface{}) error {
 	t, ok := v.(map[string]string)
 	if !ok {
-		return fmt.Errorf("tags must be a map of strings to strings")
+		return errors.Errorf("tags must be a map of strings to strings")
 	}
 	if len(t) > 32 {
-		return fmt.Errorf("too many tags specified (%v), up to %v supported",
+		return errors.Errorf("too many tags specified (%v), up to %v supported",
 			len(t), 32)
 	}
 	for k, v := range t {
 		if len(k) == 0 {
-			return fmt.Errorf("tag names may not be empty")
+			return errors.Errorf("tag names may not be empty")
 		}
 		if err := validation.Validate(k, validation.RuneLength(1, 32)); err != nil {
-			return fmt.Errorf("tag name %v: %v", k, err)
+			return errors.Errorf("tag name %v: %v", k, err)
 		}
 		if err := validation.Validate(v, validation.RuneLength(0, 64)); err != nil {
-			return fmt.Errorf("value of tag %v: %v", k, err)
+			return errors.Errorf("value of tag %v: %v", k, err)
 		}
 		if !tagNameRe.MatchString(k) {
-			return fmt.Errorf("invalid characters in tag name %+v", k)
+			return errors.Errorf("invalid characters in tag name %+v", k)
 		}
 	}
 	return nil

@@ -18,6 +18,7 @@ import (
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	kubeapi "k8s.io/kubernetes/pkg/api/v1"
@@ -119,7 +120,7 @@ func createHeketiStorageVolume(c *client.Client, dt api.DurabilityType, replicaC
 
 			// Check volume name
 			if volume.Name == db.HeketiStorageVolumeName {
-				return nil, fmt.Errorf("Volume %v alreay exists", db.HeketiStorageVolumeName)
+				return nil, errors.Errorf("Volume %v alreay exists", db.HeketiStorageVolumeName)
 			}
 		}
 	}
@@ -136,7 +137,7 @@ func createHeketiStorageVolume(c *client.Client, dt api.DurabilityType, replicaC
 	case api.DurabilityDistributeOnly:
 		// no further options needed
 	default:
-		return nil, fmt.Errorf("Durability %s is not supported for heketi database storage", dt)
+		return nil, errors.Errorf("Durability %s is not supported for heketi database storage", dt)
 	}
 
 	// Create volume
@@ -154,7 +155,7 @@ func createHeketiSecretFromDb(c *client.Client) (*kubeapi.Secret, error) {
 	// Save db
 	err := c.BackupDb(&dbfile)
 	if err != nil {
-		return nil, fmt.Errorf("ERROR: %v\nUnable to get database from Heketi server", err.Error())
+		return nil, errors.Errorf("ERROR: %v\nUnable to get database from Heketi server", err.Error())
 	}
 
 	// Create Secret

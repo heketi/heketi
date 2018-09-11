@@ -11,7 +11,6 @@ package glusterfs
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -28,6 +27,7 @@ import (
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
+	"github.com/pkg/errors"
 )
 
 func TestBlockVolumeCreateBadJson(t *testing.T) {
@@ -384,7 +384,7 @@ func makeGlusterdCheck(available map[string]bool) func(string) error {
 			available[host] = (len(available) % 2) == 0
 		}
 		if !available[host] {
-			return fmt.Errorf("host %s unavailable", host)
+			return errors.Errorf("host %s unavailable", host)
 		}
 		return nil
 	}

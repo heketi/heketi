@@ -13,15 +13,15 @@ import (
 	"fmt"
 	"testing"
 
-	restclient "k8s.io/client-go/rest"
-
 	"github.com/heketi/tests"
+	"github.com/pkg/errors"
+	restclient "k8s.io/client-go/rest"
 )
 
 type dummyLogger struct{}
 
 func (*dummyLogger) LogError(s string, v ...interface{}) error {
-	e := fmt.Errorf(s, v...)
+	e := errors.Errorf(s, v...)
 	fmt.Printf("Error: %v\n", e)
 	return e
 }

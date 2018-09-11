@@ -12,11 +12,11 @@ package glusterfs
 import (
 	"fmt"
 
+	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
-
-	"github.com/boltdb/bolt"
+	"github.com/pkg/errors"
 )
 
 // VolumeSetBlockRestrictionOperation implements the operation functions
@@ -55,7 +55,7 @@ func (ro *VolumeSetBlockRestrictionOperation) ResourceUrl() string {
 // Build sets the state when adding restrictions.
 func (ro *VolumeSetBlockRestrictionOperation) Build() error {
 	if !ro.vol.Info.Block {
-		return fmt.Errorf(
+		return errors.Errorf(
 			"Block restrictions can only be set on block hosting volumes")
 	}
 	// do a "pre flight check" of unlock stuff
@@ -131,7 +131,7 @@ func (ro *VolumeSetBlockRestrictionOperation) checkCanUnlock(
 			// there is enough free space to reserve (some of) it
 			return nil
 		}
-		return fmt.Errorf(
+		return errors.Errorf(
 			"Can not unlock volume. %vGiB free space is required, but found %vGiB",
 			rSize, v.Info.BlockInfo.FreeSize)
 	case api.Unrestricted:
@@ -139,7 +139,7 @@ func (ro *VolumeSetBlockRestrictionOperation) checkCanUnlock(
 		// is OK
 		return nil
 	default:
-		return fmt.Errorf("Unexpected restriction state: %v",
+		return errors.Errorf("Unexpected restriction state: %v",
 			v.Info.BlockInfo.Restriction)
 	}
 }

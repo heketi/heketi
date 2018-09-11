@@ -10,13 +10,13 @@
 package glusterfs
 
 import (
-	"fmt"
 	"math/rand"
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/lpabon/godbc"
+	"github.com/pkg/errors"
 )
 
 // Creates a block volume
@@ -68,7 +68,7 @@ func (v *BlockVolumeEntry) createBlockVolumeRequest(db wdb.RODB,
 			for _, i := range rand.Perm(len(bhvol.Info.Mount.GlusterFS.Hosts)) {
 				managehostname, e := GetManageHostnameFromStorageHostname(tx, bhvol.Info.Mount.GlusterFS.Hosts[i])
 				if e != nil {
-					return fmt.Errorf("Could not find managehostname for %v", bhvol.Info.Mount.GlusterFS.Hosts[i])
+					return errors.Errorf("Could not find managehostname for %v", bhvol.Info.Mount.GlusterFS.Hosts[i])
 				}
 				e = executor.GlusterdCheck(managehostname)
 				if e == nil {
@@ -79,7 +79,7 @@ func (v *BlockVolumeEntry) createBlockVolumeRequest(db wdb.RODB,
 				}
 			}
 			if len(v.Info.BlockVolume.Hosts) < v.Info.Hacount {
-				return fmt.Errorf("insufficient block hosts online")
+				return errors.Errorf("insufficient block hosts online")
 			}
 		} else {
 			v.Info.BlockVolume.Hosts = bhvol.Info.Mount.GlusterFS.Hosts

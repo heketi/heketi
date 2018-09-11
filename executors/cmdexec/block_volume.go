@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/lpabon/godbc"
+	"github.com/pkg/errors"
 
 	"github.com/heketi/heketi/executors"
 	rex "github.com/heketi/heketi/pkg/remoteexec"
@@ -60,13 +61,13 @@ func (s *CmdExecutor) BlockVolumeCreate(host string,
 	var blockVolumeCreate CliOutput
 	err = json.Unmarshal([]byte(results[0].Output), &blockVolumeCreate)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to get the block volume create info for block volume %v", volume.Name)
+		return nil, errors.Errorf("Unable to get the block volume create info for block volume %v", volume.Name)
 	}
 
 	if blockVolumeCreate.Result == "FAIL" {
 		s.BlockVolumeDestroy(host, volume.GlusterVolumeName, volume.Name)
 		logger.LogError("%v", blockVolumeCreate.ErrMsg)
-		return nil, fmt.Errorf("%v", blockVolumeCreate.ErrMsg)
+		return nil, errors.Errorf("%v", blockVolumeCreate.ErrMsg)
 	}
 
 	var blockVolumeInfo executors.BlockVolumeInfo

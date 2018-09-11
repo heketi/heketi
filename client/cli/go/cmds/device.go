@@ -11,10 +11,10 @@ package cmds
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 

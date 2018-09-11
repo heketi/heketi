@@ -16,6 +16,7 @@ import (
 	wdb "github.com/heketi/heketi/pkg/db"
 
 	"github.com/boltdb/bolt"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -162,7 +163,7 @@ func expandSizeFromOp(op *PendingOperationEntry) (sizeGB int, e error) {
 			return
 		}
 	}
-	e = fmt.Errorf("no OpExpandVolume action in pending op: %v",
+	e = errors.Errorf("no OpExpandVolume action in pending op: %v",
 		op.Id)
 	return
 }

@@ -10,15 +10,15 @@
 package glusterfs
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
-	"github.com/heketi/heketi/executors"
-	"github.com/heketi/heketi/pkg/glusterfs/api"
-
 	"github.com/boltdb/bolt"
 	"github.com/heketi/tests"
+	"github.com/pkg/errors"
+
+	"github.com/heketi/heketi/executors"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 )
 
 func TestBlockHostingVolumeExpandOperation(t *testing.T) {
@@ -1128,7 +1128,7 @@ func TestBlockVolumeCreateRollbackCleanupFailure(t *testing.T) {
 	// now we're going to pretend exec failed and inject an
 	// error condition into BlockVolumeDestroy
 	app.xo.MockBlockVolumeDestroy = func(host, bhv, volume string) error {
-		return fmt.Errorf("fake error")
+		return errors.Errorf("fake error")
 	}
 
 	e = vc.Rollback(app.executor)
@@ -1409,7 +1409,7 @@ func TestBlockVolumeCreateInsufficientHosts(t *testing.T) {
 			zapHosts[host] = true
 		}
 		if zapHosts[host] {
-			return fmt.Errorf("you shall not pass")
+			return errors.Errorf("you shall not pass")
 		}
 		return nil
 	}

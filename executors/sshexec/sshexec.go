@@ -10,12 +10,11 @@
 package sshexec
 
 import (
-	"errors"
-	"fmt"
 	"os"
 	"strconv"
 
 	"github.com/lpabon/godbc"
+	"github.com/pkg/errors"
 
 	"github.com/heketi/heketi/executors/cmdexec"
 	"github.com/heketi/heketi/pkg/logging"
@@ -92,7 +91,7 @@ func NewSshExecutor(config *SshConfig) (*SshExecutor, error) {
 
 	// Set configuration
 	if config.PrivateKeyFile == "" {
-		return nil, fmt.Errorf("Missing ssh private key file in configuration")
+		return nil, errors.Errorf("Missing ssh private key file in configuration")
 	}
 	s.private_keyfile = config.PrivateKeyFile
 

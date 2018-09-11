@@ -10,7 +10,6 @@
 package glusterfs
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -25,6 +24,7 @@ import (
 	"github.com/heketi/heketi/pkg/sortedstrings"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
+	"github.com/pkg/errors"
 )
 
 func createSampleReplicaVolumeEntry(size int, replica int) *VolumeEntry {

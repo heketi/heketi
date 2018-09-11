@@ -11,13 +11,13 @@ package ssh
 
 import (
 	"bytes"
-	"errors"
 	"io/ioutil"
 	"log"
 	"net"
 	"os"
 	"time"
 
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 

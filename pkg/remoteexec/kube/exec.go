@@ -11,9 +11,9 @@ package kube
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
 	kubeletcmd "k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
@@ -58,7 +58,7 @@ func ExecCommands(
 		exec, err := remotecommand.NewExecutor(k.kubeConfig, "POST", req.URL())
 		if err != nil {
 			k.logger.Err(err)
-			return nil, fmt.Errorf("Unable to setup a session with %v", t.PodName)
+			return nil, errors.Errorf("Unable to setup a session with %v", t.PodName)
 		}
 
 		// Create a buffer to trap session output

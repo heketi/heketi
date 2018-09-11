@@ -14,6 +14,7 @@ import (
 	"fmt"
 
 	"github.com/lpabon/godbc"
+	"github.com/pkg/errors"
 
 	"github.com/heketi/heketi/executors"
 	rex "github.com/heketi/heketi/pkg/remoteexec"
@@ -37,17 +38,17 @@ func (s *CmdExecutor) snapshotActivate(host string, snapshot string) error {
 	results, err := s.RemoteExecutor.ExecCommands(host, command,
 		s.GlusterCliExecTimeout())
 	if err := rex.AnyError(results, err); err != nil {
-		return fmt.Errorf("Unable to activate snapshot %v: %v", snapshot, err)
+		return errors.Errorf("Unable to activate snapshot %v: %v", snapshot, err)
 	}
 
 	var snapActivate CliOutput
 	err = xml.Unmarshal([]byte(results[0].Output), &snapActivate)
 	if err != nil {
-		return fmt.Errorf("Unable to parse output from activate snapshot %v: %v", snapshot, err)
+		return errors.Errorf("Unable to parse output from activate snapshot %v: %v", snapshot, err)
 	}
 	logger.Debug("%+v\n", snapActivate)
 	if snapActivate.OpRet != 0 {
-		return fmt.Errorf("Failed to activate snapshot %v: %v", snapshot, snapActivate.OpErrStr)
+		return errors.Errorf("Failed to activate snapshot %v: %v", snapshot, snapActivate.OpErrStr)
 	}
 
 	return nil
@@ -71,17 +72,17 @@ func (s *CmdExecutor) snapshotDeactivate(host string, snapshot string) error {
 	results, err := s.RemoteExecutor.ExecCommands(host, command,
 		s.GlusterCliExecTimeout())
 	if err := rex.AnyError(results, err); err != nil {
-		return fmt.Errorf("Unable to deactivate snapshot %v: %v", snapshot, err)
+		return errors.Errorf("Unable to deactivate snapshot %v: %v", snapshot, err)
 	}
 
 	var snapDeactivate CliOutput
 	err = xml.Unmarshal([]byte(results[0].Output), &snapDeactivate)
 	if err != nil {
-		return fmt.Errorf("Unable to parse output from deactivate snapshot %v: %v", snapshot, err)
+		return errors.Errorf("Unable to parse output from deactivate snapshot %v: %v", snapshot, err)
 	}
 	logger.Debug("%+v\n", snapDeactivate)
 	if snapDeactivate.OpRet != 0 {
-		return fmt.Errorf("Failed to deactivate snapshot %v: %v", snapshot, snapDeactivate.OpErrStr)
+		return errors.Errorf("Failed to deactivate snapshot %v: %v", snapshot, snapDeactivate.OpErrStr)
 	}
 
 	return nil
@@ -114,17 +115,17 @@ func (s *CmdExecutor) SnapshotCloneVolume(host string, vcr *executors.SnapshotCl
 	results, err := s.RemoteExecutor.ExecCommands(host, command,
 		s.GlusterCliExecTimeout())
 	if err := rex.AnyError(results, err); err != nil {
-		return nil, fmt.Errorf("Unable to clone snapshot %v: %v", vcr.Snapshot, err)
+		return nil, errors.Errorf("Unable to clone snapshot %v: %v", vcr.Snapshot, err)
 	}
 
 	var cliOutput CliOutput
 	err = xml.Unmarshal([]byte(results[0].Output), &cliOutput)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to parse output from clone snapshot %v: %v", vcr.Snapshot, err)
+		return nil, errors.Errorf("Unable to parse output from clone snapshot %v: %v", vcr.Snapshot, err)
 	}
 	logger.Debug("%+v\n", cliOutput)
 	if cliOutput.OpRet != 0 {
-		return nil, fmt.Errorf("Failed to clone snapshot %v to volume %v: %v", vcr.Snapshot, vcr.Volume, cliOutput.OpErrStr)
+		return nil, errors.Errorf("Failed to clone snapshot %v to volume %v: %v", vcr.Snapshot, vcr.Volume, cliOutput.OpErrStr)
 	}
 
 	// start the newly cloned volume
@@ -136,7 +137,7 @@ func (s *CmdExecutor) SnapshotCloneVolume(host string, vcr *executors.SnapshotCl
 		s.GlusterCliExecTimeout()))
 	if err != nil {
 		s.VolumeDestroy(host, vcr.Volume)
-		return nil, fmt.Errorf("Unable to start volume %v, clone of snapshot %v: %v", vcr.Volume, vcr.Snapshot, err)
+		return nil, errors.Errorf("Unable to start volume %v, clone of snapshot %v: %v", vcr.Volume, vcr.Snapshot, err)
 	}
 
 	return s.VolumeInfo(host, vcr.Volume)
@@ -144,7 +145,7 @@ func (s *CmdExecutor) SnapshotCloneVolume(host string, vcr *executors.SnapshotCl
 
 func (s *CmdExecutor) SnapshotCloneBlockVolume(host string, vcr *executors.SnapshotCloneRequest) (*executors.BlockVolumeInfo, error) {
 	// TODO: cloning of block volume is not implemented yet
-	return nil, fmt.Errorf("block snapshot %v can not be cloned, not implemented yet", vcr.Snapshot)
+	return nil, errors.Errorf("block snapshot %v can not be cloned, not implemented yet", vcr.Snapshot)
 }
 
 func (s *CmdExecutor) SnapshotDestroy(host string, snapshot string) error {
@@ -165,17 +166,17 @@ func (s *CmdExecutor) SnapshotDestroy(host string, snapshot string) error {
 	results, err := s.RemoteExecutor.ExecCommands(host, command,
 		s.GlusterCliExecTimeout())
 	if err := rex.AnyError(results, err); err != nil {
-		return fmt.Errorf("Unable to delete snapshot %v: %v", snapshot, err)
+		return errors.Errorf("Unable to delete snapshot %v: %v", snapshot, err)
 	}
 
 	var snapDelete CliOutput
 	err = xml.Unmarshal([]byte(results[0].Output), &snapDelete)
 	if err != nil {
-		return fmt.Errorf("Unable to parse output from delete snapshot %v: %v", snapshot, err)
+		return errors.Errorf("Unable to parse output from delete snapshot %v: %v", snapshot, err)
 	}
 	logger.Debug("%+v\n", snapDelete)
 	if snapDelete.OpRet != 0 {
-		return fmt.Errorf("Failed to delete snapshot %v: %v", snapshot, snapDelete.OpErrStr)
+		return errors.Errorf("Failed to delete snapshot %v: %v", snapshot, snapDelete.OpErrStr)
 	}
 
 	return nil

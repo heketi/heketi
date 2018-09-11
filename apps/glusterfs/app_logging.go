@@ -17,6 +17,7 @@ import (
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/logging"
 	"github.com/heketi/heketi/pkg/utils"
+	"github.com/pkg/errors"
 )
 
 func (a *App) logLevelName() string {
@@ -60,7 +61,7 @@ func (a *App) SetLogLevel(w http.ResponseWriter, r *http.Request) {
 	}
 	wantLevel, ok := msg.LogLevel["glusterfs"]
 	if !ok {
-		err := fmt.Errorf("Only \"glusterfs\" logger may be modified")
+		err := errors.Errorf("Only \"glusterfs\" logger may be modified")
 		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 		return
 	}

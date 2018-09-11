@@ -11,8 +11,9 @@ package cmds
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
+
+	"github.com/pkg/errors"
 	//	"os"
 	"strings"
 

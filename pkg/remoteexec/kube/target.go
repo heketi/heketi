@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/heketi/heketi/pkg/kubernetes"
@@ -54,7 +55,7 @@ func (t TargetLabel) GetTargetPod(k *KubeConn) (TargetPod, error) {
 	if ns == "" {
 		ns, err = kubernetes.GetNamespace()
 		if err != nil {
-			return tp, fmt.Errorf("Namespace must be provided in configuration: %v", err)
+			return tp, errors.Errorf("Namespace must be provided in configuration: %v", err)
 		}
 	}
 	tp.Namespace = ns
@@ -65,13 +66,13 @@ func (t TargetLabel) GetTargetPod(k *KubeConn) (TargetPod, error) {
 	})
 	if err != nil {
 		k.logger.Err(err)
-		return tp, fmt.Errorf("Failed to get list of pods")
+		return tp, errors.Errorf("Failed to get list of pods")
 	}
 
 	numPods := len(pods.Items)
 	if numPods == 0 {
 		// No pods found with that label
-		err := fmt.Errorf("No pods with the label '%v=%v' were found",
+		err := errors.Errorf("No pods with the label '%v=%v' were found",
 			t.Key, t.Value)
 		k.logger.Critical(err.Error())
 		return tp, err
@@ -82,7 +83,7 @@ func (t TargetLabel) GetTargetPod(k *KubeConn) (TargetPod, error) {
 		for i, p := range pods.Items {
 			names[i] = p.Name
 		}
-		err := fmt.Errorf("Found %v pods sharing the same label '%v=%v': %v",
+		err := errors.Errorf("Found %v pods sharing the same label '%v=%v': %v",
 			numPods, t.Key, t.Value, strings.Join(names, ", "))
 		k.logger.Critical(err.Error())
 		return tp, err
@@ -120,7 +121,7 @@ func (t TargetDaemonSet) GetTargetPod(k *KubeConn) (TargetPod, error) {
 	if ns == "" {
 		ns, err = kubernetes.GetNamespace()
 		if err != nil {
-			return tp, fmt.Errorf("Namespace must be provided in configuration: %v", err)
+			return tp, errors.Errorf("Namespace must be provided in configuration: %v", err)
 		}
 	}
 	tp.Namespace = ns
@@ -176,7 +177,7 @@ func (t TargetPod) FirstContainer(k *KubeConn) (TargetContainer, error) {
 	tc := TargetContainer{TargetPod: t}
 	podSpec, err := k.kube.Core().Pods(t.Namespace).Get(t.PodName, v1.GetOptions{})
 	if err != nil {
-		return tc, fmt.Errorf("Unable to get pod spec for %v: %v",
+		return tc, errors.Errorf("Unable to get pod spec for %v: %v",
 			t.PodName, err)
 	}
 	tc.ContainerName = podSpec.Spec.Containers[0].Name

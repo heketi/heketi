@@ -10,16 +10,15 @@
 package glusterfs
 
 import (
-	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/boltdb/bolt"
-	"github.com/heketi/tests"
-
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/tests"
+	"github.com/pkg/errors"
 )
 
 func TestCreateNodeHeathCache(t *testing.T) {
@@ -134,7 +133,7 @@ func TestNodeHeathCacheSomeUnhealthy(t *testing.T) {
 	app.xo.MockGlusterdCheck = func(host string) error {
 		var e error
 		if cc&1 == 1 {
-			e = fmt.Errorf("Bloop %v", cc)
+			e = errors.Errorf("Bloop %v", cc)
 		}
 		cc++
 		return e
@@ -181,7 +180,7 @@ func TestNodeHeathCacheMultiRefresh(t *testing.T) {
 	app.xo.MockGlusterdCheck = func(host string) error {
 		var e error
 		if cc&1 == 1 {
-			e = fmt.Errorf("Bloop %v", cc)
+			e = errors.Errorf("Bloop %v", cc)
 		}
 		cc++
 		return e

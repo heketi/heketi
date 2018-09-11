@@ -10,9 +10,8 @@
 package db
 
 import (
-	"errors"
-
 	"github.com/boltdb/bolt"
+	"github.com/pkg/errors"
 )
 
 // RODB provides an abstraction for all types of db connection that

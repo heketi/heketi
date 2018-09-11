@@ -12,7 +12,6 @@ package middleware
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -24,6 +23,7 @@ import (
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/context"
 	"github.com/heketi/heketi/pkg/logging"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -61,21 +61,21 @@ func (c *HeketiJwtClaims) Valid() error {
 
 	if c.VerifyExpiresAt(now, true) == false {
 		delta := time.Unix(now, 0).Sub(time.Unix(c.ExpiresAt, 0))
-		vErr.Inner = fmt.Errorf("Token is expired by %v", delta)
+		vErr.Inner = errors.Errorf("Token is expired by %v", delta)
 		vErr.Errors |= jwt.ValidationErrorExpired
 		logger.LogError("exp validation failed: %v", vErr.Error())
 	}
 
 	// "iat" check
 	if now < c.IssuedAt-iatLeeway {
-		vErr.Inner = fmt.Errorf("Token used before issued")
+		vErr.Inner = errors.Errorf("Token used before issued")
 		vErr.Errors |= jwt.ValidationErrorIssuedAt
 		logger.LogError("iat validation failed: %v, time now: %v, time issued: %v", vErr.Error(), time.Unix(now, 0), time.Unix(c.IssuedAt, 0))
 	}
 
 	// "nbf" is not a required claim
 	if c.VerifyNotBefore(now, false) == false {
-		vErr.Inner = fmt.Errorf("token is not valid yet")
+		vErr.Inner = errors.Errorf("token is not valid yet")
 		vErr.Errors |= jwt.ValidationErrorNotValidYet
 	}
 
@@ -143,7 +143,7 @@ func (j *JwtAuth) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.Ha
 
 		// Verify Method
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+			return nil, errors.Errorf("Unexpected signing method: %v", token.Header["alg"])
 		}
 
 		claims = token.Claims.(*HeketiJwtClaims)

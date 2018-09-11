@@ -10,10 +10,10 @@
 package kubernetes
 
 import (
-	"fmt"
 	"io/ioutil"
 	"strings"
 
+	"github.com/pkg/errors"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/v1"
 )
@@ -26,7 +26,7 @@ const (
 func GetNamespace() (string, error) {
 	data, err := ioutil.ReadFile(KubeNameSpaceFile)
 	if err != nil {
-		return "", fmt.Errorf("File %v not found", KubeNameSpaceFile)
+		return "", errors.Errorf("File %v not found", KubeNameSpaceFile)
 	}
 	if ns := strings.TrimSpace(string(data)); len(ns) > 0 {
 		return ns, nil

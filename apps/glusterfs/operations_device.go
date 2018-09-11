@@ -10,12 +10,11 @@
 package glusterfs
 
 import (
-	"fmt"
+	"github.com/boltdb/bolt"
+	"github.com/pkg/errors"
 
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
-
-	"github.com/boltdb/bolt"
 )
 
 // DeviceRemoveOperation is a phony-ish operation that exists
@@ -92,7 +91,7 @@ func (dro *DeviceRemoveOperation) deviceId() (string, error) {
 		return "", nil
 	}
 	if dro.op.Actions[0].Change != OpRemoveDevice {
-		return "", fmt.Errorf("Unexpected action (%v) on DeviceRemoveOperation pending op",
+		return "", errors.Errorf("Unexpected action (%v) on DeviceRemoveOperation pending op",
 			dro.op.Actions[0].Change)
 	}
 	return dro.op.Actions[0].Id, nil

@@ -10,17 +10,17 @@
 package glusterfs
 
 import (
-	"fmt"
 	"os"
 	"strings"
 	"sync"
 	"testing"
 
-	"github.com/heketi/heketi/executors"
-	"github.com/heketi/heketi/pkg/glusterfs/api"
-
 	"github.com/boltdb/bolt"
 	"github.com/heketi/tests"
+	"github.com/pkg/errors"
+
+	"github.com/heketi/heketi/executors"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 )
 
 func TestVolumeCreatePendingCreatedCleared(t *testing.T) {
@@ -262,7 +262,7 @@ func TestVolumeCreateRollbackCleanupFailure(t *testing.T) {
 	// error condition into VolumeDestroy
 
 	app.xo.MockVolumeDestroy = func(host string, volume string) error {
-		return fmt.Errorf("fake error")
+		return errors.Errorf("fake error")
 	}
 
 	e = vc.Rollback(app.executor)
@@ -503,7 +503,7 @@ func TestVolumeCreateOperationRetrying(t *testing.T) {
 		if brickCreates[host] > 1 {
 			return bCreate(host, brick)
 		}
-		return nil, fmt.Errorf("FAKE ERR")
+		return nil, errors.Errorf("FAKE ERR")
 	}
 
 	vc.maxRetries = 10

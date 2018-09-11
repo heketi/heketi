@@ -20,6 +20,7 @@ import (
 	"github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -245,7 +246,7 @@ func (a *App) VolumeDelete(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if volume.Info.Name == db.HeketiStorageVolumeName {
-			err := fmt.Errorf("Cannot delete volume containing the Heketi database")
+			err := errors.Errorf("Cannot delete volume containing the Heketi database")
 			http.Error(w, err.Error(), http.StatusConflict)
 			return err
 		}

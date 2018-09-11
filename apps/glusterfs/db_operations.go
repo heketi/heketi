@@ -11,12 +11,12 @@ package glusterfs
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"strings"
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/pkg/errors"
 )
 
 func dbDumpInternal(db *bolt.DB) (Db, error) {
@@ -191,7 +191,7 @@ func dbDumpInternal(db *bolt.DB) (Db, error) {
 		return nil
 	})
 	if err != nil {
-		return Db{}, fmt.Errorf("Could not construct dump from DB: %v", err.Error())
+		return Db{}, errors.Errorf("Could not construct dump from DB: %v", err.Error())
 	}
 
 	dump.Clusters = clusterEntryList
@@ -213,24 +213,24 @@ func DbDump(jsonfile string, dbfile string) error {
 
 	fp, err := os.OpenFile(jsonfile, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
-		return fmt.Errorf("Could not create json file: %v", err.Error())
+		return errors.Errorf("Could not create json file: %v", err.Error())
 	}
 	defer fp.Close()
 
 	db, err := OpenDB(dbfile, false)
 	if err != nil {
-		return fmt.Errorf("Unable to open database: %v", err)
+		return errors.Errorf("Unable to open database: %v", err)
 	}
 
 	dump, err := dbDumpInternal(db)
 	if err != nil {
-		return fmt.Errorf("Could not construct dump from DB: %v", err.Error())
+		return errors.Errorf("Could not construct dump from DB: %v", err.Error())
 	}
 	enc := json.NewEncoder(fp)
 	enc.SetIndent("", "    ")
 
 	if err := enc.Encode(dump); err != nil {
-		return fmt.Errorf("Could not encode dump as JSON: %v", err.Error())
+		return errors.Errorf("Could not encode dump as JSON: %v", err.Error())
 	}
 
 	return nil
@@ -243,27 +243,27 @@ func DbCreate(jsonfile string, dbfile string) error {
 
 	fp, err := os.Open(jsonfile)
 	if err != nil {
-		return fmt.Errorf("Could not open input file: %v", err.Error())
+		return errors.Errorf("Could not open input file: %v", err.Error())
 	}
 	defer fp.Close()
 
 	dbParser := json.NewDecoder(fp)
 	if err = dbParser.Decode(&dump); err != nil {
-		return fmt.Errorf("Could not decode input file as JSON: %v", err.Error())
+		return errors.Errorf("Could not decode input file as JSON: %v", err.Error())
 	}
 
 	// We don't want to overwrite existing db file
 	_, err = os.Stat(dbfile)
 	if err == nil {
-		return fmt.Errorf("%v file already exists", dbfile)
+		return errors.Errorf("%v file already exists", dbfile)
 	}
 	if !os.IsNotExist(err) {
-		return fmt.Errorf("unable to stat path given for dbfile: %v", dbfile)
+		return errors.Errorf("unable to stat path given for dbfile: %v", dbfile)
 	}
 
 	dbhandle, err := OpenDB(dbfile, false)
 	if err != nil {
-		return fmt.Errorf("Could not open db file: %v", err.Error())
+		return errors.Errorf("Could not open db file: %v", err.Error())
 	}
 
 	err = dbhandle.Update(func(tx *bolt.Tx) error {
@@ -279,7 +279,7 @@ func DbCreate(jsonfile string, dbfile string) error {
 			logger.Debug("adding cluster entry %v", cluster.Info.Id)
 			err := cluster.Save(tx)
 			if err != nil {
-				return fmt.Errorf("Could not save cluster bucket: %v", err.Error())
+				return errors.Errorf("Could not save cluster bucket: %v", err.Error())
 			}
 		}
 		for _, volume := range dump.Volumes {
@@ -299,73 +299,73 @@ func DbCreate(jsonfile string, dbfile string) error {
 				volume.Durability = NewNoneDurability()
 
 			default:
-				return fmt.Errorf("Not a known volume durability type: %v", durability)
+				return errors.Errorf("Not a known volume durability type: %v", durability)
 			}
 
 			// Set the default values accordingly
 			volume.Durability.SetDurability()
 			err := volume.Save(tx)
 			if err != nil {
-				return fmt.Errorf("Could not save volume bucket: %v", err.Error())
+				return errors.Errorf("Could not save volume bucket: %v", err.Error())
 			}
 		}
 		for _, brick := range dump.Bricks {
 			logger.Debug("adding brick entry %v", brick.Info.Id)
 			err := brick.Save(tx)
 			if err != nil {
-				return fmt.Errorf("Could not save brick bucket: %v", err.Error())
+				return errors.Errorf("Could not save brick bucket: %v", err.Error())
 			}
 		}
 		for _, node := range dump.Nodes {
 			logger.Debug("adding node entry %v", node.Info.Id)
 			err := node.Save(tx)
 			if err != nil {
-				return fmt.Errorf("Could not save node bucket: %v", err.Error())
+				return errors.Errorf("Could not save node bucket: %v", err.Error())
 			}
 			logger.Debug("registering node entry %v", node.Info.Id)
 			err = node.Register(tx)
 			if err != nil {
-				return fmt.Errorf("Could not register node: %v", err.Error())
+				return errors.Errorf("Could not register node: %v", err.Error())
 			}
 		}
 		for _, device := range dump.Devices {
 			logger.Debug("adding device entry %v", device.Info.Id)
 			err := device.Save(tx)
 			if err != nil {
-				return fmt.Errorf("Could not save device bucket: %v", err.Error())
+				return errors.Errorf("Could not save device bucket: %v", err.Error())
 			}
 			logger.Debug("registering device entry %v", device.Info.Id)
 			err = device.Register(tx)
 			if err != nil {
-				return fmt.Errorf("Could not register device: %v", err.Error())
+				return errors.Errorf("Could not register device: %v", err.Error())
 			}
 		}
 		for _, blockvolume := range dump.BlockVolumes {
 			logger.Debug("adding blockvolume entry %v", blockvolume.Info.Id)
 			err := blockvolume.Save(tx)
 			if err != nil {
-				return fmt.Errorf("Could not save blockvolume bucket: %v", err.Error())
+				return errors.Errorf("Could not save blockvolume bucket: %v", err.Error())
 			}
 		}
 		for _, dbattribute := range dump.DbAttributes {
 			logger.Debug("adding dbattribute entry %v", dbattribute.Key)
 			err := dbattribute.Save(tx)
 			if err != nil {
-				return fmt.Errorf("Could not save dbattribute bucket: %v", err.Error())
+				return errors.Errorf("Could not save dbattribute bucket: %v", err.Error())
 			}
 		}
 		for _, pendingop := range dump.PendingOperations {
 			logger.Debug("adding pending operation entry %v", pendingop.Id)
 			err := pendingop.Save(tx)
 			if err != nil {
-				return fmt.Errorf("Could not save pending operation bucket: %v", err.Error())
+				return errors.Errorf("Could not save pending operation bucket: %v", err.Error())
 			}
 		}
 		// always record a new generation id on db import as the db contents
 		// were no longer fully under heketi's control
 		logger.Debug("recording new DB generation ID")
 		if err := recordNewDBGenerationID(tx); err != nil {
-			return fmt.Errorf("Could not record DB generation ID: %v", err.Error())
+			return errors.Errorf("Could not record DB generation ID: %v", err.Error())
 		}
 		return nil
 	})

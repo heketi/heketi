@@ -12,15 +12,14 @@ package kubernetes
 import (
 	"bytes"
 	"compress/gzip"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/boltdb/bolt"
-
 	"github.com/heketi/tests"
+	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	restclient "k8s.io/client-go/rest"
 	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
@@ -39,7 +38,7 @@ func TestBackupToKubeSecretFailedClusterConfig(t *testing.T) {
 	incluster_count := 0
 	defer tests.Patch(&inClusterConfig, func() (*restclient.Config, error) {
 		incluster_count++
-		return nil, fmt.Errorf("TEST")
+		return nil, errors.Errorf("TEST")
 	}).Restore()
 
 	config_count := 0
@@ -81,7 +80,7 @@ func TestBackupToKubeSecretFailedNewConfig(t *testing.T) {
 	config_count := 0
 	defer tests.Patch(&newForConfig, func(c *restclient.Config) (clientset.Interface, error) {
 		config_count++
-		return nil, fmt.Errorf("TEST")
+		return nil, errors.Errorf("TEST")
 	}).Restore()
 
 	ns := "default"
@@ -123,7 +122,7 @@ func TestBackupToKubeSecretFailedNamespace(t *testing.T) {
 	ns_count := 0
 	defer tests.Patch(&getNamespace, func() (string, error) {
 		ns_count++
-		return "", fmt.Errorf("TEST")
+		return "", errors.Errorf("TEST")
 	}).Restore()
 
 	// Try to backup

@@ -13,12 +13,12 @@
 package utils
 
 import (
-	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 // Return the body from a response as a string
@@ -40,7 +40,7 @@ func GetErrorFromResponse(r *http.Response) error {
 
 	s = strings.TrimSpace(s)
 	if len(s) == 0 {
-		return fmt.Errorf("server did not provide a message (status %v: %v)", r.StatusCode, http.StatusText(r.StatusCode))
+		return errors.Errorf("server did not provide a message (status %v: %v)", r.StatusCode, http.StatusText(r.StatusCode))
 	}
 	return errors.New(s)
 }

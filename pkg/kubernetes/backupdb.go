@@ -12,12 +12,11 @@ package kubernetes
 import (
 	"bytes"
 	"compress/gzip"
-	"fmt"
 	"os"
 
 	"github.com/boltdb/bolt"
 	wdb "github.com/heketi/heketi/pkg/db"
-
+	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/api/v1"
@@ -44,25 +43,25 @@ func KubeBackupDbToSecret(db wdb.RODB) error {
 	// Get Kubernetes configuration
 	kubeConfig, err := inClusterConfig()
 	if err != nil {
-		return fmt.Errorf("Unable to get kubernetes configuration: %v", err)
+		return errors.Errorf("Unable to get kubernetes configuration: %v", err)
 	}
 
 	// Get clientset
 	c, err := newForConfig(kubeConfig)
 	if err != nil {
-		return fmt.Errorf("Unable to get kubernetes clientset: %v", err)
+		return errors.Errorf("Unable to get kubernetes clientset: %v", err)
 	}
 
 	// Get namespace
 	ns, err := getNamespace()
 	if err != nil {
-		return fmt.Errorf("Unable to get namespace: %v", err)
+		return errors.Errorf("Unable to get namespace: %v", err)
 	}
 
 	// Create client for secrets
 	secrets := c.CoreV1().Secrets(ns)
 	if err != nil {
-		return fmt.Errorf("Unable to get a client to kubernetes secrets: %v", err)
+		return errors.Errorf("Unable to get a client to kubernetes secrets: %v", err)
 	}
 
 	// Get a backup
@@ -72,10 +71,10 @@ func KubeBackupDbToSecret(db wdb.RODB) error {
 		gz := gzip.NewWriter(&backup)
 		_, err := tx.WriteTo(gz)
 		if err != nil {
-			return fmt.Errorf("Unable to access database: %v", err)
+			return errors.Errorf("Unable to access database: %v", err)
 		}
 		if err := gz.Close(); err != nil {
-			return fmt.Errorf("Unable to close gzipped database: %v", err)
+			return errors.Errorf("Unable to close gzipped database: %v", err)
 		}
 
 		// Create a secret with backup
@@ -94,17 +93,17 @@ func KubeBackupDbToSecret(db wdb.RODB) error {
 			// It already exists, so just update it instead
 			_, err = secrets.Update(secret)
 			if err != nil {
-				return fmt.Errorf("Unable to update database to secret: %v", err)
+				return errors.Errorf("Unable to update database to secret: %v", err)
 			}
 		} else if err != nil {
-			return fmt.Errorf("Unable to create database secret: %v", err)
+			return errors.Errorf("Unable to create database secret: %v", err)
 		}
 
 		return nil
 
 	})
 	if err != nil {
-		return fmt.Errorf("Unable to backup database to kubernetes secret: %v", err)
+		return errors.Errorf("Unable to backup database to kubernetes secret: %v", err)
 	}
 
 	return nil

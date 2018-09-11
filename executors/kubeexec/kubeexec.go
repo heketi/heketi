@@ -10,12 +10,12 @@
 package kubeexec
 
 import (
-	"fmt"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/lpabon/godbc"
+	"github.com/pkg/errors"
 
 	"github.com/heketi/heketi/executors/cmdexec"
 	"github.com/heketi/heketi/pkg/kubernetes"
@@ -111,7 +111,7 @@ func NewKubeExecutor(config *KubeConfig) (*KubeExecutor, error) {
 	if k.namespace == "" {
 		k.namespace, err = kubernetes.GetNamespace()
 		if err != nil {
-			return nil, fmt.Errorf("Namespace must be provided in configuration: %v", err)
+			return nil, errors.Errorf("Namespace must be provided in configuration: %v", err)
 		}
 	}
 

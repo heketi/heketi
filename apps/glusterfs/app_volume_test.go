@@ -11,7 +11,6 @@ package glusterfs
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -33,6 +32,7 @@ import (
 	"github.com/heketi/heketi/pkg/sortedstrings"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
+	"github.com/pkg/errors"
 )
 
 func TestVolumeCreateBadGid(t *testing.T) {
@@ -1250,7 +1250,7 @@ func TestVolumeCreateVsTopologyInfo(t *testing.T) {
 			}
 
 			if volume.Size != volumeReq.Size {
-				sg.Err(fmt.Errorf("Unexpected Volume size "+
+				sg.Err(errors.Errorf("Unexpected Volume size "+
 					"[%d] instead of [%d].",
 					volume.Size, volumeReq.Size))
 			}
@@ -1262,7 +1262,7 @@ func TestVolumeCreateVsTopologyInfo(t *testing.T) {
 
 			_, err := c.TopologyInfo()
 			if err != nil {
-				err = fmt.Errorf("TopologyInfo failed: %s", err)
+				err = errors.Errorf("TopologyInfo failed: %s", err)
 			}
 			sg.Err(err)
 		}()

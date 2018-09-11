@@ -10,7 +10,7 @@
 package glusterfs
 
 import (
-	"fmt"
+	"github.com/pkg/errors"
 )
 
 // nodeHosts is a mapping from the node ID to the hosts's
@@ -52,5 +52,5 @@ func (c *tryOnHosts) run(f func(host string) error) error {
 		}
 		logger.Warning("error running on node %v (%v): %v", nodeId, host, err)
 	}
-	return fmt.Errorf("no hosts available (%v total)", len(c.Hosts))
+	return errors.Errorf("no hosts available (%v total)", len(c.Hosts))
 }

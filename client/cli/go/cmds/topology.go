@@ -11,12 +11,12 @@ package cmds
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -161,7 +161,7 @@ var topologyLoadCommand = &cobra.Command{
 		// Load current topolgy
 		heketiTopology, err := heketi.TopologyInfo()
 		if err != nil {
-			return fmt.Errorf("Unable to get topology information: %v", err)
+			return errors.Errorf("Unable to get topology information: %v", err)
 		}
 
 		// Register topology
@@ -180,7 +180,7 @@ var topologyLoadCommand = &cobra.Command{
 					clusterInfo, err = heketi.ClusterInfo(nodeInfo.ClusterId)
 					if err != nil {
 						fmt.Fprintf(stdout, "Unable to get cluster information\n")
-						return fmt.Errorf("Unable to get cluster information")
+						return errors.Errorf("Unable to get cluster information")
 					}
 				} else {
 					var err error

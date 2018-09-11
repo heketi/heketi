@@ -18,7 +18,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/hex"
-	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -27,6 +26,7 @@ import (
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/heketi/heketi/pkg/utils"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -130,11 +130,11 @@ func (c *Client) SetTLSOptions(o *ClientTLSOptions) error {
 		for _, path := range o.VerifyCerts {
 			pem, err := ioutil.ReadFile(path)
 			if err != nil {
-				return fmt.Errorf("failed to read cert file %v: %v",
+				return errors.Errorf("failed to read cert file %v: %v",
 					path, err)
 			}
 			if ok := tlsConfig.RootCAs.AppendCertsFromPEM(pem); !ok {
-				return fmt.Errorf("failed to load PEM encoded cert from %s",
+				return errors.Errorf("failed to load PEM encoded cert from %s",
 					path)
 			}
 		}

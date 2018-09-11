@@ -10,13 +10,13 @@
 package glusterfs
 
 import (
-	"fmt"
-
 	"github.com/heketi/heketi/pkg/idgen"
+
+	"github.com/pkg/errors"
 )
 
 var (
-	tryPlaceAgain error = fmt.Errorf("Placement failed. Try again.")
+	tryPlaceAgain error = errors.Errorf("Placement failed. Try again.")
 )
 
 const (
@@ -104,10 +104,10 @@ func (bp *ArbiterBrickPlacer) PlaceAll(
 			return r, err
 		}
 		if bs.IsSparse() {
-			return r, fmt.Errorf("Did not fully populate brick set")
+			return r, errors.Errorf("Did not fully populate brick set")
 		}
 		if ds.IsSparse() {
-			return r, fmt.Errorf("Did not fully populate device set")
+			return r, errors.Errorf("Did not fully populate device set")
 		}
 		r.BrickSets = append(r.BrickSets, bs)
 		r.DeviceSets = append(r.DeviceSets, ds)
@@ -127,7 +127,7 @@ func (bp *ArbiterBrickPlacer) Replace(
 	*BrickAllocation, error) {
 
 	if index < 0 || index >= bs.SetSize {
-		return nil, fmt.Errorf(
+		return nil, errors.Errorf(
 			"brick replace index out of bounds (got %v, set size %v)",
 			index, bs.SetSize)
 	}
@@ -402,7 +402,7 @@ func discountBrickSize(dataBrickSize, averageFileSize uint64) (brickSize uint64,
 	err error) {
 
 	if dataBrickSize < averageFileSize {
-		return 0, fmt.Errorf(
+		return 0, errors.Errorf(
 			"Average file size (%v) is greater than Brick size (%v)",
 			averageFileSize, dataBrickSize)
 	}

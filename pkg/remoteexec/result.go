@@ -10,7 +10,7 @@
 package remoteexec
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 )
 
 // Result is used to capture the result of running a command

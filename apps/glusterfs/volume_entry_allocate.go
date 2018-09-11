@@ -16,6 +16,7 @@ import (
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/pkg/errors"
 )
 
 func (v *VolumeEntry) allocBricksInCluster(db wdb.DB,
@@ -169,7 +170,7 @@ func (v *VolumeEntry) canReplaceBrickInBrickSet(db wdb.DB,
 		}
 		iBrickEntry, found := bmap[brickHealStatus.Name]
 		if !found {
-			return fmt.Errorf("Unable to determine heal status of brick")
+			return errors.Errorf("Unable to determine heal status of brick")
 		}
 		if iBrickEntry.Id() == brickId {
 			// If we are here, it means the brick to be replaced is
@@ -177,7 +178,7 @@ func (v *VolumeEntry) canReplaceBrickInBrickSet(db wdb.DB,
 			// source for any files.
 			if brickHealStatus.NumberOfEntries != "-" &&
 				brickHealStatus.NumberOfEntries != "0" {
-				return fmt.Errorf("Cannot replace brick %v as it is source brick for data to be healed", iBrickEntry.Id())
+				return errors.Errorf("Cannot replace brick %v as it is source brick for data to be healed", iBrickEntry.Id())
 			}
 		}
 		for i, brickInSet := range bs.Bricks {
@@ -187,7 +188,7 @@ func (v *VolumeEntry) canReplaceBrickInBrickSet(db wdb.DB,
 		}
 	}
 	if onlinePeerBrickCount < v.Durability.QuorumBrickCount() {
-		return fmt.Errorf("Cannot replace brick %v as only %v of %v "+
+		return errors.Errorf("Cannot replace brick %v as only %v of %v "+
 			"required peer bricks are online",
 			brickId, onlinePeerBrickCount,
 			v.Durability.QuorumBrickCount())
@@ -308,7 +309,7 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 	oldBrickId string) (e error) {
 
 	if api.DurabilityDistributeOnly == v.Info.Durability.Type {
-		return fmt.Errorf("replace brick is not supported for volume durability type %v", v.Info.Durability.Type)
+		return errors.Errorf("replace brick is not supported for volume durability type %v", v.Info.Durability.Type)
 	}
 
 	ri, node, err := v.prepForBrickReplacement(

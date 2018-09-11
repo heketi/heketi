@@ -18,7 +18,7 @@ import (
 	"text/template"
 
 	"github.com/heketi/heketi/pkg/glusterfs/api"
-
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -95,10 +95,10 @@ var setModeCommand = &cobra.Command{
 	Example: `  $ heketi-cli server operations info`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) < 1 {
-			return fmt.Errorf("missing mode argument")
+			return errors.Errorf("missing mode argument")
 		}
 		if len(args) > 1 {
-			return fmt.Errorf("too many arguments")
+			return errors.Errorf("too many arguments")
 		}
 		heketi, err := newHeketiClient()
 		if err != nil {

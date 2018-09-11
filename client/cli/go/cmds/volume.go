@@ -11,13 +11,13 @@ package cmds
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/kubernetes"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -152,7 +152,7 @@ var volumeCreateCommand = &cobra.Command{
 		if kubePv && kubePvEndpoint == "" {
 			fmt.Fprintf(stderr, "--persistent-volume-endpoint must be provided "+
 				"when using --persistent-volume\n")
-			return fmt.Errorf("Missing endpoint")
+			return errors.Errorf("Missing endpoint")
 		}
 
 		// Create request blob

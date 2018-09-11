@@ -12,6 +12,7 @@ package cmds
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/heketi/heketi/pkg/glusterfs/api"
@@ -56,10 +57,10 @@ var logLevelSetCommand = &cobra.Command{
 	Example: `  $ heketi-cli loglevel set debug`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) < 1 {
-			return fmt.Errorf("missing log-level argument")
+			return errors.Errorf("missing log-level argument")
 		}
 		if len(args) > 1 {
-			return fmt.Errorf("too many arguments")
+			return errors.Errorf("too many arguments")
 		}
 		heketi, err := newHeketiClient()
 		if err != nil {

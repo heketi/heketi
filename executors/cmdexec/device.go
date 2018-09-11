@@ -10,10 +10,11 @@
 package cmdexec
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"github.com/heketi/heketi/executors"
 	conv "github.com/heketi/heketi/pkg/conversions"

@@ -12,10 +12,11 @@ package glusterfs
 import (
 	"fmt"
 
+	"github.com/boltdb/bolt"
+	"github.com/pkg/errors"
+
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
-
-	"github.com/boltdb/bolt"
 )
 
 // BlockVolumeCreateOperation  implements the operation functions used to
@@ -64,7 +65,7 @@ func (bvc *BlockVolumeCreateOperation) Build() error {
 			bvc.bvol.Info.BlockHostingVolume = volumes[0].Info.Id
 			bvc.bvol.Info.Cluster = volumes[0].Info.Cluster
 		} else if bvc.bvol.Info.Size > reducedSize {
-			return fmt.Errorf("The size configured for "+
+			return errors.Errorf("The size configured for "+
 				"automatic creation of block hosting volumes "+
 				"(%v) is too small to host the requested "+
 				"block volume of size %v. The available "+

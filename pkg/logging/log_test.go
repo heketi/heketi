@@ -11,12 +11,11 @@ package logging
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/heketi/tests"
+	"github.com/pkg/errors"
 )
 
 func TestLogLevel(t *testing.T) {
@@ -109,7 +108,7 @@ func TestLogWarnErr(t *testing.T) {
 	tests.Assert(t, err == ErrSample)
 	testbuffer.Reset()
 
-	err = l.WarnErr(fmt.Errorf("GOT %v", err))
+	err = l.WarnErr(errors.Errorf("GOT %v", err))
 	tests.Assert(t, strings.Contains(testbuffer.String(), "[testing] WARNING "), testbuffer.String())
 	tests.Assert(t, strings.Contains(testbuffer.String(), "TEST ERROR"), testbuffer.String())
 	tests.Assert(t, strings.Contains(testbuffer.String(), "log_test.go"), testbuffer.String())
@@ -187,7 +186,7 @@ func TestLogErr(t *testing.T) {
 	tests.Assert(t, err == ErrSample)
 	testbuffer.Reset()
 
-	err = l.Err(fmt.Errorf("GOT %v", err))
+	err = l.Err(errors.Errorf("GOT %v", err))
 	tests.Assert(t, strings.Contains(testbuffer.String(), "[testing] ERROR "), testbuffer.String())
 	tests.Assert(t, strings.Contains(testbuffer.String(), "TEST ERROR"), testbuffer.String())
 	tests.Assert(t, strings.Contains(testbuffer.String(), "log_test.go"), testbuffer.String())

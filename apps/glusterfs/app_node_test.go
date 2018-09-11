@@ -11,7 +11,6 @@ package glusterfs
 
 import (
 	"bytes"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -28,6 +27,7 @@ import (
 	"github.com/heketi/heketi/pkg/sortedstrings"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
+	"github.com/pkg/errors"
 )
 
 func TestNodeAddBadRequests(t *testing.T) {

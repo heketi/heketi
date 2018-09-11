@@ -10,9 +10,10 @@
 package paths
 
 import (
-	"errors"
 	"path"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 const (

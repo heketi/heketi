@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/lpabon/godbc"
+	"github.com/pkg/errors"
 )
 
 type LogLevel int
@@ -115,7 +116,7 @@ func (l *Logger) LogError(format string, v ...interface{}) error {
 		logWithLongFile(l.errorlog, format, v...)
 	}
 
-	return fmt.Errorf(format, v...)
+	return errors.Errorf(format, v...)
 }
 
 // Log error variable

@@ -10,11 +10,11 @@
 package glusterfs
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/heketi/tests"
+	"github.com/pkg/errors"
 )
 
 type TestDeviceSource struct {
@@ -282,7 +282,7 @@ func TestArbiterBrickPlacerTooSmall(t *testing.T) {
 
 func TestArbiterBrickPlacerDevicesFail(t *testing.T) {
 	dsrc := NewTestDeviceSource()
-	dsrc.devicesError = fmt.Errorf("Zonk!")
+	dsrc.devicesError = errors.Errorf("Zonk!")
 
 	opts := &TestPlacementOpts{
 		brickSize:       800,
@@ -634,7 +634,7 @@ func TestArbiterBrickPlacerReplaceDevicesFail(t *testing.T) {
 		"expected len(ba.BrickSets[0].Bricks) == 3, got:",
 		len(ba.BrickSets[0].Bricks))
 
-	dsrc.devicesError = fmt.Errorf("Zonk!")
+	dsrc.devicesError = errors.Errorf("Zonk!")
 	_, err = abplacer.Replace(dsrc, opts, nil, ba.BrickSets[0], 0)
 	tests.Assert(t, err == dsrc.devicesError,
 		"expected err == dsrc.devicesError, got:", err)

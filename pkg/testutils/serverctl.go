@@ -15,13 +15,14 @@
 package testutils
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path"
 	"syscall"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 type ServerCfg struct {
