@@ -365,9 +365,7 @@ func TestRunOperationExecRetryError(t *testing.T) {
 	o.rurl = "/myresource"
 	o.retryMax = 4
 	o.exec = func() error {
-		return OperationRetryError{
-			OriginalError: errors.Errorf("foobar"),
-		}
+		return NewRetryError(errors.Errorf("foobar"))
 	}
 	rollback_cc := 0
 	o.rollback = func() error {
@@ -393,9 +391,7 @@ func TestRunOperationExecRetryRollbackFail(t *testing.T) {
 	o.rurl = "/myresource"
 	o.retryMax = 4
 	o.exec = func() error {
-		return OperationRetryError{
-			OriginalError: errors.Errorf("foobar"),
-		}
+		return NewRetryError(errors.Errorf("foobar"))
 	}
 	rollback_cc := 0
 	o.rollback = func() error {
@@ -428,9 +424,7 @@ func TestRunOperationExecRetryThenBuildFail(t *testing.T) {
 	o.rurl = "/myresource"
 	o.retryMax = 4
 	o.exec = func() error {
-		return OperationRetryError{
-			OriginalError: errors.Errorf("foobar"),
-		}
+		return NewRetryError(errors.Errorf("foobar"))
 	}
 	rollback_cc := 0
 	o.rollback = func() error {
@@ -471,9 +465,7 @@ func TestRunOperationExecRetryThenSucceed(t *testing.T) {
 		if exec_cc > 2 {
 			return nil
 		}
-		return OperationRetryError{
-			OriginalError: errors.Errorf("foobar"),
-		}
+		return NewRetryError(errors.Errorf("foobar"))
 	}
 	rollback_cc := 0
 	o.rollback = func() error {
@@ -501,9 +493,7 @@ func TestRunOperationExecRetryThenNonRetryError(t *testing.T) {
 		if exec_cc > 2 {
 			return errors.Errorf("execfail")
 		}
-		return OperationRetryError{
-			OriginalError: errors.Errorf("foobar"),
-		}
+		return NewRetryError(errors.Errorf("foobar"))
 	}
 	rollback_cc := 0
 	o.rollback = func() error {

@@ -90,7 +90,7 @@ func (vc *VolumeCreateOperation) Exec(executor executors.Executor) error {
 	err = vc.vol.createVolumeExec(vc.db, executor, brick_entries)
 	if err != nil {
 		logger.LogError("Error executing create volume: %v", err)
-		return OperationRetryError{err}
+		return NewRetryError(err)
 	}
 	return nil
 }

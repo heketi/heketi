@@ -10,8 +10,6 @@
 package glusterfs
 
 import (
-	"fmt"
-
 	"github.com/boltdb/bolt"
 	"github.com/pkg/errors"
 
@@ -22,15 +20,6 @@ import (
 const (
 	VOLUME_MAX_RETRIES int = 4
 )
-
-type OperationRetryError struct {
-	OriginalError error
-}
-
-func (ore OperationRetryError) Error() string {
-	return fmt.Sprintf("Operation Should Be Retried; Error: %v",
-		ore.OriginalError.Error())
-}
 
 // The operations.go file is meant to provide a common approach to planning,
 // executing, and completing changes to the storage clusters under heketi

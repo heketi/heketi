@@ -11,6 +11,9 @@ package glusterfs
 
 import (
 	"errors"
+	"fmt"
+
+	ctxErrors "github.com/pkg/errors"
 )
 
 var (
@@ -33,3 +36,45 @@ var (
 	// returned by code related to operations load
 	ErrTooManyOperations = errors.New("Server handling too many operations")
 )
+
+// IsRetry returns true if the error-generating operation should be retried.
+func IsRetry(err error) bool {
+	err = ctxErrors.Cause(err)
+	te, ok := err.(interface {
+		Retry() bool
+	})
+	return ok && te.Retry()
+}
+
+// Original returns a nested error if present or nil.
+func Original(err error) error {
+	err = ctxErrors.Cause(err)
+	if ne, ok := err.(interface {
+		Original() error
+	}); ok {
+		return ne.Original()
+	}
+	return nil
+}
+
+type retryError struct {
+	originalError error
+}
+
+// NewRetryError wraps err in a retryError
+func NewRetryError(err error) error {
+	return retryError{originalError: err}
+}
+
+func (ore retryError) Error() string {
+	return fmt.Sprintf("Operation Should Be Retried; Error: %v",
+		ore.originalError.Error())
+}
+
+func (ore retryError) Original() error {
+	return ore.originalError
+}
+
+func (ore retryError) Retry() bool {
+	return true
+}

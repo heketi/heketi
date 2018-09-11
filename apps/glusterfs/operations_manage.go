@@ -135,7 +135,7 @@ func AsyncHttpOperation(app *App,
 		defer app.optracker.Remove(op.Id())
 		logger.Info("Started async operation: %v", label)
 		if err := op.Exec(app.executor); err != nil {
-			if _, ok := err.(OperationRetryError); ok && op.MaxRetries() > 0 {
+			if IsRetry(err) && op.MaxRetries() > 0 {
 				logger.Warning("%v Exec requested retry", label)
 				err := retryOperation(op, app.executor)
 				if err != nil {
@@ -179,7 +179,7 @@ func RunOperation(o Operation,
 		return err
 	}
 	if err := o.Exec(executor); err != nil {
-		if _, ok := err.(OperationRetryError); ok && o.MaxRetries() > 0 {
+		if IsRetry(err) && o.MaxRetries() > 0 {
 			logger.Warning("%v Exec requested retry", label)
 			return retryOperation(o, executor)
 		}
@@ -218,7 +218,7 @@ func retryOperation(o Operation,
 			return o.Finalize()
 		}
 		logger.LogError("%v Failed: %v", label, err)
-		if _, ok := err.(OperationRetryError); !ok {
+		if !IsRetry(err) {
 			break
 		}
 	}
@@ -227,8 +227,8 @@ func retryOperation(o Operation,
 	}
 	// if we exceeded our retries, pull the "real" error out
 	// of the retry error so we return that
-	if ore, ok := err.(OperationRetryError); ok {
-		err = ore.OriginalError
+	if oe := Original(err); oe != nil {
+		err = oe
 	}
 	return
 }
