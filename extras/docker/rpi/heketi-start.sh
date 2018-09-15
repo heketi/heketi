@@ -6,28 +6,37 @@
 
 : "${HEKETI_PATH:=/var/lib/heketi}"
 : "${BACKUPDB_PATH:=/backupdb}"
+LOG="${HEKETI_PATH}/container.log"
 
-echo "Setting up heketi database"
+info() {
+    echo "$*" | tee -a "$LOG"
+}
+
+error() {
+    echo "error: $*" | tee -a "$LOG" >&2
+}
+
+info "Setting up heketi database"
 
 if [[ -d "${HEKETI_PATH}" ]]; then
     # Test that our volume is writable.
     touch "${HEKETI_PATH}/test" && rm "${HEKETI_PATH}/test"
     if [ $? -ne 0 ]; then
-        echo "${HEKETI_PATH} is read-only"
+        error "${HEKETI_PATH} is read-only"
         exit 1
     fi
 
     if [[ ! -f "${HEKETI_PATH}/heketi.db" ]]; then
-        echo "No database file found" | tee -a "${HEKETI_PATH}/container.log"
+        info "No database file found"
         out=$(mount | grep "${HEKETI_PATH}" | grep heketidbstorage)
         if [[ $? -eq 0 ]]; then
-            echo "Database volume found: ${out}" | tee -a "${HEKETI_PATH}/container.log"
-            echo "Database file is expected, waiting..." | tee -a "${HEKETI_PATH}/container.log"
+            info "Database volume found: ${out}"
+            info "Database file is expected, waiting..."
             check=0
             while [[ ! -f "${HEKETI_PATH}/heketi.db" ]]; do
                 sleep 5
                 if [[ ${check} -eq 5 ]]; then
-                   echo "Database file did not appear, exiting." | tee -a "${HEKETI_PATH}/container.log"
+                   error "Database file did not appear, exiting."
                    exit 1
                 fi
                 ((check+=1))
@@ -35,7 +44,7 @@ if [[ -d "${HEKETI_PATH}" ]]; then
         fi
     fi
 
-    stat "${HEKETI_PATH}/heketi.db" | tee -a "${HEKETI_PATH}/container.log"
+    stat "${HEKETI_PATH}/heketi.db" | tee -a "${LOG}"
     # Workaround for scenario where a lock on the heketi.db has not been
     # released.
     # This code uses a non-blocking flock in a loop rather than a blocking
@@ -50,12 +59,12 @@ if [[ -d "${HEKETI_PATH}" ]]; then
         sleep 1
     done
     if [[ $flock_status -ne 0 ]]; then
-        echo "Database file is read-only" | tee -a "${HEKETI_PATH}/container.log"
+        error "Database file is read-only"
     fi
 else
     mkdir -p "${HEKETI_PATH}"
     if [[ $? -ne 0 ]]; then
-        echo "Failed to create ${HEKETI_PATH}"
+        error "Failed to create ${HEKETI_PATH}"
         exit 1
     fi
 fi
@@ -64,17 +73,17 @@ if [[ -d "${BACKUPDB_PATH}" ]]; then
     if [[ -f "${BACKUPDB_PATH}/heketi.db.gz" ]] ; then
         gunzip -c "${BACKUPDB_PATH}/heketi.db.gz" > "${BACKUPDB_PATH}/heketi.db"
         if [[ $? -ne 0 ]]; then
-            echo "Unable to extract backup database" | tee -a "${HEKETI_PATH}/container.log"
+            error "Unable to extract backup database"
             exit 1
         fi
     fi
     if [[ -f "${BACKUPDB_PATH}/heketi.db" ]] ; then
         cp "${BACKUPDB_PATH}/heketi.db" "${HEKETI_PATH}/heketi.db"
         if [[ $? -ne 0 ]]; then
-            echo "Unable to copy backup database" | tee -a "${HEKETI_PATH}/container.log"
+            error "Unable to copy backup database"
             exit 1
         fi
-        echo "Copied backup db to ${HEKETI_PATH}/heketi.db"
+        error "Copied backup db to ${HEKETI_PATH}/heketi.db"
     fi
 fi
 
@@ -98,7 +107,7 @@ if [[ "$(stat -c %s ${HEKETI_PATH}/heketi.db)" == 0 && -n "${HEKETI_TOPOLOGY_FIL
     if [[ $? -ne 0 ]]; then
         # something failed, need to exit with an error
         kill %1
-        echo "failed to load topology from ${HEKETI_TOPOLOGY_FILE}"
+        error "failed to load topology from ${HEKETI_TOPOLOGY_FILE}"
         exit 1
     fi
 
