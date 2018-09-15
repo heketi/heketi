@@ -17,8 +17,8 @@ import (
 
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/remoteexec/ssh"
 	"github.com/heketi/heketi/pkg/utils"
-	"github.com/heketi/heketi/pkg/utils/ssh"
 	"github.com/heketi/tests"
 )
 

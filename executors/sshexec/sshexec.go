@@ -16,8 +16,8 @@ import (
 	"strconv"
 
 	"github.com/heketi/heketi/executors/cmdexec"
+	"github.com/heketi/heketi/pkg/remoteexec/ssh"
 	"github.com/heketi/heketi/pkg/utils"
-	"github.com/heketi/heketi/pkg/utils/ssh"
 	"github.com/lpabon/godbc"
 )
 
