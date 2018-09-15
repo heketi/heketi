@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/heketi/heketi/executors"
+	"github.com/heketi/heketi/pkg/paths"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/lpabon/godbc"
 )
@@ -34,7 +35,7 @@ func (s *CmdExecutor) BrickCreate(host string,
 	// make local vars with more accurate names to cut down on name confusion
 	// and make future refactoring easier
 	brickPath := brick.Path
-	mountPath := utils.BrickMountFromPath(brickPath)
+	mountPath := paths.BrickMountFromPath(brickPath)
 
 	var xfsInodeOptions string
 	if brick.Format == executors.ArbiterFormat {
@@ -44,7 +45,7 @@ func (s *CmdExecutor) BrickCreate(host string,
 	}
 
 	// Create command set to execute on the node
-	devnode := utils.BrickDevNode(brick.VgId, brick.Name)
+	devnode := paths.BrickDevNode(brick.VgId, brick.Name)
 	commands := []string{
 
 		// Create a directory
@@ -62,7 +63,7 @@ func (s *CmdExecutor) BrickCreate(host string,
 			brick.TpSize,
 
 			// volume group
-			utils.VgIdToName(brick.VgId),
+			paths.VgIdToName(brick.VgId),
 
 			// ThinP name
 			brick.TpName,
@@ -226,7 +227,7 @@ func (s *CmdExecutor) BrickDestroy(host string,
 		return spaceReclaimed, umountErr
 	}
 
-	vg := utils.VgIdToName(brick.VgId)
+	vg := paths.VgIdToName(brick.VgId)
 	lv := fmt.Sprintf("%v/%v", vg, brick.LvName)
 	tp := fmt.Sprintf("%v/%v", vg, brick.TpName)
 
@@ -291,7 +292,7 @@ func (s *CmdExecutor) removeBrickFromFstab(
 	}
 	commands := []string{
 		fmt.Sprintf("sed -i.save \"/%v/d\" %v",
-			utils.BrickIdToName(brick.Name),
+			paths.BrickIdToName(brick.Name),
 			s.Fstab),
 	}
 	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
