@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/heketi/heketi/executors"
+	"github.com/heketi/heketi/pkg/paths"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
 )
@@ -26,7 +27,7 @@ func doTestSshExecBrickCreate(t *testing.T, f *CommandFaker, s *FakeExecutor) {
 		TpSize:           100,
 		Size:             10,
 		PoolMetadataSize: 5,
-		Path:             utils.BrickPath("xvgid", "id"),
+		Path:             paths.BrickPath("xvgid", "id"),
 		TpName:           "tp_id",
 		LvName:           "brick_id",
 	}
@@ -111,7 +112,7 @@ func TestSshExecBrickCreateWithGid(t *testing.T) {
 		Size:             10,
 		PoolMetadataSize: 5,
 		Gid:              1234,
-		Path:             utils.BrickPath("xvgid", "id"),
+		Path:             paths.BrickPath("xvgid", "id"),
 		TpName:           "tp_id",
 		LvName:           "brick_id",
 	}
@@ -196,7 +197,7 @@ func TestSshExecBrickCreateSudo(t *testing.T) {
 		TpSize:           100,
 		Size:             10,
 		PoolMetadataSize: 5,
-		Path:             utils.BrickPath("xvgid", "id"),
+		Path:             paths.BrickPath("xvgid", "id"),
 		TpName:           "tp_id",
 		LvName:           "brick_id",
 	}
@@ -282,7 +283,7 @@ func TestSshExecBrickDestroy(t *testing.T) {
 		TpSize:           100,
 		Size:             10,
 		PoolMetadataSize: 5,
-		Path:             strings.TrimSuffix(utils.BrickPath("xvgid", "id"), "/brick"),
+		Path:             strings.TrimSuffix(paths.BrickPath("xvgid", "id"), "/brick"),
 		TpName:           "tp_id",
 		LvName:           "brick_id",
 	}
