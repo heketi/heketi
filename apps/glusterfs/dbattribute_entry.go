@@ -76,7 +76,7 @@ func (dba *DbAttributeEntry) Unmarshal(buffer []byte) error {
 func DbAttributeList(tx *bolt.Tx) ([]string, error) {
 	list := EntryKeys(tx, BOLTDB_BUCKET_DBATTRIBUTE)
 	if list == nil {
-		return nil, ErrAccessList
+		return nil, ErrAccessList.Err()
 	}
 	return list, nil
 }

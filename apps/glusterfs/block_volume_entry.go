@@ -31,7 +31,7 @@ type BlockVolumeEntry struct {
 func BlockVolumeList(tx *bolt.Tx) ([]string, error) {
 	list := EntryKeys(tx, BOLTDB_BUCKET_BLOCKVOLUME)
 	if list == nil {
-		return nil, ErrAccessList
+		return nil, ErrAccessList.Err()
 	}
 	return list, nil
 }
@@ -176,7 +176,7 @@ func (v *BlockVolumeEntry) eligibleClustersAndVolumes(db wdb.RODB) (
 	}
 	if len(possibleClusters) == 0 {
 		logger.LogError("No clusters eligible to satisfy create block volume request")
-		e = ErrNoSpace
+		e = ErrNoSpace.Err()
 		return
 	}
 	logger.Debug("Using the following clusters: %+v", possibleClusters)

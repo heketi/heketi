@@ -10,11 +10,12 @@
 package glusterfs
 
 import (
-	"github.com/boltdb/bolt"
-	"github.com/heketi/tests"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/boltdb/bolt"
+	"github.com/heketi/tests"
 )
 
 type testDbEntry struct {
@@ -61,7 +62,7 @@ func TestEntryRegister(t *testing.T) {
 
 		// Save again, it should not work
 		val, err := EntryRegister(tx, entry, "mykey", []byte("myvalue"))
-		tests.Assert(t, err == ErrKeyExists)
+		tests.Assert(t, ErrKeyExists.In(err))
 		tests.Assert(t, string(val) == "myvalue")
 
 		// Remove key

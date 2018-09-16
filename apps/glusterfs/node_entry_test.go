@@ -283,7 +283,7 @@ func TestNewNodeEntryFromIdNotFound(t *testing.T) {
 		_, err := NewNodeEntryFromId(tx, "123")
 		return err
 	})
-	tests.Assert(t, err == ErrNotFound)
+	tests.Assert(t, ErrNotFound.In(err))
 
 }
 
@@ -387,7 +387,7 @@ func TestNewNodeEntrySaveDelete(t *testing.T) {
 		return nil
 
 	})
-	tests.Assert(t, err == ErrConflict)
+	tests.Assert(t, ErrConflict.In(err))
 
 	// Delete devices in node
 	node.DeviceDelete("abc")
@@ -426,7 +426,7 @@ func TestNewNodeEntrySaveDelete(t *testing.T) {
 		return nil
 
 	})
-	tests.Assert(t, err == ErrNotFound)
+	tests.Assert(t, ErrNotFound.In(err))
 }
 
 func TestNewNodeEntryNewInfoResponse(t *testing.T) {

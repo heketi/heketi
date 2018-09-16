@@ -74,7 +74,7 @@ func VolumeList(tx *bolt.Tx) ([]string, error) {
 
 	list := EntryKeys(tx, BOLTDB_BUCKET_VOLUME)
 	if list == nil {
-		return nil, ErrAccessList
+		return nil, ErrAccessList.Err()
 	}
 	return list, nil
 }
@@ -450,17 +450,17 @@ func (v *VolumeEntry) tryAllocateBricks(
 			v.Info.Cluster = cluster
 			logger.Debug("Volume to be created on cluster %v", cluster)
 			break
-		} else if err == ErrNoSpace ||
-			err == ErrMaxBricks ||
-			err == ErrMinimumBrickSize {
+		} else if ErrNoSpace.In(err) ||
+			ErrMaxBricks.In(err) ||
+			ErrMinimumBrickSize.In(err) {
 			logger.Debug("Cluster %v can not accommodate volume "+
 				"(%v), trying next cluster", cluster, err)
 			// Map these errors to NoSpace here as that is what heketi
 			// traditionally did. Its not particularly helpful but it
 			// is more backwards compatible.
-			cerr.Add(cluster, ErrNoSpace)
-		} else if err == ErrEmptyCluster ||
-			err == ErrNoStorage {
+			cerr.Add(cluster, ErrNoSpace.Err())
+		} else if ErrEmptyCluster.In(err) ||
+			ErrNoStorage.In(err) {
 			logger.Debug("Issue on cluster %v: %v", cluster, err)
 			cerr.Add(cluster, err)
 		} else {
@@ -572,7 +572,7 @@ func (v *VolumeEntry) createVolumeComponents(db wdb.DB) (
 	}
 	if len(possibleClusters) == 0 {
 		logger.LogError("No clusters eligible to satisfy create volume request")
-		return brick_entries, ErrNoSpace
+		return brick_entries, ErrNoSpace.Err()
 	}
 	logger.Debug("Using the following clusters: %+v", possibleClusters)
 
@@ -608,7 +608,7 @@ func (v *VolumeEntry) saveCreateVolume(db wdb.DB,
 			// Only the last such error could get propagated down,
 			// so it does not make sense to hand the granularity on.
 			// But for other callers (Expand), we keep it.
-			return ErrNoSpace
+			return ErrNoSpace.Err()
 		}
 
 		err = v.updateMountInfo(txdb)
@@ -997,7 +997,7 @@ func (v *VolumeEntry) prepareVolumeClone(tx *bolt.Tx, clonename string) (
 	*VolumeEntry, []*BrickEntry, []*DeviceEntry, error) {
 
 	if v.Info.Block {
-		return nil, nil, nil, ErrCloneBlockVol
+		return nil, nil, nil, ErrCloneBlockVol.Err()
 	}
 	bricks := []*BrickEntry{}
 	devices := []*DeviceEntry{}

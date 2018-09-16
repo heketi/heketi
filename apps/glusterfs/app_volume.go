@@ -116,7 +116,7 @@ func (a *App) VolumeCreate(w http.ResponseWriter, r *http.Request) {
 		if len(clusters) == 0 {
 			http.Error(w, fmt.Sprintf("No clusters configured"), http.StatusBadRequest)
 			logger.LogError("No clusters configured")
-			return ErrNotFound
+			return ErrNotFound.Err()
 		}
 
 		// Check the clusters requested are correct
@@ -195,10 +195,10 @@ func (a *App) VolumeInfo(w http.ResponseWriter, r *http.Request) {
 	var info *api.VolumeInfoResponse
 	err := a.db.View(func(tx *bolt.Tx) error {
 		entry, err := NewVolumeEntryFromId(tx, id)
-		if err == ErrNotFound || !entry.Visible() {
+		if ErrNotFound.In(err) || !entry.Visible() {
 			// treat an invisible entry like it doesn't exist
 			http.Error(w, "Id not found", http.StatusNotFound)
-			return ErrNotFound
+			return ErrNotFound.Err()
 		} else if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return err
@@ -238,7 +238,7 @@ func (a *App) VolumeDelete(w http.ResponseWriter, r *http.Request) {
 
 		var err error
 		volume, err = NewVolumeEntryFromId(tx, id)
-		if err == ErrNotFound {
+		if ErrNotFound.In(err) {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return err
 		} else if err != nil {
@@ -264,7 +264,7 @@ func (a *App) VolumeDelete(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusConflict)
 				return err
 			}
-			if err != ErrNotFound {
+			if !ErrNotFound.In(err) {
 				err = logger.LogError("Refusing to delete block-hosting volume: "+
 					"Error loading block-volume [%v]: %v", bvId, err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -316,7 +316,7 @@ func (a *App) VolumeExpand(w http.ResponseWriter, r *http.Request) {
 
 		var err error
 		volume, err = NewVolumeEntryFromId(tx, id)
-		if err == ErrNotFound {
+		if ErrNotFound.In(err) {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return err
 		} else if err != nil {
@@ -360,7 +360,7 @@ func (a *App) VolumeClone(w http.ResponseWriter, r *http.Request) {
 	err = a.db.View(func(tx *bolt.Tx) error {
 		var err error // needed otherwise 'volume' will be nil after View()
 		volume, err = NewVolumeEntryFromId(tx, vol_id)
-		if err == ErrNotFound || !volume.Visible() {
+		if ErrNotFound.In(err) || !volume.Visible() {
 			// treat an invisible volume like it doesn't exist
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return err
@@ -405,7 +405,7 @@ func (a *App) VolumeSetBlockRestriction(w http.ResponseWriter, r *http.Request) 
 	// Check for valid id, return immediately if not valid
 	err = a.db.View(func(tx *bolt.Tx) error {
 		volume, err = NewVolumeEntryFromId(tx, id)
-		if err == ErrNotFound || !volume.Visible() {
+		if ErrNotFound.In(err) || !volume.Visible() {
 			// treat an invisible volume like it doesn't exist
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return err

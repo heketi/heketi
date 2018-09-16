@@ -59,7 +59,7 @@ func (dro *DeviceRemoveOperation) Build() error {
 		if err := d.markFailed(txdb); err == nil {
 			// device was empty and is now marked failed
 			return nil
-		} else if err != ErrConflict {
+		} else if !ErrConflict.In(err) {
 			// we hit some sort of unexpected error
 			return err
 		}
@@ -73,7 +73,7 @@ func (dro *DeviceRemoveOperation) Build() error {
 			logger.LogError("Found operations still pending on device."+
 				" Can not remove device %v at this time.",
 				d.Info.Id)
-			return ErrConflict
+			return ErrConflict.Err()
 		}
 
 		dro.op.RecordRemoveDevice(d)

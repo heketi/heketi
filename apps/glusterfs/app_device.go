@@ -49,7 +49,7 @@ func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 	err = a.db.Update(func(tx *bolt.Tx) error {
 		var err error
 		node, err = NewNodeEntryFromId(tx, msg.NodeId)
-		if err == ErrNotFound {
+		if ErrNotFound.In(err) {
 			http.Error(w, "Node id does not exist", http.StatusNotFound)
 			return err
 		} else if err != nil {
@@ -160,7 +160,7 @@ func (a *App) DeviceInfo(w http.ResponseWriter, r *http.Request) {
 	var info *api.DeviceInfoResponse
 	err := a.db.View(func(tx *bolt.Tx) error {
 		entry, err := NewDeviceEntryFromId(tx, id)
-		if err == ErrNotFound {
+		if ErrNotFound.In(err) {
 			http.Error(w, "Id not found", http.StatusNotFound)
 			return err
 		} else if err != nil {
@@ -212,7 +212,7 @@ func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
 		var err error
 		// Access device entry
 		device, err = NewDeviceEntryFromId(tx, id)
-		if err == ErrNotFound {
+		if ErrNotFound.In(err) {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return err
 		} else if err != nil {
@@ -224,7 +224,7 @@ func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
 		if device.HasBricks() {
 			http.Error(w, device.ConflictString(), http.StatusConflict)
 			logger.LogError(device.ConflictString())
-			return ErrConflict
+			return ErrConflict.Err()
 		}
 
 		// Access node entry
@@ -263,7 +263,7 @@ func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
 
 			// Access node entry
 			node, err := NewNodeEntryFromId(tx, device.NodeId)
-			if err == ErrNotFound {
+			if ErrNotFound.In(err) {
 				logger.Critical(
 					"Node id %v pointed to by device %v, but it is not in the db",
 					device.NodeId,
@@ -332,7 +332,7 @@ func (a *App) DeviceSetState(w http.ResponseWriter, r *http.Request) {
 	// Check for valid id, return immediately if not valid
 	err = a.db.View(func(tx *bolt.Tx) error {
 		device, err = NewDeviceEntryFromId(tx, id)
-		if err == ErrNotFound {
+		if ErrNotFound.In(err) {
 			http.Error(w, "Id not found", http.StatusNotFound)
 			return err
 		} else if err != nil {
@@ -355,7 +355,7 @@ func (a *App) DeviceSetState(w http.ResponseWriter, r *http.Request) {
 		var throttled bool
 		throttled, token = a.optracker.ThrottleOrToken()
 		if throttled {
-			OperationHttpErrorf(w, ErrTooManyOperations, "")
+			OperationHttpErrorf(w, ErrTooManyOperations.Err(), "")
 			return
 		}
 	}
@@ -406,7 +406,7 @@ func (a *App) DeviceResync(w http.ResponseWriter, r *http.Request) {
 		}
 		return nil
 	})
-	if err == ErrNotFound {
+	if ErrNotFound.In(err) {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	} else if err != nil {
@@ -487,7 +487,7 @@ func (a *App) DeviceSetTags(w http.ResponseWriter, r *http.Request) {
 
 	err = a.db.Update(func(tx *bolt.Tx) error {
 		device, err = NewDeviceEntryFromId(tx, id)
-		if err == ErrNotFound {
+		if ErrNotFound.In(err) {
 			http.Error(w, "Id not found", http.StatusNotFound)
 			return err
 		} else if err != nil {

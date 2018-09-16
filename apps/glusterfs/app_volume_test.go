@@ -1157,7 +1157,7 @@ func TestVolumeClusterResizeByAddingDevices(t *testing.T) {
 	v = createSampleReplicaVolumeEntry(495, 2)
 	tests.Assert(t, v != nil)
 	err = v.Create(app.db, app.executor)
-	tests.Assert(t, err == ErrNoSpace)
+	tests.Assert(t, ErrNoSpace.In(err), err)
 
 	// Create a client
 	c := client.NewClientNoAuth(ts.URL)
@@ -1191,7 +1191,7 @@ func TestVolumeClusterResizeByAddingDevices(t *testing.T) {
 	v = createSampleReplicaVolumeEntry(495, 2)
 	tests.Assert(t, v != nil)
 	err = v.Create(app.db, app.executor)
-	tests.Assert(t, err == ErrNoSpace)
+	tests.Assert(t, ErrNoSpace.In(err))
 }
 
 // Test for https://github.com/heketi/heketi/issues/382:

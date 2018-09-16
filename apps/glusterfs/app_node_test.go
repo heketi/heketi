@@ -589,7 +589,7 @@ func TestNodeAddDelete(t *testing.T) {
 		_, err = NewNodeEntryFromId(tx, node.Id)
 		return err
 	})
-	tests.Assert(t, err == ErrNotFound)
+	tests.Assert(t, ErrNotFound.In(err))
 
 	// Check the cluster does not have this node id
 	r, err = http.Get(ts.URL + "/clusters/" + clusterinfo.Id)
@@ -1404,7 +1404,7 @@ func TestNodeInfoAfterDelete(t *testing.T) {
 		_, err = NewNodeEntryFromId(tx, nodeid)
 		return err
 	})
-	tests.Assert(t, err == ErrNotFound)
+	tests.Assert(t, ErrNotFound.In(err))
 
 	// Get node info
 	node, err = c.NodeInfo(nodeid)

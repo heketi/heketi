@@ -345,7 +345,7 @@ func TestVolumeEntryFromIdNotFound(t *testing.T) {
 		_, err := NewVolumeEntryFromId(tx, "123")
 		return err
 	})
-	tests.Assert(t, err == ErrNotFound)
+	tests.Assert(t, ErrNotFound.In(err))
 
 }
 
@@ -424,7 +424,7 @@ func TestVolumeEntrySaveDelete(t *testing.T) {
 		return nil
 
 	})
-	tests.Assert(t, err == ErrNotFound)
+	tests.Assert(t, ErrNotFound.In(err))
 }
 
 func TestNewVolumeEntryNewInfoResponse(t *testing.T) {
@@ -489,7 +489,7 @@ func TestVolumeEntryCreateMissingCluster(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	err = v.Create(app.db, app.executor)
-	tests.Assert(t, err == ErrNoSpace)
+	tests.Assert(t, ErrNoSpace.In(err))
 
 }
 
@@ -514,7 +514,7 @@ func TestVolumeEntryCreateRunOutOfSpaceMinBrickSizeLimit(t *testing.T) {
 	// Shouldn't be able to break it down enough to allocate volume
 	v := createSampleReplicaVolumeEntry(100, 2)
 	err = v.Create(app.db, app.executor)
-	tests.Assert(t, err == ErrNoSpace)
+	tests.Assert(t, ErrNoSpace.In(err))
 	tests.Assert(t, v.Info.Cluster == "")
 
 	// Check database volume does not exist
@@ -522,7 +522,7 @@ func TestVolumeEntryCreateRunOutOfSpaceMinBrickSizeLimit(t *testing.T) {
 		_, err := NewVolumeEntryFromId(tx, v.Info.Id)
 		return err
 	})
-	tests.Assert(t, err == ErrNotFound)
+	tests.Assert(t, ErrNotFound.In(err))
 
 	// Check no bricks or volumes exist
 	var bricks []string
@@ -562,14 +562,14 @@ func TestVolumeEntryCreateRunOutOfSpaceMaxBrickLimit(t *testing.T) {
 	// Shouldn't be able to break it down enough to allocate volume
 	v := createSampleReplicaVolumeEntry(BrickMaxNum*2*int(BrickMinSize/GB), 2)
 	err = v.Create(app.db, app.executor)
-	tests.Assert(t, err == ErrNoSpace)
+	tests.Assert(t, ErrNoSpace.In(err))
 
 	// Check database volume does not exist
 	err = app.db.View(func(tx *bolt.Tx) error {
 		_, err := NewVolumeEntryFromId(tx, v.Info.Id)
 		return err
 	})
-	tests.Assert(t, err == ErrNotFound)
+	tests.Assert(t, ErrNotFound.In(err))
 
 	// Check no bricks or volumes exist
 	var bricks []string
@@ -1295,11 +1295,11 @@ func TestVolumeEntryExpandNoSpace(t *testing.T) {
 
 	// Asking for a large amount will require too many little bricks
 	err = v.Expand(app.db, app.executor, 5000)
-	tests.Assert(t, err == ErrMaxBricks, err)
+	tests.Assert(t, ErrMaxBricks.In(err), err)
 
 	// Asking for a small amount will set the bricks too small
 	err = v.Expand(app.db, app.executor, 10)
-	tests.Assert(t, err == ErrMinimumBrickSize, err)
+	tests.Assert(t, ErrMinimumBrickSize.In(err), err)
 
 	// Check db is the same as before expansion
 	var entry *VolumeEntry
@@ -1342,7 +1342,7 @@ func TestVolumeEntryExpandMaxBrickLimit(t *testing.T) {
 	// Try to expand the volume, but it will return that the max number
 	// of bricks has been reached
 	err = v.Expand(app.db, app.executor, 100)
-	tests.Assert(t, err == ErrMaxBricks, err)
+	tests.Assert(t, ErrMaxBricks.In(err), err)
 }
 
 func TestVolumeEntryExpandCreateBricksFailure(t *testing.T) {
@@ -1457,12 +1457,12 @@ func TestVolumeEntryDoNotAllowDeviceOnSameNode(t *testing.T) {
 	v := createSampleReplicaVolumeEntry(100, 2)
 	err = v.Create(app.db, app.executor)
 	tests.Assert(t, err != nil, err)
-	tests.Assert(t, err == ErrNoSpace)
+	tests.Assert(t, ErrNoSpace.In(err))
 
 	v = createSampleReplicaVolumeEntry(10000, 2)
 	err = v.Create(app.db, app.executor)
 	tests.Assert(t, err != nil, err)
-	tests.Assert(t, err == ErrNoSpace)
+	tests.Assert(t, ErrNoSpace.In(err))
 }
 
 func TestVolumeEntryDestroyCheck(t *testing.T) {
@@ -2095,7 +2095,7 @@ func TestVolumeEntryNoMatchingFlags(t *testing.T) {
 	v.Info.Block = true
 	err = v.Create(app.db, app.executor)
 	// expect no space error due to no clusters able to satisfy block volume
-	tests.Assert(t, err == ErrNoSpace)
+	tests.Assert(t, ErrNoSpace.In(err))
 }
 
 func TestVolumeEntryMissingFlags(t *testing.T) {
@@ -2136,7 +2136,7 @@ func TestVolumeEntryMissingFlags(t *testing.T) {
 	v := createSampleReplicaVolumeEntry(1024, 2)
 	err = v.Create(app.db, app.executor)
 	// expect no space error due to no clusters able to satisfy block volume
-	tests.Assert(t, err == ErrNoSpace)
+	tests.Assert(t, ErrNoSpace.In(err))
 }
 
 func TestVolumeCreateBrickAlloc(t *testing.T) {
@@ -2482,7 +2482,7 @@ func TestVolumeCreateMultiClusterErrorsNodes(t *testing.T) {
 	tests.Assert(t, err != nil, "expected err != nil, got:", err)
 
 	etext := err.Error()
-	tests.Assert(t, strings.Contains(etext, ErrEmptyCluster.Error()),
+	tests.Assert(t, strings.Contains(etext, ErrEmptyCluster.Err().Error()),
 		"expected strings.Contains(etext, ErrEmptyCluster.Error()), got:",
 		etext)
 	// verify every cluster id is listed
@@ -2522,7 +2522,7 @@ func TestVolumeCreateMultiClusterErrorsDevices(t *testing.T) {
 	tests.Assert(t, err != nil, "expected err != nil, got:", err)
 
 	etext := err.Error()
-	tests.Assert(t, strings.Contains(etext, ErrNoStorage.Error()),
+	tests.Assert(t, strings.Contains(etext, ErrNoStorage.Err().Error()),
 		"expected strings.Contains(etext, ErrNoStorage.Error()), got:",
 		etext)
 	// verify every cluster id is listed

@@ -76,7 +76,7 @@ func TestNewBrickEntryFromIdNotFound(t *testing.T) {
 		_, err := NewBrickEntryFromId(tx, "123")
 		return err
 	})
-	tests.Assert(t, err == ErrNotFound)
+	tests.Assert(t, ErrNotFound.In(err))
 
 }
 
@@ -150,7 +150,7 @@ func TestNewBrickEntrySaveDelete(t *testing.T) {
 		brick, err = NewBrickEntryFromId(tx, b.Info.Id)
 		return err
 	})
-	tests.Assert(t, err == ErrNotFound)
+	tests.Assert(t, ErrNotFound.In(err))
 }
 
 func TestNewBrickEntryNewInfoResponse(t *testing.T) {

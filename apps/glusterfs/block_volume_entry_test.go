@@ -139,7 +139,7 @@ func TestBlockVolumeEntryFromIdNotFound(t *testing.T) {
 		_, err := NewBlockVolumeEntryFromId(tx, "123")
 		return err
 	})
-	tests.Assert(t, err == ErrNotFound)
+	tests.Assert(t, ErrNotFound.In(err))
 
 }
 
@@ -218,7 +218,7 @@ func TestBlockVolumeEntrySaveDelete(t *testing.T) {
 		return nil
 
 	})
-	tests.Assert(t, err == ErrNotFound)
+	tests.Assert(t, ErrNotFound.In(err))
 }
 
 func TestNewBlockVolumeEntryNewInfoResponse(t *testing.T) {
@@ -281,7 +281,7 @@ func TestBlockVolumeEntryCreateMissingCluster(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	err = bv.Create(app.db, app.executor)
-	tests.Assert(t, err == ErrNoSpace)
+	tests.Assert(t, ErrNoSpace.In(err))
 
 }
 

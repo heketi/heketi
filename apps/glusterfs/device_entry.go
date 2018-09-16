@@ -43,7 +43,7 @@ func DeviceList(tx *bolt.Tx) ([]string, error) {
 
 	list := EntryKeys(tx, BOLTDB_BUCKET_DEVICE)
 	if list == nil {
-		return nil, ErrAccessList
+		return nil, ErrAccessList.Err()
 	}
 	return list, nil
 }
@@ -94,14 +94,14 @@ func (d *DeviceEntry) Register(tx *bolt.Tx) error {
 		d,
 		d.registerKey(),
 		[]byte(d.Id()))
-	if err == ErrKeyExists {
+	if ErrKeyExists.In(err) {
 
 		// Now check if the node actually exists.  This only happens
 		// when the application crashes and it doesn't clean up stale
 		// registrations.
 		conflictId := string(val)
 		_, err := NewDeviceEntryFromId(tx, conflictId)
-		if err == ErrNotFound {
+		if ErrNotFound.In(err) {
 			// (stale) There is actually no conflict, we can allow
 			// the registration
 			return nil
@@ -176,7 +176,7 @@ func (d *DeviceEntry) Delete(tx *bolt.Tx) error {
 	// This is just for bricks with empty paths
 	if d.HasBricks() {
 		logger.LogError(d.ConflictString())
-		return ErrConflict
+		return ErrConflict.Err()
 	}
 
 	return EntryDelete(tx, d, d.Info.Id)
@@ -213,7 +213,7 @@ func (d *DeviceEntry) SetState(db wdb.DB,
 		}
 	case api.EntryStateFailed:
 		if err := d.Remove(db, e); err != nil {
-			if err == ErrNoReplacement {
+			if ErrNoReplacement.In(err) {
 				return logger.LogError("Unable to delete device [%v] as no device was found to replace it", d.Id())
 			}
 			return err
@@ -485,7 +485,7 @@ func (d *DeviceEntry) removeBricksFromDevice(db wdb.DB,
 		logger.Info("Replacing brick %v on device %v on node %v", brickEntry.Id(), d.Id(), d.NodeId)
 		err = volumeEntry.replaceBrickInVolume(db, executor, brickEntry.Id())
 		if err != nil {
-			return logger.Err(errors.Errorf("Failed to remove device, error: %v", err))
+			return logger.Err(fmt.Errorf("Failed to remove device, error: %v", err))
 		}
 	}
 	return nil
@@ -566,7 +566,7 @@ func markDeviceFailed(db wdb.DB, id string, force bool) error {
 			return err
 		}
 		if !force && d.HasBricks() {
-			return ErrConflict
+			return ErrConflict.Err()
 		}
 		d.State = api.EntryStateFailed
 		return d.Save(tx)
@@ -582,7 +582,7 @@ func (d *DeviceEntry) DeleteBricksWithEmptyPath(tx *bolt.Tx) error {
 
 	for _, id := range d.Bricks {
 		brick, err := NewBrickEntryFromId(tx, id)
-		if err == ErrNotFound {
+		if ErrNotFound.In(err) {
 			logger.Warning("Ignoring nonexistent brick [%v] on "+
 				"disk [%v].", id, d.Info.Id)
 			continue

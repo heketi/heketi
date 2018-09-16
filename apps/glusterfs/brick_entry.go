@@ -45,7 +45,7 @@ func BrickList(tx *bolt.Tx) ([]string, error) {
 
 	list := EntryKeys(tx, BOLTDB_BUCKET_BRICK)
 	if list == nil {
-		return nil, ErrAccessList
+		return nil, ErrAccessList.Err()
 	}
 	return list, nil
 }
@@ -310,7 +310,7 @@ func addVolumeIdInBrickEntry(tx *bolt.Tx) error {
 		}
 		for _, brick := range volumeEntry.Bricks {
 			brickEntry, err := NewBrickEntryFromId(tx, brick)
-			if err == ErrNotFound {
+			if ErrNotFound.In(err) {
 				logger.Warning("Volume [%v] links to "+
 					"nonexistent brick [%v]. Ignoring.",
 					volume, brick)
@@ -336,11 +336,11 @@ func addVolumeIdInBrickEntry(tx *bolt.Tx) error {
 func addSubTypeFieldFlagForBrickEntry(tx *bolt.Tx) error {
 	entry, err := NewDbAttributeEntryFromKey(tx, DB_BRICK_HAS_SUBTYPE_FIELD)
 	// This key won't exist if we are introducing the feature now
-	if err != nil && err != ErrNotFound {
+	if err != nil && !ErrNotFound.In(err) {
 		return err
 	}
 
-	if err == ErrNotFound {
+	if ErrNotFound.In(err) {
 		// no flag in db. create it with default of "yes"
 		entry = NewDbAttributeEntry()
 		entry.Key = DB_BRICK_HAS_SUBTYPE_FIELD

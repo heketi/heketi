@@ -71,7 +71,7 @@ func (a *App) NodeAdd(w http.ResponseWriter, r *http.Request) {
 	err = a.db.Update(func(tx *bolt.Tx) error {
 		var err error
 		cluster, err = NewClusterEntryFromId(tx, msg.ClusterId)
-		if err == ErrNotFound {
+		if ErrNotFound.In(err) {
 			http.Error(w, "Cluster id does not exist", http.StatusNotFound)
 			return err
 		} else if err != nil {
@@ -138,7 +138,7 @@ func (a *App) NodeAdd(w http.ResponseWriter, r *http.Request) {
 		// Add node entry into the db
 		err = a.db.Update(func(tx *bolt.Tx) error {
 			cluster, err := NewClusterEntryFromId(tx, msg.ClusterId)
-			if err == ErrNotFound {
+			if ErrNotFound.In(err) {
 				http.Error(w, "Cluster id does not exist", http.StatusNotFound)
 				return err
 			} else if err != nil {
@@ -184,7 +184,7 @@ func (a *App) NodeInfo(w http.ResponseWriter, r *http.Request) {
 	var info *api.NodeInfoResponse
 	err := a.db.View(func(tx *bolt.Tx) error {
 		entry, err := NewNodeEntryFromId(tx, id)
-		if err == ErrNotFound {
+		if ErrNotFound.In(err) {
 			http.Error(w, "Id not found", http.StatusNotFound)
 			return err
 		} else if err != nil {
@@ -228,7 +228,7 @@ func (a *App) NodeDelete(w http.ResponseWriter, r *http.Request) {
 		// Access node entry
 		var err error
 		node, err = NewNodeEntryFromId(tx, id)
-		if err == ErrNotFound {
+		if ErrNotFound.In(err) {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return err
 		} else if err != nil {
@@ -240,12 +240,12 @@ func (a *App) NodeDelete(w http.ResponseWriter, r *http.Request) {
 		if !node.IsDeleteOk() {
 			http.Error(w, node.ConflictString(), http.StatusConflict)
 			logger.LogError(node.ConflictString())
-			return ErrConflict
+			return ErrConflict.Err()
 		}
 
 		// Access cluster information and peer node
 		cluster, err = NewClusterEntryFromId(tx, node.Info.ClusterId)
-		if err == ErrNotFound {
+		if ErrNotFound.In(err) {
 			http.Error(w, "Cluster id does not exist", http.StatusNotFound)
 			return err
 		} else if err != nil {
@@ -292,7 +292,7 @@ func (a *App) NodeDelete(w http.ResponseWriter, r *http.Request) {
 		err = a.db.Update(func(tx *bolt.Tx) error {
 			// Get Cluster
 			cluster, err := NewClusterEntryFromId(tx, node.Info.ClusterId)
-			if err == ErrNotFound {
+			if ErrNotFound.In(err) {
 				logger.Critical("Cluster id %v is expected be in db. Pointed to by node %v",
 					node.Info.ClusterId,
 					node.Info.Id)
@@ -413,7 +413,7 @@ func (a *App) NodeSetState(w http.ResponseWriter, r *http.Request) {
 	// Check state is supported
 	err = a.db.View(func(tx *bolt.Tx) error {
 		node, err = NewNodeEntryFromId(tx, id)
-		if err == ErrNotFound {
+		if ErrNotFound.In(err) {
 			http.Error(w, "Id not found", http.StatusNotFound)
 			return err
 		} else if err != nil {
@@ -436,7 +436,7 @@ func (a *App) NodeSetState(w http.ResponseWriter, r *http.Request) {
 		var throttled bool
 		throttled, token = a.optracker.ThrottleOrToken()
 		if throttled {
-			OperationHttpErrorf(w, ErrTooManyOperations, "")
+			OperationHttpErrorf(w, ErrTooManyOperations.Err(), "")
 			return
 		}
 	}
@@ -481,7 +481,7 @@ func (a *App) NodeSetTags(w http.ResponseWriter, r *http.Request) {
 
 	err = a.db.Update(func(tx *bolt.Tx) error {
 		node, err = NewNodeEntryFromId(tx, id)
-		if err == ErrNotFound {
+		if ErrNotFound.In(err) {
 			http.Error(w, "Id not found", http.StatusNotFound)
 			return err
 		} else if err != nil {

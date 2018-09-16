@@ -29,7 +29,7 @@ func EntryRegister(tx *bolt.Tx, entry DbEntry, key string, value []byte) ([]byte
 	// Access bucket
 	b := tx.Bucket([]byte(entry.BucketName()))
 	if b == nil {
-		err := ErrDbAccess
+		err := ErrDbAccess.Err()
 		logger.Err(err)
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func EntryRegister(tx *bolt.Tx, entry DbEntry, key string, value []byte) ([]byte
 	// Check if key exists already
 	val := b.Get([]byte(key))
 	if val != nil {
-		return val, ErrKeyExists
+		return val, ErrKeyExists.Err()
 	}
 
 	// Key does not exist.  We can save it
@@ -77,7 +77,7 @@ func EntrySave(tx *bolt.Tx, entry DbEntry, key string) error {
 	// Access bucket
 	b := tx.Bucket([]byte(entry.BucketName()))
 	if b == nil {
-		err := ErrDbAccess
+		err := ErrDbAccess.Err()
 		logger.Err(err)
 		return err
 	}
@@ -106,7 +106,7 @@ func EntryDelete(tx *bolt.Tx, entry DbEntry, key string) error {
 	// Access bucket
 	b := tx.Bucket([]byte(entry.BucketName()))
 	if b == nil {
-		err := ErrDbAccess
+		err := ErrDbAccess.Err()
 		logger.Err(err)
 		return err
 	}
@@ -127,14 +127,14 @@ func EntryLoad(tx *bolt.Tx, entry DbEntry, key string) error {
 
 	b := tx.Bucket([]byte(entry.BucketName()))
 	if b == nil {
-		err := ErrDbAccess
+		err := ErrDbAccess.Err()
 		logger.Err(err)
 		return err
 	}
 
 	val := b.Get([]byte(key))
 	if val == nil {
-		return ErrNotFound
+		return ErrNotFound.Err()
 	}
 
 	err := entry.Unmarshal(val)

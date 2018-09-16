@@ -158,7 +158,7 @@ func TestNewClusterEntryFromIdNotFound(t *testing.T) {
 		_, err := NewClusterEntryFromId(tx, "123")
 		return err
 	})
-	tests.Assert(t, err == ErrNotFound)
+	tests.Assert(t, ErrNotFound.In(err))
 
 }
 
@@ -270,7 +270,7 @@ func TestNewClusterEntrySaveDelete(t *testing.T) {
 		return nil
 
 	})
-	tests.Assert(t, err == ErrConflict)
+	tests.Assert(t, ErrConflict.In(err))
 
 	// Delete devices in cluster
 	cluster.VolumeDelete("vol_abc")
@@ -299,7 +299,7 @@ func TestNewClusterEntrySaveDelete(t *testing.T) {
 		return nil
 
 	})
-	tests.Assert(t, err == ErrConflict)
+	tests.Assert(t, ErrConflict.In(err))
 
 	// Delete cluster
 	cluster.NodeDelete("node_abc")
@@ -340,7 +340,7 @@ func TestNewClusterEntrySaveDelete(t *testing.T) {
 		return nil
 
 	})
-	tests.Assert(t, err == ErrNotFound)
+	tests.Assert(t, ErrNotFound.In(err))
 }
 
 func TestNewClusterEntryNewInfoResponse(t *testing.T) {

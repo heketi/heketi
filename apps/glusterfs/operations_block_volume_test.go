@@ -813,7 +813,7 @@ func TestBlockVolumeDeleteOperationTwice(t *testing.T) {
 
 	bdel2 := NewBlockVolumeDeleteOperation(vol2, app.db)
 	e = bdel2.Build()
-	tests.Assert(t, e == ErrConflict, "expected e ErrConflict, got", e)
+	tests.Assert(t, ErrConflict.In(e), "expected e ErrConflict, got", e)
 
 	app.db.View(func(tx *bolt.Tx) error {
 		pol, e := PendingOperationList(tx)
@@ -922,7 +922,7 @@ func TestBlockVolumeCloneFails(t *testing.T) {
 
 	cloneOp := NewVolumeCloneOperation(vol, app.db, "foo")
 	err = RunOperation(cloneOp, app.executor)
-	tests.Assert(t, err == ErrCloneBlockVol, "expected err == ErrCloneBlockVol, got:", err)
+	tests.Assert(t, ErrCloneBlockVol.In(err), "expected err == ErrCloneBlockVol, got:", err)
 }
 
 func TestBlockVolumesCreateRejectPendingBHV(t *testing.T) {
@@ -965,7 +965,7 @@ func TestBlockVolumesCreateRejectPendingBHV(t *testing.T) {
 
 	e = vc2.Build()
 	tests.Assert(t, e != nil, "expected e != nil, got", e)
-	tests.Assert(t, e == ErrTooManyOperations,
+	tests.Assert(t, ErrTooManyOperations.In(e),
 		"expected e == ErrTooManyOperations, got:", e)
 
 	e = vc1.Exec(app.executor)

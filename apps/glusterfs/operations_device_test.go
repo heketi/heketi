@@ -255,8 +255,8 @@ func TestDeviceRemoveOperationTooFewDevices(t *testing.T) {
 	}
 
 	err = dro.Exec(app.executor)
-	tests.Assert(t, strings.Contains(err.Error(), ErrNoReplacement.Error()),
-		"expected strings.Contains(err.Error(), ErrNoReplacement.Error()), got:",
+	tests.Assert(t, strings.Contains(err.Error(), ErrNoReplacement.Err().Error()),
+		"strings.Contains(err.Error(), ErrNoReplacement.Err().Error()), got:",
 		err.Error())
 
 	// operation is not over. we should still have a pending op
@@ -356,7 +356,7 @@ func TestDeviceRemoveOperationOtherPendingOps(t *testing.T) {
 
 	dro := NewDeviceRemoveOperation(d.Info.Id, app.db)
 	err = dro.Build()
-	tests.Assert(t, err == ErrConflict, "expected err == ErrConflict, got:", err)
+	tests.Assert(t, ErrConflict.In(err), "expected err == ErrConflict, got:", err)
 
 	// we should have one pending operation (the volume create)
 	app.db.View(func(tx *bolt.Tx) error {
@@ -431,7 +431,7 @@ func TestDeviceRemoveOperationMultipleRequests(t *testing.T) {
 	// these actions.
 	dro2 := NewDeviceRemoveOperation(d.Info.Id, app.db)
 	err = dro2.Build()
-	tests.Assert(t, err == ErrConflict, "expected err == ErrConflict, got:", err)
+	tests.Assert(t, ErrConflict.In(err), "expected err == ErrConflict, got:", err)
 
 	// we should have one pending operation (the device remove)
 	app.db.View(func(tx *bolt.Tx) error {

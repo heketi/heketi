@@ -52,7 +52,7 @@ type PendingOperationEntry struct {
 func PendingOperationList(tx *bolt.Tx) ([]string, error) {
 	list := EntryKeys(tx, BOLTDB_BUCKET_PENDING_OPS)
 	if list == nil {
-		return nil, ErrAccessList
+		return nil, ErrAccessList.Err()
 	}
 	return list, nil
 }
@@ -292,12 +292,12 @@ func (p *PendingOperationEntry) RecordRemoveDevice(d *DeviceEntry) {
 // support pending operation entries.
 func PendingOperationUpgrade(tx *bolt.Tx) error {
 	entry, err := NewDbAttributeEntryFromKey(tx, DB_HAS_PENDING_OPS_BUCKET)
-	switch err {
-	case ErrNotFound:
+	switch {
+	case ErrNotFound.In(err):
 		entry = NewDbAttributeEntry()
 		entry.Key = DB_HAS_PENDING_OPS_BUCKET
 		entry.Value = "yes"
-	case nil:
+	case err == nil:
 		entry.Value = "yes"
 	default:
 		return err

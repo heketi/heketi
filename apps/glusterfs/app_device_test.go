@@ -359,7 +359,7 @@ func TestDeviceAddDelete(t *testing.T) {
 		_, err := NewDeviceEntryFromId(tx, fakeid)
 		return err
 	})
-	tests.Assert(t, err == ErrNotFound)
+	tests.Assert(t, ErrNotFound.In(err))
 
 	// Check node does not have the device
 	err = app.db.View(func(tx *bolt.Tx) error {
@@ -448,7 +448,7 @@ func TestDeviceAddCleansUp(t *testing.T) {
 	// cause the cleanup.
 	deviceSetupFn := app.xo.MockDeviceSetup
 	app.xo.MockDeviceSetup = func(host, device, vgid string, destroy bool) (*executors.DeviceInfo, error) {
-		return nil, ErrDbAccess
+		return nil, ErrDbAccess.Err()
 	}
 
 	// Create a request to a device

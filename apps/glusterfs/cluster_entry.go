@@ -30,7 +30,7 @@ func ClusterList(tx *bolt.Tx) ([]string, error) {
 
 	list := EntryKeys(tx, BOLTDB_BUCKET_CLUSTER)
 	if list == nil {
-		return nil, ErrAccessList
+		return nil, ErrAccessList.Err()
 	}
 	return list, nil
 }
@@ -89,7 +89,7 @@ func (c *ClusterEntry) Delete(tx *bolt.Tx) error {
 	// Check if the cluster still has nodes or volumes
 	if len(c.Info.Nodes) > 0 || len(c.Info.Volumes) > 0 {
 		logger.Warning(c.ConflictString())
-		return ErrConflict
+		return ErrConflict.Err()
 	}
 
 	return EntryDelete(tx, c, c.Info.Id)
@@ -179,11 +179,11 @@ func ClusterEntryUpgrade(tx *bolt.Tx) error {
 func addBlockFileFlagsInClusterEntry(tx *bolt.Tx) error {
 	entry, err := NewDbAttributeEntryFromKey(tx, DB_CLUSTER_HAS_FILE_BLOCK_FLAG)
 	// This key won't exist if we are introducing the feature now
-	if err != nil && err != ErrNotFound {
+	if err != nil && !ErrNotFound.In(err) {
 		return err
 	}
 
-	if err == ErrNotFound {
+	if ErrNotFound.In(err) {
 		entry = NewDbAttributeEntry()
 		entry.Key = DB_CLUSTER_HAS_FILE_BLOCK_FLAG
 		entry.Value = "no"
@@ -222,7 +222,7 @@ func (c *ClusterEntry) DeleteBricksWithEmptyPath(tx *bolt.Tx) error {
 
 	for _, nodeid := range c.Info.Nodes {
 		node, err := NewNodeEntryFromId(tx, nodeid)
-		if err == ErrNotFound {
+		if ErrNotFound.In(err) {
 			logger.Warning("Ignoring nonexisting node [%v] in "+
 				"cluster [%v].", nodeid, c.Info.Id)
 			continue

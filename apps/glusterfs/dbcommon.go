@@ -155,11 +155,9 @@ func UpgradeDB(tx *bolt.Tx) error {
 
 func upgradeDBGenerationID(tx *bolt.Tx) error {
 	_, err := NewDbAttributeEntryFromKey(tx, DB_GENERATION_ID)
-	switch err {
-	case ErrNotFound:
+	switch {
+	case ErrNotFound.In(err):
 		return recordNewDBGenerationID(tx)
-	case nil:
-		return nil
 	default:
 		return err
 	}

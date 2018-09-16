@@ -312,7 +312,7 @@ func (vdel *VolumeDeleteOperation) Build() error {
 		if vdel.vol.Pending.Id != "" {
 			logger.LogError("Pending volume %v can not be deleted",
 				vdel.vol.Info.Id)
-			return ErrConflict
+			return ErrConflict.Err()
 		}
 		txdb := wdb.WrapTx(tx)
 		brick_entries, err := vdel.vol.deleteVolumeComponents(txdb)
@@ -323,7 +323,7 @@ func (vdel *VolumeDeleteOperation) Build() error {
 			if brick.Pending.Id != "" {
 				logger.LogError("Pending brick %v can not be deleted",
 					brick.Info.Id)
-				return ErrConflict
+				return ErrConflict.Err()
 			}
 			vdel.op.RecordDeleteBrick(brick)
 			if e := brick.Save(tx); e != nil {

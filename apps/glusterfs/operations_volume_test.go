@@ -324,8 +324,8 @@ func TestVolumeCreatePendingNoSpace(t *testing.T) {
 
 	e := vc.Build()
 	// verify that we failed to allocate due to lack of space
-	tests.Assert(t, strings.Contains(e.Error(), ErrNoSpace.Error()),
-		"expected strings.Contains(e.Error(), ErrNoSpace.Error()) got", e)
+	tests.Assert(t, strings.Contains(e.Error(), ErrNoSpace.Err().Error()),
+		"expected strings.Contains(e.Error(), ErrNoSpace.Err().Error()) got", e)
 
 	// verify no volumes, bricks or pending ops in db
 	app.db.View(func(tx *bolt.Tx) error {
@@ -731,7 +731,7 @@ func TestVolumeDeleteOperationTwice(t *testing.T) {
 
 	vd2 := NewVolumeDeleteOperation(vol, app.db)
 	e = vd2.Build()
-	tests.Assert(t, e == ErrConflict, "expected e == ErrConflict, got:", e)
+	tests.Assert(t, ErrConflict.In(e), "expected e == ErrConflict, got:", e)
 }
 
 func TestVolumeDeleteOperationDuringExpand(t *testing.T) {
@@ -789,7 +789,7 @@ func TestVolumeDeleteOperationDuringExpand(t *testing.T) {
 
 	vd := NewVolumeDeleteOperation(vol, app.db)
 	e = vd.Build()
-	tests.Assert(t, e == ErrConflict, "expected e == ErrConflict, got:", e)
+	tests.Assert(t, ErrConflict.In(e), "expected e == ErrConflict, got:", e)
 }
 
 func TestVolumeExpandOperation(t *testing.T) {

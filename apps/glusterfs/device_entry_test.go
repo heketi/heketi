@@ -175,7 +175,7 @@ func TestNewDeviceEntryFromIdNotFound(t *testing.T) {
 		_, err := NewDeviceEntryFromId(tx, "123")
 		return err
 	})
-	tests.Assert(t, err == ErrNotFound)
+	tests.Assert(t, ErrNotFound.In(err))
 
 }
 
@@ -468,7 +468,7 @@ func TestNewDeviceEntrySaveDelete(t *testing.T) {
 		return nil
 
 	})
-	tests.Assert(t, err == ErrNotFound)
+	tests.Assert(t, ErrNotFound.In(err))
 }
 
 func TestNewDeviceEntryNewInfoResponseBadBrickIds(t *testing.T) {
@@ -512,7 +512,7 @@ func TestNewDeviceEntryNewInfoResponseBadBrickIds(t *testing.T) {
 		return nil
 
 	})
-	tests.Assert(t, err == ErrNotFound)
+	tests.Assert(t, ErrNotFound.In(err))
 }
 
 func TestNewDeviceEntryNewInfoResponse(t *testing.T) {
@@ -909,8 +909,8 @@ func TestDeviceSetStateFailedTooFewDevices(t *testing.T) {
 	}
 
 	err = d.SetState(app.db, app.executor, api.EntryStateFailed)
-	tests.Assert(t, strings.Contains(err.Error(), ErrNoReplacement.Error()),
-		"expected strings.Contains(err.Error(), ErrNoReplacement.Error()), got:",
+	tests.Assert(t, strings.Contains(err.Error(), ErrNoReplacement.Err().Error()),
+		"expected strings.Contains(err.Error(), ErrNoReplacement.Err().Error()), got:",
 		err.Error())
 }
 

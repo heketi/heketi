@@ -68,7 +68,7 @@ func (a *App) ClusterSetFlags(w http.ResponseWriter, r *http.Request) {
 
 	err = a.db.Update(func(tx *bolt.Tx) error {
 		entry, err := NewClusterEntryFromId(tx, id)
-		if err == ErrNotFound {
+		if ErrNotFound.In(err) {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return err
 		} else if err != nil {
@@ -137,7 +137,7 @@ func (a *App) ClusterInfo(w http.ResponseWriter, r *http.Request) {
 
 		// Create a db entry from the id
 		entry, err := NewClusterEntryFromId(tx, id)
-		if err == ErrNotFound {
+		if ErrNotFound.In(err) {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return err
 		} else if err != nil {
@@ -181,7 +181,7 @@ func (a *App) ClusterDelete(w http.ResponseWriter, r *http.Request) {
 
 		// Access cluster entry
 		entry, err := NewClusterEntryFromId(tx, id)
-		if err == ErrNotFound {
+		if ErrNotFound.In(err) {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return err
 		} else if err != nil {
@@ -191,7 +191,7 @@ func (a *App) ClusterDelete(w http.ResponseWriter, r *http.Request) {
 
 		err = entry.Delete(tx)
 		if err != nil {
-			if err == ErrConflict {
+			if ErrConflict.In(err) {
 				http.Error(w, entry.ConflictString(), http.StatusConflict)
 			} else {
 				http.Error(w, err.Error(), http.StatusInternalServerError)

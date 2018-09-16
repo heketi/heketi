@@ -54,7 +54,7 @@ func (a *App) BlockVolumeCreate(w http.ResponseWriter, r *http.Request) {
 		if len(clusters) == 0 {
 			err := logger.LogError("No clusters configured")
 			http.Error(w, err.Error(), http.StatusBadRequest)
-			return ErrNotFound
+			return ErrNotFound.Err()
 		}
 
 		// Check the clusters requested are correct
@@ -120,9 +120,12 @@ func (a *App) BlockVolumeInfo(w http.ResponseWriter, r *http.Request) {
 	var info *api.BlockVolumeInfoResponse
 	err := a.db.View(func(tx *bolt.Tx) error {
 		entry, err := NewBlockVolumeEntryFromId(tx, id)
-		if err == ErrNotFound || !entry.Visible() {
+		if ErrNotFound.In(err) || !entry.Visible() {
 			http.Error(w, "Id not found", http.StatusNotFound)
-			return ErrNotFound
+			if !ErrNotFound.In(err) {
+				err = ErrNotFound.Err()
+			}
+			return err
 		} else if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return err
@@ -156,7 +159,7 @@ func (a *App) BlockVolumeDelete(w http.ResponseWriter, r *http.Request) {
 	err := a.db.View(func(tx *bolt.Tx) error {
 		var err error
 		blockVolume, err = NewBlockVolumeEntryFromId(tx, id)
-		if err == ErrNotFound {
+		if ErrNotFound.In(err) {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return err
 		} else if err != nil {

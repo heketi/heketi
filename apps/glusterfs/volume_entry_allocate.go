@@ -49,12 +49,12 @@ func (v *VolumeEntry) allocBricksInCluster(db wdb.DB,
 		// Check that the volume would not have too many bricks
 		if (num_bricks + len(v.Bricks)) > BrickMaxNum {
 			logger.Debug("Maximum number of bricks reached")
-			return nil, ErrMaxBricks
+			return nil, ErrMaxBricks.Err()
 		}
 
 		// Allocate bricks in the cluster
 		brick_entries, err := v.allocBricks(db, cluster, sets, brick_size)
-		if err == ErrNoSpace {
+		if ErrNoSpace.In(err) {
 			logger.Debug("No space, re-trying with smaller brick size")
 			continue
 		}
@@ -123,7 +123,7 @@ func (v *VolumeEntry) getBrickSetForBrickId(db wdb.DB,
 			if !found {
 				logger.LogError("Unable to create brick entry using brick name:%v",
 					brick.Name)
-				return nil, 0, ErrNotFound
+				return nil, 0, ErrNotFound.Err()
 			}
 			if brickentry.Id() == oldBrickId {
 				foundbrickset = true
@@ -137,7 +137,7 @@ func (v *VolumeEntry) getBrickSetForBrickId(db wdb.DB,
 	}
 
 	logger.LogError("Unable to find brick set for brick %v, db is possibly corrupt", oldBrickId)
-	return nil, 0, ErrNotFound
+	return nil, 0, ErrNotFound.Err()
 }
 
 // canReplaceBrickInBrickSet
@@ -284,9 +284,9 @@ func (v *VolumeEntry) allocBrickReplacement(db wdb.DB,
 			NewClusterDeviceSource(tx, v.Info.Cluster),
 			NewVolumePlacementOpts(v, oldBrickEntry.Info.Size, bs.SetSize),
 			diffDevice, bs, index)
-		if err == ErrNoSpace {
+		if ErrNoSpace.In(err) {
 			// swap error conditions to better match the intent
-			return ErrNoReplacement
+			return ErrNoReplacement.Err()
 		} else if err != nil {
 			return err
 		}

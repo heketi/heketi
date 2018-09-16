@@ -117,7 +117,7 @@ func AsyncHttpOperation(app *App,
 
 	// check if the request needs to be rate limited
 	if app.optracker.ThrottleOrAdd(op.Id(), TrackNormal) {
-		return ErrTooManyOperations
+		return ErrTooManyOperations.Err()
 	}
 
 	label := op.Label()
@@ -241,11 +241,10 @@ func OperationHttpErrorf(
 
 	var msg string
 	status := http.StatusInternalServerError
-	switch e {
-	case ErrTooManyOperations:
+	if ErrTooManyOperations.In(e) {
 		status = http.StatusTooManyRequests
 		msg = "Server busy. Retry operation later."
-	default:
+	} else {
 		msg = fmt.Sprintf(f, v...)
 	}
 

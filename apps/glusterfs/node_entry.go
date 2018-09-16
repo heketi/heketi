@@ -118,7 +118,7 @@ func GetVerifiedManageHostname(db wdb.RODB, e executors.Executor, clusterId stri
 	if node != nil {
 		return node.ManageHostName(), nil
 	}
-	return "", ErrNotFound
+	return "", ErrNotFound.Err()
 }
 
 // Returns Manage Hostname, given a Storage Hostname
@@ -154,7 +154,7 @@ func GetManageHostnameFromStorageHostname(tx *bolt.Tx, shostname string) (string
 	if node != nil {
 		return node.ManageHostName(), nil
 	}
-	return "", ErrNotFound
+	return "", ErrNotFound.Err()
 }
 
 func (n *NodeEntry) Register(tx *bolt.Tx) error {
@@ -162,13 +162,13 @@ func (n *NodeEntry) Register(tx *bolt.Tx) error {
 	// Save manage hostnames
 	for _, h := range n.Info.Hostnames.Manage {
 		val, err := EntryRegister(tx, n, n.registerManageKey(h), []byte(n.Info.Id))
-		if err == ErrKeyExists {
+		if ErrKeyExists.In(err) {
 			// Now check if the node actually exists.  This only happens
 			// when the application crashes and it doesn't clean up stale
 			// registrations.
 			conflictId := string(val)
 			_, err := NewNodeEntryFromId(tx, conflictId)
-			if err == ErrNotFound {
+			if ErrNotFound.In(err) {
 				// (stale) There is actually no conflict, we can allow
 				// the registration
 				return nil
@@ -187,12 +187,12 @@ func (n *NodeEntry) Register(tx *bolt.Tx) error {
 	// Save storage hostnames
 	for _, h := range n.Info.Hostnames.Storage {
 		val, err := EntryRegister(tx, n, n.registerStorageKey(h), []byte(n.Info.Id))
-		if err == ErrKeyExists {
+		if ErrKeyExists.In(err) {
 
 			// Check if it exists
 			conflictId := string(val)
 			_, err := NewNodeEntryFromId(tx, conflictId)
-			if err == ErrNotFound {
+			if ErrNotFound.In(err) {
 				// (stale) There is actually no conflict, we can allow
 				// the registration
 				return nil
@@ -277,7 +277,7 @@ func (n *NodeEntry) Delete(tx *bolt.Tx) error {
 	// Check if the nodes still has drives
 	if !n.IsDeleteOk() {
 		logger.Warning(n.ConflictString())
-		return ErrConflict
+		return ErrConflict.Err()
 	}
 
 	return EntryDelete(tx, n, n.Info.Id)
@@ -357,7 +357,7 @@ func (n *NodeEntry) SetState(db wdb.DB, e executors.Executor,
 				})
 				err = d.Remove(db, e)
 				if err != nil {
-					if err == ErrNoReplacement {
+					if ErrNoReplacement.In(err) {
 						return logger.LogError("Unable to remove node [%v] as no device was found to replace device [%v]", n.Info.Id, d.Id())
 					}
 					return err
@@ -456,7 +456,7 @@ func NodeList(tx *bolt.Tx) ([]string, error) {
 
 	list := EntryKeys(tx, BOLTDB_BUCKET_NODE)
 	if list == nil {
-		return nil, ErrAccessList
+		return nil, ErrAccessList.Err()
 	}
 	return list, nil
 }
@@ -468,7 +468,7 @@ func (n *NodeEntry) DeleteBricksWithEmptyPath(tx *bolt.Tx) error {
 
 	for _, deviceid := range n.Devices {
 		device, err := NewDeviceEntryFromId(tx, deviceid)
-		if err == ErrNotFound {
+		if ErrNotFound.In(err) {
 			logger.Warning("Ignoring nonexisting device [%v] on "+
 				"node [%v].", deviceid, n.Info.Id)
 			continue

@@ -76,7 +76,7 @@ func (tds *TestDeviceSource) Devices() ([]DeviceAndNode, error) {
 		for _, deviceId := range node.Devices {
 			device, ok := tds.devices[deviceId]
 			if !ok {
-				return nil, ErrNotFound
+				return nil, ErrNotFound.Err()
 			}
 			valid = append(valid, DeviceAndNode{
 				Device: device,
@@ -91,14 +91,14 @@ func (tds *TestDeviceSource) Device(id string) (*DeviceEntry, error) {
 	if device, ok := tds.devices[id]; ok {
 		return device, nil
 	}
-	return nil, ErrNotFound
+	return nil, ErrNotFound.Err()
 }
 
 func (tds *TestDeviceSource) Node(id string) (*NodeEntry, error) {
 	if node, ok := tds.nodes[id]; ok {
 		return node, nil
 	}
-	return nil, ErrNotFound
+	return nil, ErrNotFound.Err()
 }
 
 type TestPlacementOpts struct {
@@ -164,7 +164,7 @@ func TestTestDeviceSource(t *testing.T) {
 		"expected d.Info.Storage.Total == 1200, got:", d.Info.Storage.Total)
 
 	d, err = dsrc.Device("10000000")
-	tests.Assert(t, err == ErrNotFound, "expected err == ErrNotFound, got:", err)
+	tests.Assert(t, ErrNotFound.In(err), "expected ErrNotFound.In(err), got:", err)
 
 	n, err := dsrc.Node("30000000")
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
@@ -173,7 +173,7 @@ func TestTestDeviceSource(t *testing.T) {
 		n.Info.Hostnames.Manage[0])
 
 	n, err = dsrc.Node("abcdefgh")
-	tests.Assert(t, err == ErrNotFound, "expected err == ErrNotFound, got:", err)
+	tests.Assert(t, ErrNotFound.In(err), "expected ErrNotFound.In(err), got:", err)
 
 	dnl, err := dsrc.Devices()
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
@@ -277,7 +277,7 @@ func TestArbiterBrickPlacerTooSmall(t *testing.T) {
 
 	abplacer := NewArbiterBrickPlacer()
 	_, err := abplacer.PlaceAll(dsrc, opts, nil)
-	tests.Assert(t, err == ErrNoSpace, "expected err == ErrNoSpace, got:", err)
+	tests.Assert(t, ErrNoSpace.In(err), "expected ErrNoSpace.In(err), got:", err)
 }
 
 func TestArbiterBrickPlacerDevicesFail(t *testing.T) {
@@ -330,7 +330,7 @@ func TestArbiterBrickPlacerPredicateBlock(t *testing.T) {
 		return false
 	}
 	_, err := abplacer.PlaceAll(dsrc, opts, pred)
-	tests.Assert(t, err == ErrNoSpace, "expected err == ErrNoSpace, got:", err)
+	tests.Assert(t, ErrNoSpace.In(err), "expected ErrNoSpace.In(err), got:", err)
 }
 
 func TestArbiterBrickPlacerBrickOnArbiterDevice(t *testing.T) {
@@ -680,8 +680,8 @@ func TestArbiterBrickPlacerReplaceTooFew(t *testing.T) {
 		return ba.BrickSets[0].Bricks[0].Info.DeviceId != d.Info.Id
 	}
 	_, err = abplacer.Replace(dsrc, opts, pred, ba.BrickSets[0], 0)
-	tests.Assert(t, err == ErrNoSpace,
-		"expected err == ErrNoSpace, got:", err)
+	tests.Assert(t, ErrNoSpace.In(err),
+		"expected ErrNoSpace.In(err), got:", err)
 }
 
 func TestArbiterBrickPlacerReplaceTooFewArbiter(t *testing.T) {
@@ -744,8 +744,8 @@ func TestArbiterBrickPlacerReplaceTooFewArbiter(t *testing.T) {
 		return ba.BrickSets[0].Bricks[2].Info.DeviceId != d.Info.Id
 	}
 	_, err = abplacer.Replace(dsrc, opts, pred, ba.BrickSets[0], 2)
-	tests.Assert(t, err == ErrNoSpace,
-		"expected err == ErrNoSpace, got:", err)
+	tests.Assert(t, ErrNoSpace.In(err),
+		"expected ErrNoSpace.In(err), got:", err)
 
 	// this one will work because the free device is not arbiter
 	// and the 1 position is a data brick

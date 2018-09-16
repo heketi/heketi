@@ -239,7 +239,7 @@ func (bp *ArbiterBrickPlacer) placeBrickInSet(
 
 	// we exhausted all possible devices for this brick
 	logger.Debug("Can not find any device for brick (index=%v)", index)
-	return ErrNoSpace
+	return ErrNoSpace.Err()
 }
 
 // tryPlaceBrickOnDevice attempts to place a brick on the given device.

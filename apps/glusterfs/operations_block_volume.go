@@ -79,7 +79,7 @@ func (bvc *BlockVolumeCreateOperation) Build() error {
 				logger.Warning(
 					"temporarily rejecting block volume request:" +
 						" pending block-hosting-volume found")
-				return ErrTooManyOperations
+				return ErrTooManyOperations.Err()
 			} else if err != nil {
 				return err
 			}
@@ -299,7 +299,7 @@ func (vdel *BlockVolumeDeleteOperation) Build() error {
 		if vdel.bvol.Pending.Id != "" {
 			logger.LogError("Pending block volume %v can not be deleted",
 				vdel.bvol.Info.Id)
-			return ErrConflict
+			return ErrConflict.Err()
 		}
 		vdel.op.RecordDeleteBlockVolume(vdel.bvol)
 		if e := vdel.op.Save(tx); e != nil {

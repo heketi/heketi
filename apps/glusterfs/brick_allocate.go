@@ -235,7 +235,7 @@ func findDeviceAndBrickForSet(
 	}
 
 	// No devices found
-	return nil, nil, ErrNoSpace
+	return nil, nil, ErrNoSpace.Err()
 }
 
 func populateBrickSet(
@@ -315,7 +315,7 @@ func (cds *ClusterDeviceSource) Devices() ([]DeviceAndNode, error) {
 	}
 
 	if len(cluster.Info.Nodes) == 0 {
-		return nil, ErrEmptyCluster
+		return nil, ErrEmptyCluster.Err()
 	}
 
 	nodeUp := currentNodeHealthStatus()
@@ -360,7 +360,7 @@ func (cds *ClusterDeviceSource) Devices() ([]DeviceAndNode, error) {
 		}
 	}
 	if len(valid) == 0 {
-		return nil, ErrNoStorage
+		return nil, ErrNoStorage.Err()
 	}
 
 	return valid, nil
