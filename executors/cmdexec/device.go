@@ -80,7 +80,8 @@ func (s *CmdExecutor) DeviceTeardown(host, device, vgid string) error {
 	// Execute command
 	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
-		logger.LogError("Error while deleting device %v with id %v on host %v: %v",
+		return logger.LogError(
+			"Failed to delete device %v with id %v on host %v: %v",
 			device, vgid, host, err)
 	}
 
