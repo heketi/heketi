@@ -85,6 +85,8 @@ func (s *CmdExecutor) DeviceTeardown(host, device, vgid string) error {
 			device, vgid, host, err)
 	}
 
+	// TODO: remove this LBYL check and replace it with the rmdir
+	// followed by error condition check that handles ENOENT
 	pdir := utils.BrickMountPointParent(vgid)
 	commands = []string{
 		fmt.Sprintf("ls %v", pdir),
