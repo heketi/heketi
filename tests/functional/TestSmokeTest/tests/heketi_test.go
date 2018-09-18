@@ -638,3 +638,52 @@ func TestHeketiVolumeCreateWithOptions(t *testing.T) {
 	tests.Assert(t, err == nil, "Volume Created with specified options")
 
 }
+
+func TestDeviceRemoveErrorHandling(t *testing.T) {
+	teardownCluster(t)
+	setupCluster(t, 2, 2)
+	defer teardownCluster(t)
+
+	clusters, err := heketi.ClusterList()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	clusterInfo, err := heketi.ClusterInfo(clusters.Clusters[0])
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	nodeInfo, err := heketi.NodeInfo(clusterInfo.Nodes[0])
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	deviceInfo := nodeInfo.DevicesInfo[0]
+
+	// put device in failed state so that we can remove it
+	err = heketi.DeviceState(deviceInfo.Id,
+		&api.StateRequest{State: api.EntryStateOffline})
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	err = heketi.DeviceState(deviceInfo.Id,
+		&api.StateRequest{State: api.EntryStateFailed})
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	// place a dummy pv on the vg so that a clean vg remove is not possible
+	host := nodeInfo.Hostnames.Manage[0] + ":" + portNum
+	s := ssh.NewSshExecWithKeyFile(
+		logger, "vagrant", "../config/insecure_private_key")
+
+	cmds := []string{
+		"lvcreate -qq --autobackup=n --size 1024K --name TEST vg_" + deviceInfo.Id,
+	}
+	_, err = s.ConnectAndExec(host, cmds, 10, true)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	// device has a dummy LV. delete fails
+	err = heketi.DeviceDelete(deviceInfo.Id)
+	tests.Assert(t, err != nil, "expected err != nil, got:", err)
+
+	cmds = []string{
+		fmt.Sprintf("lvremove -q -f vg_%s/TEST", deviceInfo.Id),
+	}
+	_, err = s.ConnectAndExec(host, cmds, 10, true)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	// device is free of LVs. delete is allowed
+	err = heketi.DeviceDelete(deviceInfo.Id)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+}
