@@ -117,6 +117,18 @@ class UpgradeTestBase(unittest.TestCase):
         """
         return heketi.HeketiClient('http://localhost:8080', 'foo', 'bar')
 
+    def delete_volume(self, victim):
+        hc = self.heketi_client()
+        # verify that it is there
+        res = hc.volume_list()
+        self.assertIn(victim, res.get('volumes', []))
+        # delete it
+        res = hc.volume_delete(victim)
+        self.assertTrue(res)
+        # verify it is gone
+        res = hc.volume_list()
+        self.assertNotIn(victim, res.get('volumes', []))
+
 
 class TestPostUpgrade(UpgradeTestBase):
     """Load a 4.0 Heketi db and see that basic read-only operations work.
@@ -229,16 +241,117 @@ class TestPostUpgradeModify(UpgradeTestBase):
 
     def test_can_delete_old_volume(self):
         victim = "c9495b84fa005c68ba62006bd8413914"
+        self.delete_volume(victim)
+
+
+class TestPostUpgrade6x(UpgradeTestBase):
+    """Load a 6.x Heketi db and see that read-only requests work.
+    This db should contain volumes, block hosting volumes and block volumes.
+    """
+    SOURCE_DB = "heketi_6x.db.xz.b64"
+    CLUSTER_ID = "ebb65cd014bcc5f50c7436f6ed7c76a3"
+
+    def test_cluster_present(self):
+        hc = self.heketi_client()
+        res = hc.cluster_list()
+        self.assertIn('clusters', res)
+        clist = res['clusters']
+        self.assertIn(self.CLUSTER_ID, clist)
+
+    def test_volumes_present(self):
+        expected = [
+            "375fa236fd9abe634a9d4374e93cabaf",
+            "3fde4d947b48d24e1bef1823012a5157",
+            "53a7e243d5348aa0f3f426b593e4f452",
+            "a0632307cf54170045b2b108bd174023",
+            "a5e1d2453f23da5334de77a09e447082",
+        ]
+        hc = self.heketi_client()
+        res = hc.volume_list()
+        self.assertIn('volumes', res)
+        volumes = res['volumes']
+        self.assertTrue(set(expected).issubset(volumes),
+            "{} is not a subset of {}".format(expected, volumes))
+
+        # two of these are block hosting volumes
+        bv_count = 0
+        for vid in expected:
+            res = hc.volume_info(vid)
+            if res.get("block"):
+                bv_count += 1
+        self.assertEqual(bv_count, 2)
+
+    def test_block_volumes_present(self):
+        expected = [
+            "02ec39a986d2e477c8e78c64207f9dca",
+            "3b6aa2ed3465141338eb95782cdb00ec",
+            "4a3dc9877c8b98a2607d6e2f2c89d904",
+            "75ba99d33d60541030e82293b8867c9d",
+            "87f883439451d869f6ff7c0cc122c16d",
+        ]
+        hc = self.heketi_client()
+        res = hc.block_volume_list()
+        self.assertIn('blockvolumes', res)
+        bvs = res['blockvolumes']
+        self.assertTrue(set(expected).issubset(bvs),
+            "{} is not a subset of {}".format(expected, bvs))
+
+
+class TestPostUpgradeModify6x(UpgradeTestBase):
+    """Load a 6.x Heketi db and see that basic modification operations work.
+    This db should contain volumes, block hosting volumes and block volumes.
+    """
+    SOURCE_DB = "heketi_6x.db.xz.b64"
+    CLUSTER_ID = "ebb65cd014bcc5f50c7436f6ed7c76a3"
+
+    def test_can_create_volume(self):
+        req = {
+            "size": 7,
+            "name": "brand_new",
+            "durability": {
+                "type": "replicate",
+                "replicate": {
+                    "replica": 3
+                }
+            }
+        }
+        hc = self.heketi_client()
+        res = hc.volume_create(req)
+        self.assertIn("id", res)
+        new_id = res["id"]
+        # verify that the new volume is present in the cluster info
+        res = hc.cluster_info(self.CLUSTER_ID)
+        self.assertIn("volumes", res)
+        self.assertIn(new_id, res["volumes"])
+
+    def test_can_delete_old_volume(self):
+        victim = "a0632307cf54170045b2b108bd174023"
+        self.delete_volume(victim)
+
+    def test_can_create_block_volume(self):
+        req = {
+            "size": 10,
+        }
+        hc = self.heketi_client()
+        res = hc.block_volume_create(req)
+        self.assertIn("id", res)
+        new_id = res["id"]
+        res = hc.cluster_info(self.CLUSTER_ID)
+        self.assertIn("blockvolumes", res)
+        self.assertIn(new_id, res["blockvolumes"])
+
+    def test_can_delete_old_block_volume(self):
+        victim = "4a3dc9877c8b98a2607d6e2f2c89d904"
         hc = self.heketi_client()
         # verify that it is there
-        res = hc.volume_list()
-        self.assertIn(victim, res.get('volumes', []))
+        res = hc.block_volume_list()
+        self.assertIn(victim, res.get('blockvolumes', []))
         # delete it
-        res = hc.volume_delete(victim)
+        res = hc.block_volume_delete(victim)
         self.assertTrue(res)
         # verify it is gone
-        res = hc.volume_list()
-        self.assertNotIn(victim, res.get('volumes', []))
+        res = hc.block_volume_list()
+        self.assertNotIn(victim, res.get('blockvolumes', []))
 
 
 if __name__ == '__main__':

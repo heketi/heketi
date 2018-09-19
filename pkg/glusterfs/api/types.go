@@ -302,6 +302,28 @@ func (volCreateRequest VolumeCreateRequest) Validate() error {
 	)
 }
 
+type BlockRestriction string
+
+const (
+	Unrestricted   BlockRestriction = ""
+	Locked         BlockRestriction = "locked"
+	LockedByUpdate BlockRestriction = "locked-by-update"
+)
+
+func (br BlockRestriction) String() string {
+	switch br {
+	case Unrestricted:
+		return "(none)"
+	case Locked:
+		return "locked"
+	case LockedByUpdate:
+		return "locked-by-update"
+	default:
+		return "unknown"
+
+	}
+}
+
 type VolumeInfo struct {
 	VolumeCreateRequest
 	Id      string `json:"id"`
@@ -317,6 +339,7 @@ type VolumeInfo struct {
 		FreeSize     int              `json:"freesize,omitempty"`
 		ReservedSize int              `json:"reservedsize,omitempty"`
 		BlockVolumes sort.StringSlice `json:"blockvolume,omitempty"`
+		Restriction  BlockRestriction `json:"restriction,omitempty"`
 	} `json:"blockinfo,omitempty"`
 }
 
@@ -347,6 +370,16 @@ func (vcr VolumeCloneRequest) Validate() error {
 	return validation.ValidateStruct(&vcr,
 		validation.Field(&vcr.Name, validation.Match(volumeNameRe)),
 	)
+}
+
+type VolumeBlockRestrictionRequest struct {
+	Restriction BlockRestriction `json:"restriction"`
+}
+
+func (vbrr VolumeBlockRestrictionRequest) Validate() error {
+	return validation.ValidateStruct(&vbrr,
+		validation.Field(&vbrr.Restriction,
+			validation.In(Unrestricted, Locked)))
 }
 
 // BlockVolume
@@ -471,6 +504,7 @@ func (v *VolumeInfoResponse) String() string {
 		"Block: %v\n"+
 		"Free Size: %v\n"+
 		"Reserved Size: %v\n"+
+		"Block Hosting Restriction: %v\n"+
 		"Block Volumes: %v\n"+
 		"Durability Type: %v\n",
 		v.Name,
@@ -482,6 +516,7 @@ func (v *VolumeInfoResponse) String() string {
 		v.Block,
 		v.BlockInfo.FreeSize,
 		v.BlockInfo.ReservedSize,
+		v.BlockInfo.Restriction,
 		v.BlockInfo.BlockVolumes,
 		v.Durability.Type)
 

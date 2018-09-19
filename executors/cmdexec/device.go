@@ -40,8 +40,8 @@ func (s *CmdExecutor) DeviceSetup(host, device, vgid string, destroy bool) (d *e
 		logger.Info("Data on device %v (host %v) will be destroyed", device, host)
 		commands = append(commands, fmt.Sprintf("wipefs --all %v", device))
 	}
-	commands = append(commands, fmt.Sprintf("pvcreate --metadatasize=128M --dataalignment=256K '%v'", device))
-	commands = append(commands, fmt.Sprintf("vgcreate --autobackup=%v %v %v", utils.BoolToYN(s.BackupLVM), utils.VgIdToName(vgid), device))
+	commands = append(commands, fmt.Sprintf("pvcreate -qq --metadatasize=128M --dataalignment=256K '%v'", device))
+	commands = append(commands, fmt.Sprintf("vgcreate -qq --autobackup=%v %v %v", utils.BoolToYN(s.BackupLVM), utils.VgIdToName(vgid), device))
 
 	// Execute command
 	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
@@ -80,10 +80,13 @@ func (s *CmdExecutor) DeviceTeardown(host, device, vgid string) error {
 	// Execute command
 	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
-		logger.LogError("Error while deleting device %v with id %v on host %v: %v",
+		return logger.LogError(
+			"Failed to delete device %v with id %v on host %v: %v",
 			device, vgid, host, err)
 	}
 
+	// TODO: remove this LBYL check and replace it with the rmdir
+	// followed by error condition check that handles ENOENT
 	pdir := utils.BrickMountPointParent(vgid)
 	commands = []string{
 		fmt.Sprintf("ls %v", pdir),

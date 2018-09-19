@@ -315,7 +315,11 @@ func (v *BlockVolumeEntry) deleteBlockVolumeExec(db wdb.RODB,
 	logger.Debug("Using executor host [%v]", executorhost)
 
 	err = executor.BlockVolumeDestroy(executorhost, hvname, v.Info.Name)
-	if err != nil {
+	if _, ok := err.(*executors.VolumeDoesNotExistErr); ok {
+		logger.Warning(
+			"Block volume %v (%v) does not exist: assuming already deleted",
+			v.Info.Id, v.Info.Name)
+	} else if err != nil {
 		logger.LogError("Unable to delete volume: %v", err)
 		return err
 	}
@@ -379,6 +383,11 @@ func (v *BlockVolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error
 // the volume is incompatible. It returns false, and an error if the
 // database operation fails.
 func canHostBlockVolume(tx *bolt.Tx, bv *BlockVolumeEntry, vol *VolumeEntry) (bool, error) {
+	if vol.Info.BlockInfo.Restriction != api.Unrestricted {
+		logger.Warning("Block hosting volume %v usage is restricted: %v",
+			vol.Info.Id, vol.Info.BlockInfo.Restriction)
+		return false, nil
+	}
 	if vol.Info.BlockInfo.FreeSize < bv.Info.Size {
 		logger.Warning("Free size %v is less than the requested block volume size %v",
 			vol.Info.BlockInfo.FreeSize, bv.Info.Size)
