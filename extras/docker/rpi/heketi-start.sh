@@ -16,20 +16,23 @@ error() {
     echo "error: $*" | tee -a "$LOG" >&2
 }
 
+fail() {
+    error "$@"
+    exit 1
+}
+
 info "Setting up heketi database"
 
 # Ensure the data dir exists
 mkdir -p "${HEKETI_PATH}" 2>/dev/null
 if [[ $? -ne 0 && ! -d "${HEKETI_PATH}" ]]; then
-    error "Failed to create ${HEKETI_PATH}"
-    exit 1
+    fail "Failed to create ${HEKETI_PATH}"
 fi
 
 # Test that our volume is writable.
 touch "${HEKETI_PATH}/test" && rm "${HEKETI_PATH}/test"
 if [ $? -ne 0 ]; then
-    error "${HEKETI_PATH} is read-only"
-    exit 1
+    fail "${HEKETI_PATH} is read-only"
 fi
 
 if [[ ! -f "${HEKETI_PATH}/heketi.db" ]]; then
@@ -42,8 +45,7 @@ if [[ ! -f "${HEKETI_PATH}/heketi.db" ]]; then
         while [[ ! -f "${HEKETI_PATH}/heketi.db" ]]; do
             sleep 5
             if [[ ${check} -eq 5 ]]; then
-               error "Database file did not appear, exiting."
-               exit 1
+               fail "Database file did not appear, exiting."
             fi
             ((check+=1))
         done
@@ -72,17 +74,15 @@ if [[ -d "${BACKUPDB_PATH}" ]]; then
     if [[ -f "${BACKUPDB_PATH}/heketi.db.gz" ]] ; then
         gunzip -c "${BACKUPDB_PATH}/heketi.db.gz" > "${BACKUPDB_PATH}/heketi.db"
         if [[ $? -ne 0 ]]; then
-            error "Unable to extract backup database"
-            exit 1
+            fail "Unable to extract backup database"
         fi
     fi
     if [[ -f "${BACKUPDB_PATH}/heketi.db" ]] ; then
         cp "${BACKUPDB_PATH}/heketi.db" "${HEKETI_PATH}/heketi.db"
         if [[ $? -ne 0 ]]; then
-            error "Unable to copy backup database"
-            exit 1
+            fail "Unable to copy backup database"
         fi
-        error "Copied backup db to ${HEKETI_PATH}/heketi.db"
+        info "Copied backup db to ${HEKETI_PATH}/heketi.db"
     fi
 fi
 
@@ -106,8 +106,7 @@ if [[ "$(stat -c %s ${HEKETI_PATH}/heketi.db)" == 0 && -n "${HEKETI_TOPOLOGY_FIL
     if [[ $? -ne 0 ]]; then
         # something failed, need to exit with an error
         kill %1
-        error "failed to load topology from ${HEKETI_TOPOLOGY_FILE}"
-        exit 1
+        fail "failed to load topology from ${HEKETI_TOPOLOGY_FILE}"
     fi
 
     # bring heketi back to the foreground
