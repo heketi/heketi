@@ -17,6 +17,7 @@ import (
 	"github.com/heketi/heketi/executors"
 	conv "github.com/heketi/heketi/pkg/conversions"
 	"github.com/heketi/heketi/pkg/paths"
+	rex "github.com/heketi/heketi/pkg/remoteexec"
 	"github.com/lpabon/godbc"
 )
 
@@ -103,7 +104,7 @@ func (s *CmdExecutor) BrickCreate(host string,
 	}
 
 	// Execute commands
-	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
+	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 10))
 	if err != nil {
 		// Cleanup
 		s.BrickDestroy(host, brick)
@@ -123,7 +124,7 @@ func (s *CmdExecutor) deleteBrickLV(host, lv string) error {
 		fmt.Sprintf("lvremove --autobackup=%v -f %v",
 			conv.BoolToYN(s.BackupLVM), lv),
 	}
-	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 5))
 	return err
 }
 
@@ -132,11 +133,11 @@ func (s *CmdExecutor) countThinLVsInPool(host, tp string) (int, error) {
 	commands := []string{
 		fmt.Sprintf("lvs --noheadings --options=thin_count %v", tp),
 	}
-	output, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
-	if err != nil {
+	results, err := s.RemoteExecutor.ExecCommands(host, commands, 5)
+	if err := rex.AnyError(results, err); err != nil {
 		return 0, err
 	}
-	thin_count, err := strconv.Atoi(strings.TrimSpace(output[0]))
+	thin_count, err := strconv.Atoi(strings.TrimSpace(results[0].Output))
 	if err != nil {
 		return 0, fmt.Errorf("Failed to convert number of logical volumes in thin pool %v on host %v: %v", tp, host, err)
 	}
@@ -163,13 +164,14 @@ func (s *CmdExecutor) BrickDestroy(host string,
 	commands := []string{
 		fmt.Sprintf("umount %v", brick.Path),
 	}
-	_, umountErr = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	umountErr = rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 5))
 	if umountErr != nil {
 		logger.Err(umountErr)
 		// check if the brick was previously unmounted
-		out, e := s.RemoteExecutor.RemoteCommandExecute(
+		res, e := s.RemoteExecutor.ExecCommands(
 			host, []string{"mount"}, 5)
-		if e == nil && len(out) == 1 && !strings.Contains(out[0], brick.Path) {
+
+		if e == nil && res.Ok() && !strings.Contains(res[0].Output, brick.Path) {
 			logger.Warning("brick path [%v] not mounted, assuming deleted",
 				brick.Path)
 			umountErr = nil
@@ -227,7 +229,7 @@ func (s *CmdExecutor) BrickDestroy(host string,
 		commands = []string{
 			fmt.Sprintf("lvremove --autobackup=%v -f %v", conv.BoolToYN(s.BackupLVM), tp),
 		}
-		_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+		err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 5))
 		if errIsLvNotFound(err) {
 			logger.Warning("did not delete missing thin pool: %v", tp)
 			// if the thin pool is gone then the bricks in the db associated
@@ -244,7 +246,7 @@ func (s *CmdExecutor) BrickDestroy(host string,
 	commands = []string{
 		fmt.Sprintf("rmdir %v", brick.Path),
 	}
-	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	err = rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 5))
 	if err != nil {
 		logger.Err(err)
 	}
@@ -264,7 +266,7 @@ func (s *CmdExecutor) removeBrickFromFstab(
 			paths.BrickIdToName(brick.Name),
 			s.Fstab),
 	}
-	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 5))
 	if err != nil {
 		logger.Err(err)
 	}
