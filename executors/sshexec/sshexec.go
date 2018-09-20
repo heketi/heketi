@@ -24,7 +24,6 @@ import (
 )
 
 type Ssher interface {
-	ConnectAndExec(host string, commands []string, timeoutMinutes int, useSudo bool) ([]string, error)
 	ExecCommands(host string, commands []string, timeoutMinutes int, useSudo bool) (rex.Results, error)
 }
 
@@ -136,18 +135,6 @@ func NewSshExecutor(config *SshConfig) (*SshExecutor, error) {
 	godbc.Ensure(s.Fstab != "")
 
 	return s, nil
-}
-
-func (s *SshExecutor) RemoteCommandExecute(host string,
-	commands []string,
-	timeoutMinutes int) ([]string, error) {
-
-	// Throttle
-	s.AccessConnection(host)
-	defer s.FreeConnection(host)
-
-	// Execute
-	return s.exec.ConnectAndExec(host+":"+s.port, commands, timeoutMinutes, s.config.Sudo)
 }
 
 func (s *SshExecutor) ExecCommands(
