@@ -67,7 +67,7 @@ for _ in $(seq 1 60); do
     sleep 1
 done
 if [[ $flock_status -ne 0 ]]; then
-    error "Database file is read-only"
+    fail "Database file is read-only"
 fi
 
 if [[ -d "${BACKUPDB_PATH}" ]]; then
