@@ -117,31 +117,6 @@ func (s *CmdExecutor) BrickCreate(host string,
 	return b, nil
 }
 
-func (s *CmdExecutor) brickStorage(host string,
-	brick *executors.BrickRequest) (string, string, error) {
-
-	// Cloned bricks do not follow 'our' VG/LV naming, detect it.
-	commands := []string{
-		fmt.Sprintf("mount | grep -w %v | cut -d\" \" -f1", brick.Path),
-	}
-	output, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
-	if output == nil || err != nil {
-		return "", "", fmt.Errorf("No brick mounted on %v, unable to proceed with removing", brick.Path)
-	}
-	dev := output[0]
-	// detect the thinp LV used by this brick (in "vg_.../tp_..." format)
-	commands = []string{
-		fmt.Sprintf("lvs --noheadings --separator=/ -ovg_name,pool_lv %v", dev),
-	}
-	output, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
-	if err != nil {
-		logger.Err(err)
-	}
-	tp := output[0]
-
-	return dev, tp, nil
-}
-
 func (s *CmdExecutor) deleteBrickLV(host, lv string) error {
 	// Remove the LV (by device name)
 	commands := []string{
@@ -183,12 +158,6 @@ func (s *CmdExecutor) BrickDestroy(host string,
 		umountErr      error
 		spaceReclaimed bool
 	)
-
-	// TODO: convert to a best effort sanity check
-	// dev, tp, err := s.brickStorage(host, brick)
-	// if err != nil {
-	// 	return spaceReclaimed, err
-	// }
 
 	// Try to unmount first
 	commands := []string{
