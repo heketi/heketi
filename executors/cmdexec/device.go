@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/heketi/heketi/executors"
+	"github.com/heketi/heketi/pkg/paths"
 	"github.com/heketi/heketi/pkg/utils"
 )
 
@@ -41,7 +42,7 @@ func (s *CmdExecutor) DeviceSetup(host, device, vgid string, destroy bool) (d *e
 		commands = append(commands, fmt.Sprintf("wipefs --all %v", device))
 	}
 	commands = append(commands, fmt.Sprintf("pvcreate -qq --metadatasize=128M --dataalignment=256K '%v'", device))
-	commands = append(commands, fmt.Sprintf("vgcreate -qq --autobackup=%v %v %v", utils.BoolToYN(s.BackupLVM), utils.VgIdToName(vgid), device))
+	commands = append(commands, fmt.Sprintf("vgcreate -qq --autobackup=%v %v %v", utils.BoolToYN(s.BackupLVM), paths.VgIdToName(vgid), device))
 
 	// Execute command
 	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
@@ -73,18 +74,21 @@ func (s *CmdExecutor) DeviceTeardown(host, device, vgid string) error {
 
 	// Setup commands
 	commands := []string{
-		fmt.Sprintf("vgremove -qq %v", utils.VgIdToName(vgid)),
+		fmt.Sprintf("vgremove -qq %v", paths.VgIdToName(vgid)),
 		fmt.Sprintf("pvremove -qq '%v'", device),
 	}
 
 	// Execute command
 	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
-		logger.LogError("Error while deleting device %v with id %v on host %v: %v",
+		return logger.LogError(
+			"Failed to delete device %v with id %v on host %v: %v",
 			device, vgid, host, err)
 	}
 
-	pdir := utils.BrickMountPointParent(vgid)
+	// TODO: remove this LBYL check and replace it with the rmdir
+	// followed by error condition check that handles ENOENT
+	pdir := paths.BrickMountPointParent(vgid)
 	commands = []string{
 		fmt.Sprintf("ls %v", pdir),
 	}
@@ -112,7 +116,7 @@ func (s *CmdExecutor) getVgSizeFromNode(
 
 	// Setup command
 	commands := []string{
-		fmt.Sprintf("vgdisplay -c %v", utils.VgIdToName(vgid)),
+		fmt.Sprintf("vgdisplay -c %v", paths.VgIdToName(vgid)),
 	}
 
 	// Execute command

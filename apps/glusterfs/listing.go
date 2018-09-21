@@ -33,8 +33,8 @@ func ListCompleteVolumes(tx *bolt.Tx) ([]string, error) {
 	return removeKeysFromList(v, p), nil
 }
 
-// ListCompleteBlockVolumes returns a list of block volume ID strings for bricks
-// that are not pending.
+// ListCompleteBlockVolumes returns a list of block volume ID strings for
+// block volumes that are not pending.
 func ListCompleteBlockVolumes(tx *bolt.Tx) ([]string, error) {
 	p, err := MapPendingBlockVolumes(tx)
 	if err != nil {
@@ -49,6 +49,20 @@ func ListCompleteBlockVolumes(tx *bolt.Tx) ([]string, error) {
 		return v, nil
 	}
 	return removeKeysFromList(v, p), nil
+}
+
+// UpdateVolumeInfoComplete updates the given VolumeInfoResponse object so
+// that it only contains references to complete block volumes.
+func UpdateVolumeInfoComplete(tx *bolt.Tx, vi *api.VolumeInfoResponse) error {
+	pblk, err := MapPendingBlockVolumes(tx)
+	if err != nil {
+		return err
+	}
+
+	if len(pblk) > 0 {
+		vi.BlockInfo.BlockVolumes = removeKeysFromList(vi.BlockInfo.BlockVolumes, pblk)
+	}
+	return nil
 }
 
 // UpdateClusterInfoComplete updates the given ClusterInfoResponse object so

@@ -299,7 +299,7 @@ func DbCreate(jsonfile string, dbfile string) error {
 				volume.Durability = NewNoneDurability()
 
 			default:
-				return fmt.Errorf("Not a known volume type: %v", err.Error())
+				return fmt.Errorf("Not a known volume durability type: %v", durability)
 			}
 
 			// Set the default values accordingly

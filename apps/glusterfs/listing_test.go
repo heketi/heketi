@@ -237,6 +237,75 @@ func TestListCompleteBlockVolumesFakedPending(t *testing.T) {
 	})
 }
 
+func TestUpdateVolumeInfoCompleteFakedPending(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		4,    // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	breq := &api.BlockVolumeCreateRequest{}
+	breq.Size = 1024
+
+	bvol := NewBlockVolumeEntryFromRequest(breq)
+	err = bvol.Create(app.db, app.executor)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	app.db.View(func(tx *bolt.Tx) error {
+		vols, err := ListCompleteVolumes(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(vols) == 1, "expected len(vols) == 1, got:", len(vols))
+		bvols, err := ListCompleteBlockVolumes(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(bvols) == 1, "expected len(bvols) == 1, got:", len(bvols))
+		return nil
+	})
+
+	// set up fake pending ops
+	app.db.Update(func(tx *bolt.Tx) error {
+		bvols, err := BlockVolumeList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		po := NewPendingOperationEntry(NEW_ID)
+		po.Type = OperationCreateBlockVolume
+		po.Actions = append(po.Actions, PendingOperationAction{
+			Change: OpAddBlockVolume,
+			Id:     bvols[0],
+		})
+		err = po.Save(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		return nil
+	})
+
+	app.db.View(func(tx *bolt.Tx) error {
+		vids, err := VolumeList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(vids) == 1, "expected len(vids) == 1, got:", len(vids))
+
+		ve, err := NewVolumeEntryFromId(tx, vids[0])
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+		info, err := ve.NewInfoResponse(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(info.BlockInfo.BlockVolumes) == 1,
+			"expected len(info.BlockInfo.BlockVolumes) == 1, got:", len(info.BlockInfo.BlockVolumes))
+
+		err = UpdateVolumeInfoComplete(tx, info)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(info.BlockInfo.BlockVolumes) == 0,
+			"expected len(info.BlockInfo.BlockVolumes) == 0, got:", len(info.BlockInfo.BlockVolumes))
+		return nil
+	})
+}
+
 func TestUpdateClusterInfoCompleteFakedPending(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)
