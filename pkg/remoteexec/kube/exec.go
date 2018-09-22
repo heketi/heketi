@@ -79,12 +79,12 @@ func ExecCommands(
 		}
 		if err == nil {
 			k.logger.Debug(
-				"Ran command [%v] on %v: Stdout [%v]: Stderr [%v]",
-				command, t.PodName, r.Output, r.ErrOutput)
+				"Ran command [%v] on [%v]: Stdout [%v]: Stderr [%v]",
+				command, t.String(), r.Output, r.ErrOutput)
 		} else {
 			k.logger.LogError(
-				"Failed to run command [%v] on %v: Err[%v]: Stdout [%v]: Stderr [%v]",
-				command, t.PodName, err, r.Output, r.ErrOutput)
+				"Failed to run command [%v] on [%v]: Err[%v]: Stdout [%v]: Stderr [%v]",
+				command, t.String(), err, r.Output, r.ErrOutput)
 			// TODO: extract the real error code if possible
 			r.ExitStatus = 1
 		}

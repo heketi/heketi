@@ -17,6 +17,10 @@ import (
 	"github.com/heketi/heketi/pkg/kubernetes"
 )
 
+type describable interface {
+	String() string
+}
+
 // target contains attributes common to all target types.
 type target struct {
 	Namespace string
@@ -29,6 +33,11 @@ type TargetLabel struct {
 	target
 	Key   string
 	Value string
+}
+
+// String describes the target label.
+func (t TargetLabel) String() string {
+	return fmt.Sprintf("label:%v=%v", t.Key, t.Value)
 }
 
 // GetTargetPod uses the target label's Key and Value parameters
@@ -47,6 +56,8 @@ func (t TargetLabel) GetTargetPod(k *KubeConn) (TargetPod, error) {
 			return tp, fmt.Errorf("Namespace must be provided in configuration: %v", err)
 		}
 	}
+	tp.Namespace = ns
+	tp.origin = t
 	// Get a list of pods
 	pods, err := k.kube.Core().Pods(ns).List(v1.ListOptions{
 		LabelSelector: t.Key + "==" + t.Value,
@@ -72,7 +83,6 @@ func (t TargetLabel) GetTargetPod(k *KubeConn) (TargetPod, error) {
 		return tp, err
 	}
 
-	tp.Namespace = ns
 	tp.PodName = pods.Items[0].ObjectMeta.Name
 	return tp, nil
 }
@@ -84,6 +94,11 @@ type TargetDaemonSet struct {
 	target
 	Host     string
 	Selector string
+}
+
+// String describes the target daemonset parameters.
+func (t TargetDaemonSet) String() string {
+	return fmt.Sprintf("host:%v selector:%v", t.Host, t.Selector)
 }
 
 // GetTargetPod uses the target's selector and host values
@@ -104,6 +119,7 @@ func (t TargetDaemonSet) GetTargetPod(k *KubeConn) (TargetPod, error) {
 		}
 	}
 	tp.Namespace = ns
+	tp.origin = t
 
 	// Get a list of pods
 	pods, err := k.kube.Core().Pods(ns).List(v1.ListOptions{
@@ -131,10 +147,21 @@ func (t TargetDaemonSet) GetTargetPod(k *KubeConn) (TargetPod, error) {
 type TargetPod struct {
 	target
 	PodName string
+
+	// support for backtracking to original target
+	origin describable
 }
 
 func (t TargetPod) resourceName() string {
 	return "pods"
+}
+
+func (t TargetPod) String() string {
+	s := fmt.Sprintf("pod:%v ns:%v", t.PodName, t.Namespace)
+	if t.origin != nil {
+		s = fmt.Sprintf("%s (from %s)", s, t.origin.String())
+	}
+	return s
 }
 
 // FirstContainer looks up the first container within the
@@ -163,4 +190,12 @@ func (t TargetPod) GetTargetPod(k *KubeConn) (TargetPod, error) {
 type TargetContainer struct {
 	TargetPod
 	ContainerName string
+}
+
+func (t TargetContainer) String() string {
+	s := fmt.Sprintf("pod:%v c:%v ns:%v", t.PodName, t.ContainerName, t.Namespace)
+	if t.origin != nil {
+		s = fmt.Sprintf("%s (from %s)", s, t.origin.String())
+	}
+	return s
 }
