@@ -36,7 +36,7 @@ func TestNewKubeExecutor(t *testing.T) {
 	}
 
 	k, err := NewKubeExecutor(config)
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, k.Fstab == "myfstab")
 	tests.Assert(t, k.Throttlemap != nil)
 	tests.Assert(t, k.config != nil)
@@ -55,7 +55,7 @@ func TestNewKubeExecutorNoNamespace(t *testing.T) {
 	}
 
 	k, err := NewKubeExecutor(config)
-	tests.Assert(t, err != nil)
+	tests.Assert(t, err != nil, "expected err != nil, got:", err)
 	tests.Assert(t, k == nil)
 }
 
@@ -72,7 +72,7 @@ func TestNewKubeExecutorRebalanceOnExpansion(t *testing.T) {
 	}
 
 	k, err := NewKubeExecutor(config)
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, k.Fstab == "myfstab")
 	tests.Assert(t, k.Throttlemap != nil)
 	tests.Assert(t, k.config != nil)
@@ -87,7 +87,7 @@ func TestNewKubeExecutorRebalanceOnExpansion(t *testing.T) {
 	}
 
 	k, err = NewKubeExecutor(config)
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, k.Fstab == "myfstab")
 	tests.Assert(t, k.Throttlemap != nil)
 	tests.Assert(t, k.config != nil)
@@ -98,11 +98,11 @@ func TestKubeExecutorEnvVariables(t *testing.T) {
 
 	// set environment
 	err := os.Setenv("HEKETI_SNAPSHOT_LIMIT", "999")
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	defer os.Unsetenv("HEKETI_SNAPSHOT_LIMIT")
 
 	err = os.Setenv("HEKETI_FSTAB", "anotherfstab")
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	defer os.Unsetenv("HEKETI_FSTAB")
 
 	config := &KubeConfig{
@@ -113,7 +113,7 @@ func TestKubeExecutorEnvVariables(t *testing.T) {
 	}
 
 	k, err := NewKubeExecutor(config)
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, k.Throttlemap != nil)
 	tests.Assert(t, k.config != nil)
 	tests.Assert(t, k.Fstab == "anotherfstab")
