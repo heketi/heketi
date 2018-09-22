@@ -16,15 +16,14 @@ import (
 	restclient "k8s.io/client-go/rest"
 
 	"github.com/heketi/heketi/executors/cmdexec"
-	"github.com/heketi/heketi/pkg/logging"
+	"github.com/heketi/heketi/pkg/remoteexec/kube"
 	"github.com/heketi/tests"
 )
 
 func init() {
-	inClusterConfig = func() (*restclient.Config, error) {
+	kube.InClusterConfig = func() (*restclient.Config, error) {
 		return &restclient.Config{}, nil
 	}
-	logger.SetLevel(logging.LEVEL_NOLOG)
 }
 
 func TestNewKubeExecutor(t *testing.T) {
