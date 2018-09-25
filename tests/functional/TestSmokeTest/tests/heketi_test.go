@@ -687,3 +687,65 @@ func TestDeviceRemoveErrorHandling(t *testing.T) {
 	err = heketi.DeviceDelete(deviceInfo.Id)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 }
+
+func TestDeviceRemoveForceForget(t *testing.T) {
+	teardownCluster(t)
+	setupCluster(t, 2, 2)
+	defer teardownCluster(t)
+
+	clusters, err := heketi.ClusterList()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	clusterInfo, err := heketi.ClusterInfo(clusters.Clusters[0])
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	nodeInfo, err := heketi.NodeInfo(clusterInfo.Nodes[0])
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	deviceInfo := nodeInfo.DevicesInfo[0]
+
+	// put device in failed state so that we can remove it
+	err = heketi.DeviceState(deviceInfo.Id,
+		&api.StateRequest{State: api.EntryStateOffline})
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	err = heketi.DeviceState(deviceInfo.Id,
+		&api.StateRequest{State: api.EntryStateFailed})
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	// place a dummy pv on the vg so that a clean vg remove is not possible
+	host := nodeInfo.Hostnames.Manage[0] + ":" + portNum
+	s := ssh.NewSshExecWithKeyFile(
+		logger, "vagrant", "../config/insecure_private_key")
+
+	cmds := []string{
+		"lvcreate -qq --autobackup=n --size 1024K --name TEST vg_" + deviceInfo.Id,
+	}
+	_, err = s.ConnectAndExec(host, cmds, 10, true)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	defer func() {
+		// because we dropped the device from heketi we need to remove
+		// it ourselves
+		cmds = []string{
+			fmt.Sprintf("lvremove -q -f vg_%s/TEST", deviceInfo.Id),
+			fmt.Sprintf("vgremove -ff vg_%s", deviceInfo.Id),
+			fmt.Sprintf("pvremove -ff %s", deviceInfo.Name),
+		}
+		_, err = s.ConnectAndExec(host, cmds, 10, true)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	}()
+
+	// device has a dummy LV. delete fails
+	logger.Info("Attempting normal remove")
+	err = heketi.DeviceDelete(deviceInfo.Id)
+	tests.Assert(t, err != nil, "expected err != nil, got:", err)
+
+	// device can be removed by setting the force-forget option
+	logger.Info("Removing device with force forget")
+	err = heketi.DeviceDeleteWithOptions(
+		deviceInfo.Id, &api.DeviceDeleteOptions{ForceForget: true})
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	// this should be an error 'cause the device is gone
+	_, err = heketi.DeviceInfo(deviceInfo.Id)
+	tests.Assert(t, err != nil, "expected err != nil, got:", err)
+}
