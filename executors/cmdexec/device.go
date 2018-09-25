@@ -71,8 +71,21 @@ func (s *CmdExecutor) GetDeviceInfo(host, device, vgid string) (d *executors.Dev
 }
 
 func (s *CmdExecutor) DeviceTeardown(host, device, vgid string) error {
+	if err := s.removeDevice(host, device, vgid); err != nil {
+		return err
+	}
+	return s.removeDeviceMountPoint(host, vgid)
+}
 
-	// Setup commands
+// DeviceForget attempts a best effort remove of the device's vg and
+// pv and always returns a nil error.
+func (s *CmdExecutor) DeviceForget(host, device, vgid string) error {
+	s.removeDeviceMountPoint(host, vgid)
+	s.removeDevice(host, device, vgid)
+	return nil
+}
+
+func (s *CmdExecutor) removeDevice(host, device, vgid string) error {
 	commands := []string{
 		fmt.Sprintf("vgremove -qq %v", paths.VgIdToName(vgid)),
 		fmt.Sprintf("pvremove -qq '%v'", device),
@@ -85,14 +98,17 @@ func (s *CmdExecutor) DeviceTeardown(host, device, vgid string) error {
 			"Failed to delete device %v with id %v on host %v: %v",
 			device, vgid, host, err)
 	}
+	return nil
+}
 
+func (s *CmdExecutor) removeDeviceMountPoint(host, vgid string) error {
 	// TODO: remove this LBYL check and replace it with the rmdir
 	// followed by error condition check that handles ENOENT
 	pdir := paths.BrickMountPointParent(vgid)
-	commands = []string{
+	commands := []string{
 		fmt.Sprintf("ls %v", pdir),
 	}
-	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
 		return nil
 	}
@@ -104,9 +120,7 @@ func (s *CmdExecutor) DeviceTeardown(host, device, vgid string) error {
 	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
 		logger.LogError("Error while removing the VG directory")
-		return nil
 	}
-
 	return nil
 }
 

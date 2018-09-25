@@ -221,6 +221,10 @@ func (m *MockExecutor) DeviceTeardown(host, device, vgid string) error {
 	return m.MockDeviceTeardown(host, device, vgid)
 }
 
+func (m *MockExecutor) DeviceForget(host, device, vgid string) error {
+	return m.MockDeviceTeardown(host, device, vgid)
+}
+
 func (m *MockExecutor) BrickCreate(host string, brick *executors.BrickRequest) (*executors.BrickInfo, error) {
 	return m.MockBrickCreate(host, brick)
 }
