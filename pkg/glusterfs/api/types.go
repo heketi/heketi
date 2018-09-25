@@ -633,3 +633,11 @@ func (as AdminStatus) Validate() error {
 			validation.Required,
 			validation.In(AdminStateNormal, AdminStateReadOnly, AdminStateLocal)))
 }
+
+// DeviceDeleteOptions is used to specify additional behavior for device
+// deletes.
+type DeviceDeleteOptions struct {
+	// force heketi to forget about a device, possibly
+	// orphaning metadata on the node
+	ForceForget bool `json:"forceforget"`
+}
