@@ -22,6 +22,7 @@ import (
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/paths"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/lpabon/godbc"
 )
@@ -1074,7 +1075,7 @@ func updateCloneBrickPaths(bricks []*BrickEntry,
 		logger.Debug("Updating brick %v with new path %v (had %v)",
 			brick.Id(), clonePath, origPath)
 		brick.Info.Path = clonePath
-		brick.LvmLv = utils.VolumeIdToCloneLv(clone.ID)
+		brick.LvmLv = paths.VolumeIdToCloneLv(clone.ID)
 	}
 	return nil
 }

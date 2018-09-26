@@ -15,6 +15,7 @@ package client
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"time"
 
@@ -99,9 +100,23 @@ func (c *Client) DeviceInfo(id string) (*api.DeviceInfoResponse, error) {
 }
 
 func (c *Client) DeviceDelete(id string) error {
+	return c.DeviceDeleteWithOptions(id, nil)
+}
+
+func (c *Client) DeviceDeleteWithOptions(
+	id string, request *api.DeviceDeleteOptions) error {
+
+	var buf io.Reader
+	if request != nil {
+		b, err := json.Marshal(request)
+		if err != nil {
+			return err
+		}
+		buf = bytes.NewBuffer(b)
+	}
 
 	// Create a request
-	req, err := http.NewRequest("DELETE", c.host+"/devices/"+id, nil)
+	req, err := http.NewRequest("DELETE", c.host+"/devices/"+id, buf)
 	if err != nil {
 		return err
 	}
