@@ -22,7 +22,7 @@ import (
 	"github.com/heketi/heketi/executors/kubeexec"
 	"github.com/heketi/heketi/executors/mockexec"
 	"github.com/heketi/heketi/executors/sshexec"
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/logging"
 	"github.com/heketi/rest"
 )
 
@@ -41,7 +41,7 @@ const (
 )
 
 var (
-	logger     = utils.NewLogger("[heketi]", utils.LEVEL_INFO)
+	logger     = logging.NewLogger("[heketi]", logging.LEVEL_INFO)
 	dbfilename = "heketi.db"
 	// global var to track active node health cache
 	// if multiple apps are started the content of this var is
@@ -231,17 +231,17 @@ func NewApp(conf *GlusterFSConfig) *App {
 func SetLogLevel(level string) error {
 	switch level {
 	case "none":
-		logger.SetLevel(utils.LEVEL_NOLOG)
+		logger.SetLevel(logging.LEVEL_NOLOG)
 	case "critical":
-		logger.SetLevel(utils.LEVEL_CRITICAL)
+		logger.SetLevel(logging.LEVEL_CRITICAL)
 	case "error":
-		logger.SetLevel(utils.LEVEL_ERROR)
+		logger.SetLevel(logging.LEVEL_ERROR)
 	case "warning":
-		logger.SetLevel(utils.LEVEL_WARNING)
+		logger.SetLevel(logging.LEVEL_WARNING)
 	case "info":
-		logger.SetLevel(utils.LEVEL_INFO)
+		logger.SetLevel(logging.LEVEL_INFO)
 	case "debug":
-		logger.SetLevel(utils.LEVEL_DEBUG)
+		logger.SetLevel(logging.LEVEL_DEBUG)
 	case "":
 		// treat empty string as a no-op & don't complain
 		// about it
