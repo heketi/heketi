@@ -16,8 +16,8 @@ import (
 	"strings"
 
 	"github.com/heketi/heketi/executors"
+	conv "github.com/heketi/heketi/pkg/conversions"
 	"github.com/heketi/heketi/pkg/paths"
-	"github.com/heketi/heketi/pkg/utils"
 )
 
 const (
@@ -42,7 +42,7 @@ func (s *CmdExecutor) DeviceSetup(host, device, vgid string, destroy bool) (d *e
 		commands = append(commands, fmt.Sprintf("wipefs --all %v", device))
 	}
 	commands = append(commands, fmt.Sprintf("pvcreate -qq --metadatasize=128M --dataalignment=256K '%v'", device))
-	commands = append(commands, fmt.Sprintf("vgcreate -qq --autobackup=%v %v %v", utils.BoolToYN(s.BackupLVM), paths.VgIdToName(vgid), device))
+	commands = append(commands, fmt.Sprintf("vgcreate -qq --autobackup=%v %v %v", conv.BoolToYN(s.BackupLVM), paths.VgIdToName(vgid), device))
 
 	// Execute command
 	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
