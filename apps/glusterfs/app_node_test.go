@@ -24,6 +24,7 @@ import (
 	"github.com/gorilla/mux"
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/idgen"
 	"github.com/heketi/heketi/pkg/sortedstrings"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
@@ -1433,7 +1434,7 @@ func TestNodeSetTags(t *testing.T) {
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	nodeId := utils.GenUUID()
+	nodeId := idgen.GenUUID()
 	// Create a node to save in the db
 	node := NewNodeEntry()
 	node.Info.Id = nodeId

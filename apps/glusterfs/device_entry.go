@@ -19,8 +19,8 @@ import (
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/idgen"
 	"github.com/heketi/heketi/pkg/sortedstrings"
-	"github.com/heketi/heketi/pkg/utils"
 	"github.com/lpabon/godbc"
 )
 
@@ -61,7 +61,7 @@ func NewDeviceEntryFromRequest(req *api.DeviceAddRequest) *DeviceEntry {
 	godbc.Require(req != nil)
 
 	device := NewDeviceEntry()
-	device.Info.Id = utils.GenUUID()
+	device.Info.Id = idgen.GenUUID()
 	device.Info.Name = req.Name
 	device.NodeId = req.NodeId
 	device.Info.Tags = copyTags(req.Tags)

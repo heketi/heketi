@@ -6,7 +6,7 @@
 // later), or the GNU General Public License, version 2 (GPLv2), in all
 // cases as published by the Free Software Foundation.
 
-package utils
+package idgen
 
 // From http://www.ashishbanerjee.com/home/go/go-generate-uuid
 

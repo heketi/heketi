@@ -16,8 +16,8 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/idgen"
 	"github.com/heketi/heketi/pkg/sortedstrings"
-	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
 )
 
@@ -25,8 +25,8 @@ func createSampleNodeEntry() *NodeEntry {
 	req := &api.NodeAddRequest{
 		ClusterId: "123",
 		Hostnames: api.HostAddresses{
-			Manage:  []string{"manage" + utils.GenUUID()},
-			Storage: []string{"storage" + utils.GenUUID()},
+			Manage:  []string{"manage" + idgen.GenUUID()},
+			Storage: []string{"storage" + idgen.GenUUID()},
 		},
 		Zone: 99,
 	}
