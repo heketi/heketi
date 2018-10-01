@@ -13,7 +13,8 @@ import (
 	"sort"
 )
 
-// Check if a sorted string list has a string
+// Has returns true if string x is found in the sorted
+// string slice provided.
 func Has(s sort.StringSlice, x string) bool {
 	index := s.Search(x)
 	if index == len(s) {
@@ -22,7 +23,8 @@ func Has(s sort.StringSlice, x string) bool {
 	return s[s.Search(x)] == x
 }
 
-// Delete a string from a sorted string list
+// Delete removes string x from a sorted string slice, returning
+// the altered string slice.
 func Delete(s sort.StringSlice, x string) sort.StringSlice {
 	index := s.Search(x)
 	if len(s) != index && s[index] == x {
