@@ -29,6 +29,7 @@ import (
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/sortedstrings"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
 )
@@ -661,7 +662,7 @@ func TestVolumeInfo(t *testing.T) {
 	tests.Assert(t, reflect.DeepEqual(msg.Durability, v.Info.Durability))
 	tests.Assert(t, reflect.DeepEqual(msg.Snapshot, v.Info.Snapshot))
 	for _, brick := range msg.Bricks {
-		tests.Assert(t, utils.SortedStringHas(v.Bricks, brick.Id))
+		tests.Assert(t, sortedstrings.Has(v.Bricks, brick.Id))
 	}
 }
 
