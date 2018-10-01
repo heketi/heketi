@@ -17,8 +17,8 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/idgen"
 	"github.com/heketi/heketi/pkg/sortedstrings"
-	"github.com/heketi/heketi/pkg/utils"
 	"github.com/lpabon/godbc"
 )
 
@@ -50,7 +50,7 @@ func NewClusterEntryFromRequest(req *api.ClusterCreateRequest) *ClusterEntry {
 	godbc.Require(req != nil)
 
 	entry := NewClusterEntry()
-	entry.Info.Id = utils.GenUUID()
+	entry.Info.Id = idgen.GenUUID()
 	entry.Info.Block = req.Block
 	entry.Info.File = req.File
 

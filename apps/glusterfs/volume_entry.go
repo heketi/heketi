@@ -22,6 +22,7 @@ import (
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/idgen"
 	"github.com/heketi/heketi/pkg/paths"
 	"github.com/heketi/heketi/pkg/sortedstrings"
 	"github.com/heketi/heketi/pkg/utils"
@@ -89,7 +90,7 @@ func NewVolumeEntryFromRequest(req *api.VolumeCreateRequest) *VolumeEntry {
 
 	vol := NewVolumeEntry()
 	vol.Info.Gid = req.Gid
-	vol.Info.Id = utils.GenUUID()
+	vol.Info.Id = idgen.GenUUID()
 	vol.Info.Durability = req.Durability
 	vol.Info.Snapshot = req.Snapshot
 	vol.Info.Size = req.Size
@@ -189,7 +190,7 @@ func NewVolumeEntryFromId(tx *bolt.Tx, id string) (*VolumeEntry, error) {
 func NewVolumeEntryFromClone(v *VolumeEntry, name string) *VolumeEntry {
 	entry := NewVolumeEntry()
 
-	entry.Info.Id = utils.GenUUID()
+	entry.Info.Id = idgen.GenUUID()
 	if name == "" {
 		entry.Info.Name = "vol_" + entry.Info.Id
 	} else {

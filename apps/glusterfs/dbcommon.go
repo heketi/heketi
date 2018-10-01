@@ -15,7 +15,7 @@ import (
 	"github.com/boltdb/bolt"
 
 	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/idgen"
 )
 
 const (
@@ -168,7 +168,7 @@ func upgradeDBGenerationID(tx *bolt.Tx) error {
 func recordNewDBGenerationID(tx *bolt.Tx) error {
 	entry := NewDbAttributeEntry()
 	entry.Key = DB_GENERATION_ID
-	entry.Value = utils.GenUUID()
+	entry.Value = idgen.GenUUID()
 	return entry.Save(tx)
 }
 

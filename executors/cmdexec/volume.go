@@ -15,7 +15,7 @@ import (
 	"strings"
 
 	"github.com/heketi/heketi/executors"
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/idgen"
 	"github.com/lpabon/godbc"
 )
 
@@ -305,7 +305,7 @@ func (s *CmdExecutor) VolumeClone(host string, vcr *executors.VolumeCloneRequest
 
 	vsr := executors.VolumeSnapshotRequest{
 		Volume:   vcr.Volume,
-		Snapshot: "tmpsnap_" + utils.GenUUID(),
+		Snapshot: "tmpsnap_" + idgen.GenUUID(),
 	}
 
 	snap, err := s.VolumeSnapshot(host, &vsr)
