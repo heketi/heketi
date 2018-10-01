@@ -7,7 +7,7 @@
 // cases as published by the Free Software Foundation.
 //
 
-package utils
+package conversions
 
 // BoolToYN returns a "y" (yes) or "n" (no) for the passed bool.
 func BoolToYN(b bool) string {

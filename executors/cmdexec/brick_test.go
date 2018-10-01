@@ -14,8 +14,8 @@ import (
 	"testing"
 
 	"github.com/heketi/heketi/executors"
+	conv "github.com/heketi/heketi/pkg/conversions"
 	"github.com/heketi/heketi/pkg/paths"
-	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
 )
 
@@ -50,7 +50,7 @@ func doTestSshExecBrickCreate(t *testing.T, f *CommandFaker, s *FakeExecutor) {
 
 			case 1:
 				tests.Assert(t,
-					cmd == "lvcreate -qq --autobackup="+utils.BoolToYN(s.BackupLVM)+" --poolmetadatasize 5K "+
+					cmd == "lvcreate -qq --autobackup="+conv.BoolToYN(s.BackupLVM)+" --poolmetadatasize 5K "+
 						"--chunksize 256K --size 100K --thin vg_xvgid/tp_id --virtualsize 10K --name brick_id", cmd)
 
 			case 2:
@@ -135,7 +135,7 @@ func TestSshExecBrickCreateWithGid(t *testing.T) {
 
 			case 1:
 				tests.Assert(t,
-					cmd == "lvcreate -qq --autobackup="+utils.BoolToYN(s.BackupLVM)+" --poolmetadatasize 5K "+
+					cmd == "lvcreate -qq --autobackup="+conv.BoolToYN(s.BackupLVM)+" --poolmetadatasize 5K "+
 						"--chunksize 256K --size 100K --thin vg_xvgid/tp_id --virtualsize 10K --name brick_id", cmd)
 
 			case 2:
@@ -221,7 +221,7 @@ func TestSshExecBrickCreateSudo(t *testing.T) {
 
 			case 1:
 				tests.Assert(t,
-					cmd == "lvcreate -qq --autobackup="+utils.BoolToYN(s.BackupLVM)+" --poolmetadatasize 5K "+
+					cmd == "lvcreate -qq --autobackup="+conv.BoolToYN(s.BackupLVM)+" --poolmetadatasize 5K "+
 						"--chunksize 256K --size 100K --thin vg_xvgid/tp_id --virtualsize 10K --name brick_id", cmd)
 
 			case 2:
@@ -328,8 +328,8 @@ func TestSshExecBrickDestroy(t *testing.T) {
 
 			case strings.Contains(cmd, "lvremove"):
 				tests.Assert(t,
-					cmd == "lvremove --autobackup="+utils.BoolToYN(s.BackupLVM)+" -f vg_xvgid/tp_id" ||
-						cmd == "lvremove --autobackup="+utils.BoolToYN(s.BackupLVM)+" -f vg_xvgid/brick_id", cmd)
+					cmd == "lvremove --autobackup="+conv.BoolToYN(s.BackupLVM)+" -f vg_xvgid/tp_id" ||
+						cmd == "lvremove --autobackup="+conv.BoolToYN(s.BackupLVM)+" -f vg_xvgid/brick_id", cmd)
 
 			case strings.Contains(cmd, "rmdir"):
 				tests.Assert(t,
