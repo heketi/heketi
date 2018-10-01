@@ -16,8 +16,8 @@ import (
 	"strconv"
 
 	"github.com/heketi/heketi/executors/cmdexec"
+	"github.com/heketi/heketi/pkg/logging"
 	"github.com/heketi/heketi/pkg/remoteexec/ssh"
-	"github.com/heketi/heketi/pkg/utils"
 	"github.com/lpabon/godbc"
 )
 
@@ -38,7 +38,7 @@ type SshExecutor struct {
 
 var (
 	ErrSshPrivateKey = errors.New("Unable to read private key file")
-	sshNew           = func(logger *utils.Logger, user string, file string) (Ssher, error) {
+	sshNew           = func(logger *logging.Logger, user string, file string) (Ssher, error) {
 		s := ssh.NewSshExecWithKeyFile(logger, user, file)
 		if s == nil {
 			return nil, ErrSshPrivateKey

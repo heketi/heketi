@@ -18,6 +18,7 @@ import (
 
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/logging"
 	"github.com/heketi/heketi/pkg/remoteexec/ssh"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
@@ -40,7 +41,7 @@ var (
 
 	// Heketi client
 	heketi = client.NewClientNoAuth(heketiUrl)
-	logger = utils.NewLogger("[test]", utils.LEVEL_DEBUG)
+	logger = logging.NewLogger("[test]", logging.LEVEL_DEBUG)
 
 	// Storage systems
 	storagevms = []string{

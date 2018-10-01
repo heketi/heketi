@@ -7,7 +7,7 @@
 // cases as published by the Free Software Foundation.
 //
 
-package utils
+package logging
 
 import (
 	"strings"
@@ -19,7 +19,7 @@ import (
 func TestTrace(t *testing.T) {
 	fun, file, line := Trace()
 	_, _, nextLine := Trace()
-	tests.Assert(t, strings.HasSuffix(fun, "utils.TestTrace"))
+	tests.Assert(t, strings.HasSuffix(fun, "logging.TestTrace"))
 	tests.Assert(t, strings.HasSuffix(file, "trace_test.go"))
 	tests.Assert(t, nextLine-line == 1)
 }
@@ -27,10 +27,10 @@ func TestTrace(t *testing.T) {
 func TestTraceSkip(t *testing.T) {
 	var fun string
 	func() { func() { fun, _, _ = TraceSkip(2) }() }()
-	tests.Assert(t, strings.HasSuffix(fun, "utils.TestTraceSkip"))
+	tests.Assert(t, strings.HasSuffix(fun, "logging.TestTraceSkip"))
 }
 
 func TestTraceFunc(t *testing.T) {
 	fun := TraceFunc()
-	tests.Assert(t, fun == "utils.TestTraceFunc")
+	tests.Assert(t, fun == "logging.TestTraceFunc")
 }
