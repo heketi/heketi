@@ -24,6 +24,7 @@ import (
 	"github.com/gorilla/mux"
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/sortedstrings"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
 )
@@ -543,7 +544,7 @@ func TestNodeAddDelete(t *testing.T) {
 		return nil
 	})
 	tests.Assert(t, err == nil)
-	tests.Assert(t, utils.SortedStringHas(cluster.Info.Nodes, node.Id))
+	tests.Assert(t, sortedstrings.Has(cluster.Info.Nodes, node.Id))
 
 	// Node delete the drives
 	err = app.db.Update(func(tx *bolt.Tx) error {
@@ -930,7 +931,7 @@ func TestNodePeerDetachFailure(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		tests.Assert(t, utils.SortedStringHas(cluster.Info.Nodes, nodeid))
+		tests.Assert(t, sortedstrings.Has(cluster.Info.Nodes, nodeid))
 
 		_, err = NewNodeEntryFromId(tx, nodeid)
 		return err

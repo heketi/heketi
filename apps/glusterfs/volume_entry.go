@@ -23,6 +23,7 @@ import (
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/paths"
+	"github.com/heketi/heketi/pkg/sortedstrings"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/lpabon/godbc"
 )
@@ -314,14 +315,14 @@ func (v *VolumeEntry) GetAverageFileSize() uint64 {
 }
 
 func (v *VolumeEntry) BrickAdd(id string) {
-	godbc.Require(!utils.SortedStringHas(v.Bricks, id))
+	godbc.Require(!sortedstrings.Has(v.Bricks, id))
 
 	v.Bricks = append(v.Bricks, id)
 	v.Bricks.Sort()
 }
 
 func (v *VolumeEntry) BrickDelete(id string) {
-	v.Bricks = utils.SortedStringsDelete(v.Bricks, id)
+	v.Bricks = sortedstrings.Delete(v.Bricks, id)
 }
 
 func (v *VolumeEntry) Create(db wdb.DB,
@@ -904,7 +905,7 @@ func (v *VolumeEntry) BlockVolumeAdd(id string) {
 }
 
 func (v *VolumeEntry) BlockVolumeDelete(id string) {
-	v.Info.BlockInfo.BlockVolumes = utils.SortedStringsDelete(v.Info.BlockInfo.BlockVolumes, id)
+	v.Info.BlockInfo.BlockVolumes = sortedstrings.Delete(v.Info.BlockInfo.BlockVolumes, id)
 }
 
 // Visible returns true if this volume is meant to be visible to

@@ -19,6 +19,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/sortedstrings"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
 )
@@ -143,21 +144,21 @@ func TestDeviceEntryAddDeleteBricks(t *testing.T) {
 	tests.Assert(t, len(d.Bricks) == 0)
 
 	d.BrickAdd("123")
-	tests.Assert(t, utils.SortedStringHas(d.Bricks, "123"))
+	tests.Assert(t, sortedstrings.Has(d.Bricks, "123"))
 	tests.Assert(t, len(d.Bricks) == 1)
 	d.BrickAdd("abc")
-	tests.Assert(t, utils.SortedStringHas(d.Bricks, "123"))
-	tests.Assert(t, utils.SortedStringHas(d.Bricks, "abc"))
+	tests.Assert(t, sortedstrings.Has(d.Bricks, "123"))
+	tests.Assert(t, sortedstrings.Has(d.Bricks, "abc"))
 	tests.Assert(t, len(d.Bricks) == 2)
 
 	d.BrickDelete("123")
-	tests.Assert(t, !utils.SortedStringHas(d.Bricks, "123"))
-	tests.Assert(t, utils.SortedStringHas(d.Bricks, "abc"))
+	tests.Assert(t, !sortedstrings.Has(d.Bricks, "123"))
+	tests.Assert(t, sortedstrings.Has(d.Bricks, "abc"))
 	tests.Assert(t, len(d.Bricks) == 1)
 
 	d.BrickDelete("ccc")
-	tests.Assert(t, !utils.SortedStringHas(d.Bricks, "123"))
-	tests.Assert(t, utils.SortedStringHas(d.Bricks, "abc"))
+	tests.Assert(t, !sortedstrings.Has(d.Bricks, "123"))
+	tests.Assert(t, sortedstrings.Has(d.Bricks, "abc"))
 	tests.Assert(t, len(d.Bricks) == 1)
 }
 

@@ -23,6 +23,7 @@ import (
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/executors"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/sortedstrings"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
 )
@@ -247,7 +248,7 @@ func TestDeviceAddDelete(t *testing.T) {
 		return nil
 	})
 	tests.Assert(t, err == nil)
-	tests.Assert(t, utils.SortedStringHas(node.Devices, fakeid))
+	tests.Assert(t, sortedstrings.Has(node.Devices, fakeid))
 
 	// Node delete bricks from the device
 	err = app.db.Update(func(tx *bolt.Tx) error {
@@ -365,7 +366,7 @@ func TestDeviceAddDelete(t *testing.T) {
 		return err
 	})
 	tests.Assert(t, err == nil)
-	tests.Assert(t, !utils.SortedStringHas(node.Devices, fakeid))
+	tests.Assert(t, !sortedstrings.Has(node.Devices, fakeid))
 
 	// Check the registration of the device has been removed,
 	// and the device can be added again

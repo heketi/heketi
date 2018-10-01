@@ -16,6 +16,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/sortedstrings"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
 )
@@ -95,21 +96,21 @@ func TestNodeEntryAddDeleteDevices(t *testing.T) {
 	tests.Assert(t, len(n.Devices) == 0)
 
 	n.DeviceAdd("123")
-	tests.Assert(t, utils.SortedStringHas(n.Devices, "123"))
+	tests.Assert(t, sortedstrings.Has(n.Devices, "123"))
 	tests.Assert(t, len(n.Devices) == 1)
 	n.DeviceAdd("abc")
-	tests.Assert(t, utils.SortedStringHas(n.Devices, "123"))
-	tests.Assert(t, utils.SortedStringHas(n.Devices, "abc"))
+	tests.Assert(t, sortedstrings.Has(n.Devices, "123"))
+	tests.Assert(t, sortedstrings.Has(n.Devices, "abc"))
 	tests.Assert(t, len(n.Devices) == 2)
 
 	n.DeviceDelete("123")
-	tests.Assert(t, !utils.SortedStringHas(n.Devices, "123"))
-	tests.Assert(t, utils.SortedStringHas(n.Devices, "abc"))
+	tests.Assert(t, !sortedstrings.Has(n.Devices, "123"))
+	tests.Assert(t, sortedstrings.Has(n.Devices, "abc"))
 	tests.Assert(t, len(n.Devices) == 1)
 
 	n.DeviceDelete("ccc")
-	tests.Assert(t, !utils.SortedStringHas(n.Devices, "123"))
-	tests.Assert(t, utils.SortedStringHas(n.Devices, "abc"))
+	tests.Assert(t, !sortedstrings.Has(n.Devices, "123"))
+	tests.Assert(t, sortedstrings.Has(n.Devices, "abc"))
 	tests.Assert(t, len(n.Devices) == 1)
 }
 
