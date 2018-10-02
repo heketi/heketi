@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"reflect"
 	"strings"
 	"testing"
@@ -1336,4 +1337,90 @@ func TestVolumeCreateWithOptions(t *testing.T) {
 	// GlusterVolumeOption should have the "test-option"
 	tests.Assert(t, strings.Contains(strings.Join(info.GlusterVolumeOptions, ","), "test-option"))
 
+}
+
+func TestVolumeCreateWithVariousOptions(t *testing.T) {
+	value, exists := os.LookupEnv("HEKETI_PRE_REQUEST_VOLUME_OPTIONS")
+	if exists {
+		logger.Info("pre request volume options are %v", value)
+		tmpfile := tests.Tempfile()
+		defer os.Remove(tmpfile)
+
+		// Create the app
+		app := NewTestApp(tmpfile)
+		defer app.Close()
+		router := mux.NewRouter()
+		app.SetRoutes(router)
+
+		// Setup the server
+		ts := httptest.NewServer(router)
+		defer ts.Close()
+
+		// Setup database
+		err := setupSampleDbWithTopology(app,
+			1,    // clusters
+			10,   // nodes_per_cluster
+			10,   // devices_per_node,
+			5*TB, // disksize)
+		)
+		tests.Assert(t, err == nil)
+
+		// VolumeCreate using a test option called "test-option"
+		request := []byte(`{
+	        "size" : 100,
+		"glustervolumeoptions" : [
+			"test-option value"
+			]
+		}`)
+
+		// Send request
+		r, err := http.Post(ts.URL+"/volumes", "application/json", bytes.NewBuffer(request))
+		tests.Assert(t, err == nil)
+		tests.Assert(t, r.StatusCode == http.StatusAccepted)
+		location, err := r.Location()
+		tests.Assert(t, err == nil)
+
+		// Query queue until finished
+		var info api.VolumeInfoResponse
+		for {
+			r, err = http.Get(location.String())
+			tests.Assert(t, err == nil)
+			tests.Assert(t, r.StatusCode == http.StatusOK)
+			if r.ContentLength <= 0 {
+				time.Sleep(time.Millisecond * 10)
+				continue
+			} else {
+				// Should have node information here
+				tests.Assert(t, r.Header.Get("Content-Type") == "application/json; charset=UTF-8")
+				err = utils.GetJsonFromResponse(r, &info)
+				tests.Assert(t, err == nil)
+				break
+			}
+		}
+
+		tests.Assert(t, info.Id != "")
+		tests.Assert(t, info.Cluster != "")
+		tests.Assert(t, len(info.Bricks) == 1) // Only one 100GB brick needed
+		tests.Assert(t, info.Bricks[0].Size == 100*GB)
+		tests.Assert(t, info.Name == "vol_"+info.Id)
+		tests.Assert(t, info.Snapshot.Enable == false)
+		tests.Assert(t, info.Snapshot.Factor == 1)
+		tests.Assert(t, info.Durability.Type == api.DurabilityDistributeOnly)
+		// GlusterVolumeOption should have the "test-option"
+		tests.Assert(t, 0 == strings.Compare(strings.Join(info.GlusterVolumeOptions, ","), "user.heketi.pre-req-key1 value1,test-option value,user.heketi.post-req-key1 value1"), strings.Join(info.GlusterVolumeOptions, ","))
+		return
+	} else {
+		logger.Info("pre and post request volume options are not set")
+		cmd := exec.Command(os.Args[0], "-test.run=TestVolumeCreateWithVariousOptions")
+		cmd.Env = append(os.Environ(),
+			"HEKETI_PRE_REQUEST_VOLUME_OPTIONS=user.heketi.pre-req-key1 value1",
+			"HEKETI_POST_REQUEST_VOLUME_OPTIONS=user.heketi.post-req-key1 value1")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err := cmd.Run()
+		if e, ok := err.(*exec.ExitError); ok && e.Success() {
+			return
+		}
+		tests.Assert(t, err == nil, err)
+	}
 }
