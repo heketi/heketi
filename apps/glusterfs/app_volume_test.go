@@ -1334,6 +1334,6 @@ func TestVolumeCreateWithOptions(t *testing.T) {
 	tests.Assert(t, info.Snapshot.Factor == 1)
 	tests.Assert(t, info.Durability.Type == api.DurabilityDistributeOnly)
 	// GlusterVolumeOption should have the "test-option"
-	tests.Assert(t, info.GlusterVolumeOptions[0] == "test-option")
+	tests.Assert(t, strings.Contains(strings.Join(info.GlusterVolumeOptions, ","), "test-option"))
 
 }
