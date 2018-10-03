@@ -86,6 +86,23 @@ if [[ -d "${BACKUPDB_PATH}" ]]; then
     fi
 fi
 
+info "HEKETI_PRE_REQUEST_VOLUME_OPTIONS is ${HEKETI_PRE_REQUEST_VOLUME_OPTIONS}"
+if [[ -z "$HEKETI_PRE_REQUEST_VOLUME_OPTIONS" ]]
+then
+        # set the env variable as it is not set
+        export HEKETI_PRE_REQUEST_VOLUME_OPTIONS="server.tcp-user-timeout 42"
+else
+        if [[ ! -z "${HEKETI_PRE_REQUEST_VOLUME_OPTIONS##*server.tcp-user-timeout*}" ]]
+        then
+                # variable exists but does not have tcp-user-timeout set, append it
+                echo "did not find server.tcp-user-timeout in options" >> ${HEKETI_PATH}/container.log
+                export HEKETI_PRE_REQUEST_VOLUME_OPTIONS="${HEKETI_PRE_REQUEST_VOLUME_OPTIONS},server.tcp-user-timeout 42"
+        fi
+        # else case would be where tcp-user-timeout is set with some value. don't override it.
+fi
+info "modified HEKETI_PRE_REQUEST_VOLUME_OPTIONS is $HEKETI_PRE_REQUEST_VOLUME_OPTIONS"
+
+
 # if the heketi.db does not exist and HEKETI_TOPOLOGY_FILE is set, start the
 # heketi service in the background and load the topology. Once done, move the
 # heketi service back to the foreground again.
