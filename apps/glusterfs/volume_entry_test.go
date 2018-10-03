@@ -1689,7 +1689,7 @@ func TestNewVolumeEntryWithVolumeOptions(t *testing.T) {
 	tests.Assert(t, v.Info.Size == 1024)
 	tests.Assert(t, len(v.Info.Id) != 0)
 	tests.Assert(t, len(v.Bricks) == 0)
-	tests.Assert(t, v.GlusterVolumeOptions[0] == "test-option")
+	tests.Assert(t, strings.Contains(strings.Join(v.GlusterVolumeOptions, ","), "test-option"))
 
 	err = v.Create(app.db, app.executor)
 	logger.Info("%v", v.Info.Cluster)
@@ -1703,7 +1703,7 @@ func TestNewVolumeEntryWithVolumeOptions(t *testing.T) {
 				Get([]byte(v.Info.Id)))
 	})
 	tests.Assert(t, err == nil)
-	tests.Assert(t, entry.GlusterVolumeOptions[0] == "test-option")
+	tests.Assert(t, strings.Contains(strings.Join(entry.GlusterVolumeOptions, ","), "test-option"))
 
 }
 func TestNewVolumeEntryWithTSPForMountHosts(t *testing.T) {

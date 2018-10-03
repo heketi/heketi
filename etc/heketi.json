@@ -87,6 +87,12 @@
     "block_hosting_volume_size": 500,
 
     "_block_hosting_volume_options": "New block hosting volume will be created with the following set of options. Removing the group gluster-block option is NOT recommended. Additional options can be added next to it separated by a comma.",
-    "block_hosting_volume_options": "group gluster-block"
+    "block_hosting_volume_options": "group gluster-block",
+
+    "_pre_request_volume_options": "Volume options that will be applied for all volumes created. Can be overridden by volume options in volume create request.",
+    "pre_request_volume_options": "",
+
+    "_post_request_volume_options": "Volume options that will be applied for all volumes created. To be used to override volume options in volume create request.",
+    "post_request_volume_options": ""
   }
 }

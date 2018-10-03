@@ -157,6 +157,18 @@ func NewVolumeEntryFromRequest(req *api.VolumeCreateRequest) *VolumeEntry {
 			vol.GlusterVolumeOptions...)
 	}
 
+	// Add volume options using PreRequestVolumeOptions, this must be
+	// set before volume options from the request are set.
+	preReqVolumeOptions := strings.Split(PreReqVolumeOptions, ",")
+	vol.GlusterVolumeOptions = append(preReqVolumeOptions,
+		vol.GlusterVolumeOptions...)
+
+	// Add volume options using PostRequestVolumeOptions, this must be
+	// set after volume options from the request are set.
+	postReqVolumeOptions := strings.Split(PostReqVolumeOptions, ",")
+	vol.GlusterVolumeOptions = append(vol.GlusterVolumeOptions,
+		postReqVolumeOptions...)
+
 	// If it is zero, then it will be assigned during volume creation
 	vol.Info.Clusters = req.Clusters
 

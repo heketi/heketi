@@ -54,6 +54,14 @@ var (
 	// avoids having to update config files to enable the feature
 	// while avoiding having to touch all of the unit tests.
 	MonitorGlusterNodes = false
+
+	// global var that contains list of volume options that are set *before*
+	// setting the volume options that come as part of volume request.
+	PreReqVolumeOptions = ""
+
+	// global var that contains list of volume options that are set *after*
+	// setting the volume options that come as part of volume request.
+	PostReqVolumeOptions = ""
 )
 
 type App struct {
@@ -311,6 +319,16 @@ func (a *App) setFromEnvironmentalVariable() {
 			a.conf.MaxInflightOperations = uint64(value)
 		}
 	}
+
+	env = os.Getenv("HEKETI_PRE_REQUEST_VOLUME_OPTIONS")
+	if "" != env {
+		a.conf.PreReqVolumeOptions = env
+	}
+
+	env = os.Getenv("HEKETI_POST_REQUEST_VOLUME_OPTIONS")
+	if "" != env {
+		a.conf.PostReqVolumeOptions = env
+	}
 }
 
 func (a *App) setAdvSettings() {
@@ -338,6 +356,15 @@ func (a *App) setAdvSettings() {
 		logger.Info("Average file size on volumes set to %v KiB", a.conf.AverageFileSize)
 		averageFileSize = a.conf.AverageFileSize
 	}
+	if a.conf.PreReqVolumeOptions != "" {
+		logger.Info("Pre Request Volume Options: %v", a.conf.PreReqVolumeOptions)
+		PreReqVolumeOptions = a.conf.PreReqVolumeOptions
+	}
+	if a.conf.PostReqVolumeOptions != "" {
+		logger.Info("Post Request Volume Options: %v", a.conf.PostReqVolumeOptions)
+		PostReqVolumeOptions = a.conf.PostReqVolumeOptions
+	}
+
 }
 
 func (a *App) setBlockSettings() {
