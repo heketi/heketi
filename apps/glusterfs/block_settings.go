@@ -14,5 +14,5 @@ var (
 	CreateBlockHostingVolumes = false
 	// Default 1 TB
 	BlockHostingVolumeSize    = 1024
-	BlockHostingVolumeOptions = "group gluster-block"
+	BlockHostingVolumeOptions = "group gluster-block, server.tcp-user-timeout 42"
 )
