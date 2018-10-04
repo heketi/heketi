@@ -161,6 +161,7 @@ func TestHeketiSmokeTest(t *testing.T) {
 }
 
 func HeketiCreateVolumeWithGid(t *testing.T) {
+	na := testutils.RequireNodeAccess(t)
 	// Setup the VM storage topology
 	teardownCluster(t)
 	setupCluster(t, 4, 8)
@@ -182,7 +183,7 @@ func HeketiCreateVolumeWithGid(t *testing.T) {
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	// SSH into system and create two writers belonging to writegroup gid
-	vagrantexec := ssh.NewSshExecWithKeyFile(logger, "vagrant", "../config/insecure_private_key")
+	vagrantexec := na.Use(logger)
 	cmd := []string{
 		"sudo groupadd writegroup",
 		"sudo useradd writer1 -G writegroup -p'$6$WBG5yf03$3DvyE41cicXEZDW.HDeJg3S4oEoELqKWoS/n6l28vorNxhIlcBe2SLQFDhqq6.Pq'",
@@ -392,6 +393,7 @@ func TestRemoveDeviceVsVolumeCreate(t *testing.T) {
 }
 
 func TestHeketiVolumeExpandWithGid(t *testing.T) {
+	na := testutils.RequireNodeAccess(t)
 	// Setup the VM storage topology
 	teardownCluster(t)
 	setupCluster(t, 3, 8)
@@ -421,7 +423,7 @@ func TestHeketiVolumeExpandWithGid(t *testing.T) {
 	tests.Assert(t, newVolInfo.Size == volInfo.Size+300)
 
 	// SSH into system and check gid of bricks
-	vagrantexec := ssh.NewSshExecWithKeyFile(logger, "vagrant", "../config/insecure_private_key")
+	vagrantexec := na.Use(logger)
 	cmd := []string{
 		fmt.Sprintf("sudo ls -l /var/lib/heketi/mounts/vg_*/brick_*/  | grep  -e \"^d\" | cut -d\" \" -f4 | grep -q %v", volReq.Gid),
 	}
@@ -434,6 +436,7 @@ func TestHeketiVolumeExpandWithGid(t *testing.T) {
 }
 
 func TestHeketiVolumeCreateWithOptions(t *testing.T) {
+	na := testutils.RequireNodeAccess(t)
 	// Setup the VM storage topology
 	teardownCluster(t)
 	setupCluster(t, 2, 2)
@@ -457,7 +460,7 @@ func TestHeketiVolumeCreateWithOptions(t *testing.T) {
 	tests.Assert(t, len(volInfo.GlusterVolumeOptions) > 0)
 
 	// SSH into system and check volume options.
-	vagrantexec := ssh.NewSshExecWithKeyFile(logger, "vagrant", "../config/insecure_private_key")
+	vagrantexec := na.Use(logger)
 	cmd := []string{
 		fmt.Sprintf("sudo gluster v info %v | grep performance.rda-cache-limit | grep 10MB", volInfo.Name),
 	}
@@ -467,6 +470,7 @@ func TestHeketiVolumeCreateWithOptions(t *testing.T) {
 }
 
 func TestDeviceRemoveErrorHandling(t *testing.T) {
+	na := testutils.RequireNodeAccess(t)
 	teardownCluster(t)
 	setupCluster(t, 2, 2)
 	defer teardownCluster(t)
@@ -491,8 +495,7 @@ func TestDeviceRemoveErrorHandling(t *testing.T) {
 
 	// place a dummy pv on the vg so that a clean vg remove is not possible
 	host := nodeInfo.Hostnames.Manage[0] + ":" + cenv.SSHPort
-	s := ssh.NewSshExecWithKeyFile(
-		logger, "vagrant", "../config/insecure_private_key")
+	s := na.Use(logger)
 
 	cmds := []string{
 		"lvcreate -qq --autobackup=n --size 1024K --name TEST vg_" + deviceInfo.Id,
@@ -516,6 +519,7 @@ func TestDeviceRemoveErrorHandling(t *testing.T) {
 }
 
 func TestDeviceRemoveForceForget(t *testing.T) {
+	na := testutils.RequireNodeAccess(t)
 	teardownCluster(t)
 	setupCluster(t, 2, 2)
 	defer teardownCluster(t)
@@ -540,8 +544,7 @@ func TestDeviceRemoveForceForget(t *testing.T) {
 
 	// place a dummy pv on the vg so that a clean vg remove is not possible
 	host := nodeInfo.Hostnames.Manage[0] + ":" + cenv.SSHPort
-	s := ssh.NewSshExecWithKeyFile(
-		logger, "vagrant", "../config/insecure_private_key")
+	s := na.Use(logger)
 
 	cmds := []string{
 		"lvcreate -qq --autobackup=n --size 1024K --name TEST vg_" + deviceInfo.Id,

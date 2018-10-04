@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/heketi/pkg/remoteexec/ssh"
+	"github.com/heketi/heketi/pkg/testutils"
 	"github.com/heketi/tests"
 )
 
@@ -262,6 +262,7 @@ func testArbiterCreateSimple(t *testing.T) {
 }
 
 func testArbiterCreateAndVerify(t *testing.T) {
+	na := testutils.RequireNodeAccess(t)
 	volReq := &api.VolumeCreateRequest{}
 	volReq.Size = 10
 	volReq.Durability.Type = api.DurabilityReplicate
@@ -272,8 +273,8 @@ func testArbiterCreateAndVerify(t *testing.T) {
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	// SSH into system and check that arbiter is really in use
-	s := ssh.NewSshExecWithKeyFile(
-		logger, "vagrant", "../config/insecure_private_key")
+	s := na.Use(logger)
+
 	cmd := []string{
 		fmt.Sprintf("gluster volume info %v | grep -q \"^Brick.* .arbiter.\"", vcr.Name),
 	}
@@ -288,6 +289,7 @@ func testArbiterCreateAndVerify(t *testing.T) {
 // Test that a volume not flagged for arbiter support does
 // not have arbiter tagging on gluster side.
 func testNonArbiterIsNotArbiter(t *testing.T) {
+	na := testutils.RequireNodeAccess(t)
 	volReq := &api.VolumeCreateRequest{}
 	volReq.Size = 10
 	volReq.Durability.Type = api.DurabilityReplicate
@@ -297,8 +299,8 @@ func testNonArbiterIsNotArbiter(t *testing.T) {
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	// SSH into system and check that arbiter is really in use
-	s := ssh.NewSshExecWithKeyFile(
-		logger, "vagrant", "../config/insecure_private_key")
+	s := na.Use(logger)
+
 	cmd := []string{
 		fmt.Sprintf("gluster volume info %v | grep -q \"^Brick.* .arbiter.\"", vcr.Name),
 	}
@@ -359,6 +361,7 @@ func testArbiterReplaceDataBrick(t *testing.T) {
 }
 
 func testArbiterReplaceArbiterBrick(t *testing.T) {
+	na := testutils.RequireNodeAccess(t)
 	volReq := &api.VolumeCreateRequest{}
 	volReq.Size = 10
 	volReq.Durability.Type = api.DurabilityReplicate
@@ -380,8 +383,8 @@ func testArbiterReplaceArbiterBrick(t *testing.T) {
 	}
 
 	// extra confirmation this is the arbiter brick
-	s := ssh.NewSshExecWithKeyFile(
-		logger, "vagrant", "../config/insecure_private_key")
+	s := na.Use(logger)
+
 	cmd := []string{
 		fmt.Sprintf("gluster volume info %v | grep \"^Brick.* .arbiter.\"", vcr.Name),
 	}
@@ -422,8 +425,8 @@ func testArbiterReplaceArbiterBrick(t *testing.T) {
 			"device still in use by volume", deviceId)
 	}
 
-	s = ssh.NewSshExecWithKeyFile(
-		logger, "vagrant", "../config/insecure_private_key")
+	s = na.Use(logger)
+
 	cmd = []string{
 		fmt.Sprintf("gluster volume info %v | grep \"^Brick.* .arbiter.\"", vcr.Name),
 	}
@@ -436,8 +439,9 @@ func testArbiterReplaceArbiterBrick(t *testing.T) {
 }
 
 func checkArbiterFormatting(t *testing.T, vol *api.VolumeInfoResponse) {
-	s := ssh.NewSshExecWithKeyFile(
-		logger, "vagrant", "../config/insecure_private_key")
+	na := testutils.RequireNodeAccess(t)
+	s := na.Use(logger)
+
 	re := regexp.MustCompile("(imaxpct=[0-9]+)")
 
 	r := sort.StringSlice{}

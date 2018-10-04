@@ -17,7 +17,7 @@ import (
 	"testing"
 
 	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/heketi/pkg/remoteexec/ssh"
+	"github.com/heketi/heketi/pkg/testutils"
 	"github.com/heketi/tests"
 )
 
@@ -49,10 +49,11 @@ func testDeleteNormal(t *testing.T) {
 }
 
 func testDeletedOnGluster(t *testing.T) {
+	na := testutils.RequireNodeAccess(t)
 	vcr := testPrepareVolume(t)
 
-	s := ssh.NewSshExecWithKeyFile(
-		logger, "vagrant", "../config/insecure_private_key")
+	s := na.Use(logger)
+
 	cmds := []string{
 		fmt.Sprintf("gluster --mode=script volume stop %v", vcr.Name),
 		fmt.Sprintf("gluster --mode=script volume delete %v", vcr.Name),
@@ -65,10 +66,11 @@ func testDeletedOnGluster(t *testing.T) {
 }
 
 func testDeletedUnmountedBrick(t *testing.T) {
+	na := testutils.RequireNodeAccess(t)
 	vcr := testPrepareVolume(t)
 
-	s := ssh.NewSshExecWithKeyFile(
-		logger, "vagrant", "../config/insecure_private_key")
+	s := na.Use(logger)
+
 	cmds := []string{
 		fmt.Sprintf("gluster --mode=script volume info %v", vcr.Name),
 		fmt.Sprintf("gluster --mode=script volume stop %v", vcr.Name),
@@ -98,10 +100,11 @@ func testDeletedUnmountedBrick(t *testing.T) {
 }
 
 func testDeletedBrickPv(t *testing.T) {
+	na := testutils.RequireNodeAccess(t)
 	vcr := testPrepareVolume(t)
 
-	s := ssh.NewSshExecWithKeyFile(
-		logger, "vagrant", "../config/insecure_private_key")
+	s := na.Use(logger)
+
 	cmds := []string{
 		fmt.Sprintf("gluster --mode=script volume info %v", vcr.Name),
 		fmt.Sprintf("gluster --mode=script volume stop %v", vcr.Name),
