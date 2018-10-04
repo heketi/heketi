@@ -14,11 +14,6 @@ GOOS := $(shell $(GO) env GOOS)
 GOHOSTARCH := $(shell $(GO) env GOHOSTARCH)
 GOHOSTOS := $(shell $(GO) env GOHOSTOS)
 GOBUILDFLAGS :=
-ifeq ($(GOOS),$(GOHOSTOS))
-ifeq ($(GOARCH),$(GOHOSTARCH))
-	GOBUILDFLAGS :=-i
-endif
-endif
 GLIDEPATH := $(shell command -v glide 2> /dev/null)
 HGPATH := $(shell command -v hg 2> /dev/null)
 DIR=.
