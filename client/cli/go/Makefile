@@ -15,11 +15,6 @@ GOOS := $(shell $(GO) env GOOS)
 GOHOSTARCH := $(shell $(GO) env GOHOSTARCH)
 GOHOSTOS := $(shell $(GO) env GOHOSTOS)
 GOBUILDFLAGS :=
-ifeq ($(GOOS), $(GOHOSTOS))
-ifeq ($(GOARCH), $(GOHOSTARCH))
-	GOBUILDFLAGS :=-i
-endif
-endif
 DIR=.
 
 ifeq (master,$(BRANCH))
