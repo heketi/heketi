@@ -16,7 +16,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	wdb "github.com/heketi/heketi/pkg/db"
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/idgen"
 	"github.com/lpabon/godbc"
 )
 
@@ -85,7 +85,7 @@ func (p *PendingOperationEntry) BucketName() string {
 // for the new object.
 func NewPendingOperationEntry(id string) *PendingOperationEntry {
 	if id == NEW_ID {
-		id = utils.GenUUID()
+		id = idgen.GenUUID()
 	}
 	entry := &PendingOperationEntry{
 		PendingOperation: PendingOperation{

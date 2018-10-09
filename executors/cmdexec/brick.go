@@ -15,8 +15,8 @@ import (
 	"strings"
 
 	"github.com/heketi/heketi/executors"
+	conv "github.com/heketi/heketi/pkg/conversions"
 	"github.com/heketi/heketi/pkg/paths"
-	"github.com/heketi/heketi/pkg/utils"
 	"github.com/lpabon/godbc"
 )
 
@@ -54,7 +54,7 @@ func (s *CmdExecutor) BrickCreate(host string,
 		// Setup the LV
 		fmt.Sprintf("lvcreate -qq --autobackup=%v --poolmetadatasize %vK --chunksize 256K --size %vK --thin %v/%v --virtualsize %vK --name %v",
 			// backup LVM metadata
-			utils.BoolToYN(s.BackupLVM),
+			conv.BoolToYN(s.BackupLVM),
 
 			// MetadataSize
 			brick.PoolMetadataSize,
@@ -146,7 +146,7 @@ func (s *CmdExecutor) deleteBrickLV(host, lv string) error {
 	// Remove the LV (by device name)
 	commands := []string{
 		fmt.Sprintf("lvremove --autobackup=%v -f %v",
-			utils.BoolToYN(s.BackupLVM), lv),
+			conv.BoolToYN(s.BackupLVM), lv),
 	}
 	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	return err
@@ -256,7 +256,7 @@ func (s *CmdExecutor) BrickDestroy(host string,
 	// If there is no brick left in the thin-pool, it can be removed
 	if thin_count == 0 {
 		commands = []string{
-			fmt.Sprintf("lvremove --autobackup=%v -f %v", utils.BoolToYN(s.BackupLVM), tp),
+			fmt.Sprintf("lvremove --autobackup=%v -f %v", conv.BoolToYN(s.BackupLVM), tp),
 		}
 		_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 		if errIsLvNotFound(err) {

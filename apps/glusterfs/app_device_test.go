@@ -23,6 +23,8 @@ import (
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/executors"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/idgen"
+	"github.com/heketi/heketi/pkg/sortedstrings"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
 )
@@ -247,7 +249,7 @@ func TestDeviceAddDelete(t *testing.T) {
 		return nil
 	})
 	tests.Assert(t, err == nil)
-	tests.Assert(t, utils.SortedStringHas(node.Devices, fakeid))
+	tests.Assert(t, sortedstrings.Has(node.Devices, fakeid))
 
 	// Node delete bricks from the device
 	err = app.db.Update(func(tx *bolt.Tx) error {
@@ -365,7 +367,7 @@ func TestDeviceAddDelete(t *testing.T) {
 		return err
 	})
 	tests.Assert(t, err == nil)
-	tests.Assert(t, !utils.SortedStringHas(node.Devices, fakeid))
+	tests.Assert(t, !sortedstrings.Has(node.Devices, fakeid))
 
 	// Check the registration of the device has been removed,
 	// and the device can be added again
@@ -789,8 +791,8 @@ func TestDeviceSync(t *testing.T) {
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	nodeId := utils.GenUUID()
-	deviceId := utils.GenUUID()
+	nodeId := idgen.GenUUID()
+	deviceId := idgen.GenUUID()
 
 	var total uint64 = 600 * 1024 * 1024
 	var used uint64 = 250 * 1024 * 1024
@@ -799,7 +801,7 @@ func TestDeviceSync(t *testing.T) {
 	// Init test database
 	err := app.db.Update(func(tx *bolt.Tx) error {
 		cluster := NewClusterEntry()
-		cluster.Info.Id = utils.GenUUID()
+		cluster.Info.Id = idgen.GenUUID()
 		if err := cluster.Save(tx); err != nil {
 			return err
 		}
@@ -886,7 +888,7 @@ func TestDeviceSyncIdNotFound(t *testing.T) {
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	deviceId := utils.GenUUID()
+	deviceId := idgen.GenUUID()
 
 	// Get unknown node id
 	r, err := http.Get(ts.URL + "/devices/" + deviceId + "/resync")
@@ -908,7 +910,7 @@ func TestDeviceSetTags(t *testing.T) {
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	deviceId := utils.GenUUID()
+	deviceId := idgen.GenUUID()
 	// Create a device to save in the db
 	device := NewDeviceEntry()
 	device.Info.Id = deviceId

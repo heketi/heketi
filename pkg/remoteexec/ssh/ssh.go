@@ -19,14 +19,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/logging"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 )
 
 type SshExec struct {
 	clientConfig *ssh.ClientConfig
-	logger       *utils.Logger
+	logger       *logging.Logger
 }
 
 func getKeyFile(file string) (key ssh.Signer, err error) {
@@ -41,7 +41,7 @@ func getKeyFile(file string) (key ssh.Signer, err error) {
 	return
 }
 
-func NewSshExecWithAuth(logger *utils.Logger, user string) *SshExec {
+func NewSshExecWithAuth(logger *logging.Logger, user string) *SshExec {
 
 	sshexec := &SshExec{}
 	sshexec.logger = logger
@@ -73,7 +73,7 @@ func NewSshExecWithAuth(logger *utils.Logger, user string) *SshExec {
 	return sshexec
 }
 
-func NewSshExecWithKeyFile(logger *utils.Logger, user string, file string) *SshExec {
+func NewSshExecWithKeyFile(logger *logging.Logger, user string, file string) *SshExec {
 
 	var key ssh.Signer
 	var err error
@@ -98,7 +98,7 @@ func NewSshExecWithKeyFile(logger *utils.Logger, user string, file string) *SshE
 }
 
 // This function requires the password string to be crypt encrypted
-func NewSshExecWithPassword(logger *utils.Logger, user string, password string) *SshExec {
+func NewSshExecWithPassword(logger *logging.Logger, user string, password string) *SshExec {
 
 	sshexec := &SshExec{}
 	sshexec.logger = logger

@@ -7,7 +7,7 @@
 // cases as published by the Free Software Foundation.
 //
 
-package utils
+package logging
 
 import (
 	"bytes"
@@ -69,7 +69,7 @@ func TestLogDebug(t *testing.T) {
 
 	// Need to check that it starts with heketi/
 	tests.Assert(t, strings.HasPrefix(filename, "heketi/"))
-	tests.Assert(t, strings.HasSuffix(filename, "/pkg/utils/log_test.go"))
+	tests.Assert(t, strings.HasSuffix(filename, "/pkg/logging/log_test.go"))
 	testbuffer.Reset()
 
 	l.SetLevel(LEVEL_INFO)

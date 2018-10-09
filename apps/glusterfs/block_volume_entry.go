@@ -18,7 +18,7 @@ import (
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/idgen"
 	"github.com/lpabon/godbc"
 )
 
@@ -69,7 +69,7 @@ func NewBlockVolumeEntryFromRequest(req *api.BlockVolumeCreateRequest) *BlockVol
 	godbc.Require(req != nil)
 
 	vol := NewBlockVolumeEntry()
-	vol.Info.Id = utils.GenUUID()
+	vol.Info.Id = idgen.GenUUID()
 	vol.Info.Size = req.Size
 	vol.Info.Auth = req.Auth
 

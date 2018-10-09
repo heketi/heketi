@@ -20,6 +20,7 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/logging"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
 )
@@ -32,7 +33,7 @@ func TestGetLogLevelNoLog(t *testing.T) {
 	orig := logger.Level()
 	defer logger.SetLevel(orig)
 	// our test starts with logging at NOLOG
-	logger.SetLevel(utils.LEVEL_NOLOG)
+	logger.SetLevel(logging.LEVEL_NOLOG)
 	// Create the app
 	app := NewTestApp(tmpfile)
 	defer app.Close()
@@ -63,7 +64,7 @@ func TestGetLogLevelDebug(t *testing.T) {
 	orig := logger.Level()
 	defer logger.SetLevel(orig)
 	// our test starts with logging at NOLOG
-	logger.SetLevel(utils.LEVEL_DEBUG)
+	logger.SetLevel(logging.LEVEL_DEBUG)
 	// Create the app
 	app := NewTestApp(tmpfile)
 	defer app.Close()
@@ -94,7 +95,7 @@ func TestSetLogLevelDebug(t *testing.T) {
 	orig := logger.Level()
 	defer logger.SetLevel(orig)
 	// our test starts with logging at NOLOG
-	logger.SetLevel(utils.LEVEL_NOLOG)
+	logger.SetLevel(logging.LEVEL_NOLOG)
 	// Create the app
 	app := NewTestApp(tmpfile)
 	defer app.Close()
@@ -106,8 +107,8 @@ func TestSetLogLevelDebug(t *testing.T) {
 	defer ts.Close()
 
 	// having done nothing yet our log level should still be NOLOG
-	tests.Assert(t, logger.Level() == utils.LEVEL_NOLOG,
-		`expected logger.Level() == utils.LEVEL_NOLOG, got:`, logger.Level())
+	tests.Assert(t, logger.Level() == logging.LEVEL_NOLOG,
+		`expected logger.Level() == logging.LEVEL_NOLOG, got:`, logger.Level())
 
 	request := []byte(`{"loglevel":{"glusterfs": "debug"} }`)
 	r, err := http.Post(ts.URL+"/internal/logging",
@@ -124,8 +125,8 @@ func TestSetLogLevelDebug(t *testing.T) {
 		`expected data.LogLevel == "debug", got:`, data.LogLevel)
 
 	// check the actual log level now
-	tests.Assert(t, logger.Level() == utils.LEVEL_DEBUG,
-		`expected logger.Level() == utils.LEVEL_DEBUG, got:`, logger.Level())
+	tests.Assert(t, logger.Level() == logging.LEVEL_DEBUG,
+		`expected logger.Level() == logging.LEVEL_DEBUG, got:`, logger.Level())
 }
 
 func TestSetLogLevelRoundtrips(t *testing.T) {
@@ -136,7 +137,7 @@ func TestSetLogLevelRoundtrips(t *testing.T) {
 	orig := logger.Level()
 	defer logger.SetLevel(orig)
 	// our test starts with logging at NOLOG
-	logger.SetLevel(utils.LEVEL_NOLOG)
+	logger.SetLevel(logging.LEVEL_NOLOG)
 	// Create the app
 	app := NewTestApp(tmpfile)
 	defer app.Close()
@@ -148,8 +149,8 @@ func TestSetLogLevelRoundtrips(t *testing.T) {
 	defer ts.Close()
 
 	// having done nothing yet our log level should still be NOLOG
-	tests.Assert(t, logger.Level() == utils.LEVEL_NOLOG,
-		`expected logger.Level() == utils.LEVEL_NOLOG, got:`, logger.Level())
+	tests.Assert(t, logger.Level() == logging.LEVEL_NOLOG,
+		`expected logger.Level() == logging.LEVEL_NOLOG, got:`, logger.Level())
 	data := api.LogLevelInfo{LogLevel: map[string]string{}}
 
 	names := []string{"none", "critical", "error", "warning", "info"}
@@ -179,7 +180,7 @@ func TestSetLogLevelBadJson(t *testing.T) {
 	orig := logger.Level()
 	defer logger.SetLevel(orig)
 	// our test starts with logging at NOLOG
-	logger.SetLevel(utils.LEVEL_NOLOG)
+	logger.SetLevel(logging.LEVEL_NOLOG)
 	// Create the app
 	app := NewTestApp(tmpfile)
 	defer app.Close()
@@ -191,8 +192,8 @@ func TestSetLogLevelBadJson(t *testing.T) {
 	defer ts.Close()
 
 	// having done nothing yet our log level should still be NOLOG
-	tests.Assert(t, logger.Level() == utils.LEVEL_NOLOG,
-		`expected logger.Level() == utils.LEVEL_NOLOG, got:`, logger.Level())
+	tests.Assert(t, logger.Level() == logging.LEVEL_NOLOG,
+		`expected logger.Level() == logging.LEVEL_NOLOG, got:`, logger.Level())
 
 	request := []byte(`{"loglevel": debug}`)
 	r, err := http.Post(ts.URL+"/internal/logging",
@@ -216,7 +217,7 @@ func TestSetLogLevelBadLogLevel(t *testing.T) {
 	orig := logger.Level()
 	defer logger.SetLevel(orig)
 	// our test starts with logging at NOLOG
-	logger.SetLevel(utils.LEVEL_NOLOG)
+	logger.SetLevel(logging.LEVEL_NOLOG)
 	// Create the app
 	app := NewTestApp(tmpfile)
 	defer app.Close()
@@ -228,8 +229,8 @@ func TestSetLogLevelBadLogLevel(t *testing.T) {
 	defer ts.Close()
 
 	// having done nothing yet our log level should still be NOLOG
-	tests.Assert(t, logger.Level() == utils.LEVEL_NOLOG,
-		`expected logger.Level() == utils.LEVEL_NOLOG, got:`, logger.Level())
+	tests.Assert(t, logger.Level() == logging.LEVEL_NOLOG,
+		`expected logger.Level() == logging.LEVEL_NOLOG, got:`, logger.Level())
 
 	request := []byte(`{"loglevel":{"glusterfs": "verdant"}}`)
 	r, err := http.Post(ts.URL+"/internal/logging",

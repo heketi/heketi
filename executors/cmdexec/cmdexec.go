@@ -12,11 +12,11 @@ package cmdexec
 import (
 	"sync"
 
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/logging"
 )
 
 var (
-	logger = utils.NewLogger("[cmdexec]", utils.LEVEL_DEBUG)
+	logger = logging.NewLogger("[cmdexec]", logging.LEVEL_DEBUG)
 )
 
 type RemoteCommandTransport interface {
@@ -61,20 +61,20 @@ func (s *CmdExecutor) FreeConnection(host string) {
 func (s *CmdExecutor) SetLogLevel(level string) {
 	switch level {
 	case "none":
-		logger.SetLevel(utils.LEVEL_NOLOG)
+		logger.SetLevel(logging.LEVEL_NOLOG)
 	case "critical":
-		logger.SetLevel(utils.LEVEL_CRITICAL)
+		logger.SetLevel(logging.LEVEL_CRITICAL)
 	case "error":
-		logger.SetLevel(utils.LEVEL_ERROR)
+		logger.SetLevel(logging.LEVEL_ERROR)
 	case "warning":
-		logger.SetLevel(utils.LEVEL_WARNING)
+		logger.SetLevel(logging.LEVEL_WARNING)
 	case "info":
-		logger.SetLevel(utils.LEVEL_INFO)
+		logger.SetLevel(logging.LEVEL_INFO)
 	case "debug":
-		logger.SetLevel(utils.LEVEL_DEBUG)
+		logger.SetLevel(logging.LEVEL_DEBUG)
 	}
 }
 
-func (s *CmdExecutor) Logger() *utils.Logger {
+func (s *CmdExecutor) Logger() *logging.Logger {
 	return logger
 }

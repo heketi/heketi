@@ -18,8 +18,8 @@ import (
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/idgen"
 	"github.com/heketi/heketi/pkg/paths"
-	"github.com/heketi/heketi/pkg/utils"
 	"github.com/lpabon/godbc"
 )
 
@@ -62,7 +62,7 @@ func NewBrickEntry(size, tpsize, poolMetadataSize uint64,
 	entry.gidRequested = gid
 	entry.TpSize = tpsize
 	entry.PoolMetadataSize = poolMetadataSize
-	entry.Info.Id = utils.GenUUID()
+	entry.Info.Id = idgen.GenUUID()
 	entry.Info.Size = size
 	entry.Info.NodeId = nodeid
 	entry.Info.DeviceId = deviceid
@@ -101,7 +101,7 @@ func CloneBrickEntryFromId(tx *bolt.Tx, id string) (*BrickEntry, error) {
 		return nil, err
 	}
 
-	entry.Info.Id = utils.GenUUID()
+	entry.Info.Id = idgen.GenUUID()
 	// bricks always share a thin pool with the original brick
 	if entry.LvmThinPool == "" {
 		entry.LvmThinPool = paths.BrickIdToThinPoolName(entry.Info.Id)

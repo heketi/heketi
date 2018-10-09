@@ -15,7 +15,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/idgen"
 	"github.com/heketi/tests"
 )
 
@@ -76,7 +76,7 @@ func TestDeleteBricksWithEmptyPath(t *testing.T) {
 	// create bricks in device and set the path empty
 	// save device and brick to db
 	for i := 0; i < 25; i++ {
-		newbrick = d.NewBrickEntry(102400, 1, 2000, utils.GenUUID())
+		newbrick = d.NewBrickEntry(102400, 1, 2000, idgen.GenUUID())
 		newbrick.Info.Path = ""
 		d.BrickAdd(newbrick.Id())
 		err = app.db.Update(func(tx *bolt.Tx) error {
@@ -111,7 +111,7 @@ func TestDeleteBricksWithEmptyPath(t *testing.T) {
 	// create bricks in device and set the path empty
 	// save device and brick to db
 	for i := 0; i < 25; i++ {
-		newbrick = d.NewBrickEntry(102400, 1, 2000, utils.GenUUID())
+		newbrick = d.NewBrickEntry(102400, 1, 2000, idgen.GenUUID())
 		newbrick.Info.Path = ""
 		d.BrickAdd(newbrick.Id())
 		err = app.db.Update(func(tx *bolt.Tx) error {
@@ -145,7 +145,7 @@ func TestDeleteBricksWithEmptyPath(t *testing.T) {
 	// create bricks in device and set the path empty
 	// save device and brick to db
 	for i := 0; i < 25; i++ {
-		newbrick = d.NewBrickEntry(102400, 1, 2000, utils.GenUUID())
+		newbrick = d.NewBrickEntry(102400, 1, 2000, idgen.GenUUID())
 		newbrick.Info.Path = ""
 		d.BrickAdd(newbrick.Id())
 		err = app.db.Update(func(tx *bolt.Tx) error {
@@ -179,7 +179,7 @@ func TestDeleteBricksWithEmptyPath(t *testing.T) {
 	// create bricks in device and set the path empty
 	// save device and brick to db
 	for i := 0; i < 25; i++ {
-		newbrick = d.NewBrickEntry(102400, 1, 2000, utils.GenUUID())
+		newbrick = d.NewBrickEntry(102400, 1, 2000, idgen.GenUUID())
 		newbrick.Info.Path = ""
 		d.BrickAdd(newbrick.Id())
 		err = app.db.Update(func(tx *bolt.Tx) error {

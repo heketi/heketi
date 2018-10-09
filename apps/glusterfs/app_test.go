@@ -18,7 +18,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
 	client "github.com/heketi/heketi/client/api/go-client"
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/logging"
 	"github.com/heketi/tests"
 )
 
@@ -68,7 +68,7 @@ func TestAppLogLevel(t *testing.T) {
 		"debug",
 	}
 
-	logger.SetLevel(utils.LEVEL_DEBUG)
+	logger.SetLevel(logging.LEVEL_DEBUG)
 	for _, level := range levels {
 		conf := &GlusterFSConfig{
 			Executor:  "mock",
@@ -82,23 +82,23 @@ func TestAppLogLevel(t *testing.T) {
 
 		switch level {
 		case "none":
-			tests.Assert(t, logger.Level() == utils.LEVEL_NOLOG)
+			tests.Assert(t, logger.Level() == logging.LEVEL_NOLOG)
 		case "critical":
-			tests.Assert(t, logger.Level() == utils.LEVEL_CRITICAL)
+			tests.Assert(t, logger.Level() == logging.LEVEL_CRITICAL)
 		case "error":
-			tests.Assert(t, logger.Level() == utils.LEVEL_ERROR)
+			tests.Assert(t, logger.Level() == logging.LEVEL_ERROR)
 		case "warning":
-			tests.Assert(t, logger.Level() == utils.LEVEL_WARNING)
+			tests.Assert(t, logger.Level() == logging.LEVEL_WARNING)
 		case "info":
-			tests.Assert(t, logger.Level() == utils.LEVEL_INFO)
+			tests.Assert(t, logger.Level() == logging.LEVEL_INFO)
 		case "debug":
-			tests.Assert(t, logger.Level() == utils.LEVEL_DEBUG)
+			tests.Assert(t, logger.Level() == logging.LEVEL_DEBUG)
 		}
 		app.Close()
 	}
 
 	// Test that an unknown value does not change the loglevel
-	logger.SetLevel(utils.LEVEL_NOLOG)
+	logger.SetLevel(logging.LEVEL_NOLOG)
 	conf := &GlusterFSConfig{
 		Executor:  "mock",
 		Allocator: "simple",
@@ -109,7 +109,7 @@ func TestAppLogLevel(t *testing.T) {
 	app := NewApp(conf)
 	defer app.Close()
 	tests.Assert(t, app != nil)
-	tests.Assert(t, logger.Level() == utils.LEVEL_NOLOG)
+	tests.Assert(t, logger.Level() == logging.LEVEL_NOLOG)
 }
 
 func TestAppReadOnlyDb(t *testing.T) {

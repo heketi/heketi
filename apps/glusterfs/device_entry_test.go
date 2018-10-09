@@ -19,7 +19,8 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/idgen"
+	"github.com/heketi/heketi/pkg/sortedstrings"
 	"github.com/heketi/tests"
 )
 
@@ -27,7 +28,7 @@ func createSampleDeviceEntry(nodeid string, disksize uint64) *DeviceEntry {
 
 	req := &api.DeviceAddRequest{}
 	req.NodeId = nodeid
-	req.Name = "/dev/" + utils.GenUUID()[:8]
+	req.Name = "/dev/" + idgen.GenUUID()[:8]
 
 	d := NewDeviceEntryFromRequest(req)
 	d.StorageSet(disksize, disksize, 0)
@@ -52,7 +53,7 @@ func TestNewDeviceEntry(t *testing.T) {
 func TestNewDeviceEntryFromRequest(t *testing.T) {
 	req := &api.DeviceAddRequest{}
 	req.NodeId = "123"
-	req.Name = "/dev/" + utils.GenUUID()
+	req.Name = "/dev/" + idgen.GenUUID()
 
 	d := NewDeviceEntryFromRequest(req)
 	tests.Assert(t, d != nil)
@@ -70,7 +71,7 @@ func TestNewDeviceEntryFromRequest(t *testing.T) {
 func TestNewDeviceEntryMarshal(t *testing.T) {
 	req := &api.DeviceAddRequest{}
 	req.NodeId = "abc"
-	req.Name = "/dev/" + utils.GenUUID()
+	req.Name = "/dev/" + idgen.GenUUID()
 
 	d := NewDeviceEntryFromRequest(req)
 	d.Info.Storage.Free = 10
@@ -94,7 +95,7 @@ func TestNewDeviceEntryMarshal(t *testing.T) {
 func TestDeviceEntryNewBrickEntry(t *testing.T) {
 	req := &api.DeviceAddRequest{}
 	req.NodeId = "abc"
-	req.Name = "/dev/" + utils.GenUUID()
+	req.Name = "/dev/" + idgen.GenUUID()
 
 	d := NewDeviceEntryFromRequest(req)
 	d.Info.Storage.Free = 900
@@ -143,21 +144,21 @@ func TestDeviceEntryAddDeleteBricks(t *testing.T) {
 	tests.Assert(t, len(d.Bricks) == 0)
 
 	d.BrickAdd("123")
-	tests.Assert(t, utils.SortedStringHas(d.Bricks, "123"))
+	tests.Assert(t, sortedstrings.Has(d.Bricks, "123"))
 	tests.Assert(t, len(d.Bricks) == 1)
 	d.BrickAdd("abc")
-	tests.Assert(t, utils.SortedStringHas(d.Bricks, "123"))
-	tests.Assert(t, utils.SortedStringHas(d.Bricks, "abc"))
+	tests.Assert(t, sortedstrings.Has(d.Bricks, "123"))
+	tests.Assert(t, sortedstrings.Has(d.Bricks, "abc"))
 	tests.Assert(t, len(d.Bricks) == 2)
 
 	d.BrickDelete("123")
-	tests.Assert(t, !utils.SortedStringHas(d.Bricks, "123"))
-	tests.Assert(t, utils.SortedStringHas(d.Bricks, "abc"))
+	tests.Assert(t, !sortedstrings.Has(d.Bricks, "123"))
+	tests.Assert(t, sortedstrings.Has(d.Bricks, "abc"))
 	tests.Assert(t, len(d.Bricks) == 1)
 
 	d.BrickDelete("ccc")
-	tests.Assert(t, !utils.SortedStringHas(d.Bricks, "123"))
-	tests.Assert(t, utils.SortedStringHas(d.Bricks, "abc"))
+	tests.Assert(t, !sortedstrings.Has(d.Bricks, "123"))
+	tests.Assert(t, sortedstrings.Has(d.Bricks, "abc"))
 	tests.Assert(t, len(d.Bricks) == 1)
 }
 
@@ -189,7 +190,7 @@ func TestDeviceEntryRegister(t *testing.T) {
 	// Create a device
 	req := &api.DeviceAddRequest{}
 	req.NodeId = "abc"
-	req.Name = "/dev/" + utils.GenUUID()
+	req.Name = "/dev/" + idgen.GenUUID()
 
 	d := NewDeviceEntryFromRequest(req)
 
@@ -214,7 +215,7 @@ func TestDeviceEntryRegister(t *testing.T) {
 	// Create another device on a different node device
 	req = &api.DeviceAddRequest{}
 	req.NodeId = "def"
-	req.Name = "/dev/" + utils.GenUUID()
+	req.Name = "/dev/" + idgen.GenUUID()
 
 	d2 := NewDeviceEntryFromRequest(req)
 
@@ -268,7 +269,7 @@ func TestDeviceEntryRegisterStaleRegistration(t *testing.T) {
 	// Create a device
 	req := &api.DeviceAddRequest{}
 	req.NodeId = "abc"
-	req.Name = "/dev/" + utils.GenUUID()
+	req.Name = "/dev/" + idgen.GenUUID()
 
 	d := NewDeviceEntryFromRequest(req)
 
@@ -334,7 +335,7 @@ func TestNewDeviceEntryFromId(t *testing.T) {
 	// Create a device
 	req := &api.DeviceAddRequest{}
 	req.NodeId = "abc"
-	req.Name = "/dev/" + utils.GenUUID()
+	req.Name = "/dev/" + idgen.GenUUID()
 
 	d := NewDeviceEntryFromRequest(req)
 	d.Info.Storage.Free = 10
@@ -374,7 +375,7 @@ func TestNewDeviceEntrySaveDelete(t *testing.T) {
 	// Create a device
 	req := &api.DeviceAddRequest{}
 	req.NodeId = "abc"
-	req.Name = "/dev/" + utils.GenUUID()
+	req.Name = "/dev/" + idgen.GenUUID()
 
 	d := NewDeviceEntryFromRequest(req)
 	d.Info.Storage.Free = 10
@@ -481,7 +482,7 @@ func TestNewDeviceEntryNewInfoResponseBadBrickIds(t *testing.T) {
 	// Create a device
 	req := &api.DeviceAddRequest{}
 	req.NodeId = "abc"
-	req.Name = "/dev/" + utils.GenUUID()
+	req.Name = "/dev/" + idgen.GenUUID()
 
 	// Add bad brick ids
 	d := NewDeviceEntryFromRequest(req)
@@ -525,7 +526,7 @@ func TestNewDeviceEntryNewInfoResponse(t *testing.T) {
 	// Create a device
 	req := &api.DeviceAddRequest{}
 	req.NodeId = "abc"
-	req.Name = "/dev/" + utils.GenUUID()
+	req.Name = "/dev/" + idgen.GenUUID()
 
 	d := NewDeviceEntryFromRequest(req)
 	d.Info.Storage.Free = 10
@@ -1017,7 +1018,7 @@ func TestDeviceSetStateFailedWithEmptyPathBricks(t *testing.T) {
 	// create a brick in a device
 	// make the path empty
 	// save device and brick to db
-	newbrick = d.NewBrickEntry(102400, 1, 2000, utils.GenUUID())
+	newbrick = d.NewBrickEntry(102400, 1, 2000, idgen.GenUUID())
 	newbrick.Info.Path = ""
 	d.BrickAdd(newbrick.Id())
 	err = app.db.Update(func(tx *bolt.Tx) error {

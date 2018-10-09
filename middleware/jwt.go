@@ -23,11 +23,11 @@ import (
 	"github.com/auth0/go-jwt-middleware"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/context"
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/logging"
 )
 
 var (
-	logger          = utils.NewLogger("[jwt]", utils.LEVEL_DEBUG)
+	logger          = logging.NewLogger("[jwt]", logging.LEVEL_DEBUG)
 	iatLeeway int64 = 120
 )
 
