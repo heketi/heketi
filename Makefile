@@ -9,6 +9,8 @@ BRANCH := $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
 VER := $(shell git describe --match='v[0-9].[0-9].[0-9]')
 TAG := $(shell git tag --points-at HEAD 'v[0-9].[0-9].[0-9]' | tail -n1)
 GO:=go
+GLIDE:=glide
+TESTBIN:=./test.sh
 GOARCH := $(shell $(GO) env GOARCH)
 GOOS := $(shell $(GO) env GOOS)
 GOHOSTARCH := $(shell $(GO) env GOHOSTARCH)
@@ -17,6 +19,14 @@ GOBUILDFLAGS :=
 GLIDEPATH := $(shell command -v glide 2> /dev/null)
 HGPATH := $(shell command -v hg 2> /dev/null)
 DIR=.
+
+# Specify CI=openshift to use a custom HOME dir
+# that prevents unhelpful behavior from glide and tox
+ifeq ($(CI),openshift)
+	HOME := /tmp/heketi_home/
+	GLIDE_HOME := /tmp/heketi_home/.glide
+	GLIDE := HOME=$(HOME) GLIDE_HOME=$(GLIDE_HOME) glide
+endif
 
 ifeq (master,$(BRANCH))
 	VERSION = $(VER)
@@ -72,11 +82,13 @@ ifndef HGPATH
 	$(error mercurial/hg is required to continue)
 endif
 	echo "Installing vendor directory"
-	glide install -v
+	if [ "$(GLIDE_HOME)" ]; then mkdir -p "$(GLIDE_HOME)"; fi
+	$(GLIDE) install -v
 
 glide.lock: glide.yaml
 	echo "Glide.yaml has changed, updating glide.lock"
-	glide update -v
+	if [ "$(GLIDE_HOME)" ]; then mkdir -p "$(GLIDE_HOME)"; fi
+	$(GLIDE) update -v
 
 client: vendor glide.lock
 	@$(MAKE) -C client/cli/go
@@ -85,7 +97,7 @@ run: server
 	./$(APP_NAME)
 
 test: vendor glide.lock
-	./test.sh $(TESTOPTIONS)
+	$(TESTBIN) $(TESTOPTIONS)
 
 test-functional: vendor glide.lock
 	$(MAKE) -C tests/functional test
