@@ -27,6 +27,7 @@ type Config struct {
 	EnableTls            bool                     `json:"enable_tls"`
 	CertFile             string                   `json:"cert_file"`
 	KeyFile              string                   `json:"key_file"`
+	Profiling            bool                     `json:"profiling"`
 
 	// pull in the config sub-object for glusterfs app
 	GlusterFS *glusterfs.GlusterFSConfig `json:"glusterfs"`
