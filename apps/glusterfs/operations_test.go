@@ -1643,12 +1643,16 @@ func TestBlockVolumeDeleteOperationTwice(t *testing.T) {
 	e = vc.Finalize()
 	tests.Assert(t, e == nil, "expected e == nil, got", e)
 
+	var vol2 *BlockVolumeEntry
 	app.db.View(func(tx *bolt.Tx) error {
 		pol, e := PendingOperationList(tx)
 		tests.Assert(t, e == nil, "expected e == nil, got", e)
 		tests.Assert(t, len(pol) == 0, "expected len(pol) == 0, got", len(pol))
+		vol2, e = NewBlockVolumeEntryFromId(tx, vol.Info.Id)
 		return nil
 	})
+	tests.Assert(t, vol.Pending.Id == "")
+	tests.Assert(t, vol2.Pending.Id == "")
 
 	bdel := NewBlockVolumeDeleteOperation(vol, app.db)
 	e = bdel.Build()
@@ -1661,9 +1665,16 @@ func TestBlockVolumeDeleteOperationTwice(t *testing.T) {
 		return nil
 	})
 
-	bdel2 := NewBlockVolumeDeleteOperation(vol, app.db)
+	bdel2 := NewBlockVolumeDeleteOperation(vol2, app.db)
 	e = bdel2.Build()
 	tests.Assert(t, e == ErrConflict, "expected e ErrConflict, got", e)
+
+	app.db.View(func(tx *bolt.Tx) error {
+		pol, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pol) == 1, "expected len(pol) == 1, got", len(pol))
+		return nil
+	})
 }
 
 func TestDeviceRemoveOperationEmpty(t *testing.T) {
