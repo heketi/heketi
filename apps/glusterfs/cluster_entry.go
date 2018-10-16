@@ -17,7 +17,8 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/idgen"
+	"github.com/heketi/heketi/pkg/sortedstrings"
 	"github.com/lpabon/godbc"
 )
 
@@ -49,7 +50,7 @@ func NewClusterEntryFromRequest(req *api.ClusterCreateRequest) *ClusterEntry {
 	godbc.Require(req != nil)
 
 	entry := NewClusterEntry()
-	entry.Info.Id = utils.GenUUID()
+	entry.Info.Id = idgen.GenUUID()
 	entry.Info.Block = req.Block
 	entry.Info.File = req.File
 
@@ -151,7 +152,7 @@ func (c *ClusterEntry) VolumeAdd(id string) {
 }
 
 func (c *ClusterEntry) VolumeDelete(id string) {
-	c.Info.Volumes = utils.SortedStringsDelete(c.Info.Volumes, id)
+	c.Info.Volumes = sortedstrings.Delete(c.Info.Volumes, id)
 }
 
 func (c *ClusterEntry) BlockVolumeAdd(id string) {
@@ -160,11 +161,11 @@ func (c *ClusterEntry) BlockVolumeAdd(id string) {
 }
 
 func (c *ClusterEntry) BlockVolumeDelete(id string) {
-	c.Info.BlockVolumes = utils.SortedStringsDelete(c.Info.BlockVolumes, id)
+	c.Info.BlockVolumes = sortedstrings.Delete(c.Info.BlockVolumes, id)
 }
 
 func (c *ClusterEntry) NodeDelete(id string) {
-	c.Info.Nodes = utils.SortedStringsDelete(c.Info.Nodes, id)
+	c.Info.Nodes = sortedstrings.Delete(c.Info.Nodes, id)
 }
 
 func ClusterEntryUpgrade(tx *bolt.Tx) error {

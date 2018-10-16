@@ -16,7 +16,8 @@ import (
 	"strings"
 
 	"github.com/heketi/heketi/executors"
-	"github.com/heketi/heketi/pkg/utils"
+	conv "github.com/heketi/heketi/pkg/conversions"
+	"github.com/heketi/heketi/pkg/paths"
 )
 
 const (
@@ -40,8 +41,8 @@ func (s *CmdExecutor) DeviceSetup(host, device, vgid string, destroy bool) (d *e
 		logger.Info("Data on device %v (host %v) will be destroyed", device, host)
 		commands = append(commands, fmt.Sprintf("wipefs --all %v", device))
 	}
-	commands = append(commands, fmt.Sprintf("pvcreate --metadatasize=128M --dataalignment=256K '%v'", device))
-	commands = append(commands, fmt.Sprintf("vgcreate --autobackup=%v %v %v", utils.BoolToYN(s.BackupLVM), utils.VgIdToName(vgid), device))
+	commands = append(commands, fmt.Sprintf("pvcreate -qq --metadatasize=128M --dataalignment=256K '%v'", device))
+	commands = append(commands, fmt.Sprintf("vgcreate -qq --autobackup=%v %v %v", conv.BoolToYN(s.BackupLVM), paths.VgIdToName(vgid), device))
 
 	// Execute command
 	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
@@ -70,25 +71,44 @@ func (s *CmdExecutor) GetDeviceInfo(host, device, vgid string) (d *executors.Dev
 }
 
 func (s *CmdExecutor) DeviceTeardown(host, device, vgid string) error {
+	if err := s.removeDevice(host, device, vgid); err != nil {
+		return err
+	}
+	return s.removeDeviceMountPoint(host, vgid)
+}
 
-	// Setup commands
+// DeviceForget attempts a best effort remove of the device's vg and
+// pv and always returns a nil error.
+func (s *CmdExecutor) DeviceForget(host, device, vgid string) error {
+	s.removeDeviceMountPoint(host, vgid)
+	s.removeDevice(host, device, vgid)
+	return nil
+}
+
+func (s *CmdExecutor) removeDevice(host, device, vgid string) error {
 	commands := []string{
-		fmt.Sprintf("vgremove -qq %v", utils.VgIdToName(vgid)),
+		fmt.Sprintf("vgremove -qq %v", paths.VgIdToName(vgid)),
 		fmt.Sprintf("pvremove -qq '%v'", device),
 	}
 
 	// Execute command
 	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
-		logger.LogError("Error while deleting device %v with id %v on host %v: %v",
+		return logger.LogError(
+			"Failed to delete device %v with id %v on host %v: %v",
 			device, vgid, host, err)
 	}
+	return nil
+}
 
-	pdir := utils.BrickMountPointParent(vgid)
-	commands = []string{
+func (s *CmdExecutor) removeDeviceMountPoint(host, vgid string) error {
+	// TODO: remove this LBYL check and replace it with the rmdir
+	// followed by error condition check that handles ENOENT
+	pdir := paths.BrickMountPointParent(vgid)
+	commands := []string{
 		fmt.Sprintf("ls %v", pdir),
 	}
-	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
 		return nil
 	}
@@ -100,9 +120,7 @@ func (s *CmdExecutor) DeviceTeardown(host, device, vgid string) error {
 	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
 	if err != nil {
 		logger.LogError("Error while removing the VG directory")
-		return nil
 	}
-
 	return nil
 }
 
@@ -112,7 +130,7 @@ func (s *CmdExecutor) getVgSizeFromNode(
 
 	// Setup command
 	commands := []string{
-		fmt.Sprintf("vgdisplay -c %v", utils.VgIdToName(vgid)),
+		fmt.Sprintf("vgdisplay -c %v", paths.VgIdToName(vgid)),
 	}
 
 	// Execute command

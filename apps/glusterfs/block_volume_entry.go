@@ -18,7 +18,7 @@ import (
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/idgen"
 	"github.com/lpabon/godbc"
 )
 
@@ -69,7 +69,7 @@ func NewBlockVolumeEntryFromRequest(req *api.BlockVolumeCreateRequest) *BlockVol
 	godbc.Require(req != nil)
 
 	vol := NewBlockVolumeEntry()
-	vol.Info.Id = utils.GenUUID()
+	vol.Info.Id = idgen.GenUUID()
 	vol.Info.Size = req.Size
 	vol.Info.Auth = req.Auth
 
@@ -233,10 +233,12 @@ func (v *BlockVolumeEntry) cleanupBlockVolumeCreate(db wdb.DB,
 		return err
 	}
 
-	// best effort removal of anything on system
-	v.deleteBlockVolumeExec(db, hvname, executor)
+	err = v.deleteBlockVolumeExec(db, hvname, executor)
+	if err != nil {
+		return err
+	}
 
-	return v.removeComponents(db, true)
+	return v.removeComponents(db, false)
 }
 
 func (v *BlockVolumeEntry) Create(db wdb.DB,
@@ -247,7 +249,7 @@ func (v *BlockVolumeEntry) Create(db wdb.DB,
 		executor)
 }
 
-func (v *BlockVolumeEntry) saveCreateBlockVolume(db wdb.DB) error {
+func (v *BlockVolumeEntry) saveNewEntry(db wdb.DB) error {
 	return db.Update(func(tx *bolt.Tx) error {
 
 		err := v.Save(tx)
@@ -275,6 +277,8 @@ func (v *BlockVolumeEntry) saveCreateBlockVolume(db wdb.DB) error {
 		if err := volume.ModifyFreeSize(-v.Info.Size); err != nil {
 			return err
 		}
+		logger.Debug("Reduced free size on volume %v by %v",
+			volume.Info.Id, v.Info.Size)
 
 		volume.BlockVolumeAdd(v.Info.Id)
 		err = volume.Save(tx)
@@ -311,7 +315,11 @@ func (v *BlockVolumeEntry) deleteBlockVolumeExec(db wdb.RODB,
 	logger.Debug("Using executor host [%v]", executorhost)
 
 	err = executor.BlockVolumeDestroy(executorhost, hvname, v.Info.Name)
-	if err != nil {
+	if _, ok := err.(*executors.VolumeDoesNotExistErr); ok {
+		logger.Warning(
+			"Block volume %v (%v) does not exist: assuming already deleted",
+			v.Info.Id, v.Info.Name)
+	} else if err != nil {
 		logger.LogError("Unable to delete volume: %v", err)
 		return err
 	}
@@ -375,8 +383,14 @@ func (v *BlockVolumeEntry) Destroy(db wdb.DB, executor executors.Executor) error
 // the volume is incompatible. It returns false, and an error if the
 // database operation fails.
 func canHostBlockVolume(tx *bolt.Tx, bv *BlockVolumeEntry, vol *VolumeEntry) (bool, error) {
+	if vol.Info.BlockInfo.Restriction != api.Unrestricted {
+		logger.Warning("Block hosting volume %v usage is restricted: %v",
+			vol.Info.Id, vol.Info.BlockInfo.Restriction)
+		return false, nil
+	}
 	if vol.Info.BlockInfo.FreeSize < bv.Info.Size {
-		logger.Warning("Free size is less than the block volume requested")
+		logger.Warning("Free size %v is less than the requested block volume size %v",
+			vol.Info.BlockInfo.FreeSize, bv.Info.Size)
 		return false, nil
 	}
 

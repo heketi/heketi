@@ -26,7 +26,7 @@ import (
 
 	"github.com/heketi/heketi/executors/cmdexec"
 	"github.com/heketi/heketi/pkg/kubernetes"
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/logging"
 	"github.com/lpabon/godbc"
 )
 
@@ -46,7 +46,7 @@ type KubeExecutor struct {
 }
 
 var (
-	logger          = utils.NewLogger("[kubeexec]", utils.LEVEL_DEBUG)
+	logger          = logging.NewLogger("[kubeexec]", logging.LEVEL_DEBUG)
 	inClusterConfig = func() (*restclient.Config, error) {
 		return restclient.InClusterConfig()
 	}
@@ -241,7 +241,7 @@ func (k *KubeExecutor) ConnectAndExec(host, resource string,
 		if err != nil {
 			logger.LogError("Failed to run command [%v] on %v: Err[%v]: Stdout [%v]: Stderr [%v]",
 				command, podName, err, b.String(), berr.String())
-			return nil, fmt.Errorf("Unable to execute command on %v: %v", podName, berr.String())
+			return nil, fmt.Errorf("%v", berr.String())
 		}
 		logger.Debug("Host: %v Pod: %v Command: %v\nResult: %v", host, podName, command, b.String())
 		buffers[index] = b.String()

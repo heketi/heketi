@@ -22,7 +22,7 @@ import (
 	"github.com/heketi/heketi/executors/kubeexec"
 	"github.com/heketi/heketi/executors/mockexec"
 	"github.com/heketi/heketi/executors/sshexec"
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/logging"
 	"github.com/heketi/rest"
 )
 
@@ -36,11 +36,12 @@ const (
 	BOLTDB_BUCKET_BLOCKVOLUME      = "BLOCKVOLUME"
 	BOLTDB_BUCKET_DBATTRIBUTE      = "DBATTRIBUTE"
 	DB_CLUSTER_HAS_FILE_BLOCK_FLAG = "DB_CLUSTER_HAS_FILE_BLOCK_FLAG"
+	DB_BRICK_HAS_SUBTYPE_FIELD     = "DB_BRICK_HAS_SUBTYPE_FIELD"
 	DEFAULT_OP_LIMIT               = 8
 )
 
 var (
-	logger     = utils.NewLogger("[heketi]", utils.LEVEL_INFO)
+	logger     = logging.NewLogger("[heketi]", logging.LEVEL_INFO)
 	dbfilename = "heketi.db"
 	// global var to track active node health cache
 	// if multiple apps are started the content of this var is
@@ -53,6 +54,14 @@ var (
 	// avoids having to update config files to enable the feature
 	// while avoiding having to touch all of the unit tests.
 	MonitorGlusterNodes = false
+
+	// global var that contains list of volume options that are set *before*
+	// setting the volume options that come as part of volume request.
+	PreReqVolumeOptions = ""
+
+	// global var that contains list of volume options that are set *after*
+	// setting the volume options that come as part of volume request.
+	PostReqVolumeOptions = ""
 )
 
 type App struct {
@@ -222,17 +231,17 @@ func NewApp(conf *GlusterFSConfig) *App {
 func SetLogLevel(level string) error {
 	switch level {
 	case "none":
-		logger.SetLevel(utils.LEVEL_NOLOG)
+		logger.SetLevel(logging.LEVEL_NOLOG)
 	case "critical":
-		logger.SetLevel(utils.LEVEL_CRITICAL)
+		logger.SetLevel(logging.LEVEL_CRITICAL)
 	case "error":
-		logger.SetLevel(utils.LEVEL_ERROR)
+		logger.SetLevel(logging.LEVEL_ERROR)
 	case "warning":
-		logger.SetLevel(utils.LEVEL_WARNING)
+		logger.SetLevel(logging.LEVEL_WARNING)
 	case "info":
-		logger.SetLevel(utils.LEVEL_INFO)
+		logger.SetLevel(logging.LEVEL_INFO)
 	case "debug":
-		logger.SetLevel(utils.LEVEL_DEBUG)
+		logger.SetLevel(logging.LEVEL_DEBUG)
 	case "":
 		// treat empty string as a no-op & don't complain
 		// about it
@@ -310,6 +319,16 @@ func (a *App) setFromEnvironmentalVariable() {
 			a.conf.MaxInflightOperations = uint64(value)
 		}
 	}
+
+	env = os.Getenv("HEKETI_PRE_REQUEST_VOLUME_OPTIONS")
+	if "" != env {
+		a.conf.PreReqVolumeOptions = env
+	}
+
+	env = os.Getenv("HEKETI_POST_REQUEST_VOLUME_OPTIONS")
+	if "" != env {
+		a.conf.PostReqVolumeOptions = env
+	}
 }
 
 func (a *App) setAdvSettings() {
@@ -337,6 +356,15 @@ func (a *App) setAdvSettings() {
 		logger.Info("Average file size on volumes set to %v KiB", a.conf.AverageFileSize)
 		averageFileSize = a.conf.AverageFileSize
 	}
+	if a.conf.PreReqVolumeOptions != "" {
+		logger.Info("Pre Request Volume Options: %v", a.conf.PreReqVolumeOptions)
+		PreReqVolumeOptions = a.conf.PreReqVolumeOptions
+	}
+	if a.conf.PostReqVolumeOptions != "" {
+		logger.Info("Post Request Volume Options: %v", a.conf.PostReqVolumeOptions)
+		PostReqVolumeOptions = a.conf.PostReqVolumeOptions
+	}
+
 }
 
 func (a *App) setBlockSettings() {
@@ -483,6 +511,11 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Method:      "GET",
 			Pattern:     "/volumes",
 			HandlerFunc: a.VolumeList},
+		rest.Route{
+			Name:        "VolumeSetBlockRestriction",
+			Method:      "POST",
+			Pattern:     "/volumes/{id:[A-Fa-f0-9]+}/block-restriction",
+			HandlerFunc: a.VolumeSetBlockRestriction},
 
 		// Volume Cloning
 		rest.Route{

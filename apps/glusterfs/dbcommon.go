@@ -13,7 +13,9 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
-	"github.com/heketi/heketi/pkg/utils"
+
+	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/idgen"
 )
 
 const (
@@ -141,6 +143,13 @@ func UpgradeDB(tx *bolt.Tx) error {
 		return err
 	}
 
+	err = fixBlockHostingReservedSize(tx)
+	if err != nil {
+		logger.LogError(
+			"Failed to reserved sizes for block hosting volumes %v", err)
+		return err
+	}
+
 	return nil
 }
 
@@ -159,7 +168,7 @@ func upgradeDBGenerationID(tx *bolt.Tx) error {
 func recordNewDBGenerationID(tx *bolt.Tx) error {
 	entry := NewDbAttributeEntry()
 	entry.Key = DB_GENERATION_ID
-	entry.Value = utils.GenUUID()
+	entry.Value = idgen.GenUUID()
 	return entry.Save(tx)
 }
 
@@ -219,6 +228,87 @@ func fixIncorrectBlockHostingFreeSize(tx *bolt.Tx) error {
 			logger.Info("changing free size of volume [%v] to [%v]",
 				vol.Info.Id, newSize)
 			vol.Info.BlockInfo.FreeSize = newSize
+			// if the size was already messed up, lock the volume
+			// and admins can unlock it later
+			vol.Info.BlockInfo.Restriction = api.LockedByUpdate
+			err = vol.Save(tx)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// fixBlockHostingReservedSize  attempts to set block hosting volume
+// free size amounts by checking them against the block volumes.
+func fixBlockHostingReservedSize(tx *bolt.Tx) error {
+	vols, err := VolumeList(tx)
+	if err != nil {
+		return err
+	}
+	deductReserved := func(v *VolumeEntry, rSize int) error {
+		// we do this osize thing because we may want to save v
+		// on error and we don't want any incorrectly modified
+		// sizes saved
+		osize := v.Info.BlockInfo.FreeSize
+		if err := v.ModifyFreeSize(-rSize); err != nil {
+			v.Info.BlockInfo.FreeSize = osize
+			return err
+		}
+		osize = v.Info.BlockInfo.ReservedSize
+		if err := v.ModifyReservedSize(rSize); err != nil {
+			v.Info.BlockInfo.ReservedSize = osize
+			return err
+		}
+		return nil
+	}
+	for _, vid := range vols {
+		vol, err := NewVolumeEntryFromId(tx, vid)
+		if err != nil {
+			return err
+		}
+		if !vol.Info.Block {
+			continue // ignore non-block hosting volumes
+		}
+		bvsum, err := vol.TotalSizeBlockVolumes(tx)
+		if err != nil {
+			return err
+		}
+		if vol.Info.BlockInfo.ReservedSize > 0 {
+			// reserved size is already set, nothing to do
+			continue
+		}
+		if !vol.blockHostingSizeIsCorrect(bvsum) {
+			logger.Debug(
+				"Volume [%v] missing reserved, but sizes are invalid",
+				vol.Info.Id)
+			continue
+		}
+		if vol.Info.BlockInfo.Restriction == api.LockedByUpdate {
+			logger.Debug(
+				"Volume [%v] is missing reserved, but is already locked-by-update",
+				vol.Info.Id)
+			continue
+		}
+		rSize := vol.Info.Size - ReduceRawSize(vol.Info.Size)
+		if vol.Info.BlockInfo.FreeSize >= rSize {
+			if err := deductReserved(vol, rSize); err != nil {
+				logger.Warning(
+					"Volume [%v] unable to correct reserved size value: %v",
+					vol.Info.Id, err)
+				vol.Info.BlockInfo.Restriction = api.LockedByUpdate
+			}
+			err = vol.Save(tx)
+			if err != nil {
+				return err
+			}
+		} else {
+			logger.Warning(
+				"Volume [%v] not enough free space for reservation,"+
+					" wanted %v have %v. Locking volume.",
+				vol.Info.Id, rSize, vol.Info.BlockInfo.FreeSize)
+			vol.Info.BlockInfo.Restriction = api.LockedByUpdate
 			err = vol.Save(tx)
 			if err != nil {
 				return err

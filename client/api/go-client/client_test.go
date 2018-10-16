@@ -24,7 +24,9 @@ import (
 	"github.com/heketi/heketi/apps/glusterfs"
 	"github.com/heketi/heketi/middleware"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/idgen"
 	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/server/admin"
 	"github.com/heketi/tests"
 	"github.com/urfave/negroni"
 )
@@ -59,11 +61,15 @@ func setupHeketiServerAndMiddleware(
 	jwtconfig.Admin.PrivateKey = TEST_ADMIN_KEY
 	jwtconfig.User.PrivateKey = "userkey"
 
+	adminss := admin.New()
+	adminss.SetRoutes(router)
+
 	// Setup middleware
 	n.Use(middleware.NewJwtAuth(jwtconfig))
 	if m != nil {
 		n.Use(m)
 	}
+	n.Use(adminss)
 	n.UseFunc(app.Auth)
 	n.UseHandler(router)
 
@@ -158,7 +164,7 @@ func TestTopology(t *testing.T) {
 				defer sg.Done()
 
 				deviceReq := &api.DeviceAddRequest{}
-				deviceReq.Name = "/sd" + utils.GenUUID()
+				deviceReq.Name = "/sd" + idgen.GenUUID()
 				deviceReq.NodeId = node.Id
 
 				// Create device
@@ -608,7 +614,7 @@ func TestClientVolume(t *testing.T) {
 				defer sg.Done()
 
 				deviceReq := &api.DeviceAddRequest{}
-				deviceReq.Name = "/sd" + utils.GenUUID()
+				deviceReq.Name = "/dev/by-magic/id:" + idgen.GenUUID()
 				deviceReq.NodeId = node.Id
 
 				// Create device
@@ -1144,4 +1150,114 @@ func TestRetryAfterThrottle(t *testing.T) {
 	tests.Assert(t, err != nil, "expected err != nil, got", err)
 	tests.Assert(t, err.Error() == "Too Many Requests", "expected err == 'Too Many Requests', got", err)
 	tests.Assert(t, ictr == 1, "expected ictr == 1, got", ictr)
+}
+
+func TestAdminStatus(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+
+	// Setup the server
+	ts := setupHeketiServer(app)
+	defer ts.Close()
+
+	c := NewClient(ts.URL, "admin", TEST_ADMIN_KEY)
+	tests.Assert(t, c != nil, "NewClient failed:", c)
+
+	as, err := c.AdminStatusGet()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, as.State == api.AdminStateNormal,
+		"expected as.State == api.AdminStateNormal, got:", as.State)
+
+	as.State = api.AdminStateLocal
+	err = c.AdminStatusSet(as)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	as, err = c.AdminStatusGet()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, as.State == api.AdminStateLocal,
+		"expected as.State == api.AdminStateNormal, got:", as.State)
+
+	as.State = api.AdminStateNormal
+	err = c.AdminStatusSet(as)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	as, err = c.AdminStatusGet()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, as.State == api.AdminStateNormal,
+		"expected as.State == api.AdminStateNormal, got:", as.State)
+}
+
+func TestVolumeSetBlockRestriction(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+
+	// Setup the server
+	ts := setupHeketiServer(app)
+	defer ts.Close()
+
+	// Create cluster
+	c := NewClient(ts.URL, "admin", TEST_ADMIN_KEY)
+	tests.Assert(t, c != nil)
+	cluster_req := &api.ClusterCreateRequest{
+		ClusterFlags: api.ClusterFlags{
+			Block: true,
+			File:  true,
+		},
+	}
+	cluster, err := c.ClusterCreate(cluster_req)
+	tests.Assert(t, err == nil)
+
+	// Create node request packet
+	for n := 0; n < 4; n++ {
+		nodeReq := &api.NodeAddRequest{}
+		nodeReq.ClusterId = cluster.Id
+		nodeReq.Hostnames.Manage = []string{"manage" + fmt.Sprintf("%v", n)}
+		nodeReq.Hostnames.Storage = []string{"storage" + fmt.Sprintf("%v", n)}
+		nodeReq.Zone = n + 1
+
+		// Create node
+		node, err := c.NodeAdd(nodeReq)
+		tests.Assert(t, err == nil)
+
+		deviceReq := &api.DeviceAddRequest{}
+		deviceReq.Name = "/dev/by-magic/id:" + idgen.GenUUID()
+		deviceReq.NodeId = node.Id
+
+		// Create device
+		err = c.DeviceAdd(deviceReq)
+		tests.Assert(t, err == nil)
+	}
+
+	// Create a volume
+	volumeReq := &api.VolumeCreateRequest{}
+	volumeReq.Size = 10
+	volumeReq.Block = true
+	volume, err := c.VolumeCreate(volumeReq)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, volume.Id != "")
+	tests.Assert(t, volume.Size == volumeReq.Size)
+
+	v2, err := c.VolumeSetBlockRestriction(
+		volume.Id,
+		&api.VolumeBlockRestrictionRequest{
+			Restriction: api.Locked,
+		})
+	tests.Assert(t, err == nil)
+	tests.Assert(t, v2.BlockInfo.Restriction == api.Locked)
+
+	v2, err = c.VolumeSetBlockRestriction(
+		volume.Id,
+		&api.VolumeBlockRestrictionRequest{
+			Restriction: api.Unrestricted,
+		})
+	tests.Assert(t, err == nil)
+	tests.Assert(t, v2.BlockInfo.Restriction == api.Unrestricted)
 }

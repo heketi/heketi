@@ -16,8 +16,9 @@ import (
 
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/logging"
+	"github.com/heketi/heketi/pkg/remoteexec/ssh"
 	"github.com/heketi/heketi/pkg/utils"
-	"github.com/heketi/heketi/pkg/utils/ssh"
 	"github.com/heketi/tests"
 )
 
@@ -37,7 +38,7 @@ const (
 var (
 	// Heketi client
 	heketi = client.NewClient(heketiUrl, "admin", "adminkey")
-	logger = utils.NewLogger("[test]", utils.LEVEL_DEBUG)
+	logger = logging.NewLogger("[test]", logging.LEVEL_DEBUG)
 )
 
 func getdisks() []string {

@@ -12,7 +12,7 @@ package glusterfs
 import (
 	"fmt"
 
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/idgen"
 )
 
 var (
@@ -297,6 +297,11 @@ func (bp *ArbiterBrickPlacer) tryPlaceBrickOnDevice(
 			brickSize, snapFactor, device.Info.Id)
 		return tryPlaceAgain
 	}
+	if index == arbiter_index {
+		brick.SubType = ArbiterSubType
+	} else {
+		brick.SubType = NormalSubType
+	}
 
 	if opts.recordBrick {
 		device.BrickAdd(brick.Id())
@@ -367,7 +372,7 @@ func (bp *ArbiterBrickPlacer) Scanner(dsrc DeviceSource) (
 		}
 	}
 
-	id := utils.GenUUID()
+	id := idgen.GenUUID()
 	return &arbiterDeviceScanner{
 		arbiter: deviceFeedFromRings(id, arbiterRing, anyRing),
 		data:    deviceFeedFromRings(id, dataRing, anyRing),

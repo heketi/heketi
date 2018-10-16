@@ -19,7 +19,8 @@ import (
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/idgen"
+	"github.com/heketi/heketi/pkg/sortedstrings"
 	"github.com/lpabon/godbc"
 )
 
@@ -60,7 +61,7 @@ func NewDeviceEntryFromRequest(req *api.DeviceAddRequest) *DeviceEntry {
 	godbc.Require(req != nil)
 
 	device := NewDeviceEntry()
-	device.Info.Id = utils.GenUUID()
+	device.Info.Id = idgen.GenUUID()
 	device.Info.Name = req.Name
 	device.NodeId = req.NodeId
 	device.Info.Tags = copyTags(req.Tags)
@@ -319,14 +320,14 @@ func (d *DeviceEntry) Unmarshal(buffer []byte) error {
 }
 
 func (d *DeviceEntry) BrickAdd(id string) {
-	godbc.Require(!utils.SortedStringHas(d.Bricks, id))
+	godbc.Require(!sortedstrings.Has(d.Bricks, id))
 
 	d.Bricks = append(d.Bricks, id)
 	d.Bricks.Sort()
 }
 
 func (d *DeviceEntry) BrickDelete(id string) {
-	d.Bricks = utils.SortedStringsDelete(d.Bricks, id)
+	d.Bricks = sortedstrings.Delete(d.Bricks, id)
 }
 
 func (d *DeviceEntry) StorageSet(total uint64, free uint64, used uint64) {
@@ -581,7 +582,7 @@ func (d *DeviceEntry) DeleteBricksWithEmptyPath(tx *bolt.Tx) error {
 		brick, err := NewBrickEntryFromId(tx, id)
 		if err == ErrNotFound {
 			logger.Warning("Ignoring nonexistent brick [%v] on "+
-				"disk [%d].", id, d.Info.Id)
+				"disk [%v].", id, d.Info.Id)
 			continue
 		}
 		if err != nil {

@@ -18,7 +18,8 @@ import (
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/idgen"
+	"github.com/heketi/heketi/pkg/paths"
 	"github.com/lpabon/godbc"
 )
 
@@ -34,6 +35,10 @@ type BrickEntry struct {
 	// scheme than the bricks created directly by Heketi.
 	LvmThinPool string
 	LvmLv       string
+
+	// currently sub type is only used when the brick is first created
+	// this is only exported for placer use and db serialization
+	SubType BrickSubType
 }
 
 func BrickList(tx *bolt.Tx) ([]string, error) {
@@ -57,12 +62,12 @@ func NewBrickEntry(size, tpsize, poolMetadataSize uint64,
 	entry.gidRequested = gid
 	entry.TpSize = tpsize
 	entry.PoolMetadataSize = poolMetadataSize
-	entry.Info.Id = utils.GenUUID()
+	entry.Info.Id = idgen.GenUUID()
 	entry.Info.Size = size
 	entry.Info.NodeId = nodeid
 	entry.Info.DeviceId = deviceid
 	entry.Info.VolumeId = volumeid
-	entry.LvmThinPool = utils.BrickIdToThinPoolName(entry.Info.Id)
+	entry.LvmThinPool = paths.BrickIdToThinPoolName(entry.Info.Id)
 	entry.UpdatePath()
 
 	godbc.Ensure(entry.Info.Id != "")
@@ -96,10 +101,10 @@ func CloneBrickEntryFromId(tx *bolt.Tx, id string) (*BrickEntry, error) {
 		return nil, err
 	}
 
-	entry.Info.Id = utils.GenUUID()
+	entry.Info.Id = idgen.GenUUID()
 	// bricks always share a thin pool with the original brick
 	if entry.LvmThinPool == "" {
-		entry.LvmThinPool = utils.BrickIdToThinPoolName(entry.Info.Id)
+		entry.LvmThinPool = paths.BrickIdToThinPoolName(entry.Info.Id)
 	}
 	// brick clones have their own lv name (not yet known)
 	entry.LvmLv = ""
@@ -156,7 +161,7 @@ func (b *BrickEntry) Unmarshal(buffer []byte) error {
 	return nil
 }
 
-func (b *BrickEntry) brickRequest(path string) *executors.BrickRequest {
+func (b *BrickEntry) brickRequest(path string, create bool) *executors.BrickRequest {
 	req := &executors.BrickRequest{}
 	req.Gid = b.gidRequested
 	req.Name = b.Info.Id
@@ -168,6 +173,19 @@ func (b *BrickEntry) brickRequest(path string) *executors.BrickRequest {
 	req.LvName = b.LvName()
 	// path varies depending on what it is called from
 	req.Path = path
+	// figure out how to format brick via subtype
+	switch b.BrickType() {
+	case NormalSubType:
+		req.Format = executors.NormalFormat
+	case ArbiterSubType:
+		req.Format = executors.ArbiterFormat
+	default:
+		// this can only happen if we try to directly create a brick for
+		// an entry that was not created by a current placer
+		if create {
+			panic("Can not create a brick of unknown type")
+		}
+	}
 	return req
 }
 
@@ -193,9 +211,9 @@ func (b *BrickEntry) Create(db wdb.RODB, executor executors.Executor) error {
 		return err
 	}
 
-	req := b.brickRequest(b.Info.Path)
+	req := b.brickRequest(b.Info.Path, true)
 	// remove this some time post-refactoring
-	godbc.Require(req.Path == utils.BrickPath(req.VgId, req.Name))
+	godbc.Require(req.Path == paths.BrickPath(req.VgId, req.Name))
 
 	// Create brick on node
 	logger.Info("Creating brick %v", b.Info.Id)
@@ -229,7 +247,7 @@ func (b *BrickEntry) Destroy(db wdb.RODB, executor executors.Executor) (bool, er
 	}
 
 	req := b.brickRequest(
-		strings.TrimSuffix(b.Info.Path, "/brick"))
+		strings.TrimSuffix(b.Info.Path, "/brick"), false)
 
 	// Delete brick on node
 	logger.Info("Deleting brick %v", b.Info.Id)
@@ -273,6 +291,10 @@ func BrickEntryUpgrade(tx *bolt.Tx) error {
 	if err != nil {
 		return err
 	}
+	err = addSubTypeFieldFlagForBrickEntry(tx)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -311,8 +333,25 @@ func addVolumeIdInBrickEntry(tx *bolt.Tx) error {
 	return nil
 }
 
+func addSubTypeFieldFlagForBrickEntry(tx *bolt.Tx) error {
+	entry, err := NewDbAttributeEntryFromKey(tx, DB_BRICK_HAS_SUBTYPE_FIELD)
+	// This key won't exist if we are introducing the feature now
+	if err != nil && err != ErrNotFound {
+		return err
+	}
+
+	if err == ErrNotFound {
+		// no flag in db. create it with default of "yes"
+		entry = NewDbAttributeEntry()
+		entry.Key = DB_BRICK_HAS_SUBTYPE_FIELD
+		entry.Value = "yes"
+		return entry.Save(tx)
+	}
+	return nil
+}
+
 func (b *BrickEntry) UpdatePath() {
-	b.Info.Path = utils.BrickPath(b.Info.DeviceId, b.Info.Id)
+	b.Info.Path = paths.BrickPath(b.Info.DeviceId, b.Info.Id)
 }
 
 func (b *BrickEntry) RemoveFromDevice(tx *bolt.Tx) error {
@@ -342,7 +381,7 @@ func (b *BrickEntry) TpName() string {
 	if b.LvmThinPool != "" {
 		return b.LvmThinPool
 	}
-	return utils.BrickIdToThinPoolName(b.Info.Id)
+	return paths.BrickIdToThinPoolName(b.Info.Id)
 }
 
 // LvName returns the expected name of the lvm lv that stores
@@ -351,5 +390,11 @@ func (b *BrickEntry) LvName() string {
 	if b.LvmLv != "" {
 		return b.LvmLv
 	}
-	return utils.BrickIdToName(b.Info.Id)
+	return paths.BrickIdToName(b.Info.Id)
+}
+
+// BrickType returns the sub-type of a brick. SubType helps determine
+// brick formatting, etc.
+func (b *BrickEntry) BrickType() BrickSubType {
+	return b.SubType
 }

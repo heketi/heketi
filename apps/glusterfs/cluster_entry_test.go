@@ -16,7 +16,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/sortedstrings"
 	"github.com/heketi/tests"
 )
 
@@ -94,55 +94,55 @@ func TestClusterEntryAddDeleteElements(t *testing.T) {
 	c.NodeAdd("123")
 	tests.Assert(t, len(c.Info.Nodes) == 1)
 	tests.Assert(t, len(c.Info.Volumes) == 0)
-	tests.Assert(t, utils.SortedStringHas(c.Info.Nodes, "123"))
+	tests.Assert(t, sortedstrings.Has(c.Info.Nodes, "123"))
 
 	c.NodeAdd("456")
 	tests.Assert(t, len(c.Info.Nodes) == 2)
 	tests.Assert(t, len(c.Info.Volumes) == 0)
-	tests.Assert(t, utils.SortedStringHas(c.Info.Nodes, "123"))
-	tests.Assert(t, utils.SortedStringHas(c.Info.Nodes, "456"))
+	tests.Assert(t, sortedstrings.Has(c.Info.Nodes, "123"))
+	tests.Assert(t, sortedstrings.Has(c.Info.Nodes, "456"))
 
 	c.VolumeAdd("aabb")
 	tests.Assert(t, len(c.Info.Nodes) == 2)
 	tests.Assert(t, len(c.Info.Volumes) == 1)
-	tests.Assert(t, utils.SortedStringHas(c.Info.Nodes, "123"))
-	tests.Assert(t, utils.SortedStringHas(c.Info.Nodes, "456"))
-	tests.Assert(t, utils.SortedStringHas(c.Info.Volumes, "aabb"))
+	tests.Assert(t, sortedstrings.Has(c.Info.Nodes, "123"))
+	tests.Assert(t, sortedstrings.Has(c.Info.Nodes, "456"))
+	tests.Assert(t, sortedstrings.Has(c.Info.Volumes, "aabb"))
 
 	c.NodeDelete("aabb")
 	tests.Assert(t, len(c.Info.Nodes) == 2)
 	tests.Assert(t, len(c.Info.Volumes) == 1)
-	tests.Assert(t, utils.SortedStringHas(c.Info.Nodes, "123"))
-	tests.Assert(t, utils.SortedStringHas(c.Info.Nodes, "456"))
-	tests.Assert(t, utils.SortedStringHas(c.Info.Volumes, "aabb"))
+	tests.Assert(t, sortedstrings.Has(c.Info.Nodes, "123"))
+	tests.Assert(t, sortedstrings.Has(c.Info.Nodes, "456"))
+	tests.Assert(t, sortedstrings.Has(c.Info.Volumes, "aabb"))
 
 	c.NodeDelete("456")
 	tests.Assert(t, len(c.Info.Nodes) == 1)
 	tests.Assert(t, len(c.Info.Volumes) == 1)
-	tests.Assert(t, utils.SortedStringHas(c.Info.Nodes, "123"))
-	tests.Assert(t, !utils.SortedStringHas(c.Info.Nodes, "456"))
-	tests.Assert(t, utils.SortedStringHas(c.Info.Volumes, "aabb"))
+	tests.Assert(t, sortedstrings.Has(c.Info.Nodes, "123"))
+	tests.Assert(t, !sortedstrings.Has(c.Info.Nodes, "456"))
+	tests.Assert(t, sortedstrings.Has(c.Info.Volumes, "aabb"))
 
 	c.NodeDelete("123")
 	tests.Assert(t, len(c.Info.Nodes) == 0)
 	tests.Assert(t, len(c.Info.Volumes) == 1)
-	tests.Assert(t, !utils.SortedStringHas(c.Info.Nodes, "123"))
-	tests.Assert(t, !utils.SortedStringHas(c.Info.Nodes, "456"))
-	tests.Assert(t, utils.SortedStringHas(c.Info.Volumes, "aabb"))
+	tests.Assert(t, !sortedstrings.Has(c.Info.Nodes, "123"))
+	tests.Assert(t, !sortedstrings.Has(c.Info.Nodes, "456"))
+	tests.Assert(t, sortedstrings.Has(c.Info.Volumes, "aabb"))
 
 	c.VolumeDelete("123")
 	tests.Assert(t, len(c.Info.Nodes) == 0)
 	tests.Assert(t, len(c.Info.Volumes) == 1)
-	tests.Assert(t, !utils.SortedStringHas(c.Info.Nodes, "123"))
-	tests.Assert(t, !utils.SortedStringHas(c.Info.Nodes, "456"))
-	tests.Assert(t, utils.SortedStringHas(c.Info.Volumes, "aabb"))
+	tests.Assert(t, !sortedstrings.Has(c.Info.Nodes, "123"))
+	tests.Assert(t, !sortedstrings.Has(c.Info.Nodes, "456"))
+	tests.Assert(t, sortedstrings.Has(c.Info.Volumes, "aabb"))
 
 	c.VolumeDelete("aabb")
 	tests.Assert(t, len(c.Info.Nodes) == 0)
 	tests.Assert(t, len(c.Info.Volumes) == 0)
-	tests.Assert(t, !utils.SortedStringHas(c.Info.Nodes, "123"))
-	tests.Assert(t, !utils.SortedStringHas(c.Info.Nodes, "456"))
-	tests.Assert(t, !utils.SortedStringHas(c.Info.Volumes, "aabb"))
+	tests.Assert(t, !sortedstrings.Has(c.Info.Nodes, "123"))
+	tests.Assert(t, !sortedstrings.Has(c.Info.Nodes, "456"))
+	tests.Assert(t, !sortedstrings.Has(c.Info.Volumes, "aabb"))
 }
 
 func TestNewClusterEntryFromIdNotFound(t *testing.T) {
@@ -203,9 +203,9 @@ func TestNewClusterEntryFromId(t *testing.T) {
 	tests.Assert(t, cluster.Info.Id == c.Info.Id)
 	tests.Assert(t, len(c.Info.Nodes) == 2)
 	tests.Assert(t, len(c.Info.Volumes) == 1)
-	tests.Assert(t, utils.SortedStringHas(c.Info.Nodes, "node_abc"))
-	tests.Assert(t, utils.SortedStringHas(c.Info.Nodes, "node_def"))
-	tests.Assert(t, utils.SortedStringHas(c.Info.Volumes, "vol_abc"))
+	tests.Assert(t, sortedstrings.Has(c.Info.Nodes, "node_abc"))
+	tests.Assert(t, sortedstrings.Has(c.Info.Nodes, "node_def"))
+	tests.Assert(t, sortedstrings.Has(c.Info.Volumes, "vol_abc"))
 
 }
 
@@ -250,9 +250,9 @@ func TestNewClusterEntrySaveDelete(t *testing.T) {
 	tests.Assert(t, cluster.Info.Id == c.Info.Id)
 	tests.Assert(t, len(c.Info.Nodes) == 2)
 	tests.Assert(t, len(c.Info.Volumes) == 1)
-	tests.Assert(t, utils.SortedStringHas(c.Info.Nodes, "node_abc"))
-	tests.Assert(t, utils.SortedStringHas(c.Info.Nodes, "node_def"))
-	tests.Assert(t, utils.SortedStringHas(c.Info.Volumes, "vol_abc"))
+	tests.Assert(t, sortedstrings.Has(c.Info.Nodes, "node_abc"))
+	tests.Assert(t, sortedstrings.Has(c.Info.Nodes, "node_def"))
+	tests.Assert(t, sortedstrings.Has(c.Info.Volumes, "vol_abc"))
 
 	// Delete entry which has devices
 	err = app.db.Update(func(tx *bolt.Tx) error {

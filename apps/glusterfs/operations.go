@@ -701,18 +701,20 @@ func (bvc *BlockVolumeCreateOperation) Build() error {
 		if err != nil {
 			return err
 		}
-
+		reducedSize := ReduceRawSize(BlockHostingVolumeSize)
 		if len(volumes) > 0 {
 			bvc.bvol.Info.BlockHostingVolume = volumes[0].Info.Id
 			bvc.bvol.Info.Cluster = volumes[0].Info.Cluster
-		} else if bvc.bvol.Info.Size > ReduceRawSize(BlockHostingVolumeSize) {
+		} else if bvc.bvol.Info.Size > reducedSize {
 			return fmt.Errorf("The size configured for "+
 				"automatic creation of block hosting volumes "+
 				"(%v) is too small to host the requested "+
-				"block volume of size %v. Please create a "+
+				"block volume of size %v. The available "+
+				"size on this block hosting volume, minus overhead, is %v. "+
+				"Please create a "+
 				"sufficiently large block hosting volume "+
 				"manually.",
-				BlockHostingVolumeSize, bvc.bvol.Info.Size)
+				BlockHostingVolumeSize, bvc.bvol.Info.Size, reducedSize)
 		} else {
 			if found, err := hasPendingBlockHostingVolume(tx); found {
 				logger.Warning(
@@ -744,6 +746,10 @@ func (bvc *BlockVolumeCreateOperation) Build() error {
 			}
 			bvc.bvol.Info.BlockHostingVolume = vol.Info.Id
 			bvc.bvol.Info.Cluster = vol.Info.Cluster
+		}
+
+		if e := bvc.bvol.saveNewEntry(txdb); e != nil {
+			return e
 		}
 
 		// we've figured out what block-volume, hosting volume, and bricks we
@@ -849,11 +855,13 @@ func (bvc *BlockVolumeCreateOperation) Finalize() error {
 			}
 		}
 
-		// traditionally (that is before operations existed) the block volumes
-		// were updating most of their metadata after exec. This is only
-		// noteworthy because it is different from regular volumes which
-		// do most of those updates upfront.
-		if e := bvc.bvol.saveCreateBlockVolume(txdb); e != nil {
+		// block volume properties are mutated by the results coming
+		// back during exec. These properties need to be saved back
+		// to the db.
+		// This is only noteworthy because it is different from regular
+		// volumes which determines everything up front. Here certain
+		// values are determined by gluster-block commands.
+		if e := bvc.bvol.Save(tx); e != nil {
 			return e
 		}
 
@@ -924,6 +932,11 @@ func (vdel *BlockVolumeDeleteOperation) ResourceUrl() string {
 // marks the db entries as such.
 func (vdel *BlockVolumeDeleteOperation) Build() error {
 	return vdel.db.Update(func(tx *bolt.Tx) error {
+		v, err := NewBlockVolumeEntryFromId(tx, vdel.bvol.Info.Id)
+		if err != nil {
+			return err
+		}
+		vdel.bvol = v
 		if vdel.bvol.Pending.Id != "" {
 			logger.LogError("Pending block volume %v can not be deleted",
 				vdel.bvol.Info.Id)
@@ -931,6 +944,9 @@ func (vdel *BlockVolumeDeleteOperation) Build() error {
 		}
 		vdel.op.RecordDeleteBlockVolume(vdel.bvol)
 		if e := vdel.op.Save(tx); e != nil {
+			return e
+		}
+		if e := vdel.bvol.Save(tx); e != nil {
 			return e
 		}
 		return nil

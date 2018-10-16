@@ -18,6 +18,7 @@ type Executor interface {
 	DeviceSetup(host, device, vgid string, destroy bool) (*DeviceInfo, error)
 	GetDeviceInfo(host, device, vgid string) (*DeviceInfo, error)
 	DeviceTeardown(host, device, vgid string) error
+	DeviceForget(host, device, vgid string) error
 	BrickCreate(host string, brick *BrickRequest) (*BrickInfo, error)
 	BrickDestroy(host string, brick *BrickRequest) (bool, error)
 	VolumeCreate(host string, volume *VolumeRequest) (*Volume, error)
@@ -55,6 +56,13 @@ type DeviceInfo struct {
 	ExtentSize uint64
 }
 
+type BrickFormatType int
+
+const (
+	NormalFormat BrickFormatType = iota
+	ArbiterFormat
+)
+
 // Brick description
 type BrickRequest struct {
 	VgId             string
@@ -68,6 +76,7 @@ type BrickRequest struct {
 	// lvm names
 	TpName string
 	LvName string
+	Format BrickFormatType
 }
 
 // Returns information about the location of the brick
