@@ -932,6 +932,11 @@ func (vdel *BlockVolumeDeleteOperation) ResourceUrl() string {
 // marks the db entries as such.
 func (vdel *BlockVolumeDeleteOperation) Build() error {
 	return vdel.db.Update(func(tx *bolt.Tx) error {
+		v, err := NewBlockVolumeEntryFromId(tx, vdel.bvol.Info.Id)
+		if err != nil {
+			return err
+		}
+		vdel.bvol = v
 		if vdel.bvol.Pending.Id != "" {
 			logger.LogError("Pending block volume %v can not be deleted",
 				vdel.bvol.Info.Id)
@@ -939,6 +944,9 @@ func (vdel *BlockVolumeDeleteOperation) Build() error {
 		}
 		vdel.op.RecordDeleteBlockVolume(vdel.bvol)
 		if e := vdel.op.Save(tx); e != nil {
+			return e
+		}
+		if e := vdel.bvol.Save(tx); e != nil {
 			return e
 		}
 		return nil

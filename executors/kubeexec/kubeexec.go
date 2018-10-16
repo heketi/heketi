@@ -26,7 +26,7 @@ import (
 
 	"github.com/heketi/heketi/executors/cmdexec"
 	"github.com/heketi/heketi/pkg/kubernetes"
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/logging"
 	"github.com/lpabon/godbc"
 )
 
@@ -46,7 +46,7 @@ type KubeExecutor struct {
 }
 
 var (
-	logger          = utils.NewLogger("[kubeexec]", utils.LEVEL_DEBUG)
+	logger          = logging.NewLogger("[kubeexec]", logging.LEVEL_DEBUG)
 	inClusterConfig = func() (*restclient.Config, error) {
 		return restclient.InClusterConfig()
 	}

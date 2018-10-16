@@ -14,7 +14,7 @@ import (
 	"testing"
 
 	"github.com/heketi/heketi/executors/cmdexec"
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/logging"
 	"github.com/heketi/tests"
 )
 
@@ -51,7 +51,7 @@ func TestNewSshExec(t *testing.T) {
 
 	f := NewFakeSsh()
 	defer tests.Patch(&sshNew,
-		func(logger *utils.Logger, user string, file string) (Ssher, error) {
+		func(logger *logging.Logger, user string, file string) (Ssher, error) {
 			return f, nil
 		}).Restore()
 
@@ -78,7 +78,7 @@ func TestSshExecRebalanceOnExpansion(t *testing.T) {
 
 	f := NewFakeSsh()
 	defer tests.Patch(&sshNew,
-		func(logger *utils.Logger, user string, file string) (Ssher, error) {
+		func(logger *logging.Logger, user string, file string) (Ssher, error) {
 			return f, nil
 		}).Restore()
 
@@ -126,7 +126,7 @@ func TestSshExecRebalanceOnExpansion(t *testing.T) {
 func TestNewSshExecDefaults(t *testing.T) {
 	f := NewFakeSsh()
 	defer tests.Patch(&sshNew,
-		func(logger *utils.Logger, user string, file string) (Ssher, error) {
+		func(logger *logging.Logger, user string, file string) (Ssher, error) {
 			return f, nil
 		}).Restore()
 
@@ -157,7 +157,7 @@ func TestSshExecutorEnvVariables(t *testing.T) {
 
 	f := NewFakeSsh()
 	defer tests.Patch(&sshNew,
-		func(logger *utils.Logger, user string, file string) (Ssher, error) {
+		func(logger *logging.Logger, user string, file string) (Ssher, error) {
 			return f, nil
 		}).Restore()
 

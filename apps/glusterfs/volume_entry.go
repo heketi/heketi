@@ -22,6 +22,9 @@ import (
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/idgen"
+	"github.com/heketi/heketi/pkg/paths"
+	"github.com/heketi/heketi/pkg/sortedstrings"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/lpabon/godbc"
 )
@@ -87,7 +90,7 @@ func NewVolumeEntryFromRequest(req *api.VolumeCreateRequest) *VolumeEntry {
 
 	vol := NewVolumeEntry()
 	vol.Info.Gid = req.Gid
-	vol.Info.Id = utils.GenUUID()
+	vol.Info.Id = idgen.GenUUID()
 	vol.Info.Durability = req.Durability
 	vol.Info.Snapshot = req.Snapshot
 	vol.Info.Size = req.Size
@@ -154,6 +157,18 @@ func NewVolumeEntryFromRequest(req *api.VolumeCreateRequest) *VolumeEntry {
 			vol.GlusterVolumeOptions...)
 	}
 
+	// Add volume options using PreRequestVolumeOptions, this must be
+	// set before volume options from the request are set.
+	preReqVolumeOptions := strings.Split(PreReqVolumeOptions, ",")
+	vol.GlusterVolumeOptions = append(preReqVolumeOptions,
+		vol.GlusterVolumeOptions...)
+
+	// Add volume options using PostRequestVolumeOptions, this must be
+	// set after volume options from the request are set.
+	postReqVolumeOptions := strings.Split(PostReqVolumeOptions, ",")
+	vol.GlusterVolumeOptions = append(vol.GlusterVolumeOptions,
+		postReqVolumeOptions...)
+
 	// If it is zero, then it will be assigned during volume creation
 	vol.Info.Clusters = req.Clusters
 
@@ -175,7 +190,7 @@ func NewVolumeEntryFromId(tx *bolt.Tx, id string) (*VolumeEntry, error) {
 func NewVolumeEntryFromClone(v *VolumeEntry, name string) *VolumeEntry {
 	entry := NewVolumeEntry()
 
-	entry.Info.Id = utils.GenUUID()
+	entry.Info.Id = idgen.GenUUID()
 	if name == "" {
 		entry.Info.Name = "vol_" + entry.Info.Id
 	} else {
@@ -301,14 +316,14 @@ func (v *VolumeEntry) GetAverageFileSize() uint64 {
 }
 
 func (v *VolumeEntry) BrickAdd(id string) {
-	godbc.Require(!utils.SortedStringHas(v.Bricks, id))
+	godbc.Require(!sortedstrings.Has(v.Bricks, id))
 
 	v.Bricks = append(v.Bricks, id)
 	v.Bricks.Sort()
 }
 
 func (v *VolumeEntry) BrickDelete(id string) {
-	v.Bricks = utils.SortedStringsDelete(v.Bricks, id)
+	v.Bricks = sortedstrings.Delete(v.Bricks, id)
 }
 
 func (v *VolumeEntry) Create(db wdb.DB,
@@ -891,7 +906,7 @@ func (v *VolumeEntry) BlockVolumeAdd(id string) {
 }
 
 func (v *VolumeEntry) BlockVolumeDelete(id string) {
-	v.Info.BlockInfo.BlockVolumes = utils.SortedStringsDelete(v.Info.BlockInfo.BlockVolumes, id)
+	v.Info.BlockInfo.BlockVolumes = sortedstrings.Delete(v.Info.BlockInfo.BlockVolumes, id)
 }
 
 // Visible returns true if this volume is meant to be visible to
@@ -1074,7 +1089,7 @@ func updateCloneBrickPaths(bricks []*BrickEntry,
 		logger.Debug("Updating brick %v with new path %v (had %v)",
 			brick.Id(), clonePath, origPath)
 		brick.Info.Path = clonePath
-		brick.LvmLv = utils.VolumeIdToCloneLv(clone.ID)
+		brick.LvmLv = paths.VolumeIdToCloneLv(clone.ID)
 	}
 	return nil
 }

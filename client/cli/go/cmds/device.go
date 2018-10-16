@@ -43,6 +43,8 @@ func init() {
 		"Set the object to this exact set of tags. Overwrites existing tags.")
 	deviceRmTagsCommand.Flags().Bool("all", false,
 		"Remove all tags.")
+	deviceDeleteCommand.Flags().Bool("force-forget", false,
+		"[DANGEROUS] Force heketi to forget a device, regardless of state.")
 	deviceAddCommand.SilenceUsage = true
 	deviceDeleteCommand.SilenceUsage = true
 	deviceRemoveCommand.SilenceUsage = true
@@ -118,6 +120,11 @@ var deviceDeleteCommand = &cobra.Command{
 		//set clusterId
 		deviceId := cmd.Flags().Arg(0)
 
+		forceForget, err := cmd.Flags().GetBool("force-forget")
+		if err != nil {
+			return err
+		}
+
 		// Create a client
 		heketi, err := newHeketiClient()
 		if err != nil {
@@ -125,7 +132,9 @@ var deviceDeleteCommand = &cobra.Command{
 		}
 
 		//set url
-		err = heketi.DeviceDelete(deviceId)
+		var opts api.DeviceDeleteOptions
+		opts.ForceForget = forceForget
+		err = heketi.DeviceDeleteWithOptions(deviceId, &opts)
 		if err == nil {
 			fmt.Fprintf(stdout, "Device %v deleted\n", deviceId)
 		}

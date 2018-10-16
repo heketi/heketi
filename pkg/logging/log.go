@@ -7,14 +7,14 @@
 // cases as published by the Free Software Foundation.
 //
 
-package utils
+package logging
 
 import (
 	"fmt"
 	"io"
 	"log"
 	"os"
-	"runtime"
+	"path/filepath"
 	"strings"
 
 	"github.com/lpabon/godbc"
@@ -45,19 +45,22 @@ type Logger struct {
 }
 
 func logWithLongFile(l *log.Logger, format string, v ...interface{}) {
-	_, file, line, _ := runtime.Caller(2)
+	fun, file, line := TraceSkip(2)
 
 	// Shorten the path.
 	// From
 	// /builddir/build/BUILD/heketi-3f4a5b1b6edff87232e8b24533c53b4151ebd9c7/src/github.com/heketi/heketi/apps/glusterfs/volume_entry.go
 	// to
-	// src/github.com/heketi/heketi/apps/glusterfs/volume_entry.go
-	i := strings.Index(file, "/src/")
+	// apps/glusterfs/volume_entry.go
+	const basePath = "github.com/heketi/"
+	i := strings.Index(file, basePath)
 	if i == -1 {
 		i = 0
+	} else {
+		i += len(basePath)
 	}
 
-	l.Print(fmt.Sprintf("%v:%v: ", file[i:], line) +
+	l.Print(fmt.Sprintf("%v:%v:%v: ", file[i:], line, filepath.Base(fun)) +
 		fmt.Sprintf(format, v...))
 }
 

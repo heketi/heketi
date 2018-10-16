@@ -22,6 +22,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/sortedstrings"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
 )
@@ -312,21 +313,21 @@ func TestVolumeEntryAddDeleteDevices(t *testing.T) {
 	tests.Assert(t, len(v.Bricks) == 0)
 
 	v.BrickAdd("123")
-	tests.Assert(t, utils.SortedStringHas(v.Bricks, "123"))
+	tests.Assert(t, sortedstrings.Has(v.Bricks, "123"))
 	tests.Assert(t, len(v.Bricks) == 1)
 	v.BrickAdd("abc")
-	tests.Assert(t, utils.SortedStringHas(v.Bricks, "123"))
-	tests.Assert(t, utils.SortedStringHas(v.Bricks, "abc"))
+	tests.Assert(t, sortedstrings.Has(v.Bricks, "123"))
+	tests.Assert(t, sortedstrings.Has(v.Bricks, "abc"))
 	tests.Assert(t, len(v.Bricks) == 2)
 
 	v.BrickDelete("123")
-	tests.Assert(t, !utils.SortedStringHas(v.Bricks, "123"))
-	tests.Assert(t, utils.SortedStringHas(v.Bricks, "abc"))
+	tests.Assert(t, !sortedstrings.Has(v.Bricks, "123"))
+	tests.Assert(t, sortedstrings.Has(v.Bricks, "abc"))
 	tests.Assert(t, len(v.Bricks) == 1)
 
 	v.BrickDelete("ccc")
-	tests.Assert(t, !utils.SortedStringHas(v.Bricks, "123"))
-	tests.Assert(t, utils.SortedStringHas(v.Bricks, "abc"))
+	tests.Assert(t, !sortedstrings.Has(v.Bricks, "123"))
+	tests.Assert(t, sortedstrings.Has(v.Bricks, "abc"))
 	tests.Assert(t, len(v.Bricks) == 1)
 }
 
@@ -678,7 +679,7 @@ func TestVolumeEntryCreateTwoBricks(t *testing.T) {
 
 	// Check mount information
 	host := strings.Split(info.Mount.GlusterFS.MountPoint, ":")[0]
-	tests.Assert(t, utils.SortedStringHas(nodelist, host), host, nodelist)
+	tests.Assert(t, sortedstrings.Has(nodelist, host), host, nodelist)
 	volfileServers := strings.Split(info.Mount.GlusterFS.Options["backup-volfile-servers"], ",")
 	for index, node := range volfileServers {
 		tests.Assert(t, node != host, index, node, host)
@@ -786,7 +787,7 @@ func TestVolumeEntryCreateBrickDivision(t *testing.T) {
 
 	// Check mount information
 	host := strings.Split(info.Mount.GlusterFS.MountPoint, ":")[0]
-	tests.Assert(t, utils.SortedStringHas(nodelist, host), host, nodelist)
+	tests.Assert(t, sortedstrings.Has(nodelist, host), host, nodelist)
 	volfileServers := strings.Split(info.Mount.GlusterFS.Options["backup-volfile-servers"], ",")
 	for index, node := range volfileServers {
 		tests.Assert(t, node != host, index, node, host)
@@ -922,7 +923,7 @@ func TestVolumeEntryCreateOnClustersRequested(t *testing.T) {
 
 	})
 	tests.Assert(t, err == nil)
-	tests.Assert(t, utils.SortedStringHas(clusterset, info.Cluster))
+	tests.Assert(t, sortedstrings.Has(clusterset, info.Cluster))
 
 }
 
@@ -1688,7 +1689,7 @@ func TestNewVolumeEntryWithVolumeOptions(t *testing.T) {
 	tests.Assert(t, v.Info.Size == 1024)
 	tests.Assert(t, len(v.Info.Id) != 0)
 	tests.Assert(t, len(v.Bricks) == 0)
-	tests.Assert(t, v.GlusterVolumeOptions[0] == "test-option")
+	tests.Assert(t, strings.Contains(strings.Join(v.GlusterVolumeOptions, ","), "test-option"))
 
 	err = v.Create(app.db, app.executor)
 	logger.Info("%v", v.Info.Cluster)
@@ -1702,7 +1703,7 @@ func TestNewVolumeEntryWithVolumeOptions(t *testing.T) {
 				Get([]byte(v.Info.Id)))
 	})
 	tests.Assert(t, err == nil)
-	tests.Assert(t, entry.GlusterVolumeOptions[0] == "test-option")
+	tests.Assert(t, strings.Contains(strings.Join(entry.GlusterVolumeOptions, ","), "test-option"))
 
 }
 func TestNewVolumeEntryWithTSPForMountHosts(t *testing.T) {

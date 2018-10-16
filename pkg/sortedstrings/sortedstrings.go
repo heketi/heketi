@@ -7,14 +7,15 @@
 // cases as published by the Free Software Foundation.
 //
 
-package utils
+package sortedstrings
 
 import (
 	"sort"
 )
 
-// Check if a sorted string list has a string
-func SortedStringHas(s sort.StringSlice, x string) bool {
+// Has returns true if string x is found in the sorted
+// string slice provided.
+func Has(s sort.StringSlice, x string) bool {
 	index := s.Search(x)
 	if index == len(s) {
 		return false
@@ -22,8 +23,9 @@ func SortedStringHas(s sort.StringSlice, x string) bool {
 	return s[s.Search(x)] == x
 }
 
-// Delete a string from a sorted string list
-func SortedStringsDelete(s sort.StringSlice, x string) sort.StringSlice {
+// Delete removes string x from a sorted string slice, returning
+// the altered string slice.
+func Delete(s sort.StringSlice, x string) sort.StringSlice {
 	index := s.Search(x)
 	if len(s) != index && s[index] == x {
 		s = append(s[:index], s[index+1:]...)

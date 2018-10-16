@@ -7,7 +7,7 @@
 // cases as published by the Free Software Foundation.
 //
 
-package utils
+package idgen
 
 import (
 	"strings"

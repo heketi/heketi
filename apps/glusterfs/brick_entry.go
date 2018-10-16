@@ -18,7 +18,8 @@ import (
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/idgen"
+	"github.com/heketi/heketi/pkg/paths"
 	"github.com/lpabon/godbc"
 )
 
@@ -61,12 +62,12 @@ func NewBrickEntry(size, tpsize, poolMetadataSize uint64,
 	entry.gidRequested = gid
 	entry.TpSize = tpsize
 	entry.PoolMetadataSize = poolMetadataSize
-	entry.Info.Id = utils.GenUUID()
+	entry.Info.Id = idgen.GenUUID()
 	entry.Info.Size = size
 	entry.Info.NodeId = nodeid
 	entry.Info.DeviceId = deviceid
 	entry.Info.VolumeId = volumeid
-	entry.LvmThinPool = utils.BrickIdToThinPoolName(entry.Info.Id)
+	entry.LvmThinPool = paths.BrickIdToThinPoolName(entry.Info.Id)
 	entry.UpdatePath()
 
 	godbc.Ensure(entry.Info.Id != "")
@@ -100,10 +101,10 @@ func CloneBrickEntryFromId(tx *bolt.Tx, id string) (*BrickEntry, error) {
 		return nil, err
 	}
 
-	entry.Info.Id = utils.GenUUID()
+	entry.Info.Id = idgen.GenUUID()
 	// bricks always share a thin pool with the original brick
 	if entry.LvmThinPool == "" {
-		entry.LvmThinPool = utils.BrickIdToThinPoolName(entry.Info.Id)
+		entry.LvmThinPool = paths.BrickIdToThinPoolName(entry.Info.Id)
 	}
 	// brick clones have their own lv name (not yet known)
 	entry.LvmLv = ""
@@ -212,7 +213,7 @@ func (b *BrickEntry) Create(db wdb.RODB, executor executors.Executor) error {
 
 	req := b.brickRequest(b.Info.Path, true)
 	// remove this some time post-refactoring
-	godbc.Require(req.Path == utils.BrickPath(req.VgId, req.Name))
+	godbc.Require(req.Path == paths.BrickPath(req.VgId, req.Name))
 
 	// Create brick on node
 	logger.Info("Creating brick %v", b.Info.Id)
@@ -350,7 +351,7 @@ func addSubTypeFieldFlagForBrickEntry(tx *bolt.Tx) error {
 }
 
 func (b *BrickEntry) UpdatePath() {
-	b.Info.Path = utils.BrickPath(b.Info.DeviceId, b.Info.Id)
+	b.Info.Path = paths.BrickPath(b.Info.DeviceId, b.Info.Id)
 }
 
 func (b *BrickEntry) RemoveFromDevice(tx *bolt.Tx) error {
@@ -380,7 +381,7 @@ func (b *BrickEntry) TpName() string {
 	if b.LvmThinPool != "" {
 		return b.LvmThinPool
 	}
-	return utils.BrickIdToThinPoolName(b.Info.Id)
+	return paths.BrickIdToThinPoolName(b.Info.Id)
 }
 
 // LvName returns the expected name of the lvm lv that stores
@@ -389,7 +390,7 @@ func (b *BrickEntry) LvName() string {
 	if b.LvmLv != "" {
 		return b.LvmLv
 	}
-	return utils.BrickIdToName(b.Info.Id)
+	return paths.BrickIdToName(b.Info.Id)
 }
 
 // BrickType returns the sub-type of a brick. SubType helps determine
