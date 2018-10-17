@@ -12,6 +12,7 @@ package cmdexec
 import (
 	"testing"
 
+	rex "github.com/heketi/heketi/pkg/remoteexec"
 	"github.com/heketi/tests"
 )
 
@@ -25,7 +26,7 @@ func TestSshExecPeerProbe(t *testing.T) {
 	f.FakeConnectAndExec = func(host string,
 		commands []string,
 		timeoutMinutes int,
-		useSudo bool) ([]string, error) {
+		useSudo bool) (rex.Results, error) {
 
 		tests.Assert(t, host == "host:22", host)
 		tests.Assert(t, len(commands) == 1)
@@ -49,7 +50,7 @@ func TestSshExecPeerProbe(t *testing.T) {
 	f.FakeConnectAndExec = func(host string,
 		commands []string,
 		timeoutMinutes int,
-		useSudo bool) ([]string, error) {
+		useSudo bool) (rex.Results, error) {
 
 		switch count {
 		case 0:
@@ -87,7 +88,7 @@ func TestSshExecGlusterdCheck(t *testing.T) {
 	f.FakeConnectAndExec = func(host string,
 		commands []string,
 		timeoutMinutes int,
-		useSudo bool) ([]string, error) {
+		useSudo bool) (rex.Results, error) {
 
 		tests.Assert(t, host == "newhost:22", host)
 		tests.Assert(t, len(commands) == 1)
