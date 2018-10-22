@@ -13,6 +13,7 @@ import (
 	"sync"
 
 	"github.com/heketi/heketi/pkg/logging"
+	rex "github.com/heketi/heketi/pkg/remoteexec"
 )
 
 var (
@@ -21,6 +22,7 @@ var (
 
 type RemoteCommandTransport interface {
 	RemoteCommandExecute(host string, commands []string, timeoutMinutes int) ([]string, error)
+	ExecCommands(host string, commands []string, timeoutMinutes int) (rex.Results, error)
 	RebalanceOnExpansion() bool
 	SnapShotLimit() int
 }
