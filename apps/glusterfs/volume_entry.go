@@ -547,24 +547,6 @@ func (v *VolumeEntry) cleanupCreateVolume(db wdb.DB,
 	})
 }
 
-func (v *VolumeEntry) createOneShot(db wdb.DB,
-	executor executors.Executor) (e error) {
-
-	var brick_entries []*BrickEntry
-	// On any error, remove the volume
-	defer func() {
-		if e != nil {
-			v.cleanupCreateVolume(db, executor, brick_entries)
-		}
-	}()
-
-	brick_entries, e = v.createVolumeComponents(db)
-	if e != nil {
-		return e
-	}
-	return v.createVolumeExec(db, executor, brick_entries)
-}
-
 func (v *VolumeEntry) createVolumeComponents(db wdb.DB) (
 	brick_entries []*BrickEntry, e error) {
 
