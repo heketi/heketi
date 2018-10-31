@@ -358,6 +358,9 @@ Cluster Id: {{.Id}}
 	Zone: {{.Zone}}
 	Management Hostnames: {{join .Hostnames.Manage ", "}}
 	Storage Hostnames: {{join .Hostnames.Storage ", "}}
+{{- if len .Tags | ne 0 }}
+	Tags:{{range $tk, $tv := .Tags }} {{$tk}}:{{$tv -}}{{end}}
+{{end}}
 	Devices:
 {{- range .DevicesInfo}}
 		Id:{{.Id | printf "%-35v" -}}
@@ -366,6 +369,9 @@ Cluster Id: {{.Id}}
 		Size (GiB):{{kibToGib .Storage.Total | printf "%-8v" -}}
 		Used (GiB):{{kibToGib .Storage.Used | printf "%-8v" -}}
 		Free (GiB):{{kibToGib .Storage.Free | printf "%-8v"}}
+{{- if len .Tags | ne 0 }}
+			Tags:{{range $tk, $tv := .Tags }} {{$tk}}:{{$tv -}}{{end}}
+{{end}}
 			Bricks:
 {{- range .Bricks}}
 				Id:{{.Id | printf "%-35v" -}}
