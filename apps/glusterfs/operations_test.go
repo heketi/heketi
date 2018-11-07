@@ -718,6 +718,11 @@ func TestVolumeDeleteOperationTwice(t *testing.T) {
 		po, e := PendingOperationList(tx)
 		tests.Assert(t, e == nil, "expected e == nil, got", e)
 		tests.Assert(t, len(po) == 1, "expected len(po) == 1, got:", len(po))
+
+		// check that the volume is pending in the db
+		v, e := NewVolumeEntryFromId(tx, vol.Info.Id)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, v.Pending.Id != "", "expected v to be pending")
 		return nil
 	})
 
