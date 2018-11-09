@@ -31,8 +31,9 @@ const (
 
 // define constants for OperationStatus
 const (
-	NewOperation   OperationStatus = ""
-	StaleOperation OperationStatus = "stale"
+	NewOperation    OperationStatus = ""
+	StaleOperation  OperationStatus = "stale"
+	FailedOperation OperationStatus = "failed"
 )
 
 var (
