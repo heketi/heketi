@@ -88,6 +88,24 @@ type Operation interface {
 	MaxRetries() int
 }
 
+// CleanableOperation is any operation that can be automatically cleaned
+// up at a later point in time after the initial run of the operation
+// was terminated due to error or server restart.
+type CleanableOperation interface {
+	Operation
+
+	// Clean functions undo or finish an operation's activity on
+	// the storage system. The logic of the clean function must
+	// be capable of being interrupted and restarted.
+	// This function must not write to the db.
+	Clean(executors.Executor) error
+	// CleanDone removes the pending operation from the DB.
+	// This function is only to be called after Clean has completed
+	// successfully to remove pending operation state used to
+	// clean up the operation.
+	CleanDone() error
+}
+
 type noRetriesOperation struct{}
 
 func (n *noRetriesOperation) MaxRetries() int {
