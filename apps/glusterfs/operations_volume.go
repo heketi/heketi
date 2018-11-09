@@ -42,6 +42,31 @@ func NewVolumeCreateOperation(
 	}
 }
 
+// loadVolumeCreateOperation returns a VolumeCreateOperation populated
+// from an existing pending operation entry in the db.
+func loadVolumeCreateOperation(
+	db wdb.DB, p *PendingOperationEntry) (*VolumeCreateOperation, error) {
+
+	vols, err := volumesFromOp(db, p)
+	if err != nil {
+		return nil, err
+	}
+	if len(vols) != 1 {
+		return nil, fmt.Errorf(
+			"Incorrect number of volumes (%v) for create operation: %v",
+			len(vols), p.Id)
+	}
+
+	return &VolumeCreateOperation{
+		OperationManager: OperationManager{
+			db: db,
+			op: p,
+		},
+		maxRetries: VOLUME_MAX_RETRIES,
+		vol:        vols[0],
+	}, nil
+}
+
 func (vc *VolumeCreateOperation) Label() string {
 	return "Create Volume"
 }
