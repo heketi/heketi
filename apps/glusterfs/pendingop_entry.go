@@ -357,3 +357,26 @@ func PendingOperationStateCount(tx *bolt.Tx) (map[OperationStatus]int, error) {
 	}
 	return count, nil
 }
+
+// PendingOperationEntrySelection returns all pending operation entries in
+// the database that match the selection function `sel`.
+func PendingOperationEntrySelection(
+	tx *bolt.Tx,
+	sel func(*PendingOperationEntry) bool) ([]*PendingOperationEntry, error) {
+
+	selection := []*PendingOperationEntry{}
+	pops, err := PendingOperationList(tx)
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range pops {
+		pop, err := NewPendingOperationEntryFromId(tx, id)
+		if err != nil {
+			return nil, err
+		}
+		if sel(pop) {
+			selection = append(selection, pop)
+		}
+	}
+	return selection, nil
+}
