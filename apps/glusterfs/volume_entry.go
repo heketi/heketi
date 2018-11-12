@@ -476,6 +476,24 @@ func (v *VolumeEntry) tryAllocateBricks(
 	return
 }
 
+func (v *VolumeEntry) destroyVolumeFromHost(
+	executor executors.Executor, h string) error {
+
+	err := executor.VolumeDestroy(h, v.Info.Name)
+	switch {
+	case err == nil:
+		// no errors, so we just deleted the volume from gluster
+		return nil
+	case strings.Contains(err.Error(), "does not exist"):
+		// we asked gluster to delete a volume that already does not exist
+		return nil
+	default:
+		logger.Warning("failed to delete volume %v via %v: %v",
+			v.Info.Id, h, err)
+		return err
+	}
+}
+
 func (v *VolumeEntry) destroyGlusterVolume(
 	db wdb.RODB, executor executors.Executor) error {
 
@@ -484,19 +502,7 @@ func (v *VolumeEntry) destroyGlusterVolume(
 		return err
 	}
 	err = newTryOnHosts(hosts).run(func(h string) error {
-		err := executor.VolumeDestroy(h, v.Info.Name)
-		switch {
-		case err == nil:
-			// no errors, so we just deleted the volume from gluster
-			return nil
-		case strings.Contains(err.Error(), "does not exist"):
-			// we asked gluster to delete a volume that already does not exist
-			return nil
-		default:
-			logger.Warning("failed to delete volume %v via %v: %v",
-				v.Info.Id, h, err)
-			return err
-		}
+		return v.destroyVolumeFromHost(executor, h)
 	})
 	if err != nil {
 		logger.LogError("failed to delete volume in cleanup: %v", err)
