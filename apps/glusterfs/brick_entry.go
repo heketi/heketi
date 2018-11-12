@@ -259,28 +259,6 @@ func (b *BrickEntry) Destroy(db wdb.RODB, executor executors.Executor) (bool, er
 	return spaceReclaimed, nil
 }
 
-func (b *BrickEntry) DestroyCheck(db wdb.RODB, executor executors.Executor) error {
-	godbc.Require(db != nil)
-	godbc.Require(b.TpSize > 0)
-	godbc.Require(b.Info.Size > 0)
-
-	// Get node hostname
-	var host string
-	err := db.View(func(tx *bolt.Tx) error {
-		node, err := NewNodeEntryFromId(tx, b.Info.NodeId)
-		if err != nil {
-			return err
-		}
-
-		host = node.ManageHostName()
-		godbc.Check(host != "")
-		return nil
-	})
-
-	// TODO: any additional checks in the DB? The detection of the VG/LV and its users is done in cmdexec.BrickDestroy()
-	return err
-}
-
 // Size consumed on device
 func (b *BrickEntry) TotalSize() uint64 {
 	return b.TpSize + b.PoolMetadataSize

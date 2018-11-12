@@ -25,7 +25,6 @@ import (
 	"github.com/heketi/heketi/pkg/idgen"
 	"github.com/heketi/heketi/pkg/paths"
 	"github.com/heketi/heketi/pkg/sortedstrings"
-	"github.com/heketi/heketi/pkg/utils"
 	"github.com/lpabon/godbc"
 )
 
@@ -636,13 +635,6 @@ func (v *VolumeEntry) deleteVolumeExec(db wdb.RODB,
 		}
 	}
 
-	// Determine if the bricks can be destroyed
-	err = v.checkBricksCanBeDestroyed(db, executor, brick_entries)
-	if err != nil {
-		logger.Err(err)
-		return nil, err
-	}
-
 	if volumePresent {
 		// :TODO: What if the host is no longer available, we may need to try others
 		// Stop volume
@@ -843,30 +835,6 @@ func (v *VolumeEntry) BricksIds() sort.StringSlice {
 	ids := make(sort.StringSlice, len(v.Bricks))
 	copy(ids, v.Bricks)
 	return ids
-}
-
-func (v *VolumeEntry) checkBricksCanBeDestroyed(db wdb.RODB,
-	executor executors.Executor,
-	brick_entries []*BrickEntry) error {
-
-	sg := utils.NewStatusGroup()
-
-	// Create a goroutine for each brick
-	for _, brick := range brick_entries {
-		sg.Add(1)
-		go func(b *BrickEntry) {
-			defer sg.Done()
-			sg.Err(b.DestroyCheck(db, executor))
-		}(brick)
-	}
-
-	// Wait here until all goroutines have returned.  If
-	// any of errored, it would be cought here
-	err := sg.Result()
-	if err != nil {
-		logger.Err(err)
-	}
-	return err
 }
 
 func VolumeEntryUpgrade(tx *bolt.Tx) error {
