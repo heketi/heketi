@@ -448,30 +448,7 @@ func (vdel *VolumeDeleteOperation) Finalize() error {
 			return err
 		}
 
-		// update the device' free/used space after removing bricks
-		for _, b := range brick_entries {
-			for dev_id, reclaimed := range vdel.reclaimed {
-				if b.Info.DeviceId != dev_id {
-					continue
-				}
-				if !reclaimed {
-					// nothing reclaimed, no need to update the DeviceEntry
-					continue
-				}
-
-				device, err := NewDeviceEntryFromId(tx, dev_id)
-				if err != nil {
-					logger.Err(err)
-					return err
-				}
-
-				// Deallocate space on device
-				device.StorageFree(device.SpaceNeeded(b.Info.Size, float64(vdel.vol.Info.Snapshot.Factor)).Total)
-				device.Save(tx)
-			}
-		}
-
-		if err := vdel.vol.saveDeleteVolume(txdb, brick_entries); err != nil {
+		if err := vdel.vol.teardown(txdb, brick_entries, vdel.reclaimed); err != nil {
 			return err
 		}
 
