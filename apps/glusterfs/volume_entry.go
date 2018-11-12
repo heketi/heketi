@@ -505,20 +505,9 @@ func (v *VolumeEntry) destroyGlusterVolume(
 	return nil
 }
 
-func (v *VolumeEntry) cleanupCreateVolume(db wdb.DB,
-	executor executors.Executor,
-	brick_entries []*BrickEntry) error {
+func (v *VolumeEntry) teardown(
+	db wdb.DB, brick_entries []*BrickEntry, reclaimed ReclaimMap) error {
 
-	if err := v.destroyGlusterVolume(db, executor); err != nil {
-		return err
-	}
-
-	// from a quick read its "safe" to unconditionally try to delete
-	// bricks. TODO: find out if that is true with functional tests
-	reclaimed, err := DestroyBricks(db, executor, brick_entries)
-	if err != nil {
-		logger.LogError("failed to destory bricks during cleanup: %v", err)
-	}
 	return db.Update(func(tx *bolt.Tx) error {
 		for _, brick := range brick_entries {
 			v.removeBrickFromDb(tx, brick)
@@ -553,6 +542,23 @@ func (v *VolumeEntry) cleanupCreateVolume(db wdb.DB,
 		v.Delete(tx)
 		return nil
 	})
+}
+
+func (v *VolumeEntry) cleanupCreateVolume(db wdb.DB,
+	executor executors.Executor,
+	brick_entries []*BrickEntry) error {
+
+	if err := v.destroyGlusterVolume(db, executor); err != nil {
+		return err
+	}
+
+	// from a quick read its "safe" to unconditionally try to delete
+	// bricks. TODO: find out if that is true with functional tests
+	reclaimed, err := DestroyBricks(db, executor, brick_entries)
+	if err != nil {
+		logger.LogError("failed to destory bricks during cleanup: %v", err)
+	}
+	return v.teardown(db, brick_entries, reclaimed)
 }
 
 func (v *VolumeEntry) createVolumeComponents(db wdb.DB) (
