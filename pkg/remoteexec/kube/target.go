@@ -11,6 +11,7 @@ package kube
 
 import (
 	"fmt"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -77,8 +78,12 @@ func (t TargetLabel) GetTargetPod(k *KubeConn) (TargetPod, error) {
 
 	} else if numPods > 1 {
 		// There are more than one pod with the same label
-		err := fmt.Errorf("Found %v pods with the sharing the same label '%v=%v'",
-			numPods, t.Key, t.Value)
+		names := make([]string, numPods)
+		for i, p := range pods.Items {
+			names[i] = p.Name
+		}
+		err := fmt.Errorf("Found %v pods sharing the same label '%v=%v': %v",
+			numPods, t.Key, t.Value, strings.Join(names, ", "))
 		k.logger.Critical(err.Error())
 		return tp, err
 	}
