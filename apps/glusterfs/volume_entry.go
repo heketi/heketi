@@ -476,9 +476,8 @@ func (v *VolumeEntry) tryAllocateBricks(
 	return
 }
 
-func (v *VolumeEntry) cleanupCreateVolume(db wdb.DB,
-	executor executors.Executor,
-	brick_entries []*BrickEntry) error {
+func (v *VolumeEntry) destroyGlusterVolume(
+	db wdb.RODB, executor executors.Executor) error {
 
 	hosts, err := v.hosts(db)
 	if err != nil {
@@ -502,6 +501,16 @@ func (v *VolumeEntry) cleanupCreateVolume(db wdb.DB,
 	if err != nil {
 		logger.LogError("failed to delete volume in cleanup: %v", err)
 		return fmt.Errorf("failed to clean up volume: %v", v.Info.Id)
+	}
+	return nil
+}
+
+func (v *VolumeEntry) cleanupCreateVolume(db wdb.DB,
+	executor executors.Executor,
+	brick_entries []*BrickEntry) error {
+
+	if err := v.destroyGlusterVolume(db, executor); err != nil {
+		return err
 	}
 
 	// from a quick read its "safe" to unconditionally try to delete
