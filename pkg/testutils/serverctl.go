@@ -118,6 +118,9 @@ func (s *ServerCtl) IsAlive() bool {
 }
 
 func (s *ServerCtl) Stop() error {
+	// close the log file fd after stopping heketi (or if stop fails)
+	// this is needed in case the process has already died for some reason
+	defer s.logF.Close()
 	if err := s.cmd.Process.Signal(os.Interrupt); err != nil {
 		return err
 	}
@@ -127,7 +130,6 @@ func (s *ServerCtl) Stop() error {
 			return err
 		}
 	}
-	s.logF.Close()
 	return nil
 }
 
