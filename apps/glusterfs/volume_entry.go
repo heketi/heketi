@@ -511,45 +511,6 @@ func (v *VolumeEntry) destroyGlusterVolume(
 	return nil
 }
 
-func (v *VolumeEntry) teardown(
-	db wdb.DB, brick_entries []*BrickEntry, reclaimed ReclaimMap) error {
-
-	return db.Update(func(tx *bolt.Tx) error {
-		for _, brick := range brick_entries {
-			v.removeBrickFromDb(tx, brick)
-		}
-		// update the device' free/used space after removing bricks
-		for _, b := range brick_entries {
-			if reclaim, found := reclaimed[b.Info.DeviceId]; found {
-				if !reclaim {
-					// nothing reclaimed, no need to update the DeviceEntry
-					continue
-				}
-
-				device, err := NewDeviceEntryFromId(tx, b.Info.DeviceId)
-				if err != nil {
-					logger.Err(err)
-					return err
-				}
-
-				// Deallocate space on device
-				device.StorageFree(device.SpaceNeeded(b.Info.Size, float64(v.Info.Snapshot.Factor)).Total)
-				device.Save(tx)
-			}
-		}
-
-		if v.Info.Cluster != "" {
-			cluster, err := NewClusterEntryFromId(tx, v.Info.Cluster)
-			if err == nil {
-				cluster.VolumeDelete(v.Info.Id)
-				cluster.Save(tx)
-			}
-		}
-		v.Delete(tx)
-		return nil
-	})
-}
-
 func (v *VolumeEntry) cleanupCreateVolume(db wdb.DB,
 	executor executors.Executor,
 	brick_entries []*BrickEntry) error {
@@ -704,38 +665,48 @@ func (v *VolumeEntry) deleteVolumeExec(db wdb.RODB,
 	return space_reclaimed, nil
 }
 
-func (v *VolumeEntry) saveDeleteVolume(db wdb.DB,
-	brick_entries []*BrickEntry) error {
+// teardown removes a volume and the volume's bricks from the database.
+// It updates related objects meta-data such as cluster contents and
+// device used/free sizes.
+func (v *VolumeEntry) teardown(
+	db wdb.DB, brick_entries []*BrickEntry, reclaimed ReclaimMap) error {
 
-	// Remove from entries from the db
 	return db.Update(func(tx *bolt.Tx) error {
 		for _, brick := range brick_entries {
 			err := v.removeBrickFromDb(tx, brick)
 			if err != nil {
-				logger.Err(err)
-				// Everything is destroyed anyways, just keep deleting the others
-				// Do not return here
+				return err
+			}
+		}
+		// update the device' free/used space after removing bricks
+		for _, b := range brick_entries {
+			// if nothing is reclaimed, no need to update the DeviceEntry
+			// reclaim will be true only if space was reclaimed during exec
+			if reclaim := reclaimed[b.Info.DeviceId]; reclaim {
+				device, err := NewDeviceEntryFromId(tx, b.Info.DeviceId)
+				if err != nil {
+					logger.Err(err)
+					return err
+				}
+
+				// Deallocate space on device
+				device.StorageFree(device.SpaceNeeded(b.Info.Size, float64(v.Info.Snapshot.Factor)).Total)
+				device.Save(tx)
 			}
 		}
 
-		// Remove volume from cluster
-		cluster, err := NewClusterEntryFromId(tx, v.Info.Cluster)
-		if err != nil {
-			logger.Err(err)
-			// Do not return here.. keep going
+		if v.Info.Cluster != "" {
+			cluster, err := NewClusterEntryFromId(tx, v.Info.Cluster)
+			if err != nil {
+				return err
+			}
+			cluster.VolumeDelete(v.Info.Id)
+			err = cluster.Save(tx)
+			if err != nil {
+				return err
+			}
 		}
-		cluster.VolumeDelete(v.Info.Id)
-
-		err = cluster.Save(tx)
-		if err != nil {
-			logger.Err(err)
-			// Do not return here.. keep going
-		}
-
-		// Delete volume
-		v.Delete(tx)
-
-		return nil
+		return v.Delete(tx)
 	})
 }
 
