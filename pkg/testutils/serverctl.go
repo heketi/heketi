@@ -102,7 +102,6 @@ func (s *ServerCtl) Start() error {
 	if !s.IsAlive() {
 		return errors.New("server exited early")
 	}
-	// dump some logs if heketi fails to start?
 	return nil
 }
 
