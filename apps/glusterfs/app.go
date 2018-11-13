@@ -664,6 +664,18 @@ func (a *App) ServerReset() error {
 	})
 }
 
+// OfflineCleaner returns an operations cleaner based on the current
+// app object that can be used to perform an offline cleanup.
+// An offline cleanup assumes that the binary is only doing cleanups
+// and nothing else.
+func (a *App) OfflineCleaner() OperationCleaner {
+	return OperationCleaner{
+		db:       a.db,
+		executor: a.executor,
+		sel:      CleanAll,
+	}
+}
+
 // currentNodeHealthStatus returns a map of node ids to the most
 // recently known health status (true is up, false is not up).
 // If a node is not found in the map its status is unknown.
