@@ -205,6 +205,10 @@ func (b *BrickEntry) host(db wdb.RODB) (string, error) {
 	return host, err
 }
 
+func (b *BrickEntry) createReq() *executors.BrickRequest {
+	return b.brickRequest(b.Info.Path, true)
+}
+
 func (b *BrickEntry) Create(db wdb.RODB, executor executors.Executor) error {
 	godbc.Require(db != nil)
 	godbc.Require(b.TpSize > 0)
@@ -215,10 +219,8 @@ func (b *BrickEntry) Create(db wdb.RODB, executor executors.Executor) error {
 	if err != nil {
 		return err
 	}
-	req := b.brickRequest(b.Info.Path, true)
-	// remove this some time post-refactoring
-	godbc.Require(req.Path == paths.BrickPath(req.VgId, req.Name))
 
+	req := b.createReq()
 	// Create brick on node
 	logger.Info("Creating brick %v", b.Info.Id)
 	_, err = executor.BrickCreate(host, req)
@@ -226,6 +228,10 @@ func (b *BrickEntry) Create(db wdb.RODB, executor executors.Executor) error {
 		return err
 	}
 	return nil
+}
+
+func (b *BrickEntry) destroyReq() *executors.BrickRequest {
+	return b.brickRequest(strings.TrimSuffix(b.Info.Path, "/brick"), false)
 }
 
 func (b *BrickEntry) Destroy(db wdb.RODB, executor executors.Executor) (bool, error) {
@@ -238,8 +244,7 @@ func (b *BrickEntry) Destroy(db wdb.RODB, executor executors.Executor) (bool, er
 	if err != nil {
 		return false, err
 	}
-	req := b.brickRequest(
-		strings.TrimSuffix(b.Info.Path, "/brick"), false)
+	req := b.destroyReq()
 
 	// Delete brick on node
 	logger.Info("Deleting brick %v", b.Info.Id)
