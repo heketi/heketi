@@ -40,6 +40,12 @@ func (oc OperationCleaner) Clean() error {
 		if _, ok := err.(ErrNotLoadable); ok {
 			logger.Err(err)
 			continue
+		} else if err == ErrNotFound {
+			// TODO: flag/process pending ops with bad references more sanely
+			// for now, just skip over them
+			logger.LogError("unable to load operation [%v]: %v",
+				pop.Id, err)
+			continue
 		} else if err != nil {
 			return err
 		}
