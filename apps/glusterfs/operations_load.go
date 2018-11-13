@@ -41,6 +41,8 @@ func LoadOperation(
 	switch p.Type {
 	case OperationCreateVolume:
 		op, err = loadVolumeCreateOperation(db, p)
+	case OperationDeleteVolume:
+		op, err = loadVolumeDeleteOperation(db, p)
 	default:
 		err = NewErrNotLoadable(p.Id, p.Type)
 	}
