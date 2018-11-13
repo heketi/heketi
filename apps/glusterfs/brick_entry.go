@@ -189,12 +189,7 @@ func (b *BrickEntry) brickRequest(path string, create bool) *executors.BrickRequ
 	return req
 }
 
-func (b *BrickEntry) Create(db wdb.RODB, executor executors.Executor) error {
-	godbc.Require(db != nil)
-	godbc.Require(b.TpSize > 0)
-	godbc.Require(b.Info.Size > 0)
-	godbc.Require(b.Info.Path != "")
-
+func (b *BrickEntry) host(db wdb.RODB) (string, error) {
 	// Get node hostname
 	var host string
 	err := db.View(func(tx *bolt.Tx) error {
@@ -207,10 +202,19 @@ func (b *BrickEntry) Create(db wdb.RODB, executor executors.Executor) error {
 		godbc.Check(host != "")
 		return nil
 	})
+	return host, err
+}
+
+func (b *BrickEntry) Create(db wdb.RODB, executor executors.Executor) error {
+	godbc.Require(db != nil)
+	godbc.Require(b.TpSize > 0)
+	godbc.Require(b.Info.Size > 0)
+	godbc.Require(b.Info.Path != "")
+
+	host, err := b.host(db)
 	if err != nil {
 		return err
 	}
-
 	req := b.brickRequest(b.Info.Path, true)
 	// remove this some time post-refactoring
 	godbc.Require(req.Path == paths.BrickPath(req.VgId, req.Name))
@@ -230,22 +234,10 @@ func (b *BrickEntry) Destroy(db wdb.RODB, executor executors.Executor) (bool, er
 	godbc.Require(b.TpSize > 0)
 	godbc.Require(b.Info.Size > 0)
 
-	// Get node hostname
-	var host string
-	err := db.View(func(tx *bolt.Tx) error {
-		node, err := NewNodeEntryFromId(tx, b.Info.NodeId)
-		if err != nil {
-			return err
-		}
-
-		host = node.ManageHostName()
-		godbc.Check(host != "")
-		return nil
-	})
+	host, err := b.host(db)
 	if err != nil {
 		return false, err
 	}
-
 	req := b.brickRequest(
 		strings.TrimSuffix(b.Info.Path, "/brick"), false)
 
