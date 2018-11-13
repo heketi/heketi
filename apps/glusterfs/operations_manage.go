@@ -208,6 +208,26 @@ func RunOperation(o Operation,
 	return nil
 }
 
+// rollbackViaClean runs a CleanableOperation's clean methods as
+// needed to perform operation rollback. Any operation that
+// implements clean methods ought to be able to use
+// rollbackViaClean as the core of its rollback action.
+func rollbackViaClean(o CleanableOperation, executor executors.Executor) error {
+	if err := o.Clean(executor); err != nil {
+		logger.LogError(
+			"error running Clean in rollback for %v: %v",
+			o.Label(), err)
+		return err
+	}
+	if err := o.CleanDone(); err != nil {
+		logger.LogError(
+			"error running CleanDone in rollback for %v: %v",
+			o.Label(), err)
+		return err
+	}
+	return nil
+}
+
 func retryOperation(o Operation,
 	executor executors.Executor) (err error) {
 
