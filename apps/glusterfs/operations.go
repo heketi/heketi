@@ -157,7 +157,8 @@ func volumesFromOp(db wdb.RODB,
 	volume_entries := []*VolumeEntry{}
 	err := db.View(func(tx *bolt.Tx) error {
 		for _, a := range op.Actions {
-			if a.Change == OpAddVolume {
+			switch a.Change {
+			case OpAddVolume, OpDeleteVolume, OpExpandVolume:
 				brick, err := NewVolumeEntryFromId(tx, a.Id)
 				if err != nil {
 					return err
