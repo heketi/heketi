@@ -475,6 +475,20 @@ func (v *VolumeEntry) tryAllocateBricks(
 	return
 }
 
+// checkDestroyVolumeFromHost returns an error if the volume may
+// not be destroyed at this time. Nil is returned if the volume
+// may be destroyed.
+func (v *VolumeEntry) checkDestroyVolumeFromHost(
+	executor executors.Executor, h string) error {
+
+	err := executor.VolumeDestroyCheck(h, v.Info.Name)
+	if _, ok := err.(*executors.VolumeDoesNotExistErr); ok {
+		logger.Warning("volume %v not present in gluster", v.Info.Id)
+		return nil
+	}
+	return err
+}
+
 func (v *VolumeEntry) destroyVolumeFromHost(
 	executor executors.Executor, h string) error {
 
@@ -623,28 +637,12 @@ func (v *VolumeEntry) deleteVolumeExec(db wdb.RODB,
 	brick_entries []*BrickEntry,
 	sshhost string) (map[string]bool, error) {
 
-	// Determine if we can destroy the volume
-	volumePresent := true
-	err := executor.VolumeDestroyCheck(sshhost, v.Info.Name)
-	if err != nil {
-		if _, ok := err.(*executors.VolumeDoesNotExistErr); ok {
-			volumePresent = false
-		} else {
-			logger.Err(err)
-			return nil, err
-		}
+	if err := v.checkDestroyVolumeFromHost(executor, sshhost); err != nil {
+		return nil, err
 	}
-
-	if volumePresent {
-		// :TODO: What if the host is no longer available, we may need to try others
-		// Stop volume
-		err = executor.VolumeDestroy(sshhost, v.Info.Name)
-		if err != nil {
-			logger.LogError("Unable to delete volume: %v", err)
-			return nil, err
-		}
-	} else {
-		logger.Warning("not attempting to delete missing volume %v", v.Info.Name)
+	if err := v.destroyVolumeFromHost(executor, sshhost); err != nil {
+		logger.LogError("Unable to delete volume: %v", err)
+		return nil, err
 	}
 
 	// Destroy bricks
