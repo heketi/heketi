@@ -68,7 +68,7 @@ Offline mode uses an existing Heketi db and executor configuration without
 relying on a running Heketi server. This action can be seen as a high
 priority cleanup driven by administrators or support or as part of a
 disaster recovery scenario. In this mode, the user will run a command
-such as `heketi-cli offline cleanup-operations` which will perform only
+such as `heketi offline cleanup-operations` which will perform only
 clean ups of operations in the db and then exit.
 Much like the `heketi db` subcommands, this command may only be run
 with exclusive access to the Heketi db, and can not run when the server
