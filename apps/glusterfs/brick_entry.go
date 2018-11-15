@@ -397,3 +397,27 @@ func (b *BrickEntry) remove(tx *bolt.Tx, v *VolumeEntry) error {
 	}
 	return nil
 }
+
+// removeAndFree deletes a brick and the links to that brick, as well
+// as updating the size counters on the associated device.
+func (b *BrickEntry) removeAndFree(
+	tx *bolt.Tx, v *VolumeEntry, reclaim bool) error {
+
+	if err := b.remove(tx, v); err != nil {
+		return err
+	}
+	if reclaim {
+		device, err := NewDeviceEntryFromId(tx, b.Info.DeviceId)
+		if err != nil {
+			logger.Err(err)
+			return err
+		}
+
+		// Deallocate space on device
+		device.StorageFree(device.SpaceNeeded(b.Info.Size, float64(v.Info.Snapshot.Factor)).Total)
+		if err := device.Save(tx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
