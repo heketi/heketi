@@ -404,6 +404,21 @@ func (v *BlockVolumeEntry) updateHosts(hosts []string) {
 	v.Info.BlockVolume.Hosts = hosts
 }
 
+// hosts returns a node-to-host mapping for all nodes suitable
+// for running commands related to this block volume
+func (v *BlockVolumeEntry) hosts(db wdb.RODB) (nodeHosts, error) {
+	var hosts nodeHosts
+	err := db.View(func(tx *bolt.Tx) error {
+		cluster, err := NewClusterEntryFromId(tx, v.Info.Cluster)
+		if err != nil {
+			return err
+		}
+		hosts, err = cluster.hosts(wdb.WrapTx(tx))
+		return err
+	})
+	return hosts, err
+}
+
 // hasPendingBlockHostingVolume returns true if the db contains pending
 // block hosting volumes.
 func hasPendingBlockHostingVolume(tx *bolt.Tx) (bool, error) {
