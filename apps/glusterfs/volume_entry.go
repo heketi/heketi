@@ -757,27 +757,6 @@ func (v *VolumeEntry) expandVolumeComponents(db wdb.DB,
 	return
 }
 
-func (v *VolumeEntry) cleanupExpandVolume(db wdb.DB,
-	executor executors.Executor,
-	brick_entries []*BrickEntry,
-	origSize int) (e error) {
-
-	logger.Debug("Error detected, cleaning up")
-	DestroyBricks(db, executor, brick_entries)
-
-	// Remove from db
-	return db.Update(func(tx *bolt.Tx) error {
-		for _, brick := range brick_entries {
-			brick.remove(tx, v)
-		}
-		v.Info.Size = origSize
-		err := v.Save(tx)
-		godbc.Check(err == nil)
-
-		return nil
-	})
-}
-
 func (v *VolumeEntry) expandVolumeExec(db wdb.DB,
 	executor executors.Executor,
 	brick_entries []*BrickEntry) (e error) {
