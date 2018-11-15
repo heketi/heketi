@@ -888,7 +888,7 @@ func eligibleClusters(db wdb.RODB, req ClusterReq,
 // volume's cluster. These hosts can be used as destinations
 // for gluster commands.
 func (v *VolumeEntry) hosts(db wdb.RODB) (nodeHosts, error) {
-	hosts := nodeHosts{}
+	var hosts nodeHosts
 	err := db.View(func(tx *bolt.Tx) error {
 		vol, err := NewVolumeEntryFromId(tx, v.Info.Id)
 		if err != nil {
@@ -899,16 +899,8 @@ func (v *VolumeEntry) hosts(db wdb.RODB) (nodeHosts, error) {
 		if err != nil {
 			return err
 		}
-
-		for _, nodeId := range cluster.Info.Nodes {
-			node, err := NewNodeEntryFromId(tx, nodeId)
-			if err != nil {
-				return err
-			}
-			hosts[nodeId] = node.ManageHostName()
-		}
-
-		return nil
+		hosts, err = cluster.hosts(wdb.WrapTx(tx))
+		return err
 	})
 	return hosts, err
 }

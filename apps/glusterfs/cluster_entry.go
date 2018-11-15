@@ -16,6 +16,7 @@ import (
 	"sort"
 
 	"github.com/boltdb/bolt"
+	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/idgen"
 	"github.com/heketi/heketi/pkg/sortedstrings"
@@ -237,4 +238,21 @@ func (c *ClusterEntry) DeleteBricksWithEmptyPath(tx *bolt.Tx) error {
 		}
 	}
 	return nil
+}
+
+// hosts returns a node-to-host mapping for all nodes in the
+// cluster.
+func (c *ClusterEntry) hosts(db wdb.RODB) (nodeHosts, error) {
+	hosts := nodeHosts{}
+	err := db.View(func(tx *bolt.Tx) error {
+		for _, nodeId := range c.Info.Nodes {
+			node, err := NewNodeEntryFromId(tx, nodeId)
+			if err != nil {
+				return err
+			}
+			hosts[nodeId] = node.ManageHostName()
+		}
+		return nil
+	})
+	return hosts, err
 }
