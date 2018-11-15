@@ -195,6 +195,30 @@ func NewVolumeExpandOperation(
 	}
 }
 
+// loadVolumeExpandOperation returns a VolumeExpandOperation populated
+// from an existing pending operation entry in the db.
+func loadVolumeExpandOperation(
+	db wdb.DB, p *PendingOperationEntry) (*VolumeExpandOperation, error) {
+
+	vols, err := volumesFromOp(db, p)
+	if err != nil {
+		return nil, err
+	}
+	if len(vols) != 1 {
+		return nil, fmt.Errorf(
+			"Incorrect number of volumes (%v) for create operation: %v",
+			len(vols), p.Id)
+	}
+
+	return &VolumeExpandOperation{
+		OperationManager: OperationManager{
+			db: db,
+			op: p,
+		},
+		vol: vols[0],
+	}, nil
+}
+
 func (ve *VolumeExpandOperation) Label() string {
 	return "Expand Volume"
 }
