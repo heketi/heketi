@@ -18,6 +18,7 @@ import (
 	"github.com/heketi/heketi/executors"
 	conv "github.com/heketi/heketi/pkg/conversions"
 	"github.com/heketi/heketi/pkg/paths"
+	rex "github.com/heketi/heketi/pkg/remoteexec"
 )
 
 const (
@@ -45,7 +46,7 @@ func (s *CmdExecutor) DeviceSetup(host, device, vgid string, destroy bool) (d *e
 	commands = append(commands, fmt.Sprintf("vgcreate -qq --autobackup=%v %v %v", conv.BoolToYN(s.BackupLVM), paths.VgIdToName(vgid), device))
 
 	// Execute command
-	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 5))
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +93,7 @@ func (s *CmdExecutor) removeDevice(host, device, vgid string) error {
 	}
 
 	// Execute command
-	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 5))
 	if err != nil {
 		return logger.LogError(
 			"Failed to delete device %v with id %v on host %v: %v",
@@ -108,7 +109,7 @@ func (s *CmdExecutor) removeDeviceMountPoint(host, vgid string) error {
 	commands := []string{
 		fmt.Sprintf("ls %v", pdir),
 	}
-	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 5))
 	if err != nil {
 		return nil
 	}
@@ -117,7 +118,7 @@ func (s *CmdExecutor) removeDeviceMountPoint(host, vgid string) error {
 		fmt.Sprintf("rmdir %v", pdir),
 	}
 
-	_, err = s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
+	err = rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 5))
 	if err != nil {
 		logger.LogError("Error while removing the VG directory")
 	}
@@ -134,14 +135,14 @@ func (s *CmdExecutor) getVgSizeFromNode(
 	}
 
 	// Execute command
-	b, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 5)
-	if err != nil {
+	results, err := s.RemoteExecutor.ExecCommands(host, commands, 5)
+	if err := rex.AnyError(results, err); err != nil {
 		return err
 	}
 
 	// Example:
 	// sampleVg:r/w:772:-1:0:0:0:-1:0:4:4:2097135616:4096:511996:0:511996:rJ0bIG-3XNc-NoS0-fkKm-batK-dFyX-xbxHym
-	vginfo := strings.Split(b[0], ":")
+	vginfo := strings.Split(results[0].Output, ":")
 
 	// See vgdisplay manpage
 	if len(vginfo) < 17 {

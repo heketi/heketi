@@ -17,6 +17,12 @@ import (
 	"github.com/heketi/heketi/pkg/utils"
 )
 
+// ReclaimMap tracks what bricks freed underlying storage when deleted.
+// Deleting a brick does not always free space on the LV if snapshots are
+// in use. The ReclaimMap values are set to true if the given brick id
+// in the key freed underlying storage and false if not.
+type ReclaimMap map[string]bool
+
 func CreateBricks(db wdb.RODB, executor executors.Executor, brick_entries []*BrickEntry) error {
 	sg := utils.NewStatusGroup()
 
@@ -42,7 +48,7 @@ func CreateBricks(db wdb.RODB, executor executors.Executor, brick_entries []*Bri
 	return err
 }
 
-func DestroyBricks(db wdb.RODB, executor executors.Executor, brick_entries []*BrickEntry) (map[string]bool, error) {
+func DestroyBricks(db wdb.RODB, executor executors.Executor, brick_entries []*BrickEntry) (ReclaimMap, error) {
 	sg := utils.NewStatusGroup()
 
 	// return a map with the deviceId as key, and a bool if the space has been free'd
