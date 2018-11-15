@@ -24,7 +24,6 @@ type BlockVolumeCreateOperation struct {
 	OperationManager
 	noRetriesOperation
 	bvol *BlockVolumeEntry
-	//vol *VolumeEntry
 }
 
 // NewBlockVolumeCreateOperation  returns a new BlockVolumeCreateOperation  populated
@@ -242,7 +241,15 @@ func (bvc *BlockVolumeCreateOperation) Rollback(executor executors.Executor) err
 	if err != nil {
 		return err
 	}
-	if e := bvc.bvol.cleanupBlockVolumeCreate(bvc.db, executor); e != nil {
+	hvname, err := bvc.bvol.blockHostingVolumeName(bvc.db)
+	if err != nil {
+		return err
+	}
+	err = bvc.bvol.deleteBlockVolumeExec(bvc.db, hvname, executor)
+	if err != nil {
+		return err
+	}
+	if e := bvc.bvol.removeComponents(bvc.db, false); e != nil {
 		return e
 	}
 	if vol != nil {
