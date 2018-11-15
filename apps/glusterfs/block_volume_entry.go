@@ -225,22 +225,6 @@ func (v *BlockVolumeEntry) eligibleClustersAndVolumes(db wdb.RODB) (
 	return
 }
 
-func (v *BlockVolumeEntry) cleanupBlockVolumeCreate(db wdb.DB,
-	executor executors.Executor) error {
-
-	hvname, err := v.blockHostingVolumeName(db)
-	if err != nil {
-		return err
-	}
-
-	err = v.deleteBlockVolumeExec(db, hvname, executor)
-	if err != nil {
-		return err
-	}
-
-	return v.removeComponents(db, false)
-}
-
 func (v *BlockVolumeEntry) Create(db wdb.DB,
 	executor executors.Executor) (e error) {
 
