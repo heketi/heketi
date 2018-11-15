@@ -177,6 +177,7 @@ type VolumeExpandOperation struct {
 
 	// modification values
 	ExpandSize int
+	reclaimed  ReclaimMap // gets set by Clean() call
 }
 
 // NewVolumeCreateOperation creates a new VolumeExpandOperation populated
@@ -268,22 +269,7 @@ func (ve *VolumeExpandOperation) Exec(executor executors.Executor) error {
 // Rollback cancels the volume expansion and remove pending brick entries
 // from the db.
 func (ve *VolumeExpandOperation) Rollback(executor executors.Executor) error {
-	// TODO make this into one transaction too
-	brick_entries, err := bricksFromOp(ve.db, ve.op, ve.vol.Info.Gid)
-	if err != nil {
-		logger.LogError("Failed to get bricks from op: %v", err)
-		return err
-	}
-	err = ve.vol.cleanupExpandVolume(
-		ve.db, executor, brick_entries, ve.vol.Info.Size)
-	if err != nil {
-		logger.LogError("Error on create volume rollback: %v", err)
-		return err
-	}
-	err = ve.db.Update(func(tx *bolt.Tx) error {
-		return ve.op.Delete(tx)
-	})
-	return err
+	return rollbackViaClean(ve, executor)
 }
 
 // Finalize marks new bricks as no longer pending and updates the size
@@ -320,6 +306,62 @@ func (ve *VolumeExpandOperation) Finalize() error {
 
 		ve.op.Delete(tx)
 		return nil
+	})
+}
+
+func (ve *VolumeExpandOperation) Clean(executor executors.Executor) error {
+	logger.Info("Starting Clean for %v op:%v", ve.Label(), ve.op.Id)
+	var (
+		err  error
+		bmap brickHostMap
+	)
+	err = ve.db.Update(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
+		v, err := NewVolumeEntryFromId(tx, ve.vol.Info.Id)
+		if err != nil {
+			return err
+		}
+		bricks, err := bricksFromOp(txdb, ve.op, v.Info.Gid)
+		if err != nil {
+			return err
+		}
+		bmap, err = newBrickHostMap(txdb, bricks)
+		return err
+	})
+	if err != nil {
+		logger.LogError("Failed to get bricks from op: %v", err)
+		return err
+	}
+	// nothing past this point needs a db reference
+	ve.reclaimed, err = bmap.destroy(executor)
+	if err != nil {
+		logger.LogError("Failed to destroy bricks: %v", err)
+		return err
+	}
+	return nil
+}
+
+func (ve *VolumeExpandOperation) CleanDone() error {
+	logger.Info("Clean is done for %v op:%v", ve.Label(), ve.op.Id)
+	// reminder: a volume's size is expanded during finalize and
+	// thus retains the original size until op succeeds
+	return ve.db.Update(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
+		v, err := NewVolumeEntryFromId(tx, ve.vol.Info.Id)
+		if err != nil {
+			return err
+		}
+		bricks, err := bricksFromOp(txdb, ve.op, v.Info.Gid)
+		for _, brick := range bricks {
+			err := brick.removeAndFree(tx, v, ve.reclaimed[brick.Info.Id])
+			if err != nil {
+				return err
+			}
+		}
+		if err := v.Save(tx); err != nil {
+			return err
+		}
+		return ve.op.Delete(tx)
 	})
 }
 
