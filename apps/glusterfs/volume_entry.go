@@ -663,25 +663,9 @@ func (v *VolumeEntry) teardown(
 
 	return db.Update(func(tx *bolt.Tx) error {
 		for _, brick := range brick_entries {
-			err := brick.remove(tx, v)
+			err := brick.removeAndFree(tx, v, reclaimed[brick.Info.DeviceId])
 			if err != nil {
 				return err
-			}
-		}
-		// update the device' free/used space after removing bricks
-		for _, b := range brick_entries {
-			// if nothing is reclaimed, no need to update the DeviceEntry
-			// reclaim will be true only if space was reclaimed during exec
-			if reclaim := reclaimed[b.Info.DeviceId]; reclaim {
-				device, err := NewDeviceEntryFromId(tx, b.Info.DeviceId)
-				if err != nil {
-					logger.Err(err)
-					return err
-				}
-
-				// Deallocate space on device
-				device.StorageFree(device.SpaceNeeded(b.Info.Size, float64(v.Info.Snapshot.Factor)).Total)
-				device.Save(tx)
 			}
 		}
 
