@@ -14,8 +14,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/heketi/heketi/executors"
 	"github.com/lpabon/godbc"
+
+	"github.com/heketi/heketi/executors"
+	rex "github.com/heketi/heketi/pkg/remoteexec"
 )
 
 func (s *CmdExecutor) BlockVolumeCreate(host string,
@@ -49,14 +51,14 @@ func (s *CmdExecutor) BlockVolumeCreate(host string,
 	commands := []string{cmd}
 
 	// Execute command
-	output, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
-	if err != nil {
+	results, err := s.RemoteExecutor.ExecCommands(host, commands, 10)
+	if err := rex.AnyError(results, err); err != nil {
 		s.BlockVolumeDestroy(host, volume.GlusterVolumeName, volume.Name)
 		return nil, err
 	}
 
 	var blockVolumeCreate CliOutput
-	err = json.Unmarshal([]byte(output[0]), &blockVolumeCreate)
+	err = json.Unmarshal([]byte(results[0].Output), &blockVolumeCreate)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to get the block volume create info for block volume %v", volume.Name)
 	}

@@ -49,3 +49,49 @@ func (rs Results) SquashErrors() ([]string, error) {
 	}
 	return outputs, nil
 }
+
+// Ok returns a boolean indicating that all completed commands
+// were successful.
+func (rs Results) Ok() bool {
+	for _, r := range rs {
+		if !r.Completed {
+			continue
+		}
+		if !r.Ok() {
+			return false
+		}
+	}
+	return true
+}
+
+// FirstErrorIndexed returns the first error found in the Results
+// along with its index. If no error is found -1 and nil are
+// returned.
+func (rs Results) FirstErrorIndexed() (int, error) {
+	for i, r := range rs {
+		if !r.Completed {
+			continue
+		}
+		if r.Err != nil {
+			return i, r.Err
+		}
+	}
+	return -1, nil
+}
+
+// FirstError returns the first error found in the Results.
+// If no error is found nil is returned.
+func (rs Results) FirstError() error {
+	_, err := rs.FirstErrorIndexed()
+	return err
+}
+
+// AnyError takes both the Results and any communication error
+// condition from an ExecCommands style function and returns
+// the first error condition found, or nil if none found.
+func AnyError(res Results, err error) error {
+	if err != nil {
+		return err
+	}
+	return res.FirstError()
+}
