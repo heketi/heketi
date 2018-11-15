@@ -373,3 +373,27 @@ func (b *BrickEntry) LvName() string {
 func (b *BrickEntry) BrickType() BrickSubType {
 	return b.SubType
 }
+
+// remove deletes a brick and the links to that brick in the db.
+func (b *BrickEntry) remove(tx *bolt.Tx, v *VolumeEntry) error {
+	err := b.RemoveFromDevice(tx)
+	if err != nil {
+		logger.Err(err)
+		return err
+	}
+
+	// Delete brick from volume entry
+	v.BrickDelete(b.Info.Id)
+	if err != nil {
+		logger.Err(err)
+		return err
+	}
+
+	// Delete brick entry from db
+	err = b.Delete(tx)
+	if err != nil {
+		logger.Err(err)
+		return err
+	}
+	return nil
+}
