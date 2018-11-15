@@ -663,7 +663,7 @@ func (v *VolumeEntry) teardown(
 
 	return db.Update(func(tx *bolt.Tx) error {
 		for _, brick := range brick_entries {
-			err := v.removeBrickFromDb(tx, brick)
+			err := brick.remove(tx, v)
 			if err != nil {
 				return err
 			}
@@ -784,7 +784,7 @@ func (v *VolumeEntry) cleanupExpandVolume(db wdb.DB,
 	// Remove from db
 	return db.Update(func(tx *bolt.Tx) error {
 		for _, brick := range brick_entries {
-			v.removeBrickFromDb(tx, brick)
+			brick.remove(tx, v)
 		}
 		v.Info.Size = origSize
 		err := v.Save(tx)
