@@ -297,8 +297,15 @@ func (v *BlockVolumeEntry) deleteBlockVolumeExec(db wdb.RODB,
 	}
 
 	logger.Debug("Using executor host [%v]", executorhost)
+	return v.destroyFromHost(executor, hvname, executorhost)
+}
 
-	err = executor.BlockVolumeDestroy(executorhost, hvname, v.Info.Name)
+// destroyFromHost removes the block volume using the provided
+// executor, block hosting volume name, and host.
+func (v *BlockVolumeEntry) destroyFromHost(
+	executor executors.Executor, hvname, h string) error {
+
+	err := executor.BlockVolumeDestroy(h, hvname, v.Info.Name)
 	if _, ok := err.(*executors.VolumeDoesNotExistErr); ok {
 		logger.Warning(
 			"Block volume %v (%v) does not exist: assuming already deleted",
