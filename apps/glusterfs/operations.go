@@ -154,21 +154,21 @@ func bricksFromOp(db wdb.RODB,
 func volumesFromOp(db wdb.RODB,
 	op *PendingOperationEntry) ([]*VolumeEntry, error) {
 
-	volume_entries := []*VolumeEntry{}
+	volumeEntries := []*VolumeEntry{}
 	err := db.View(func(tx *bolt.Tx) error {
 		for _, a := range op.Actions {
 			switch a.Change {
 			case OpAddVolume, OpDeleteVolume, OpExpandVolume:
-				brick, err := NewVolumeEntryFromId(tx, a.Id)
+				v, err := NewVolumeEntryFromId(tx, a.Id)
 				if err != nil {
 					return err
 				}
-				volume_entries = append(volume_entries, brick)
+				volumeEntries = append(volumeEntries, v)
 			}
 		}
 		return nil
 	})
-	return volume_entries, err
+	return volumeEntries, err
 }
 
 // expandSizeFromOp returns the size of a volume expand operation assuming
