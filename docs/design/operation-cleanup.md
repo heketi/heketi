@@ -50,9 +50,10 @@ and trigger clean ups.
 
 Any time the Clean function fails the operation's status in the
 Heketi db will remain unchanged in order to be able to retry
-the clean up again at a later time. [TDB] Should we have a
-counter that tracks how many times we tried to clean something
-up?
+the clean up again at a later time. In order to track the
+(lack of) success of cleaning each pending operation entry will
+track the number of clean up attempts and a timestamp of the
+last clean up attempt.
 
 
 ## Initiating Clean-ups
