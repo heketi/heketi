@@ -13,6 +13,8 @@ import (
 	"fmt"
 
 	"github.com/lpabon/godbc"
+
+	rex "github.com/heketi/heketi/pkg/remoteexec"
 )
 
 // :TODO: Rename this function to NodeInit or something
@@ -26,7 +28,7 @@ func (s *CmdExecutor) PeerProbe(host, newnode string) error {
 	commands := []string{
 		fmt.Sprintf("gluster peer probe %v", newnode),
 	}
-	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
+	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 10))
 	if err != nil {
 		return err
 	}
@@ -38,7 +40,7 @@ func (s *CmdExecutor) PeerProbe(host, newnode string) error {
 			fmt.Sprintf("gluster --mode=script snapshot config snap-max-hard-limit %v",
 				s.RemoteExecutor.SnapShotLimit()),
 		}
-		_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
+		err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 10))
 		if err != nil {
 			return err
 		}
@@ -56,7 +58,7 @@ func (s *CmdExecutor) PeerDetach(host, detachnode string) error {
 	commands := []string{
 		fmt.Sprintf("gluster peer detach %v", detachnode),
 	}
-	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
+	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 10))
 	if err != nil {
 		logger.Err(err)
 	}
@@ -71,7 +73,7 @@ func (s *CmdExecutor) GlusterdCheck(host string) error {
 	commands := []string{
 		fmt.Sprintf("systemctl status glusterd"),
 	}
-	_, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
+	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 10))
 	if err != nil {
 		logger.Err(err)
 		return err

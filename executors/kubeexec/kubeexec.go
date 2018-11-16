@@ -155,21 +155,6 @@ func NewKubeExecutor(config *KubeConfig) (*KubeExecutor, error) {
 	return k, nil
 }
 
-func (k *KubeExecutor) RemoteCommandExecute(host string,
-	commands []string,
-	timeoutMinutes int) ([]string, error) {
-
-	// Throttle
-	k.AccessConnection(host)
-	defer k.FreeConnection(host)
-
-	// Execute
-	return k.ConnectAndExec(host,
-		"pods",
-		commands,
-		timeoutMinutes)
-}
-
 func (k *KubeExecutor) ExecCommands(
 	host string, commands []string,
 	timeoutMinutes int) (rex.Results, error) {
@@ -180,17 +165,6 @@ func (k *KubeExecutor) ExecCommands(
 
 	// Execute
 	return k.execCommands(host, "pods", commands, timeoutMinutes)
-}
-
-func (k *KubeExecutor) ConnectAndExec(host, resource string,
-	commands []string,
-	timeoutMinutes int) ([]string, error) {
-
-	results, err := k.execCommands(host, resource, commands, timeoutMinutes)
-	if err != nil {
-		return nil, err
-	}
-	return results.SquashErrors()
 }
 
 func (k *KubeExecutor) execCommands(
