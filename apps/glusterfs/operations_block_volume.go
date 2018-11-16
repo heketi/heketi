@@ -397,11 +397,39 @@ func (vdel *BlockVolumeDeleteOperation) Build() error {
 
 // Exec performs the volume and brick deletions on the storage systems.
 func (vdel *BlockVolumeDeleteOperation) Exec(executor executors.Executor) error {
-	hvname, err := vdel.bvol.blockHostingVolumeName(vdel.db)
+	var (
+		err     error
+		bv      *BlockVolumeEntry
+		hvname  string
+		bvHosts nodeHosts
+	)
+	err = vdel.db.View(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
+		bv, err = NewBlockVolumeEntryFromId(tx, vdel.bvol.Info.Id)
+		if err != nil {
+			return err
+		}
+		hvname, err = bv.blockHostingVolumeName(txdb)
+		if err != nil {
+			return err
+		}
+		bvHosts, err = bv.hosts(txdb)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
+		logger.LogError(
+			"failed to get state needed to destroy block volume: %v", err)
 		return err
 	}
-	return vdel.bvol.deleteBlockVolumeExec(vdel.db, hvname, executor)
+	// nothing past this point needs a db reference
+	logger.Info("executing removal of block volume %v in op:%v",
+		vdel.bvol.Info.Id, vdel.op.Id)
+	return newTryOnHosts(bvHosts).once().run(func(h string) error {
+		return bv.destroyFromHost(executor, hvname, h)
+	})
 }
 
 func (vdel *BlockVolumeDeleteOperation) Rollback(executor executors.Executor) error {
@@ -431,7 +459,20 @@ func (vdel *BlockVolumeDeleteOperation) Finalize() error {
 			return e
 		}
 
-		vdel.op.Delete(tx)
-		return nil
+		return vdel.op.Delete(tx)
 	})
+}
+
+// Clean tries to re-execute the volume delete operation.
+func (vdel *BlockVolumeDeleteOperation) Clean(executor executors.Executor) error {
+	// for a delete, clean is essentially a replay of exec
+	// because exec must be robust against restarts now we can just call Exec
+	logger.Info("Starting Clean for %v op:%v", vdel.Label(), vdel.op.Id)
+	return vdel.Exec(executor)
+}
+
+func (vdel *BlockVolumeDeleteOperation) CleanDone() error {
+	// for a delete, clean done is essentially a replay of finalize
+	logger.Info("Clean is done for %v op:%v", vdel.Label(), vdel.op.Id)
+	return vdel.Finalize()
 }
