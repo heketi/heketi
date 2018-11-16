@@ -39,14 +39,18 @@ func LoadOperation(
 		err error
 	)
 	switch p.Type {
+	// file volume operations
 	case OperationCreateVolume:
 		op, err = loadVolumeCreateOperation(db, p)
 	case OperationDeleteVolume:
 		op, err = loadVolumeDeleteOperation(db, p)
 	case OperationExpandVolume:
 		op, err = loadVolumeExpandOperation(db, p)
+	// block volume operations
 	case OperationCreateBlockVolume:
 		op, err = loadBlockVolumeCreateOperation(db, p)
+	case OperationDeleteBlockVolume:
+		op, err = loadBlockVolumeDeleteOperation(db, p)
 	default:
 		err = NewErrNotLoadable(p.Id, p.Type)
 	}
