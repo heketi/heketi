@@ -43,6 +43,30 @@ func NewBlockVolumeCreateOperation(
 	}
 }
 
+// loadBlockVolumeCreateOperation returns a BlockVolumeCreateOperation populated
+// from an existing pending operation entry in the db.
+func loadBlockVolumeCreateOperation(
+	db wdb.DB, p *PendingOperationEntry) (*BlockVolumeCreateOperation, error) {
+
+	bvs, err := blockVolumesFromOp(db, p)
+	if err != nil {
+		return nil, err
+	}
+	if len(bvs) != 1 {
+		return nil, fmt.Errorf(
+			"Incorrect number of block volumes (%v) for create operation: %v",
+			len(bvs), p.Id)
+	}
+
+	return &BlockVolumeCreateOperation{
+		OperationManager: OperationManager{
+			db: db,
+			op: p,
+		},
+		bvol: bvs[0],
+	}, nil
+}
+
 func (bvc *BlockVolumeCreateOperation) Label() string {
 	return "Create Block Volume"
 }
@@ -475,4 +499,27 @@ func (vdel *BlockVolumeDeleteOperation) CleanDone() error {
 	// for a delete, clean done is essentially a replay of finalize
 	logger.Info("Clean is done for %v op:%v", vdel.Label(), vdel.op.Id)
 	return vdel.Finalize()
+}
+
+// blockVolumesFromOp iterates over the associated changes in the
+// pending operation entry and returns entries for any
+// block volumes within that pending op.
+func blockVolumesFromOp(db wdb.RODB,
+	op *PendingOperationEntry) ([]*BlockVolumeEntry, error) {
+
+	bvs := []*BlockVolumeEntry{}
+	err := db.View(func(tx *bolt.Tx) error {
+		for _, a := range op.Actions {
+			switch a.Change {
+			case OpAddBlockVolume, OpDeleteBlockVolume:
+				v, err := NewBlockVolumeEntryFromId(tx, a.Id)
+				if err != nil {
+					return err
+				}
+				bvs = append(bvs, v)
+			}
+		}
+		return nil
+	})
+	return bvs, err
 }
