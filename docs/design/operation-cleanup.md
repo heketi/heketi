@@ -9,7 +9,7 @@ potential items created by Heketi are removed.
 
 This document lays out the general plan to implement the ability
 for Heketi to make use of this information to clean up after
-incomplete operations in a testable repeatable manner.
+incomplete operations in a testable & repeatable manner.
 
 
 ## Cleaning Operations
