@@ -386,6 +386,30 @@ func NewBlockVolumeDeleteOperation(
 	}
 }
 
+// loadBlockVolumeDeleteOperation returns a BlockVolumeDeleteOperation populated
+// from an existing pending operation entry in the db.
+func loadBlockVolumeDeleteOperation(
+	db wdb.DB, p *PendingOperationEntry) (*BlockVolumeDeleteOperation, error) {
+
+	bvs, err := blockVolumesFromOp(db, p)
+	if err != nil {
+		return nil, err
+	}
+	if len(bvs) != 1 {
+		return nil, fmt.Errorf(
+			"Incorrect number of block volumes (%v) for create operation: %v",
+			len(bvs), p.Id)
+	}
+
+	return &BlockVolumeDeleteOperation{
+		OperationManager: OperationManager{
+			db: db,
+			op: p,
+		},
+		bvol: bvs[0],
+	}, nil
+}
+
 func (vdel *BlockVolumeDeleteOperation) Label() string {
 	return "Delete Block Volume"
 }
