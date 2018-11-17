@@ -46,6 +46,10 @@ func (ore OperationRetryError) Error() string {
 // managed cluster(s), and then either record the data structures as final
 // or roll back to the previous state on error.
 type Operation interface {
+	// Id returns a unique identifying string for the operation.
+	// Typically this is the ID of an associated pending operation
+	// entry.
+	Id() string
 	// Label returns a short descriptive string indicating the kind
 	// of operation being performed. Examples include "Create Volume"
 	// and "Delete Block Volume". This string is most frequently used
