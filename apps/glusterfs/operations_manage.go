@@ -14,58 +14,94 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/heketi/heketi/executors"
-
 	"github.com/lpabon/godbc"
+
+	"github.com/heketi/heketi/executors"
+	"github.com/heketi/heketi/pkg/idgen"
 )
 
-// OpCounter is used to track and manage how many operations are being
+type OpClass int
+
+const (
+	TrackNormal OpClass = iota
+	TrackToken
+)
+
+// OpTracker is used to track and manage how many operations are being
 // processed by the server.
-type OpCounter struct {
+type OpTracker struct {
 	// configuration
 	Limit uint64
 
 	// internals
-	lock  sync.RWMutex
-	value uint64
+	lock      sync.RWMutex
+	normalOps map[string]bool
 }
 
-// Inc increments the internal operations counter.
-func (oc *OpCounter) Inc() {
-	oc.lock.Lock()
-	defer oc.lock.Unlock()
-	oc.value++
+func newOpTracker(limit uint64) *OpTracker {
+	return &OpTracker{
+		Limit:     limit,
+		normalOps: make(map[string]bool),
+	}
 }
 
-// Dec decrements the internal operations counter.
-func (oc *OpCounter) Dec() {
-	oc.lock.Lock()
-	defer oc.lock.Unlock()
-	godbc.Require(oc.value > 0)
-	oc.value--
+func (ot *OpTracker) insert(id string, c OpClass) {
+	godbc.Require(id != "", "id must not be empty")
+	godbc.Require(!ot.normalOps[id], "id already tracked", id)
+	ot.normalOps[id] = true
 }
 
-// Get returns the current value of the internal operations counter.
-func (oc *OpCounter) Get() uint64 {
-	oc.lock.RLock()
-	defer oc.lock.RUnlock()
-	return oc.value
+// Add records a new in-flight operation.
+func (ot *OpTracker) Add(id string, c OpClass) {
+	ot.lock.Lock()
+	defer ot.lock.Unlock()
+	ot.insert(id, c)
 }
 
-// ThrottleOrInc returns true if incrementing the counter would put
-// the number of operations over the limit, otherwise it increments
-// the counter and returns false. ThrottleOrInc exists to perform
+// Remove removes an operation from tracking.
+func (ot *OpTracker) Remove(id string) {
+	ot.lock.Lock()
+	defer ot.lock.Unlock()
+	godbc.Require(id != "", "id must not be empty")
+	godbc.Require(ot.normalOps[id], "id not tracked", id)
+	delete(ot.normalOps, id)
+}
+
+// Get returns the number of operations currently tracked.
+func (ot *OpTracker) Get() uint64 {
+	ot.lock.RLock()
+	defer ot.lock.RUnlock()
+	return uint64(len(ot.normalOps))
+}
+
+// ThrottleOrAdd returns true if adding the operation would put
+// the number of operations over the limit, otherwise it adds
+// the operation and returns false. ThrottleOrAdd exists to perform
 // the check and set atomically.
-func (oc *OpCounter) ThrottleOrInc() bool {
-	oc.lock.Lock()
-	defer oc.lock.Unlock()
-	if oc.value >= oc.Limit {
+func (ot *OpTracker) ThrottleOrAdd(id string, c OpClass) bool {
+	ot.lock.Lock()
+	defer ot.lock.Unlock()
+	n := len(ot.normalOps)
+	if uint64(n) >= ot.Limit {
 		logger.Warning(
-			"operations in-flight (%v) exceeds limit (%v)", oc.value, oc.Limit)
+			"operations in-flight (%v) exceeds limit (%v)", n, ot.Limit)
 		return true
 	}
-	oc.value++
+	ot.insert(id, c)
 	return false
+}
+
+// ThrottleOrToken exists for use cases where throttling is required
+// but a pre-existing unique identifier does not. It will return
+// true and an empty-string if the number of operations is over the limit,
+// otherwise it return false, and a unique token. This token must
+// be passed to Remove to indicate the operation has completed.
+func (ot *OpTracker) ThrottleOrToken() (bool, string) {
+	token := idgen.GenUUID()
+	if ot.ThrottleOrAdd(token, TrackToken) {
+		return true, ""
+	}
+	return false, token
 }
 
 // AsyncHttpOperation runs all the steps of an operation with the long-running
@@ -80,7 +116,7 @@ func AsyncHttpOperation(app *App,
 	op Operation) error {
 
 	// check if the request needs to be rate limited
-	if app.opcounter.ThrottleOrInc() {
+	if app.optracker.ThrottleOrAdd(op.Id(), TrackNormal) {
 		return ErrTooManyOperations
 	}
 
@@ -89,14 +125,14 @@ func AsyncHttpOperation(app *App,
 		logger.LogError("%v Build Failed: %v", label, err)
 		// creating the operation db data failed. this is no longer
 		// an in-flight operation
-		app.opcounter.Dec()
+		app.optracker.Remove(op.Id())
 		return err
 	}
 
 	app.asyncManager.AsyncHttpRedirectFunc(w, r, func() (string, error) {
 		// decrement the op counter once the operation is done
 		// either success or failure
-		defer app.opcounter.Dec()
+		defer app.optracker.Remove(op.Id())
 		logger.Info("Started async operation: %v", label)
 		if err := op.Exec(app.executor); err != nil {
 			if _, ok := err.(OperationRetryError); ok && op.MaxRetries() > 0 {
