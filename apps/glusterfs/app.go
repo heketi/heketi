@@ -76,7 +76,7 @@ type App struct {
 	nhealth *NodeHealthCache
 
 	// operations tracker
-	opcounter *OpCounter
+	optracker *OpTracker
 
 	// For testing only.  Keep access to the object
 	// not through the interface
@@ -220,7 +220,7 @@ func NewApp(conf *GlusterFSConfig) *App {
 	if oplimit == 0 {
 		oplimit = DEFAULT_OP_LIMIT
 	}
-	app.opcounter = &OpCounter{Limit: oplimit}
+	app.optracker = newOpTracker(oplimit)
 
 	// Show application has loaded
 	logger.Info("GlusterFS Application Loaded")

@@ -40,7 +40,7 @@ func (a *App) OperationsInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	info.InFlight = a.opcounter.Get()
+	info.InFlight = a.optracker.Get()
 
 	// Write msg
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
