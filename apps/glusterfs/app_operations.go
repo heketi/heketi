@@ -52,6 +52,7 @@ func (a *App) OperationsInfo(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) PendingOperationList(w http.ResponseWriter, r *http.Request) {
 	p := &api.PendingOperationListResponse{}
+	tracked := a.optracker.Tracked()
 
 	err := a.db.View(func(tx *bolt.Tx) error {
 		ops, err := PendingOperationList(tx)
@@ -65,6 +66,9 @@ func (a *App) PendingOperationList(w http.ResponseWriter, r *http.Request) {
 				return err
 			}
 			p.PendingOperations[i] = pop.ToInfo()
+			if tracked[pop.Id] {
+				p.PendingOperations[i].SubStatus = "in-flight"
+			}
 		}
 		return nil
 	})
