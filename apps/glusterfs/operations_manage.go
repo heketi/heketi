@@ -74,6 +74,19 @@ func (ot *OpTracker) Get() uint64 {
 	return uint64(len(ot.normalOps))
 }
 
+// Tracked returns a mapping of tracked IDs to booleans.
+// Booleans are always true.
+func (ot *OpTracker) Tracked() map[string]bool {
+	ot.lock.RLock()
+	defer ot.lock.RUnlock()
+	// copy internal map to out map
+	out := map[string]bool{}
+	for k, _ := range ot.normalOps {
+		out[k] = true
+	}
+	return out
+}
+
 // ThrottleOrAdd returns true if adding the operation would put
 // the number of operations over the limit, otherwise it adds
 // the operation and returns false. ThrottleOrAdd exists to perform
