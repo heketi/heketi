@@ -641,3 +641,27 @@ type DeviceDeleteOptions struct {
 	// orphaning metadata on the node
 	ForceForget bool `json:"forceforget"`
 }
+
+// PendingOperationInfo contains metadata to summarize a pending
+// operation.
+type PendingOperationInfo struct {
+	Id        string `json:"id"`
+	TypeName  string `json:"type_name"`
+	Status    string `json:"status"`
+	SubStatus string `json:"sub_status"`
+	// TODO label, timestamp?
+}
+
+type PendingChangeInfo struct {
+	Id          string `json:"id"`
+	Description string `json:"description"`
+}
+
+type PendingOperationDetails struct {
+	PendingOperationInfo
+	Changes []PendingChangeInfo `json:"changes"`
+}
+
+type PendingOperationListResponse struct {
+	PendingOperations []PendingOperationInfo `json:"pendingoperations"`
+}
