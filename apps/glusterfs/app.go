@@ -586,6 +586,12 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Method:      "GET",
 			Pattern:     "/operations",
 			HandlerFunc: a.OperationsInfo},
+		// list of pending operations in db
+		rest.Route{
+			Name:        "PendingOperationList",
+			Method:      "GET",
+			Pattern:     "/operations/pending",
+			HandlerFunc: a.PendingOperationList},
 	}
 
 	// Register all routes from the App

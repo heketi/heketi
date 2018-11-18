@@ -49,3 +49,34 @@ func (a *App) OperationsInfo(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 }
+
+func (a *App) PendingOperationList(w http.ResponseWriter, r *http.Request) {
+	p := &api.PendingOperationListResponse{}
+
+	err := a.db.View(func(tx *bolt.Tx) error {
+		ops, err := PendingOperationList(tx)
+		if err != nil {
+			return err
+		}
+		p.PendingOperations = make([]api.PendingOperationInfo, len(ops))
+		for i, pid := range ops {
+			pop, err := NewPendingOperationEntryFromId(tx, pid)
+			if err != nil {
+				return err
+			}
+			p.PendingOperations[i] = pop.ToInfo()
+		}
+		return nil
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Write msg
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(p); err != nil {
+		panic(err)
+	}
+}
