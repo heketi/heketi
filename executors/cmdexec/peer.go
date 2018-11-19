@@ -26,7 +26,7 @@ func (s *CmdExecutor) PeerProbe(host, newnode string) error {
 	logger.Info("Probing: %v -> %v", host, newnode)
 	// create the commands
 	commands := []string{
-		fmt.Sprintf("gluster --mode=script peer probe %v", newnode),
+		fmt.Sprintf("%v peer probe %v", s.glusterCommand(), newnode),
 	}
 	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 10))
 	if err != nil {
@@ -37,8 +37,8 @@ func (s *CmdExecutor) PeerProbe(host, newnode string) error {
 	if s.RemoteExecutor.SnapShotLimit() > 0 {
 		logger.Info("Setting snapshot limit")
 		commands = []string{
-			fmt.Sprintf("gluster --mode=script snapshot config snap-max-hard-limit %v",
-				s.RemoteExecutor.SnapShotLimit()),
+			fmt.Sprintf("%v snapshot config snap-max-hard-limit %v",
+				s.glusterCommand(), s.RemoteExecutor.SnapShotLimit()),
 		}
 		err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 10))
 		if err != nil {
@@ -56,7 +56,7 @@ func (s *CmdExecutor) PeerDetach(host, detachnode string) error {
 	// create the commands
 	logger.Info("Detaching node %v", detachnode)
 	commands := []string{
-		fmt.Sprintf("gluster --mode=script peer detach %v", detachnode),
+		fmt.Sprintf("%v peer detach %v", s.glusterCommand(), detachnode),
 	}
 	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 10))
 	if err != nil {

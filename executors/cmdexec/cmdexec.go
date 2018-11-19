@@ -36,6 +36,10 @@ type CmdExecutor struct {
 	BackupLVM      bool
 }
 
+func (c *CmdExecutor) glusterCommand() string {
+	return "gluster --mode=script"
+}
+
 func setWithEnvVariables(config *CmdConfig) {
 }
 
