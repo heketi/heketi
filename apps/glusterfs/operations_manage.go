@@ -25,6 +25,7 @@ type OpClass int
 const (
 	TrackNormal OpClass = iota
 	TrackToken
+	TrackClean
 )
 
 // OpTracker is used to track and manage how many operations are being
