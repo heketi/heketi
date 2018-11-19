@@ -41,6 +41,13 @@ var opInfoTemplate = `Operation Counts:
   Stale: {{.Stale}}
 `
 
+var popListTemplate = `
+{{- range .PendingOperations -}}
+Id:{{.Id}}  Type:{{.TypeName}}  Status:
+{{- if eq .Status ""}}New{{ else }}{{.Status}}{{end}} {{.SubStatus}}
+{{ end -}}
+`
+
 var operationsInfoCommand = &cobra.Command{
 	Use:     "info",
 	Short:   "Get a summary of server operations",
@@ -58,6 +65,31 @@ var operationsInfoCommand = &cobra.Command{
 		opInfo, err := heketi.OperationsInfo()
 		if err == nil {
 			t.Execute(os.Stdout, opInfo)
+		}
+		return err
+	},
+}
+
+var operationsListCommand = &cobra.Command{
+	Use:     "list",
+	Short:   "Get a list of pending operations",
+	Long:    "Get a list of pending operations",
+	Example: `  $ heketi-cli server operations list`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
+		t, err := template.New("popList").Parse(popListTemplate)
+		if err != nil {
+			return err
+		}
+		popList, err := heketi.PendingOperationList()
+		if err == nil {
+			err := t.Execute(os.Stdout, popList)
+			if err != nil {
+				return err
+			}
 		}
 		return err
 	},
@@ -117,6 +149,8 @@ func init() {
 	operationsCommand.SilenceUsage = true
 	operationsCommand.AddCommand(operationsInfoCommand)
 	operationsInfoCommand.SilenceUsage = true
+	operationsCommand.AddCommand(operationsListCommand)
+	operationsListCommand.SilenceUsage = true
 	// admin mode command(s)
 	serverCommand.AddCommand(modeCommand)
 	modeCommand.SilenceUsage = true
