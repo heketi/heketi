@@ -116,3 +116,32 @@ func (v PendingOperationType) Name() string {
 	}
 	return "unknown"
 }
+
+// Name returns a short description of a change action.
+func (c PendingChangeType) Name() string {
+	switch c {
+	case OpAddBrick:
+		return "Add brick"
+	case OpAddVolume:
+		return "Add volume"
+	case OpDeleteBrick:
+		return "Delete brick"
+	case OpDeleteVolume:
+		return "Delete volume"
+	case OpExpandVolume:
+		return "Expand volume"
+	case OpAddBlockVolume:
+		return "Add block volume"
+	case OpDeleteBlockVolume:
+		return "Delete block volume"
+	case OpRemoveDevice:
+		return "Remove device"
+	case OpCloneVolume:
+		return "Clone volume from"
+	case OpSnapshotVolume:
+		return "Snapshot volume"
+	case OpAddVolumeClone:
+		return "Expand volume to"
+	}
+	return "Unknown"
+}
