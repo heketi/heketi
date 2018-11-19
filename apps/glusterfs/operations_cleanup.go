@@ -20,6 +20,10 @@ type OperationCleaner struct {
 	db       wdb.DB
 	sel      func(*PendingOperationEntry) bool
 	executor executors.Executor
+
+	// operations tracker. This will be unset if run in offline mode
+	optracker *OpTracker
+	opClass   OpClass
 }
 
 func (oc OperationCleaner) Clean() error {
@@ -64,11 +68,39 @@ func (oc OperationCleaner) Clean() error {
 }
 
 func (oc OperationCleaner) cleanOp(cop CleanableOperation) error {
+	if !oc.cleanBegin(cop.Id()) {
+		logger.Warning("Not starting clean of %v, not ready", cop.Id())
+		return nil
+	}
+	defer oc.cleanEnd(cop.Id())
 	err := cop.Clean(oc.executor)
 	if err != nil {
 		return err
 	}
 	return cop.CleanDone()
+}
+
+// cleanBegin returns true if a clean of the given operation
+// can start at this time.
+func (oc OperationCleaner) cleanBegin(id string) bool {
+	if oc.optracker == nil {
+		// no tracker in use
+		return true
+	}
+	if oc.optracker.ThrottleOrAdd(id, oc.opClass) {
+		logger.Warning("Clean of operation %v thottled (class=%v)",
+			id, oc.opClass)
+		return false
+	}
+	return true
+}
+
+// cleanEnd releases any resources taken by cleanBegin
+func (oc OperationCleaner) cleanEnd(id string) {
+	if oc.optracker == nil {
+		return
+	}
+	oc.optracker.Remove(id)
 }
 
 func CleanAll(p *PendingOperationEntry) bool {
