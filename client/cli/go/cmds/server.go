@@ -48,26 +48,69 @@ Id:{{.Id}}  Type:{{.TypeName}}  Status:
 {{ end -}}
 `
 
+var popDetailsTemplate = `
+Id: {{.Id}}
+Type: {{.TypeName}}
+Status: {{if eq .Status ""}}New{{ else }}{{.Status}}{{end}} {{.SubStatus}}
+Changes:
+{{- range .Changes }}
+    {{.Description}}: {{.Id}}
+{{- end }}
+`
+
 var operationsInfoCommand = &cobra.Command{
 	Use:     "info",
 	Short:   "Get a summary of server operations",
 	Long:    "Get a summary of server operations",
 	Example: `  $ heketi-cli server operations info`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		heketi, err := newHeketiClient()
-		if err != nil {
-			return err
+		// I probably should not have used "info" to get a simple
+		// summary of operations when it was used elsewhere to
+		// display details about a particular id. This keeps
+		// backwards compatibility while keeping the pattern of
+		// "info <id>" for more info about a particular item.
+		s := cmd.Flags().Args()
+		if len(s) < 1 {
+			return operationsInfoSummary()
+		} else {
+			return operationDetails(cmd.Flags().Arg(0))
 		}
-		t, err := template.New("opInfo").Parse(opInfoTemplate)
-		if err != nil {
-			return err
-		}
-		opInfo, err := heketi.OperationsInfo()
-		if err == nil {
-			t.Execute(os.Stdout, opInfo)
-		}
-		return err
 	},
+}
+
+func operationsInfoSummary() error {
+	heketi, err := newHeketiClient()
+	if err != nil {
+		return err
+	}
+	t, err := template.New("opInfo").Parse(opInfoTemplate)
+	if err != nil {
+		return err
+	}
+	opInfo, err := heketi.OperationsInfo()
+	if err == nil {
+		t.Execute(os.Stdout, opInfo)
+	}
+	return err
+}
+
+func operationDetails(id string) error {
+	heketi, err := newHeketiClient()
+	if err != nil {
+		return err
+	}
+	t, err := template.New("popDetails").Parse(popDetailsTemplate)
+	if err != nil {
+		return err
+	}
+	opInfo, err := heketi.PendingOperationDetails(id)
+	if err == nil {
+		err := t.Execute(os.Stdout, opInfo)
+		if err != nil {
+			return err
+		}
+	}
+	return err
 }
 
 var operationsListCommand = &cobra.Command{
