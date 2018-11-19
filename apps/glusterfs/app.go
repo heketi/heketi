@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
@@ -697,6 +698,24 @@ func (a *App) OnDemandCleaner(ops map[string]bool) OperationCleaner {
 		sel:       sel,
 		optracker: a.optracker,
 		opClass:   TrackNormal,
+	}
+}
+
+// BackgroundCleaner returns a background operations cleaner
+// suitable for use as a background "process" in the heketi server.
+func (a *App) BackgroundCleaner() *backgroundOperationCleaner {
+	startSec := time.Duration(a.conf.StartTimeBackgroundCleaner)
+	checkSec := time.Duration(a.conf.RefreshTimeBackgroundCleaner)
+	return &backgroundOperationCleaner{
+		cleaner: OperationCleaner{
+			db:        a.db,
+			executor:  a.executor,
+			sel:       CleanAll,
+			optracker: a.optracker,
+			opClass:   TrackClean,
+		},
+		StartInterval: startSec * time.Second,
+		CheckInterval: checkSec * time.Second,
 	}
 }
 
