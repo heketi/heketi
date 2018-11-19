@@ -106,3 +106,22 @@ func (oc OperationCleaner) cleanEnd(id string) {
 func CleanAll(p *PendingOperationEntry) bool {
 	return p.Status == StaleOperation || p.Status == FailedOperation
 }
+
+// CleanSelectedOps is a factory function that returns a new selection
+// function which will only match cleanable pending ops with IDs
+// in the specified map.
+func CleanSelectedOps(
+	ops map[string]bool) func(p *PendingOperationEntry) bool {
+
+	return func(p *PendingOperationEntry) bool {
+		if !ops[p.Id] {
+			return false
+		}
+		if !CleanAll(p) {
+			logger.Debug("Selected pending op id %v was not cleanable", p.Id)
+			return false
+		}
+		logger.Debug("matched pending operation id: %v", p.Id)
+		return true
+	}
+}
