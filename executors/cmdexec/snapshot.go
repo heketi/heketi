@@ -31,7 +31,7 @@ func (s *CmdExecutor) snapshotActivate(host string, snapshot string) error {
 	}
 
 	command := []string{
-		fmt.Sprintf("gluster --mode=script --xml snapshot activate %v", snapshot),
+		fmt.Sprintf("%v --xml snapshot activate %v", s.glusterCommand(), snapshot),
 	}
 
 	results, err := s.RemoteExecutor.ExecCommands(host, command, 10)
@@ -64,7 +64,7 @@ func (s *CmdExecutor) snapshotDeactivate(host string, snapshot string) error {
 	}
 
 	command := []string{
-		fmt.Sprintf("gluster --mode=script --xml snapshot deactivate %v", snapshot),
+		fmt.Sprintf("%v --xml snapshot deactivate %v", s.glusterCommand(), snapshot),
 	}
 
 	results, err := s.RemoteExecutor.ExecCommands(host, command, 10)
@@ -106,7 +106,7 @@ func (s *CmdExecutor) SnapshotCloneVolume(host string, vcr *executors.SnapshotCl
 	}
 
 	command := []string{
-		fmt.Sprintf("gluster --mode=script --xml snapshot clone %v %v", vcr.Volume, vcr.Snapshot),
+		fmt.Sprintf("%v --xml snapshot clone %v %v", s.glusterCommand(), vcr.Volume, vcr.Snapshot),
 	}
 
 	results, err := s.RemoteExecutor.ExecCommands(host, command, 10)
@@ -126,7 +126,7 @@ func (s *CmdExecutor) SnapshotCloneVolume(host string, vcr *executors.SnapshotCl
 
 	// start the newly cloned volume
 	command = []string{
-		fmt.Sprintf("gluster --mode=script --xml volume start %v", vcr.Volume),
+		fmt.Sprintf("%v --xml volume start %v", s.glusterCommand(), vcr.Volume),
 	}
 
 	err = rex.AnyError(s.RemoteExecutor.ExecCommands(host, command, 10))
@@ -155,7 +155,7 @@ func (s *CmdExecutor) SnapshotDestroy(host string, snapshot string) error {
 	}
 
 	command := []string{
-		fmt.Sprintf("gluster --mode=script --xml snapshot delete %v", snapshot),
+		fmt.Sprintf("%v --xml snapshot delete %v", s.glusterCommand(), snapshot),
 	}
 
 	results, err := s.RemoteExecutor.ExecCommands(host, command, 10)
