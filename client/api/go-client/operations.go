@@ -44,3 +44,29 @@ func (c *Client) OperationsInfo() (*api.OperationsInfo, error) {
 	}
 	return &oi, nil
 }
+
+func (c *Client) PendingOperationList() (*api.PendingOperationListResponse, error) {
+	req, err := http.NewRequest("GET", c.host+"/operations/pending", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// Set token
+	err = c.setToken(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// Send request
+	r, err := c.do(req)
+	if err != nil {
+		return nil, err
+	}
+	var ol api.PendingOperationListResponse
+	err = utils.GetJsonFromResponse(r, &ol)
+	if err != nil {
+		return nil, err
+	}
+	return &ol, nil
+}
