@@ -676,6 +676,24 @@ func (a *App) OfflineCleaner() OperationCleaner {
 	}
 }
 
+// OnDemandCleaner returns an operations cleaner based on the current
+// app object that can be used to perform clean ups requested by
+// a user (on demand).
+func (a *App) OnDemandCleaner(ops map[string]bool) OperationCleaner {
+	sel := CleanAll
+	if len(ops) > 0 {
+		// user specified specific ops to clean
+		sel = CleanSelectedOps(ops)
+	}
+	return OperationCleaner{
+		db:        a.db,
+		executor:  a.executor,
+		sel:       sel,
+		optracker: a.optracker,
+		opClass:   TrackNormal,
+	}
+}
+
 // currentNodeHealthStatus returns a map of node ids to the most
 // recently known health status (true is up, false is not up).
 // If a node is not found in the map its status is unknown.
