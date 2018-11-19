@@ -57,6 +57,10 @@ var (
 	// while avoiding having to touch all of the unit tests.
 	MonitorGlusterNodes = false
 
+	// global var to enable the use of the background pending
+	// operations cleanup mechanism.
+	EnableBackgroundCleaner = false
+
 	// global var that contains list of volume options that are set *before*
 	// setting the volume options that come as part of volume request.
 	PreReqVolumeOptions = ""
@@ -76,6 +80,8 @@ type App struct {
 
 	// health monitor
 	nhealth *NodeHealthCache
+	// background operations cleaner
+	bgcleaner *backgroundOperationCleaner
 
 	// operations tracker
 	optracker *OpTracker
@@ -223,6 +229,17 @@ func NewApp(conf *GlusterFSConfig) *App {
 		app.nhealth = NewNodeHealthCache(timer, startDelay, app.db, app.executor)
 		app.nhealth.Monitor()
 		currentNodeHealthCache = app.nhealth
+	}
+	// configure background cleaner params
+	if app.conf.StartTimeBackgroundCleaner == 0 {
+		app.conf.StartTimeBackgroundCleaner = 60
+	}
+	if app.conf.RefreshTimeBackgroundCleaner == 0 {
+		app.conf.RefreshTimeBackgroundCleaner = 3600
+	}
+	if EnableBackgroundCleaner {
+		app.bgcleaner = app.BackgroundCleaner()
+		app.bgcleaner.Start()
 	}
 
 	// set up the operations counter
@@ -629,6 +646,9 @@ func (a *App) Close() {
 	// stop the health goroutine
 	if a.nhealth != nil {
 		a.nhealth.Stop()
+	}
+	if a.bgcleaner != nil {
+		a.bgcleaner.Stop()
 	}
 
 	// Close the DB
