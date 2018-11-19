@@ -10,6 +10,8 @@
 package glusterfs
 
 import (
+	"time"
+
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 
@@ -101,6 +103,55 @@ func (oc OperationCleaner) cleanEnd(id string) {
 		return
 	}
 	oc.optracker.Remove(id)
+}
+
+type backgroundOperationCleaner struct {
+	cleaner OperationCleaner
+
+	// timing params
+	StartInterval time.Duration
+	CheckInterval time.Duration
+
+	// to stop the monitor
+	stop chan<- interface{}
+}
+
+// Start creates a background goroutine to run periodic cleans
+// of stale and failed pending operations.
+func (boc *backgroundOperationCleaner) Start() {
+	startTimer := time.NewTimer(boc.StartInterval)
+	ticker := time.NewTicker(boc.CheckInterval)
+	stop := make(chan interface{})
+	boc.stop = stop
+
+	go func() {
+		logger.Info("Started background pending operations cleaner")
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stop:
+				logger.Info("Stopping background pending operations cleaner")
+				return
+			case <-startTimer.C:
+				err := boc.cleaner.Clean()
+				if err != nil {
+					logger.LogError(
+						"Background pending operations cleaner: %v", err)
+				}
+			case <-ticker.C:
+				err := boc.cleaner.Clean()
+				if err != nil {
+					logger.LogError(
+						"Background pending operations cleaner: %v", err)
+				}
+			}
+		}
+	}()
+}
+
+// Stop the background operations cleaner.
+func (boc *backgroundOperationCleaner) Stop() {
+	boc.stop <- true
 }
 
 func CleanAll(p *PendingOperationEntry) bool {
