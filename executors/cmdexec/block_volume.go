@@ -117,8 +117,10 @@ func (s *CmdExecutor) BlockVolumeDestroy(host string, blockHostingVolumeName str
 	}
 	var blockVolumeDelete CliOutput
 	if e := json.Unmarshal([]byte(errOutput), &blockVolumeDelete); e != nil {
+		logger.LogError("Failed to unmarshal response from block "+
+			"volume delete for volume %v", blockVolumeName)
 		if r.Err != nil {
-			return r.Err
+			return logger.Err(r.Err)
 		}
 
 		return logger.LogError("Unable to parse output from block "+
