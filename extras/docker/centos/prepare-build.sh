@@ -11,5 +11,5 @@ set -e
 # the local directory where the Dockerfile is located
 WORKDIR=$(dirname "${0}")
 
-cp -f "${WORKDIR}"/../fromsource/heketi.json "${WORKDIR}"
-cp -f "${WORKDIR}"/../fromsource/heketi-start.sh "${WORKDIR}"
+cp -f "${WORKDIR}"/../../container/heketi.json "${WORKDIR}"
+cp -f "${WORKDIR}"/../../container/heketi-start.sh "${WORKDIR}"
