@@ -1,15 +1,11 @@
 #!/bin/sh
 #
-# Preparation for building container images.
+# This script is now deprecated and should get removed once the CentOS
+# Community Container Pipeline does not point to it anymore.
 #
-# - artifacts need to be in this WORKDIR, symlinks won't work
-#
+# Once the :testing container builds successfully again, the prebuild-script
+# can be dropped from
+# https://github.com/CentOS/container-index/blob/master/index.d/gluster.yaml
+# and after that has been merged, this script can be deleted.
 
-# error out if anything fails
-set -e
-
-# the local directory where the Dockerfile is located
-WORKDIR=$(dirname "${0}")
-
-cp -f "${WORKDIR}"/../fromsource/heketi.json "${WORKDIR}"
-cp -f "${WORKDIR}"/../fromsource/heketi-start.sh "${WORKDIR}"
+true
