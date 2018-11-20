@@ -27,8 +27,6 @@ RUN mkdir $BUILD_HOME $GOPATH && \
     make && \
     mkdir -p /etc/heketi /var/lib/heketi && \
     make install prefix=/usr && \
-    cp /usr/share/heketi/container/heketi-start.sh /usr/bin/heketi-start.sh && \
-    cp /usr/share/heketi/container/heketi.json /etc/heketi/heketi.json && \
     glide cc && \
     cd && rm -rf $BUILD_HOME && \
     dnf -y remove git glide golang mercurial && \
@@ -38,5 +36,5 @@ RUN mkdir $BUILD_HOME $GOPATH && \
 VOLUME /etc/heketi /var/lib/heketi
 
 # expose port, set user and set entrypoint with config option
-ENTRYPOINT ["/usr/bin/heketi-start.sh"]
+ENTRYPOINT ["/usr/share/heketi/container/heketi-start.sh"]
 EXPOSE 8080

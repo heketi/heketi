@@ -16,5 +16,5 @@ VOLUME /etc/heketi
 VOLUME /var/lib/heketi
 
 # expose port, set user and set entrypoint with config option
-ENTRYPOINT ["/usr/bin/heketi-start.sh"]
+ENTRYPOINT ["/usr/share/heketi/container/heketi-start.sh"]
 EXPOSE 8080

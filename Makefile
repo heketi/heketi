@@ -167,6 +167,8 @@ bindir:=$(prefix)/bin
 datarootdir:=$(prefix)/share
 hekdir:=$(datarootdir)/heketi
 mandir:=$(datarootdir)/man
+heketi_start_path:=$(hekdir)/container/heketi-start.sh
+heketi_config_path:=$(hekdir)/container/heketi.json
 
 INSTALL:=install -D -p
 INSTALL_PROGRAM:=$(INSTALL) -m 0755
@@ -179,9 +181,9 @@ install:
 	$(INSTALL_DATA) docs/man/heketi-cli.8 \
 		$(DESTDIR)$(mandir)/man8/heketi-cli.8
 	$(INSTALL_PROGRAM) extras/container/heketi-start.sh \
-		$(DESTDIR)$(hekdir)/container/heketi-start.sh
+		$(DESTDIR)$(heketi_start_path)
 	$(INSTALL_DATA) extras/container/heketi.json \
-		$(DESTDIR)$(hekdir)/container/heketi.json
+		$(DESTDIR)$(heketi_config_path)
 
 
 .PHONY: server client test clean name run version release \
