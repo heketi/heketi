@@ -29,6 +29,21 @@ func (r Result) Ok() bool {
 	return r.Completed && r.Err == nil && r.ExitStatus == 0
 }
 
+// Error allows an error result to be treated like an error type.
+// Do not assume all results are true errors.
+func (r Result) Error() string {
+	// to be more compatible with older versions of heketi we use
+	// the error output (stderr) of commands unless that
+	// string is empty
+	if r.ErrOutput != "" {
+		return r.ErrOutput
+	}
+	if r.Err != nil {
+		return r.Err.Error()
+	}
+	return ""
+}
+
 // Results is used for a grouping of Result items.
 type Results []Result
 
@@ -73,7 +88,7 @@ func (rs Results) FirstErrorIndexed() (int, error) {
 			continue
 		}
 		if r.Err != nil {
-			return i, r.Err
+			return i, r
 		}
 	}
 	return -1, nil
