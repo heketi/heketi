@@ -47,6 +47,7 @@ func (c *tryOnHosts) run(f func(host string) error) error {
 		}
 	}
 
+	tries := 0
 	nodeUp := currentNodeHealthStatus()
 	for nodeId, host := range c.Hosts {
 		if up, found := nodeUp[nodeId]; found && !up {
@@ -57,11 +58,17 @@ func (c *tryOnHosts) run(f func(host string) error) error {
 			continue
 		}
 		logger.Debug("running function on node %v (%v)", nodeId, host)
+		tries++
 		err := f(host)
+		logger.Debug("running function on node %v got: %v", nodeId, err)
 		if done(err) {
 			return err
 		}
 		logger.Warning("error running on node %v (%v): %v", nodeId, host, err)
 	}
-	return fmt.Errorf("no hosts available (%v total)", len(c.Hosts))
+	if tries == 0 {
+		return fmt.Errorf("no hosts available (%v total)", len(c.Hosts))
+	}
+	return fmt.Errorf(
+		"all hosts failed (%v total, %v tried)", len(c.Hosts), tries)
 }
