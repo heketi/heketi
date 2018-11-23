@@ -13,6 +13,8 @@ compile() {
     env GOOS=linux GOARCH=arm make || fail "Unable to create build"
     cp heketi "$DOCKERFILEDIR"
     cp client/cli/go/heketi-cli "$DOCKERFILEDIR"
+    cp extras/container/heketi.json "$DOCKERFILEDIR"
+    cp extras/container/heketi-start.sh "$DOCKERFILEDIR"
     make clean
     cd "$DOCKERFILEDIR" || fail "Unable to 'cd $DOCKERFILEDIR'."
 }
