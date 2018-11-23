@@ -204,8 +204,8 @@ func fixIncorrectBlockHostingFreeSize(tx *bolt.Tx) error {
 		if err != nil {
 			return err
 		}
-		if !vol.Info.Block {
-			continue // ignore non-block hosting volumes
+		if !vol.Info.Block || vol.Pending.Id != "" {
+			continue // ignore non-BHVs and pending BHVs
 		}
 		bvsum, err := vol.TotalSizeBlockVolumes(tx)
 		if err != nil {
