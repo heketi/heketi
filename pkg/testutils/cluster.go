@@ -159,6 +159,12 @@ func (ce *ClusterEnv) Teardown(t *testing.T) {
 		clusterInfo, err := heketi.ClusterInfo(cluster)
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
+		// Delete block volumes in this cluster
+		for _, bv := range clusterInfo.BlockVolumes {
+			err := heketi.BlockVolumeDelete(bv)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		}
+
 		// Delete volumes in this cluster
 		for _, volume := range clusterInfo.Volumes {
 			err := heketi.VolumeDelete(volume)
