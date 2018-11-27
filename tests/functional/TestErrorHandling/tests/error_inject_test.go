@@ -46,6 +46,7 @@ func TestConfigChange(t *testing.T) {
 		c.Port = "8181"
 	})
 	defer testutils.ServerStopped(t, heketiServer)
+	heketiServer.HelloPort = "8181"
 	testutils.ServerStarted(t, heketiServer)
 
 	// verify that the default heketi client can't talk to the server
@@ -61,6 +62,7 @@ func TestConfigChange(t *testing.T) {
 	UpdateConfig(origConf, heketiServer.ConfPath, func(c *config.Config) {
 		c.GlusterFS.Executor = "mock"
 	})
+	heketiServer.HelloPort = "8080"
 	testutils.ServerRestarted(t, heketiServer)
 
 	testCluster.Setup(t, 2, 3)
