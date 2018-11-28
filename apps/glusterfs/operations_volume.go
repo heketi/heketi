@@ -395,16 +395,9 @@ func (vdel *VolumeDeleteOperation) Build() error {
 
 // Exec performs the volume and brick deletions on the storage systems.
 func (vdel *VolumeDeleteOperation) Exec(executor executors.Executor) error {
-	brick_entries, err := bricksFromOp(vdel.db, vdel.op, vdel.vol.Info.Gid)
-	if err != nil {
-		logger.LogError("Failed to get bricks from op: %v", err)
-		return err
-	}
-	sshhost, err := vdel.vol.manageHostFromBricks(vdel.db, brick_entries)
-	if err != nil {
-		return err
-	}
-	vdel.reclaimed, err = vdel.vol.deleteVolumeExec(vdel.db, executor, brick_entries, sshhost)
+	var err error
+	vdel.reclaimed, err = removeVolumeWithOp(
+		vdel.db, executor, vdel.op, vdel.vol.Info.Id)
 	if err != nil {
 		logger.LogError("Error executing delete volume: %v", err)
 	}
@@ -442,22 +435,24 @@ func (vdel *VolumeDeleteOperation) Rollback(executor executors.Executor) error {
 // Finalize marks all brick and volume entries for this operation as
 // fully deleted.
 func (vdel *VolumeDeleteOperation) Finalize() error {
-	return vdel.db.Update(func(tx *bolt.Tx) error {
-		txdb := wdb.WrapTx(tx)
+	if vdel.reclaimed == nil || len(vdel.reclaimed) == 0 {
+		return logger.LogError("brick reclaim map is empty (was Exec called?)")
+	}
+	return expungeVolumeWithOp(vdel.db, vdel.op, vdel.vol.Info.Id, vdel.reclaimed)
+}
 
-		brick_entries, err := bricksFromOp(txdb, vdel.op, vdel.vol.Info.Gid)
-		if err != nil {
-			logger.LogError("Failed to get bricks from op: %v", err)
-			return err
-		}
+// Clean tries to re-execute the volume delete operation.
+func (vdel *VolumeDeleteOperation) Clean(executor executors.Executor) error {
+	// for a delete, clean is essentially a replay of exec
+	// because exec must be robust against restarts now we can just call Exec
+	logger.Info("Starting Clean for %v op:%v", vdel.Label(), vdel.op.Id)
+	return vdel.Exec(executor)
+}
 
-		if err := vdel.vol.teardown(txdb, brick_entries, vdel.reclaimed); err != nil {
-			return err
-		}
-
-		vdel.op.Delete(tx)
-		return nil
-	})
+func (vdel *VolumeDeleteOperation) CleanDone() error {
+	// for a delete, clean done is essentially a replay of finalize
+	logger.Info("Clean is done for %v op:%v", vdel.Label(), vdel.op.Id)
+	return vdel.Finalize()
 }
 
 // VolumeCloneOperation implements the operation functions used to
