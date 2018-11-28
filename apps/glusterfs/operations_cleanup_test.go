@@ -62,12 +62,11 @@ func TestBasicOperationsCleanup(t *testing.T) {
 	e = oc.Clean()
 	tests.Assert(t, e == nil, "expected e == nil, got", e)
 
-	// currently no operations are actually cleanable.
-	// we must assert that the operations count is the same as before
+	// assert that pending volume create got cleaned up
 	app.db.View(func(tx *bolt.Tx) error {
 		l, e := PendingOperationList(tx)
 		tests.Assert(t, e == nil, "expected e == nil, got", e)
-		tests.Assert(t, len(l) == 1, "expected len(l) == 1, got:", len(l))
+		tests.Assert(t, len(l) == 0, "expected len(l) == 0, got:", len(l))
 		return nil
 	})
 }
