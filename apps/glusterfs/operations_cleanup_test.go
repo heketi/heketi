@@ -628,3 +628,100 @@ func TestOperationCleanerMarkStale(t *testing.T) {
 		return nil
 	})
 }
+
+func TestOperationCleanerBlockedByThrottle(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		2,    // clusters
+		3,    // nodes_per_cluster
+		4,    // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	req := &api.VolumeCreateRequest{}
+	req.Size = 1024
+	req.Durability.Type = api.DurabilityReplicate
+	req.Durability.Replicate.Replica = 3
+
+	// take control of time
+	fakeTime := operationTimestamp()
+	operationTimestamp = func() int64 {
+		return fakeTime
+	}
+
+	vol := NewVolumeEntryFromRequest(req)
+	vc := NewVolumeCreateOperation(vol, app.db)
+	e := vc.Build()
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	app.db.Update(func(tx *bolt.Tx) error {
+		l, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(l) == 1, "expected len(l) == 1, got:", len(l))
+		e = MarkPendingOperationsStale(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		return nil
+	})
+
+	ot := newOpTracker(3)
+	oc := OperationCleaner{
+		db:        app.db,
+		executor:  app.executor,
+		sel:       CleanAll,
+		optracker: ot,
+		opClass:   TrackClean,
+	}
+	tests.Assert(t, !ot.ThrottleOrAdd("aaa", TrackNormal))
+	tests.Assert(t, !ot.ThrottleOrAdd("bbb", TrackNormal))
+	tests.Assert(t, !ot.ThrottleOrAdd("ccc", TrackNormal))
+
+	// internally, the throttle should block any cleaning
+	e = oc.Clean()
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	// assert that pending volume create got cleaned up
+	app.db.View(func(tx *bolt.Tx) error {
+		l, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(l) == 1, "expected len(l) == 1, got:", len(l))
+		return nil
+	})
+
+	ot.Remove("aaa")
+	ot.Remove("bbb")
+	ot.Remove("ccc")
+	tests.Assert(t, !ot.ThrottleOrAdd("xxx", TrackClean))
+
+	// internally, the throttle should block any cleaning
+	e = oc.Clean()
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	// assert that pending volume create got cleaned up
+	app.db.View(func(tx *bolt.Tx) error {
+		l, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(l) == 1, "expected len(l) == 1, got:", len(l))
+		return nil
+	})
+
+	ot.Remove("xxx")
+
+	// internally, the throttle should block any cleaning
+	e = oc.Clean()
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	// assert that pending volume create got cleaned up
+	app.db.View(func(tx *bolt.Tx) error {
+		l, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(l) == 0, "expected len(l) == 0, got:", len(l))
+		return nil
+	})
+}
