@@ -529,3 +529,102 @@ func TestOperationsCleanupBrokenOp(t *testing.T) {
 		return nil
 	})
 }
+
+func TestOperationCleanerMarkStale(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		2,    // clusters
+		3,    // nodes_per_cluster
+		4,    // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	req := &api.VolumeCreateRequest{}
+	req.Size = 1024
+	req.Durability.Type = api.DurabilityReplicate
+	req.Durability.Replicate.Replica = 3
+
+	// take control of time
+	fakeTime := operationTimestamp()
+	operationTimestamp = func() int64 {
+		return fakeTime
+	}
+
+	vol := NewVolumeEntryFromRequest(req)
+	vc := NewVolumeCreateOperation(vol, app.db)
+	e := vc.Build()
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	app.db.Update(func(tx *bolt.Tx) error {
+		l, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(l) == 1, "expected len(l) == 1, got:", len(l))
+		pstale, e := PendingOperationEntrySelection(tx, CleanAll)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pstale) == 0,
+			"expected len(pstale) == 0, got:", len(pstale))
+		return nil
+	})
+
+	ot := newOpTracker(8)
+	oc := OperationCleaner{
+		db:        app.db,
+		executor:  app.executor,
+		sel:       CleanAll,
+		optracker: ot,
+		opClass:   TrackNormal,
+	}
+	e = oc.MarkStale()
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	// we ran the mark function, but time had not advanced. no changes
+	app.db.Update(func(tx *bolt.Tx) error {
+		l, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(l) == 1, "expected len(l) == 1, got:", len(l))
+		pstale, e := PendingOperationEntrySelection(tx, CleanAll)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pstale) == 0,
+			"expected len(pstale) == 0, got:", len(pstale))
+		return nil
+	})
+
+	fakeTime += 10 // advance time by 10 seconds
+	e = oc.MarkStale()
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	// we ran the mark function, but time had not gone far. no changes
+	app.db.Update(func(tx *bolt.Tx) error {
+		l, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(l) == 1, "expected len(l) == 1, got:", len(l))
+		pstale, e := PendingOperationEntrySelection(tx, CleanAll)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pstale) == 0,
+			"expected len(pstale) == 0, got:", len(pstale))
+		return nil
+	})
+
+	fakeTime += 60 // advance time by 60 seconds
+	e = oc.MarkStale()
+	tests.Assert(t, e == nil, "expected e == nil, got", e)
+
+	// we ran the mark function, but time had not gone far. no changes
+	app.db.Update(func(tx *bolt.Tx) error {
+		l, e := PendingOperationList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(l) == 1, "expected len(l) == 1, got:", len(l))
+		pstale, e := PendingOperationEntrySelection(tx, CleanAll)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(pstale) == 1,
+			"expected len(pstale) == 1, got:", len(pstale))
+		return nil
+	})
+}
