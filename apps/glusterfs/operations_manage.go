@@ -159,6 +159,7 @@ func AsyncHttpOperation(app *App,
 			}
 			if rerr := op.Rollback(app.executor); rerr != nil {
 				logger.LogError("%v Rollback error: %v", label, rerr)
+				markFailedIfSupported(op)
 			}
 			logger.LogError("%v Failed: %v", label, err)
 			return "", err
@@ -199,6 +200,7 @@ func RunOperation(o Operation,
 		}
 		if rerr := o.Rollback(executor); rerr != nil {
 			logger.LogError("%v Rollback error: %v", label, rerr)
+			markFailedIfSupported(o)
 		}
 		logger.LogError("%v Failed: %v", label, err)
 		return err
@@ -240,6 +242,7 @@ func retryOperation(o Operation,
 			// when retrying rollback must succeed cleanly or it
 			// is not safe to retry
 			logger.LogError("%v Rollback error: %v", label, e)
+			markFailedIfSupported(o)
 			return e
 		}
 		if e := o.Build(); e != nil {
@@ -265,6 +268,26 @@ func retryOperation(o Operation,
 		err = ore.OriginalError
 	}
 	return
+}
+
+// markFailedIfSupported takes any operation and if that operation
+// supports being marked failed, it marks it as not failed.
+// An error is returned only if the operation is failable and
+// marking it failed fails.
+func markFailedIfSupported(o Operation) error {
+	logger.Debug("Operation [%v] has failed, want to mark failed", o.Id())
+	fo, ok := o.(FailableOperation)
+	if !ok {
+		logger.Debug("Operation [%v] is not a failable operation", o.Id())
+		// not a failable operation. nothing to do
+		return nil
+	}
+	err := fo.MarkFailed()
+	if err != nil {
+		logger.LogError("Unable to mark failed [%v]: %v",
+			fo.Id(), err)
+	}
+	return err
 }
 
 // OperationHttpErrorf writes the appropriate http error responses for
