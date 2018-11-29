@@ -37,19 +37,27 @@ type OpTracker struct {
 	// internals
 	lock      sync.RWMutex
 	normalOps map[string]bool
+	bgOps     map[string]bool
 }
 
 func newOpTracker(limit uint64) *OpTracker {
 	return &OpTracker{
 		Limit:     limit,
 		normalOps: make(map[string]bool),
+		bgOps:     make(map[string]bool),
 	}
 }
 
 func (ot *OpTracker) insert(id string, c OpClass) {
 	godbc.Require(id != "", "id must not be empty")
 	godbc.Require(!ot.normalOps[id], "id already tracked", id)
-	ot.normalOps[id] = true
+	godbc.Require(!ot.bgOps[id], "id already tracked", id)
+	switch c {
+	case TrackClean:
+		ot.bgOps[id] = true
+	default:
+		ot.normalOps[id] = true
+	}
 }
 
 // Add records a new in-flight operation.
@@ -64,15 +72,16 @@ func (ot *OpTracker) Remove(id string) {
 	ot.lock.Lock()
 	defer ot.lock.Unlock()
 	godbc.Require(id != "", "id must not be empty")
-	godbc.Require(ot.normalOps[id], "id not tracked", id)
+	godbc.Require(ot.normalOps[id] || ot.bgOps[id], "id not tracked", id)
 	delete(ot.normalOps, id)
+	delete(ot.bgOps, id)
 }
 
 // Get returns the number of operations currently tracked.
 func (ot *OpTracker) Get() uint64 {
 	ot.lock.RLock()
 	defer ot.lock.RUnlock()
-	return uint64(len(ot.normalOps))
+	return uint64(len(ot.normalOps) + len(ot.bgOps))
 }
 
 // Tracked returns a mapping of tracked IDs to booleans.
@@ -83,6 +92,9 @@ func (ot *OpTracker) Tracked() map[string]bool {
 	// copy internal map to out map
 	out := map[string]bool{}
 	for k, _ := range ot.normalOps {
+		out[k] = true
+	}
+	for k, _ := range ot.bgOps {
 		out[k] = true
 	}
 	return out
@@ -96,6 +108,16 @@ func (ot *OpTracker) ThrottleOrAdd(id string, c OpClass) bool {
 	ot.lock.Lock()
 	defer ot.lock.Unlock()
 	n := len(ot.normalOps)
+	b := len(ot.bgOps)
+	if c == TrackClean && b > 0 {
+		// only one background op allowed at a time
+		logger.Warning(
+			"background operation already in progress")
+		return true
+	}
+	// normal limit throttles both normal and background ops
+	// background ops take real resources but we try to avoid
+	// having an pre-existing background op block new demand ops
 	if uint64(n) >= ot.Limit {
 		logger.Warning(
 			"operations in-flight (%v) exceeds limit (%v)", n, ot.Limit)
