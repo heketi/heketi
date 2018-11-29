@@ -267,6 +267,7 @@ func TestVolumeCreateRollbackCleanupFailure(t *testing.T) {
 
 	e = vc.Rollback(app.executor)
 	tests.Assert(t, e != nil, "expected e != nil, got", e)
+	markFailedIfSupported(vc)
 
 	// verify that the pending items remain in the db due to rollback
 	// failure
@@ -280,6 +281,10 @@ func TestVolumeCreateRollbackCleanupFailure(t *testing.T) {
 		pol, e := PendingOperationList(tx)
 		tests.Assert(t, e == nil, "expected e == nil, got", e)
 		tests.Assert(t, len(pol) == 1, "expected len(pol) == 1, got", len(pol))
+		pop, e := NewPendingOperationEntryFromId(tx, pol[0])
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, pop.Status == FailedOperation,
+			"expected pop.Status == FailedOperation, got:", pop.Status)
 		return nil
 	})
 }
