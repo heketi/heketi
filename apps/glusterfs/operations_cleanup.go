@@ -175,7 +175,16 @@ func (boc *backgroundOperationCleaner) Start() {
 						"Background pending operations cleaner: %v", err)
 				}
 			case <-ticker.C:
-				err := boc.cleaner.Clean()
+				// the periodic clean first looks for any ops that have
+				// gone stale in the meantime. This is not done for the
+				// start time because we would have just restarted and
+				// marked everything in the db as stale.
+				err := boc.cleaner.MarkStale()
+				if err != nil {
+					logger.LogError(
+						"Background pending operations mark stale: %v", err)
+				}
+				err = boc.cleaner.Clean()
 				if err != nil {
 					logger.LogError(
 						"Background pending operations cleaner: %v", err)
