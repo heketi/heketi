@@ -10,6 +10,7 @@
 package glusterfs
 
 import (
+	"errors"
 	"time"
 
 	"github.com/heketi/heketi/executors"
@@ -103,6 +104,41 @@ func (oc OperationCleaner) cleanEnd(id string) {
 		return
 	}
 	oc.optracker.Remove(id)
+}
+
+// MarkStale finds pending operations in the db that are not yet
+// stale and marks them as such. This is useful in case the
+// pending operation failed but the pending op could not be
+// marked failed (db error) in a long running server.
+func (oc OperationCleaner) MarkStale() error {
+	if oc.optracker == nil {
+		return errors.New("Can not mark stale without op tracker")
+	}
+	logger.Debug("Going to mark stale operations")
+	now := operationTimestamp()
+	sel := func(p *PendingOperationEntry) bool {
+		// operations must be new & older than 60 seconds to be selected
+		return p.Status == NewOperation && (now-p.Timestamp) >= 60
+	}
+	return oc.db.Update(func(tx *bolt.Tx) error {
+		pops, err := PendingOperationEntrySelection(tx, sel)
+		if err != nil {
+			return err
+		}
+		tracked := oc.optracker.Tracked()
+		for _, pop := range pops {
+			if tracked[pop.Id] {
+				continue
+			}
+			logger.Info("found untracked new operation [%v]: marking stale",
+				pop.Id)
+			pop.Status = StaleOperation
+			if err := pop.Save(tx); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 type backgroundOperationCleaner struct {
