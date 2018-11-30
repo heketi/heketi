@@ -10,6 +10,7 @@
 package cmdexec
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"sync"
@@ -40,7 +41,7 @@ type CmdExecutor struct {
 }
 
 func (c *CmdExecutor) glusterCommand() string {
-	return "gluster --mode=script"
+	return fmt.Sprintf("gluster --mode=script --timeout=%v", c.GlusterCliTimeout())
 }
 
 func setWithEnvVariables(config *CmdConfig) {
