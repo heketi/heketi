@@ -15,4 +15,5 @@ type CmdConfig struct {
 	SnapShotLimit        int    `json:"snapshot_limit"`
 	RebalanceOnExpansion bool   `json:"rebalance_on_expansion"`
 	BackupLVM            bool   `json:"backup_lvm_metadata"`
+	GlusterCliTimeout    uint32 `json:"gluster_cli_timeout"`
 }
