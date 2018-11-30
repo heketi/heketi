@@ -11,6 +11,7 @@ package injectexec
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"time"
 
@@ -54,6 +55,7 @@ func (r Reaction) React() (string, error) {
 // the real command.
 type CmdHook struct {
 	Cmd      string
+	CondFile string
 	Reaction Reaction
 }
 
@@ -62,6 +64,20 @@ type CmdHook struct {
 func (c *CmdHook) Match(command string) bool {
 	m, e := regexp.MatchString(c.Cmd, command)
 	return (e == nil && m)
+}
+
+// CheckConditions returns true if all of the conditions on
+// the hook are true (currenly only the CondFile condition).
+func (c *CmdHook) CheckConditions() bool {
+	if c.CondFile == "" {
+		// no condition file set. return true
+		return true
+	}
+	logger.Info("condition file configured: checking for %v", c.CondFile)
+	_, err := os.Stat(c.CondFile)
+	present := err == nil
+	logger.Info("condition file: %v present=%v", c.CondFile, present)
+	return present
 }
 
 // String returns a string representation of the hook.
@@ -106,7 +122,7 @@ func HookCommands(hooks CmdHooks, c string) rex.Result {
 
 	logger.Info("Checking for hook on %v", c)
 	for _, h := range hooks {
-		if h.Match(c) {
+		if h.Match(c) && h.CheckConditions() {
 			logger.Debug("found hook for %v: %v", c, h)
 			hr, herr := h.Reaction.React()
 			if herr != nil {
@@ -136,7 +152,7 @@ func HookResults(hooks ResultHooks, c string, result rex.Result) rex.Result {
 
 	for _, h := range hooks {
 		logger.Info("Checking for hook on %v -> %v", c, compare)
-		if h.Match(c, compare) {
+		if h.Match(c, compare) && h.CheckConditions() {
 			logger.Debug("found hook for %v/%v: %v", c, compare, h)
 			hr, herr := h.Reaction.React()
 			if herr != nil {
