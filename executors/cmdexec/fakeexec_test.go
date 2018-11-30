@@ -43,6 +43,7 @@ func NewFakeExecutor(f *CommandFaker) (*FakeExecutor, error) {
 	t := &FakeExecutor{}
 	t.RemoteExecutor = t
 	config := &CmdConfig{}
+	config.GlusterCliTimeout = 42
 	t.CmdExecutor.Init(config)
 	t.fake = f
 	t.Fstab = "/my/fstab"
