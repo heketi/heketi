@@ -611,8 +611,9 @@ type OperationsInfo struct {
 	Total    uint64 `json:"total"`
 	InFlight uint64 `json:"in_flight"`
 	// state based counts:
-	Stale uint64 `json:"stale"`
-	New   uint64 `json:"new"`
+	Stale  uint64 `json:"stale"`
+	Failed uint64 `json:"failed"`
+	New    uint64 `json:"new"`
 }
 
 type AdminState string
