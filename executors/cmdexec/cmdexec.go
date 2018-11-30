@@ -36,9 +36,14 @@ type CmdExecutor struct {
 	BackupLVM      bool
 }
 
+func setWithEnvVariables(config *CmdConfig) {
+}
+
 func (c *CmdExecutor) Init(config *CmdConfig) {
 	c.Throttlemap = make(map[string]chan bool)
 	c.config = config
+
+	setWithEnvVariables(config)
 }
 
 func (s *CmdExecutor) AccessConnection(host string) {
