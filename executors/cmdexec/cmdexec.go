@@ -10,6 +10,8 @@
 package cmdexec
 
 import (
+	"os"
+	"strconv"
 	"sync"
 
 	"github.com/heketi/heketi/pkg/logging"
@@ -24,6 +26,7 @@ type RemoteCommandTransport interface {
 	ExecCommands(host string, commands []string, timeoutMinutes int) (rex.Results, error)
 	RebalanceOnExpansion() bool
 	SnapShotLimit() int
+	GlusterCliTimeout() uint32
 }
 
 type CmdExecutor struct {
@@ -41,6 +44,17 @@ func (c *CmdExecutor) glusterCommand() string {
 }
 
 func setWithEnvVariables(config *CmdConfig) {
+	var env string
+
+	env = os.Getenv("HEKETI_GLUSTER_CLI_TIMEOUT")
+	if env != "" {
+		value, err := strconv.ParseUint(env, 10, 32)
+		if err != nil {
+			logger.LogError("Error: While parsing HEKETI_GLUSTER_CLI_TIMEOUT: %v", err)
+		} else {
+			config.GlusterCliTimeout = uint32(value)
+		}
+	}
 }
 
 func (c *CmdExecutor) Init(config *CmdConfig) {
@@ -93,4 +107,15 @@ func (s *CmdExecutor) SetLogLevel(level string) {
 
 func (s *CmdExecutor) Logger() *logging.Logger {
 	return logger
+}
+
+func (c *CmdExecutor) GlusterCliTimeout() uint32 {
+	if c.config.GlusterCliTimeout == 0 {
+		// Use a longer timeout (10 minutes) than gluster cli's default
+		// of 2 minutes, because some commands take longer in a system
+		// with many volumes.
+		return 600
+	}
+
+	return c.config.GlusterCliTimeout
 }
