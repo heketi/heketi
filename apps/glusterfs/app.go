@@ -19,13 +19,15 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
+	"github.com/heketi/rest"
+	"github.com/lpabon/godbc"
+
 	"github.com/heketi/heketi/executors"
 	"github.com/heketi/heketi/executors/injectexec"
 	"github.com/heketi/heketi/executors/kubeexec"
 	"github.com/heketi/heketi/executors/mockexec"
 	"github.com/heketi/heketi/executors/sshexec"
 	"github.com/heketi/heketi/pkg/logging"
-	"github.com/heketi/rest"
 )
 
 const (
@@ -724,6 +726,7 @@ func (a *App) OnDemandCleaner(ops map[string]bool) OperationCleaner {
 // BackgroundCleaner returns a background operations cleaner
 // suitable for use as a background "process" in the heketi server.
 func (a *App) BackgroundCleaner() *backgroundOperationCleaner {
+	godbc.Require(a.optracker != nil)
 	startSec := time.Duration(a.conf.StartTimeBackgroundCleaner)
 	checkSec := time.Duration(a.conf.RefreshTimeBackgroundCleaner)
 	return &backgroundOperationCleaner{
