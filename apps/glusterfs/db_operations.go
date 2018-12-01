@@ -461,3 +461,46 @@ func DeleteBricksWithEmptyPath(db *bolt.DB, all bool, clusterIDs []string, nodeI
 	}
 	return nil
 }
+
+// DbCheck ... is the offline version
+func DbCheck(dbfile string) error {
+
+	db, err := OpenDB(dbfile, false)
+	if err != nil {
+		return fmt.Errorf("Unable to open database: %v", err)
+	}
+
+	checkresponse, err := dbCheckConsistency(db)
+	if err != nil {
+		return fmt.Errorf("Unable to check the database: %v", err)
+	}
+
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetIndent("", "    ")
+
+	if err := encoder.Encode(checkresponse); err != nil {
+		return fmt.Errorf("Unable to encode the response into json: %v", err)
+	}
+
+	return nil
+}
+
+// dbCheckConsistency ... checks the current db state to determine if contents
+// of all the buckets represent a consistent view.
+func dbCheckConsistency(db *bolt.DB) (DbCheckResponse, error) {
+
+	var response DbCheckResponse
+
+	dump, err := dbDumpInternal(db)
+	if err != nil {
+		return response, fmt.Errorf("Could not construct dump from DB: %v", err.Error())
+	}
+
+	// TODO: Check the db here and remove the print statement.
+	// Implement check function for each bucket and call them here.
+	// Lastly, set the consistent bool to true/false based on len(inconsistencies)
+	// of all bucket checks.
+	fmt.Fprintf(os.Stderr, "%v", dump)
+
+	return response, nil
+}
