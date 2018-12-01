@@ -132,6 +132,28 @@ var exportdbCmd = &cobra.Command{
 	},
 }
 
+var checkdbCmd = &cobra.Command{
+	Use:     "consistency-check",
+	Short:   "checks the db for inconsistencies",
+	Long:    "checks the db for inconsistencies",
+	Example: "heketi db consistency-check --dbfile=/db/file/path/",
+	Run: func(cmd *cobra.Command, args []string) {
+		if dbFile == "" {
+			fmt.Fprintln(os.Stderr, "Please provide path for db file")
+			os.Exit(1)
+		}
+		if debugOutput {
+			glusterfs.SetLogLevel("debug")
+		}
+		err := glusterfs.DbCheck(dbFile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to check db: %v\n", err.Error())
+			os.Exit(1)
+		}
+		os.Exit(0)
+	},
+}
+
 var deleteBricksWithEmptyPath = &cobra.Command{
 	Use:     "delete-bricks-with-empty-path",
 	Short:   "removes brick entries from db that have empty path",
@@ -240,6 +262,11 @@ func init() {
 	exportdbCmd.Flags().StringVar(&jsonFile, "jsonfile", "", "File path for JSON file to be created")
 	exportdbCmd.Flags().BoolVar(&debugOutput, "debug", false, "Show debug logs on stdout")
 	exportdbCmd.SilenceUsage = true
+
+	dbCmd.AddCommand(checkdbCmd)
+	checkdbCmd.Flags().StringVar(&dbFile, "dbfile", "", "File path for db to be exported")
+	checkdbCmd.Flags().BoolVar(&debugOutput, "debug", false, "Show debug logs on stdout")
+	checkdbCmd.SilenceUsage = true
 
 	dbCmd.AddCommand(deleteBricksWithEmptyPath)
 	deleteBricksWithEmptyPath.Flags().StringVar(&dbFile, "dbfile", "", "File path for db to operate on")
