@@ -87,8 +87,8 @@ func NewSshExecutor(config *SshConfig) (*SshExecutor, error) {
 	setWithEnvVariables(config)
 
 	s := &SshExecutor{}
+	s.CmdExecutor.Init(&config.CmdConfig)
 	s.RemoteExecutor = s
-	s.Throttlemap = make(map[string]chan bool)
 
 	// Set configuration
 	if config.PrivateKeyFile == "" {

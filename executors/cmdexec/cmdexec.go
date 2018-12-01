@@ -35,6 +35,10 @@ type CmdExecutor struct {
 	BackupLVM      bool
 }
 
+func (c *CmdExecutor) Init(config *CmdConfig) {
+	c.Throttlemap = make(map[string]chan bool)
+}
+
 func (s *CmdExecutor) AccessConnection(host string) {
 	var (
 		c  chan bool
