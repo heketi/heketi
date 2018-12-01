@@ -27,6 +27,7 @@ type RemoteCommandTransport interface {
 }
 
 type CmdExecutor struct {
+	config      *CmdConfig
 	Throttlemap map[string]chan bool
 	Lock        sync.Mutex
 
@@ -37,6 +38,7 @@ type CmdExecutor struct {
 
 func (c *CmdExecutor) Init(config *CmdConfig) {
 	c.Throttlemap = make(map[string]chan bool)
+	c.config = config
 }
 
 func (s *CmdExecutor) AccessConnection(host string) {
