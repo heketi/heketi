@@ -34,7 +34,8 @@ func (s *CmdExecutor) snapshotActivate(host string, snapshot string) error {
 		fmt.Sprintf("%v --xml snapshot activate %v", s.glusterCommand(), snapshot),
 	}
 
-	results, err := s.RemoteExecutor.ExecCommands(host, command, 10)
+	results, err := s.RemoteExecutor.ExecCommands(host, command,
+		s.GlusterCliExecTimeout())
 	if err := rex.AnyError(results, err); err != nil {
 		return fmt.Errorf("Unable to activate snapshot %v: %v", snapshot, err)
 	}
@@ -67,7 +68,8 @@ func (s *CmdExecutor) snapshotDeactivate(host string, snapshot string) error {
 		fmt.Sprintf("%v --xml snapshot deactivate %v", s.glusterCommand(), snapshot),
 	}
 
-	results, err := s.RemoteExecutor.ExecCommands(host, command, 10)
+	results, err := s.RemoteExecutor.ExecCommands(host, command,
+		s.GlusterCliExecTimeout())
 	if err := rex.AnyError(results, err); err != nil {
 		return fmt.Errorf("Unable to deactivate snapshot %v: %v", snapshot, err)
 	}
@@ -109,7 +111,8 @@ func (s *CmdExecutor) SnapshotCloneVolume(host string, vcr *executors.SnapshotCl
 		fmt.Sprintf("%v --xml snapshot clone %v %v", s.glusterCommand(), vcr.Volume, vcr.Snapshot),
 	}
 
-	results, err := s.RemoteExecutor.ExecCommands(host, command, 10)
+	results, err := s.RemoteExecutor.ExecCommands(host, command,
+		s.GlusterCliExecTimeout())
 	if err := rex.AnyError(results, err); err != nil {
 		return nil, fmt.Errorf("Unable to clone snapshot %v: %v", vcr.Snapshot, err)
 	}
@@ -129,7 +132,8 @@ func (s *CmdExecutor) SnapshotCloneVolume(host string, vcr *executors.SnapshotCl
 		fmt.Sprintf("%v --xml volume start %v", s.glusterCommand(), vcr.Volume),
 	}
 
-	err = rex.AnyError(s.RemoteExecutor.ExecCommands(host, command, 10))
+	err = rex.AnyError(s.RemoteExecutor.ExecCommands(host, command,
+		s.GlusterCliExecTimeout()))
 	if err != nil {
 		s.VolumeDestroy(host, vcr.Volume)
 		return nil, fmt.Errorf("Unable to start volume %v, clone of snapshot %v: %v", vcr.Volume, vcr.Snapshot, err)
@@ -158,7 +162,8 @@ func (s *CmdExecutor) SnapshotDestroy(host string, snapshot string) error {
 		fmt.Sprintf("%v --xml snapshot delete %v", s.glusterCommand(), snapshot),
 	}
 
-	results, err := s.RemoteExecutor.ExecCommands(host, command, 10)
+	results, err := s.RemoteExecutor.ExecCommands(host, command,
+		s.GlusterCliExecTimeout())
 	if err := rex.AnyError(results, err); err != nil {
 		return fmt.Errorf("Unable to delete snapshot %v: %v", snapshot, err)
 	}
