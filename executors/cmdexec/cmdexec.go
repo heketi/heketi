@@ -120,3 +120,17 @@ func (c *CmdExecutor) GlusterCliTimeout() uint32 {
 
 	return c.config.GlusterCliTimeout
 }
+
+// The timeout, in minutes, for the command execution.
+// It used to be 10 minutes (or sometimes 5, for some simple commands),
+// but now it needs to be longer than the gluster cli timeout at
+// least where calling the gluster cli.
+func (c *CmdExecutor) GlusterCliExecTimeout() int {
+	timeout := 1 + (int(c.GlusterCliTimeout())+1)/60
+
+	if timeout < 10 {
+		timeout = 10
+	}
+
+	return timeout
+}
