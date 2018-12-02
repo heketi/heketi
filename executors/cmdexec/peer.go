@@ -28,7 +28,8 @@ func (s *CmdExecutor) PeerProbe(host, newnode string) error {
 	commands := []string{
 		fmt.Sprintf("%v peer probe %v", s.glusterCommand(), newnode),
 	}
-	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 10))
+	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands,
+		s.GlusterCliExecTimeout()))
 	if err != nil {
 		return err
 	}
@@ -40,7 +41,8 @@ func (s *CmdExecutor) PeerProbe(host, newnode string) error {
 			fmt.Sprintf("%v snapshot config snap-max-hard-limit %v",
 				s.glusterCommand(), s.RemoteExecutor.SnapShotLimit()),
 		}
-		err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 10))
+		err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands,
+			s.GlusterCliExecTimeout()))
 		if err != nil {
 			return err
 		}
@@ -58,7 +60,8 @@ func (s *CmdExecutor) PeerDetach(host, detachnode string) error {
 	commands := []string{
 		fmt.Sprintf("%v peer detach %v", s.glusterCommand(), detachnode),
 	}
-	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 10))
+	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands,
+		s.GlusterCliExecTimeout()))
 	if err != nil {
 		logger.Err(err)
 	}
