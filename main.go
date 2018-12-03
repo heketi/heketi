@@ -229,8 +229,6 @@ var cleanupOperationsCmd = &cobra.Command{
 		}
 
 		randSeed()
-		// always start if stale ops in the db
-		c.GlusterFS.IgnoreStaleOperations = true
 		// option to not start the background node monitor?
 		// FIXME, this is a hacky way to disable this background activity
 		// c.GlusterFS.DisableMonitorGlusterNodes = true

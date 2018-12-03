@@ -42,7 +42,6 @@ type GlusterFSConfig struct {
 	BlockHostingVolumeOptions string `json:"block_hosting_volume_options"`
 
 	// server behaviors
-	IgnoreStaleOperations          bool   `json:"ignore_stale_operations"`
 	DisableMonitorGlusterNodes     bool   `json:"disable_monitor_gluster_nodes"`
 	RefreshTimeMonitorGlusterNodes uint32 `json:"refresh_time_monitor_gluster_nodes"`
 	StartTimeMonitorGlusterNodes   uint32 `json:"start_time_monitor_gluster_nodes"`
