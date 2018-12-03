@@ -10,7 +10,6 @@
 package glusterfs
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -158,28 +157,16 @@ func NewApp(conf *GlusterFSConfig) *App {
 		return nil
 	}
 
-	// Abort the application if there are pending operations in the db.
-	// In the immediate future we need to prevent incomplete operations
-	// from piling up in the db. If there are any pending ops in the db
-	// (meaning heketi was uncleanly terminated during the op) we are
-	// simply going to refuse to start and provide offline tooling to
-	// repair the situation. In the long term we may gain the ability to
-	// auto-rollback or even try to resume some operations.
+	// Drop a note that the system had pending operations in the db
+	// at start up time. Even though we now have auto-cleanup
+	// This note can be helpful for curious users and or a debugging
+	// hint for changes to the environment over time.
 	if HasPendingOperations(app.db) {
-		e := errors.New(
-			"Heketi was terminated while performing one or more operations." +
-				" Server may refuse to start as long as pending operations" +
-				" are present in the db.")
-		logger.Err(e)
-		logger.Info(
-			"Please refer to the Heketi troubleshooting documentation for more" +
-				" information on how to resolve this issue.")
-		if !app.conf.IgnoreStaleOperations {
-			logger.Warning("Server refusing to start.")
-			panic(e)
-		}
-		logger.Warning("Ignoring stale pending operations." +
-			"Server will be running with incomplete/inconsistent state in DB.")
+		logger.Warning(
+			"Heketi has existing pending operations in the db." +
+				" Heketi will attempt to automatically clean up these items." +
+				" See the Heketi troubleshooting docs for more information" +
+				" about managing pending operations.")
 	}
 
 	// Set advanced settings
@@ -310,14 +297,6 @@ func (a *App) setFromEnvironmentalVariable() {
 	env = os.Getenv("HEKETI_GLUSTERAPP_LOGLEVEL")
 	if env != "" {
 		a.conf.Loglevel = env
-	}
-
-	env = os.Getenv("HEKETI_IGNORE_STALE_OPERATIONS")
-	if env != "" {
-		a.conf.IgnoreStaleOperations, err = strconv.ParseBool(env)
-		if err != nil {
-			logger.LogError("Error: While parsing HEKETI_IGNORE_STALE_OPERATIONS as bool: %v", err)
-		}
 	}
 
 	env = os.Getenv("HEKETI_AUTO_CREATE_BLOCK_HOSTING_VOLUME")
