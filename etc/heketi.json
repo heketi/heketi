@@ -49,7 +49,8 @@
       "user": "sshuser",
       "port": "Optional: ssh port.  Default is 22",
       "fstab": "Optional: Specify fstab file on node.  Default is /etc/fstab",
-      "backup_lvm_metadata": false
+      "backup_lvm_metadata": false,
+      "gluster_cli_timeout": "Optional: Timeout, in seconds, passed to the gluster cli invocations"
     },
 
     "_kubeexec_comment": "Kubernetes configuration",
@@ -61,7 +62,8 @@
       "password": "password for kubernetes user",
       "namespace": "OpenShift project or Kubernetes namespace",
       "fstab": "Optional: Specify fstab file on node.  Default is /etc/fstab",
-      "backup_lvm_metadata": false
+      "backup_lvm_metadata": false,
+      "gluster_cli_timeout": "Optional: Timeout, in seconds, passed to the gluster cli invocations"
     },
 
     "_db_comment": "Database file name",
