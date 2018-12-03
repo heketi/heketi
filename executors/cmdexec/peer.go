@@ -26,7 +26,7 @@ func (s *CmdExecutor) PeerProbe(host, newnode string) error {
 	logger.Info("Probing: %v -> %v", host, newnode)
 	// create the commands
 	commands := []string{
-		fmt.Sprintf("gluster peer probe %v", newnode),
+		fmt.Sprintf("gluster --mode=script peer probe %v", newnode),
 	}
 	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 10))
 	if err != nil {
@@ -56,7 +56,7 @@ func (s *CmdExecutor) PeerDetach(host, detachnode string) error {
 	// create the commands
 	logger.Info("Detaching node %v", detachnode)
 	commands := []string{
-		fmt.Sprintf("gluster peer detach %v", detachnode),
+		fmt.Sprintf("gluster --mode=script peer detach %v", detachnode),
 	}
 	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 10))
 	if err != nil {
