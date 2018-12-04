@@ -214,3 +214,134 @@ func TestDeleteBricksWithEmptyPath(t *testing.T) {
 	tests.Assert(t, len(d.Bricks) == 15,
 		"expected len(d.Bricks) == 15, got:", len(d.Bricks))
 }
+
+func TestDbDumpInternal(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		1,    // devices_per_node,
+		5*TB, // disksize
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	t.Run("clusterOnly", func(t *testing.T) {
+		db, err := dbDumpInternal(app.db)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(db.Clusters) == 1)
+		tests.Assert(t, len(db.Nodes) == 3)
+		tests.Assert(t, len(db.Devices) == 3)
+		tests.Assert(t, len(db.Volumes) == 0)
+		tests.Assert(t, len(db.BlockVolumes) == 0)
+		tests.Assert(t, len(db.PendingOperations) == 0)
+	})
+	t.Run("withVolumes", func(t *testing.T) {
+		req := &api.VolumeCreateRequest{}
+		req.Size = 100
+		// create five volumes
+		for i := 0; i < 5; i++ {
+			v := NewVolumeEntryFromRequest(req)
+			err := v.Create(app.db, app.executor)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		}
+
+		db, err := dbDumpInternal(app.db)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(db.Clusters) == 1)
+		tests.Assert(t, len(db.Nodes) == 3)
+		tests.Assert(t, len(db.Devices) == 3)
+		tests.Assert(t, len(db.Volumes) == 5)
+		tests.Assert(t, len(db.BlockVolumes) == 0)
+		tests.Assert(t, len(db.PendingOperations) == 0)
+	})
+	t.Run("withBlockVolumes", func(t *testing.T) {
+		req := &api.BlockVolumeCreateRequest{}
+		req.Size = 100
+		v := NewBlockVolumeEntryFromRequest(req)
+		err := v.Create(app.db, app.executor)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+		db, err := dbDumpInternal(app.db)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(db.Clusters) == 1)
+		tests.Assert(t, len(db.Nodes) == 3)
+		tests.Assert(t, len(db.Devices) == 3)
+		tests.Assert(t, len(db.Volumes) == 6)
+		tests.Assert(t, len(db.BlockVolumes) == 1)
+		tests.Assert(t, len(db.PendingOperations) == 0)
+	})
+	t.Run("withPending", func(t *testing.T) {
+		req := &api.VolumeCreateRequest{}
+		req.Size = 1
+		v := NewVolumeEntryFromRequest(req)
+		vcr := NewVolumeCreateOperation(v, app.db)
+		err := vcr.Build()
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+		db, err := dbDumpInternal(app.db)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(db.Clusters) == 1)
+		tests.Assert(t, len(db.Nodes) == 3)
+		tests.Assert(t, len(db.Devices) == 3)
+		tests.Assert(t, len(db.Volumes) == 7)
+		tests.Assert(t, len(db.BlockVolumes) == 1)
+		tests.Assert(t, len(db.PendingOperations) == 1)
+	})
+}
+
+func TestDbDumpFileRoundTrip(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		1,    // devices_per_node,
+		5*TB, // disksize
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	vreq := &api.VolumeCreateRequest{}
+	vreq.Size = 100
+	v := NewVolumeEntryFromRequest(vreq)
+	err = v.Create(app.db, app.executor)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	breq := &api.BlockVolumeCreateRequest{}
+	breq.Size = 100
+	bv := NewBlockVolumeEntryFromRequest(breq)
+	err = bv.Create(app.db, app.executor)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	app.Close()
+
+	tmpJson := tests.Tempfile()
+	defer os.Remove(tmpJson)
+
+	err = DbDump(tmpJson, tmpfile)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	newDb := tests.Tempfile()
+	defer os.Remove(newDb)
+	DbCreate(tmpJson, newDb)
+
+	app2 := NewTestApp(newDb)
+	defer app.Close()
+
+	db, err := dbDumpInternal(app2.db)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, len(db.Clusters) == 1)
+	tests.Assert(t, len(db.Nodes) == 3)
+	tests.Assert(t, len(db.Devices) == 3)
+	tests.Assert(t, len(db.Volumes) == 2)
+	tests.Assert(t, len(db.BlockVolumes) == 1)
+	tests.Assert(t, len(db.PendingOperations) == 0)
+}
