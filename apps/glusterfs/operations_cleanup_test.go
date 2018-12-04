@@ -725,3 +725,59 @@ func TestOperationCleanerBlockedByThrottle(t *testing.T) {
 		return nil
 	})
 }
+
+func TestCleanSelectedOps(t *testing.T) {
+	vals := []struct {
+		p *PendingOperationEntry
+		r bool
+	}{
+		// empty content: no match
+		{&PendingOperationEntry{}, false},
+		{&PendingOperationEntry{
+			PendingOperation: PendingOperation{
+				PendingItem: PendingItem{Id: "aaaa"},
+				Type:        OperationCreateVolume,
+			},
+			Status: StaleOperation,
+		}, true},
+		// match name but not status
+		{&PendingOperationEntry{
+			PendingOperation: PendingOperation{
+				PendingItem: PendingItem{Id: "bbbb"},
+				Type:        OperationCreateVolume,
+			},
+			Status: NewOperation,
+		}, false},
+		// match status but not name
+		{&PendingOperationEntry{
+			PendingOperation: PendingOperation{
+				PendingItem: PendingItem{Id: "cccc"},
+				Type:        OperationCreateVolume,
+			},
+			Status: StaleOperation,
+		}, false},
+		// match name and alt. status
+		{&PendingOperationEntry{
+			PendingOperation: PendingOperation{
+				PendingItem: PendingItem{Id: "dddd"},
+				Type:        OperationCreateVolume,
+			},
+			Status: FailedOperation,
+		}, true},
+	}
+
+	f := CleanSelectedOps(map[string]bool{
+		"aaaa": true,
+		"bbbb": true,
+		"dddd": true,
+	})
+
+	for i, val := range vals {
+		t.Run(fmt.Sprintf("Value%v", i), func(t *testing.T) {
+			result := f(val.p)
+			tests.Assert(t, result == val.r,
+				"result mismatch. expected", val.r,
+				"got", result, "with", fmt.Sprintf("%#v", val.p))
+		})
+	}
+}
