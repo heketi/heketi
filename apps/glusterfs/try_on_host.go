@@ -20,17 +20,32 @@ type nodeHosts map[string]string
 type tryOnHosts struct {
 	Hosts nodeHosts
 	done  func(error) bool
+	// nodesUp allows ht user of try on hosts to override the default
+	// function for fetching
+	nodesUp func() map[string]bool
 }
 
 func newTryOnHosts(hosts nodeHosts) *tryOnHosts {
 	return &tryOnHosts{Hosts: hosts}
 }
 
+// nodeStatus return a map of all the known node status
+// with a true value indicating the node is known to be up.
+// The default behavior of this function can be controlled
+// by setting the 'nodesUp' function in the struct.
+func (c *tryOnHosts) nodeStatus() map[string]bool {
+	if c.nodesUp == nil {
+		return currentNodeHealthStatus()
+	}
+	return c.nodesUp()
+}
+
 // once returns a tryOnHosts that only tries one host known
 // to be up.
 func (c *tryOnHosts) once() *tryOnHosts {
 	return &tryOnHosts{
-		Hosts: c.Hosts,
+		Hosts:   c.Hosts,
+		nodesUp: c.nodesUp,
 		done: func(err error) bool {
 			return true
 		},
@@ -48,7 +63,7 @@ func (c *tryOnHosts) run(f func(host string) error) error {
 	}
 
 	tries := 0
-	nodeUp := currentNodeHealthStatus()
+	nodeUp := c.nodeStatus()
 	for nodeId, host := range c.Hosts {
 		if up, found := nodeUp[nodeId]; found && !up {
 			// if the node is in the cache and we know it was not
