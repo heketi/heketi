@@ -271,6 +271,7 @@ func DbCreate(jsonfile string, dbfile string) error {
 	if err != nil {
 		return fmt.Errorf("Could not open db file: %v", err.Error())
 	}
+	defer dbhandle.Close()
 
 	err = dbhandle.Update(func(tx *bolt.Tx) error {
 		return initializeBuckets(tx)
