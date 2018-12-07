@@ -9,27 +9,29 @@
 
 package glusterfs
 
-import (
-	"errors"
-)
+type constErr string
 
-var (
-	ErrNoSpace          = errors.New("No space")
-	ErrFound            = errors.New("Id already exists")
-	ErrNotFound         = errors.New("Id not found")
-	ErrConflict         = errors.New("The target exists, contains other items, or is in use.")
-	ErrMaxBricks        = errors.New("Maximum number of bricks reached.")
-	ErrMinimumBrickSize = errors.New("Minimum brick size limit reached.  Out of space.")
-	ErrDbAccess         = errors.New("Unable to access db")
-	ErrAccessList       = errors.New("Unable to access list")
-	ErrKeyExists        = errors.New("Key already exists in the database")
-	ErrNoReplacement    = errors.New("No Replacement was found for resource requested to be removed")
-	ErrCloneBlockVol    = errors.New("Cloning of block hosting volumes is not supported")
+func (e constErr) Error() string {
+	return string(e)
+}
+
+const (
+	ErrNoSpace          = constErr("No space")
+	ErrFound            = constErr("Id already exists")
+	ErrNotFound         = constErr("Id not found")
+	ErrConflict         = constErr("The target exists, contains other items, or is in use.")
+	ErrMaxBricks        = constErr("Maximum number of bricks reached.")
+	ErrMinimumBrickSize = constErr("Minimum brick size limit reached.  Out of space.")
+	ErrDbAccess         = constErr("Unable to access db")
+	ErrAccessList       = constErr("Unable to access list")
+	ErrKeyExists        = constErr("Key already exists in the database")
+	ErrNoReplacement    = constErr("No Replacement was found for resource requested to be removed")
+	ErrCloneBlockVol    = constErr("Cloning of block hosting volumes is not supported")
 
 	// well known errors for cluster device source
-	ErrEmptyCluster = errors.New("No nodes in cluster")
-	ErrNoStorage    = errors.New("No online storage devices in cluster")
+	ErrEmptyCluster = constErr("No nodes in cluster")
+	ErrNoStorage    = constErr("No online storage devices in cluster")
 
 	// returned by code related to operations load
-	ErrTooManyOperations = errors.New("Server handling too many operations")
+	ErrTooManyOperations = constErr("Server handling too many operations")
 )
