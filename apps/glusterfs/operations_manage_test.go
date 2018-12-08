@@ -13,47 +13,70 @@ import (
 	"testing"
 
 	"github.com/heketi/tests"
+
+	"github.com/heketi/heketi/pkg/idgen"
 )
 
-func TestOpCounterCounts(t *testing.T) {
-	oc := &OpCounter{Limit: 50}
+func TestOpTrackerCounts(t *testing.T) {
+	ot := newOpTracker(50)
+	var (
+		i1 = idgen.GenUUID()
+		i2 = idgen.GenUUID()
+		i3 = idgen.GenUUID()
+		i4 = idgen.GenUUID()
+		i5 = idgen.GenUUID()
+	)
 
-	oc.Inc()
-	oc.Inc()
-	oc.Inc()
-	tests.Assert(t, oc.Get() == 3, "expected oc.Get() == 3, got", oc.Get())
+	ot.Add(i1, TrackNormal)
+	ot.Add(i2, TrackNormal)
+	ot.Add(i3, TrackNormal)
+	tests.Assert(t, ot.Get() == 3, "expected ot.Get() == 3, got", ot.Get())
 
-	oc.Inc()
-	oc.Inc()
-	oc.Dec()
-	oc.Inc()
-	tests.Assert(t, oc.Get() == 5, "expected oc.Get() == 5, got", oc.Get())
+	ot.Add(i4, TrackNormal)
+	ot.Add(i5, TrackNormal)
+	ot.Remove(i1)
+	ot.Add(i1, TrackNormal)
+	tests.Assert(t, ot.Get() == 5, "expected ot.Get() == 5, got", ot.Get())
 }
 
-func TestOpCounterLimits(t *testing.T) {
-	oc := &OpCounter{Limit: 5}
+func TestOpTrackerLimits(t *testing.T) {
+	ot := newOpTracker(5)
+	var (
+		i1 = idgen.GenUUID()
+		i2 = idgen.GenUUID()
+		i3 = idgen.GenUUID()
+		i4 = idgen.GenUUID()
+	)
 
-	oc.Inc()
-	oc.Inc()
-	oc.Inc()
-	oc.Inc()
+	ot.Add(i1, TrackNormal)
+	ot.Add(i2, TrackNormal)
+	ot.Add(i3, TrackNormal)
+	ot.Add(i4, TrackNormal)
 
-	var r bool
-	r = oc.ThrottleOrInc()
+	var (
+		r      bool
+		token  string
+		token2 string
+	)
+	r, token = ot.ThrottleOrToken()
 	tests.Assert(t, r == false, "expected r == false, got", r)
-	tests.Assert(t, oc.Get() == 5, "expected oc.Get() == 5, got", oc.Get())
+	tests.Assert(t, ot.Get() == 5, "expected ot.Get() == 5, got", ot.Get())
+	tests.Assert(t, token != "", "expected token != \"\"")
 
-	r = oc.ThrottleOrInc()
+	r, token2 = ot.ThrottleOrToken()
 	tests.Assert(t, r == true, "expected r == true, got", r)
-	tests.Assert(t, oc.Get() == 5, "expected oc.Get() == 5, got", oc.Get())
+	tests.Assert(t, ot.Get() == 5, "expected ot.Get() == 5, got", ot.Get())
+	tests.Assert(t, token2 == "", "expected token2 == \"\"")
 
-	oc.Dec()
+	ot.Remove(token)
 
-	r = oc.ThrottleOrInc()
+	r, token = ot.ThrottleOrToken()
 	tests.Assert(t, r == false, "expected r == false, got", r)
-	tests.Assert(t, oc.Get() == 5, "expected oc.Get() == 5, got", oc.Get())
+	tests.Assert(t, ot.Get() == 5, "expected ot.Get() == 5, got", ot.Get())
+	tests.Assert(t, token != "", "expected token != \"\"")
 
-	r = oc.ThrottleOrInc()
+	r, token2 = ot.ThrottleOrToken()
 	tests.Assert(t, r == true, "expected r == true, got", r)
-	tests.Assert(t, oc.Get() == 5, "expected oc.Get() == 5, got", oc.Get())
+	tests.Assert(t, ot.Get() == 5, "expected ot.Get() == 5, got", ot.Get())
+	tests.Assert(t, token2 == "", "expected token2 == \"\"")
 }
