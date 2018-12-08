@@ -96,7 +96,7 @@ func NewKubeExecutor(config *KubeConfig) (*KubeExecutor, error) {
 	// Initialize
 	k := &KubeExecutor{}
 	k.config = config
-	k.Throttlemap = make(map[string]chan bool)
+	k.CmdExecutor.Init(&config.CmdConfig)
 	k.RemoteExecutor = k
 
 	if k.config.Fstab == "" {
