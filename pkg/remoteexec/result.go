@@ -87,7 +87,7 @@ func (rs Results) FirstErrorIndexed() (int, error) {
 		if !r.Completed {
 			continue
 		}
-		if r.Err != nil {
+		if !r.Ok() {
 			return i, r
 		}
 	}
