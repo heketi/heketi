@@ -413,11 +413,6 @@ func (v *VolumeEntry) TotalSizeBlockVolumes(tx *bolt.Tx) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		// currently pending block volumes do not deduct space from
-		// the block hosting volume
-		if bvol.Pending.Id != "" {
-			continue
-		}
 		bvsum += bvol.Info.Size
 	}
 	return bvsum, nil
