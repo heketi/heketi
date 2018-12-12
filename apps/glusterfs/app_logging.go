@@ -14,10 +14,11 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/pkg/errors"
+
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/logging"
 	"github.com/heketi/heketi/pkg/utils"
-	"github.com/pkg/errors"
 )
 
 func (a *App) logLevelName() string {

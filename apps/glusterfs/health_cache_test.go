@@ -15,10 +15,11 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
-	wdb "github.com/heketi/heketi/pkg/db"
-	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/tests"
 	"github.com/pkg/errors"
+
+	wdb "github.com/heketi/heketi/pkg/db"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 )
 
 func TestCreateNodeHeathCache(t *testing.T) {

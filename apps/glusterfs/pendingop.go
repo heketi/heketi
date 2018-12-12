@@ -9,7 +9,9 @@
 
 package glusterfs
 
-import "github.com/pkg/errors"
+import (
+	"github.com/pkg/errors"
+)
 
 // The pendingop.go file defines the basic structures needed to track
 // life-cycle of database entries w/in Heketi. There are generally two

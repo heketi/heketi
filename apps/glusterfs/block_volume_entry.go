@@ -14,12 +14,13 @@ import (
 	"encoding/gob"
 
 	"github.com/boltdb/bolt"
+	"github.com/lpabon/godbc"
+	"github.com/pkg/errors"
+
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/idgen"
-	"github.com/lpabon/godbc"
-	"github.com/pkg/errors"
 )
 
 type BlockVolumeEntry struct {

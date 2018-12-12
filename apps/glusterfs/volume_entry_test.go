@@ -19,12 +19,13 @@ import (
 	"testing"
 
 	"github.com/boltdb/bolt"
+	"github.com/heketi/tests"
+	"github.com/pkg/errors"
+
 	"github.com/heketi/heketi/executors"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/sortedstrings"
 	"github.com/heketi/heketi/pkg/utils"
-	"github.com/heketi/tests"
-	"github.com/pkg/errors"
 )
 
 func createSampleReplicaVolumeEntry(size int, replica int) *VolumeEntry {

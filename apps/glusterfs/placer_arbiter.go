@@ -10,9 +10,9 @@
 package glusterfs
 
 import (
-	"github.com/heketi/heketi/pkg/idgen"
-
 	"github.com/pkg/errors"
+
+	"github.com/heketi/heketi/pkg/idgen"
 )
 
 var (

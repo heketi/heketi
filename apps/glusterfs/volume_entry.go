@@ -18,6 +18,9 @@ import (
 	"strings"
 
 	"github.com/boltdb/bolt"
+	"github.com/lpabon/godbc"
+	"github.com/pkg/errors"
+
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
@@ -25,8 +28,6 @@ import (
 	"github.com/heketi/heketi/pkg/paths"
 	"github.com/heketi/heketi/pkg/sortedstrings"
 	"github.com/heketi/heketi/pkg/utils"
-	"github.com/lpabon/godbc"
-	"github.com/pkg/errors"
 )
 
 const (

@@ -14,10 +14,10 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/lpabon/godbc"
+	"github.com/pkg/errors"
 
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/idgen"
-	"github.com/pkg/errors"
 )
 
 type BrickSet struct {

@@ -14,12 +14,13 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/lpabon/godbc"
+	"github.com/pkg/errors"
+
 	"github.com/heketi/heketi/executors"
 	conv "github.com/heketi/heketi/pkg/conversions"
 	"github.com/heketi/heketi/pkg/paths"
 	rex "github.com/heketi/heketi/pkg/remoteexec"
-	"github.com/lpabon/godbc"
-	"github.com/pkg/errors"
 )
 
 func (s *CmdExecutor) BrickCreate(host string,

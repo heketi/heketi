@@ -13,10 +13,11 @@ import (
 	"math/rand"
 
 	"github.com/boltdb/bolt"
-	"github.com/heketi/heketi/executors"
-	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/lpabon/godbc"
 	"github.com/pkg/errors"
+
+	"github.com/heketi/heketi/executors"
+	wdb "github.com/heketi/heketi/pkg/db"
 )
 
 // Creates a block volume

@@ -10,10 +10,10 @@
 package remoteexec
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/heketi/tests"
+	"github.com/pkg/errors"
 )
 
 func TestResultOk(t *testing.T) {
@@ -35,7 +35,7 @@ func TestResultOk(t *testing.T) {
 	r = Result{
 		Completed:  true,
 		ErrOutput:  "Bar bar bar",
-		Err:        fmt.Errorf("command exited 1"),
+		Err:        errors.Errorf("command exited 1"),
 		ExitStatus: 1,
 	}
 	tests.Assert(t, !r.Ok(), "expected r.Ok() to be false")
@@ -43,7 +43,7 @@ func TestResultOk(t *testing.T) {
 	// only error set. possibly indicating a conn error
 	r = Result{
 		Completed: true,
-		Err:       fmt.Errorf("something broke"),
+		Err:       errors.Errorf("something broke"),
 	}
 	tests.Assert(t, !r.Ok(), "expected r.Ok() to be false")
 }
@@ -67,7 +67,7 @@ func TestResultError(t *testing.T) {
 	r = Result{
 		Completed:  true,
 		ErrOutput:  "Bar bar bar",
-		Err:        fmt.Errorf("command exited 1"),
+		Err:        errors.Errorf("command exited 1"),
 		ExitStatus: 1,
 	}
 	tests.Assert(t, r.Error() == "Bar bar bar",
@@ -76,7 +76,7 @@ func TestResultError(t *testing.T) {
 	// only error set. possibly indicating a conn error
 	r = Result{
 		Completed: true,
-		Err:       fmt.Errorf("something broke"),
+		Err:       errors.Errorf("something broke"),
 	}
 	tests.Assert(t, r.Error() == "something broke",
 		"expected \"something broke\" got:", r.Error())
@@ -108,7 +108,7 @@ func TestSquashErrors(t *testing.T) {
 	rs = append(rs, Result{
 		Completed:  true,
 		ErrOutput:  "Bar bar bar",
-		Err:        fmt.Errorf("command exited 1"),
+		Err:        errors.Errorf("command exited 1"),
 		ExitStatus: 1,
 	})
 	o, e = rs.SquashErrors()
@@ -164,7 +164,7 @@ func TestResultsOk(t *testing.T) {
 	rs[2] = Result{
 		Completed:  true,
 		ErrOutput:  "Bar bar bar",
-		Err:        fmt.Errorf("command exited 1"),
+		Err:        errors.Errorf("command exited 1"),
 		ExitStatus: 1,
 	}
 
@@ -204,7 +204,7 @@ func TestResultsFirstErrorIndexed(t *testing.T) {
 	rs[2] = Result{
 		Completed:  true,
 		ErrOutput:  "Bar bar bar",
-		Err:        fmt.Errorf("command exited 1"),
+		Err:        errors.Errorf("command exited 1"),
 		ExitStatus: 1,
 	}
 
@@ -227,7 +227,7 @@ func TestResultsFirstErrorIndexed(t *testing.T) {
 	rs[1] = Result{
 		Completed:  true,
 		ErrOutput:  "Robble robble",
-		Err:        fmt.Errorf("command exited 1"),
+		Err:        errors.Errorf("command exited 1"),
 		ExitStatus: 1,
 	}
 
@@ -267,7 +267,7 @@ func TestResultsFirstError(t *testing.T) {
 	rs[2] = Result{
 		Completed:  true,
 		ErrOutput:  "Bar bar bar",
-		Err:        fmt.Errorf("command exited 1"),
+		Err:        errors.Errorf("command exited 1"),
 		ExitStatus: 1,
 	}
 
@@ -288,7 +288,7 @@ func TestResultsFirstError(t *testing.T) {
 	rs[1] = Result{
 		Completed:  true,
 		ErrOutput:  "Robble robble",
-		Err:        fmt.Errorf("command exited 1"),
+		Err:        errors.Errorf("command exited 1"),
 		ExitStatus: 1,
 	}
 
@@ -324,7 +324,7 @@ func TestAnyError(t *testing.T) {
 	e = AnyError(rs, nil)
 	tests.Assert(t, e == nil, "expected e == nil, got:", e)
 
-	e = AnyError(rs, fmt.Errorf("Robble robble"))
+	e = AnyError(rs, errors.Errorf("Robble robble"))
 	tests.Assert(t, e != nil, "expected e != nil, got:", e)
 	tests.Assert(t, e.Error() == "Robble robble",
 		"expected \"Robble robble\" got:", e.Error())
@@ -332,7 +332,7 @@ func TestAnyError(t *testing.T) {
 	rs[2] = Result{
 		Completed:  true,
 		ErrOutput:  "Bar bar bar",
-		Err:        fmt.Errorf("command exited 1"),
+		Err:        errors.Errorf("command exited 1"),
 		ExitStatus: 1,
 	}
 
@@ -341,7 +341,7 @@ func TestAnyError(t *testing.T) {
 	tests.Assert(t, e.Error() == "Bar bar bar",
 		"expected \"Bar bar bar\" got:", e.Error())
 
-	e = AnyError(rs, fmt.Errorf("Robble robble"))
+	e = AnyError(rs, errors.Errorf("Robble robble"))
 	tests.Assert(t, e != nil, "expected e != nil, got:", e)
 	tests.Assert(t, e.Error() == "Robble robble",
 		"expected \"Robble robble\" got:", e.Error())

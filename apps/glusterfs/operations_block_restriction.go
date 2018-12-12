@@ -13,10 +13,11 @@ import (
 	"fmt"
 
 	"github.com/boltdb/bolt"
+	"github.com/pkg/errors"
+
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/pkg/errors"
 )
 
 // VolumeSetBlockRestrictionOperation implements the operation functions

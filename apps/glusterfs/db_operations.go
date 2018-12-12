@@ -15,8 +15,9 @@ import (
 	"strings"
 
 	"github.com/boltdb/bolt"
-	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/pkg/errors"
+
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 )
 
 func dbDumpInternal(db *bolt.DB) (Db, error) {

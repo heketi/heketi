@@ -10,14 +10,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/heketi/heketi/executors"
-	"github.com/heketi/heketi/pkg/glusterfs/api"
-
 	"github.com/boltdb/bolt"
+	"github.com/gorilla/mux"
 	"github.com/heketi/tests"
 	"github.com/pkg/errors"
 
-	"github.com/gorilla/mux"
+	"github.com/heketi/heketi/executors"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 )
 
 type testOperation struct {

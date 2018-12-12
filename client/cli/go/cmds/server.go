@@ -17,9 +17,10 @@ import (
 	"os"
 	"text/template"
 
-	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 )
 
 var serverCommand = &cobra.Command{

@@ -15,10 +15,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/heketi/pkg/kubernetes"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+
+	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/kubernetes"
 )
 
 var (

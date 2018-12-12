@@ -21,13 +21,14 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
+	"github.com/heketi/tests"
+	"github.com/pkg/errors"
+
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/idgen"
 	"github.com/heketi/heketi/pkg/sortedstrings"
 	"github.com/heketi/heketi/pkg/utils"
-	"github.com/heketi/tests"
-	"github.com/pkg/errors"
 )
 
 func TestNodeAddBadRequests(t *testing.T) {

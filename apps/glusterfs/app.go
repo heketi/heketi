@@ -16,13 +16,14 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
+	"github.com/heketi/rest"
+	"github.com/pkg/errors"
+
 	"github.com/heketi/heketi/executors"
 	"github.com/heketi/heketi/executors/kubeexec"
 	"github.com/heketi/heketi/executors/mockexec"
 	"github.com/heketi/heketi/executors/sshexec"
 	"github.com/heketi/heketi/pkg/logging"
-	"github.com/heketi/rest"
-	"github.com/pkg/errors"
 )
 
 const (

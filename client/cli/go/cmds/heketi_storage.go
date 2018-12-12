@@ -15,11 +15,12 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
+
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
 
 	kubeapi "k8s.io/kubernetes/pkg/api/v1"
 	batch "k8s.io/kubernetes/pkg/apis/batch/v1"
