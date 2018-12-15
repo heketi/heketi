@@ -46,6 +46,10 @@ func (ore OperationRetryError) Error() string {
 // managed cluster(s), and then either record the data structures as final
 // or roll back to the previous state on error.
 type Operation interface {
+	// Id returns a unique identifying string for the operation.
+	// Typically this is the ID of an associated pending operation
+	// entry.
+	Id() string
 	// Label returns a short descriptive string indicating the kind
 	// of operation being performed. Examples include "Create Volume"
 	// and "Delete Block Volume". This string is most frequently used
@@ -82,6 +86,24 @@ type Operation interface {
 	// single transaction.
 	Finalize() error
 	MaxRetries() int
+}
+
+// CleanableOperation is any operation that can be automatically cleaned
+// up at a later point in time after the initial run of the operation
+// was terminated due to error or server restart.
+type CleanableOperation interface {
+	Operation
+
+	// Clean functions undo or finish an operation's activity on
+	// the storage system. The logic of the clean function must
+	// be capable of being interrupted and restarted.
+	// This function must not write to the db.
+	Clean(executors.Executor) error
+	// CleanDone removes the pending operation from the DB.
+	// This function is only to be called after Clean has completed
+	// successfully to remove pending operation state used to
+	// clean up the operation.
+	CleanDone() error
 }
 
 type noRetriesOperation struct{}

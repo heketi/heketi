@@ -29,6 +29,10 @@ type testOperation struct {
 	rollback func() error
 }
 
+func (o *testOperation) Id() string {
+	return "TTEESSTTOOPPEERRAATTIIOONN"
+}
+
 func (o *testOperation) Label() string {
 	return o.label
 }
