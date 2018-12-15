@@ -211,11 +211,17 @@ func dbDumpInternal(db *bolt.DB) (Db, error) {
 // running.
 func DbDump(jsonfile string, dbfile string) error {
 
-	fp, err := os.OpenFile(jsonfile, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
-	if err != nil {
-		return fmt.Errorf("Could not create json file: %v", err.Error())
+	var fp *os.File
+	if jsonfile == "-" {
+		fp = os.Stdout
+	} else {
+		var err error
+		fp, err = os.OpenFile(jsonfile, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+		if err != nil {
+			return fmt.Errorf("Could not create json file: %v", err.Error())
+		}
+		defer fp.Close()
 	}
-	defer fp.Close()
 
 	db, err := OpenDB(dbfile, false)
 	if err != nil {
