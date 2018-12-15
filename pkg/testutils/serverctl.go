@@ -17,6 +17,7 @@ package testutils
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path"
@@ -24,6 +25,9 @@ import (
 	"time"
 )
 
+// ServerCfg supports the exposed configuration parameters of
+// the ServerCtl type. These may be explicitly set up in code
+// or, more commonly, drawn from the environment.
 type ServerCfg struct {
 	ServerDir string
 	HeketiBin string
@@ -31,8 +35,15 @@ type ServerCfg struct {
 	ConfPath  string
 	DbPath    string
 	KeepDB    bool
+	// HelloPort is _only_ to test if the server is running.
+	// It does not control the port the server listens to.
+	HelloPort string
 }
 
+// ServerCtl allows (test) code to manage the heketi server by
+// running the server binary. It also supports running the binary
+// command line in a non-server style to support commands such
+// as 'heketi db export'.
 type ServerCtl struct {
 	ServerCfg
 
@@ -50,6 +61,9 @@ func getEnvValue(k, val string) string {
 	return val
 }
 
+// NewServerCfgFromEnv returns a ServerCfg with values populated
+// from environment vars or common defaults if the environment
+// vars are unset.
 func NewServerCfgFromEnv(dirDefault string) *ServerCfg {
 	return &ServerCfg{
 		ServerDir: getEnvValue("HEKETI_SERVER_DIR", dirDefault),
@@ -57,22 +71,22 @@ func NewServerCfgFromEnv(dirDefault string) *ServerCfg {
 		LogPath:   getEnvValue("HEKETI_LOG", ""),
 		DbPath:    getEnvValue("HEKETI_DB_PATH", "./heketi.db"),
 		ConfPath:  getEnvValue("HEKETI_CONF_PATH", "heketi.json"),
+		HelloPort: getEnvValue("HEKETI_HELLO_PORT", "8080"),
 	}
 }
 
+// NewServerCtlFromEnv returns a ServerCtl with the configuration
+// parameters filled in based on the environment (see NewServerCfgFromEnv).
 func NewServerCtlFromEnv(dirDefault string) *ServerCtl {
 	return NewServerCtl(NewServerCfgFromEnv(dirDefault))
 }
 
+// NewServerCtl returns a ServerCtl based on the provided configuration.
 func NewServerCtl(cfg *ServerCfg) *ServerCtl {
 	return &ServerCtl{ServerCfg: *cfg}
 }
 
-func (s *ServerCtl) Start() error {
-	if !s.KeepDB {
-		// do not preserve the heketi db between server instances
-		os.Remove(path.Join(s.ServerDir, s.DbPath))
-	}
+func (s *ServerCtl) openLog() error {
 	if s.LogPath == "" {
 		s.logF = nil
 	} else {
@@ -82,16 +96,53 @@ func (s *ServerCtl) Start() error {
 		}
 		s.logF = f
 	}
-	s.cmd = exec.Command(s.HeketiBin, fmt.Sprintf("--config=%v", s.ConfPath))
-	s.cmd.Dir = s.ServerDir
-	if s.logF == nil {
-		s.cmd.Stdout = os.Stdout
-		s.cmd.Stderr = os.Stderr
-	} else {
-		s.cmd.Stdout = s.logF
-		s.cmd.Stderr = s.logF
+	return nil
+}
+
+func (s *ServerCtl) closeLog() error {
+	if s.logF != nil {
+		return s.logF.Close()
 	}
-	if err := s.cmd.Start(); err != nil {
+	return nil
+}
+
+func (s *ServerCtl) run(c *exec.Cmd, stdout, stderr *os.File) error {
+	s.cmd = c
+	s.cmd.Dir = s.ServerDir
+	if stdout == nil {
+		stdout = s.logF
+	}
+	if stdout == nil {
+		stdout = os.Stdout
+	}
+	if stderr == nil {
+		stderr = s.logF
+	}
+	if stderr == nil {
+		stderr = os.Stderr
+	}
+	s.cmd.Stdout = stdout
+	s.cmd.Stderr = stderr
+	return s.cmd.Start()
+}
+
+// ConfigArg returns the common command line argument used to locate
+// the configuration file for the heketi server.
+func (s *ServerCtl) ConfigArg() string {
+	return fmt.Sprintf("--config=%v", s.ConfPath)
+}
+
+// Start will start a new instance of the heketi server.
+func (s *ServerCtl) Start() error {
+	if !s.KeepDB {
+		// do not preserve the heketi db between server instances
+		os.Remove(path.Join(s.ServerDir, s.DbPath))
+	}
+	if err := s.openLog(); err != nil {
+		return err
+	}
+	c := exec.Command(s.HeketiBin, s.ConfigArg())
+	if err := s.run(c, nil, nil); err != nil {
 		return err
 	}
 	go func() {
@@ -105,6 +156,33 @@ func (s *ServerCtl) Start() error {
 	return nil
 }
 
+// RunOfflineCmd will run the server binary and wait for it to complete.
+// Output and error are sent to stdout and stderr.
+func (s *ServerCtl) RunOfflineCmd(args []string) error {
+	return s.CaptureOfflineCmd(args, nil, nil)
+}
+
+// CaptureOfflineCmd will run the server binary and wait for it to complete.
+// Output and error are sent to the given file arguments if non-nil.
+func (s *ServerCtl) CaptureOfflineCmd(args []string, stdout, stderr *os.File) error {
+	if s.IsAlive() {
+		return errors.New("may not run offline commands when server is running")
+	}
+	cmd := append([]string{}, args...)
+	if err := s.openLog(); err != nil {
+		return err
+	}
+	defer s.closeLog()
+	c := exec.Command(s.HeketiBin, cmd...)
+	if err := s.run(c, stdout, stderr); err != nil {
+		return err
+	}
+	s.cmdErr = s.cmd.Wait()
+	s.cmdExited = true
+	return s.cmdErr
+}
+
+// IsAlive returns true if the heketi server is running.
 func (s *ServerCtl) IsAlive() bool {
 	if s.cmd == nil {
 		// no s.cmd object so server was never started
@@ -117,10 +195,25 @@ func (s *ServerCtl) IsAlive() bool {
 	return true
 }
 
+// IsAvailable returns true if the heketi server is running and
+// communicating on the `HelloPort`.
+func (s *ServerCtl) IsAvailable() bool {
+	if !s.IsAlive() {
+		return false
+	}
+	// TODO: make this host, port, tls, and url aware
+	r, err := http.Get(fmt.Sprintf("http://localhost:%s/hello", s.HelloPort))
+	if err != nil {
+		return false
+	}
+	return r.StatusCode == http.StatusOK
+}
+
+// Stop will stop the heketi server.
 func (s *ServerCtl) Stop() error {
 	// close the log file fd after stopping heketi (or if stop fails)
 	// this is needed in case the process has already died for some reason
-	defer s.logF.Close()
+	defer s.closeLog()
 	if err := s.cmd.Process.Signal(os.Interrupt); err != nil {
 		return err
 	}
@@ -144,11 +237,14 @@ type Tester interface {
 // the server fails to start the function triggers a test
 // failure (through the Tester interface).
 func ServerStarted(t Tester, s *ServerCtl) {
-	if s.IsAlive() {
+	if s.IsAvailable() {
 		return
 	}
 	if err := s.Start(); err != nil {
 		t.Fatalf("heketi server is not started: %v", err)
+	}
+	if !s.IsAvailable() && !pollState(func() bool { return s.IsAvailable() }) {
+		t.Fatalf("heketi server should have been started")
 	}
 }
 
@@ -163,6 +259,9 @@ func ServerStopped(t Tester, s *ServerCtl) {
 	if err := s.Stop(); err != nil {
 		t.Fatalf("heketi server is not stopped: %v", err)
 	}
+	if s.IsAlive() && !pollState(func() bool { return !s.IsAlive() }) {
+		t.Fatalf("heketi server should have been stopped")
+	}
 }
 
 // ServerRestarted asserts that the server is started but
@@ -170,11 +269,19 @@ func ServerStopped(t Tester, s *ServerCtl) {
 // steps fails the function triggers a test failure
 // (through the TestSuite interface).
 func ServerRestarted(t Tester, s *ServerCtl) {
-	if s.IsAlive() {
-		ServerStopped(t, s)
-	}
-	if s.IsAlive() {
-		t.Fatalf("heketi server should have been stopped")
-	}
+	ServerStopped(t, s)
 	ServerStarted(t, s)
+}
+
+// pollState runs a check function every 0.1 second until
+// that function returns true (and pollState will return true)
+// or it exhausts the retries and returns false.
+func pollState(f func() bool) bool {
+	for i := 0; i < 100; i++ {
+		time.Sleep(100 * time.Millisecond)
+		if f() {
+			return true
+		}
+	}
+	return false
 }
