@@ -487,9 +487,7 @@ func DbCheck(dbfile string) error {
 
 // dbCheckConsistency ... checks the current db state to determine if contents
 // of all the buckets represent a consistent view.
-func dbCheckConsistency(db *bolt.DB) (DbCheckResponse, error) {
-
-	var response DbCheckResponse
+func dbCheckConsistency(db *bolt.DB) (response DbCheckResponse, err error) {
 
 	dump, err := dbDumpInternal(db)
 	if err != nil {
@@ -500,7 +498,39 @@ func dbCheckConsistency(db *bolt.DB) (DbCheckResponse, error) {
 	// Implement check function for each bucket and call them here.
 	// Lastly, set the consistent bool to true/false based on len(inconsistencies)
 	// of all bucket checks.
-	fmt.Fprintf(os.Stderr, "%v", dump)
+	//fmt.Fprintf(os.Stderr, "%v", dump)
 
-	return response, nil
+	response.Volumes = dbCheckVolumes(dump)
+	response.TotalInconsistencies += len(response.Volumes.Inconsistencies)
+
+	if response.TotalInconsistencies > 0 {
+		response.Inconsistent = true
+	}
+
+	return
+}
+
+func dbCheckVolumes(dump Db) (volumesCheckResponse DbBucketCheckResponse) {
+
+	for _, volumeEntry := range dump.Volumes {
+
+		volumesCheckResponse.Total++
+		if volumeEntry.Pending.Id != "" {
+			volumesCheckResponse.Pending++
+		}
+
+		volConsistent, volCheckInconsistencies := volumeEntry.consistencyCheck(dump)
+
+		if volConsistent == true {
+			volumesCheckResponse.Ok++
+		} else {
+			volumesCheckResponse.NotOk++
+		}
+
+		if len(volCheckInconsistencies) > 0 {
+			volumesCheckResponse.Inconsistencies = append(volumesCheckResponse.Inconsistencies, volCheckInconsistencies...)
+		}
+	}
+
+	return
 }
