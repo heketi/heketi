@@ -494,12 +494,6 @@ func dbCheckConsistency(db *bolt.DB) (response DbCheckResponse, err error) {
 		return response, fmt.Errorf("Could not construct dump from DB: %v", err.Error())
 	}
 
-	// TODO: Check the db here and remove the print statement.
-	// Implement check function for each bucket and call them here.
-	// Lastly, set the consistent bool to true/false based on len(inconsistencies)
-	// of all bucket checks.
-	//fmt.Fprintf(os.Stderr, "%v", dump)
-
 	response.Volumes = dbCheckVolumes(dump)
 	response.TotalInconsistencies += len(response.Volumes.Inconsistencies)
 	response.Clusters = dbCheckClusters(dump)
@@ -512,6 +506,8 @@ func dbCheckConsistency(db *bolt.DB) (response DbCheckResponse, err error) {
 	response.TotalInconsistencies += len(response.BlockVolumes.Inconsistencies)
 	response.Bricks = dbCheckBricks(dump)
 	response.TotalInconsistencies += len(response.Bricks.Inconsistencies)
+	response.PendingOperations = dbCheckPendingOps(dump)
+	response.TotalInconsistencies += len(response.PendingOperations.Inconsistencies)
 
 	if response.TotalInconsistencies > 0 {
 		response.Inconsistent = true
@@ -653,6 +649,25 @@ func dbCheckBricks(dump Db) (bricksCheckResponse DbBucketCheckResponse) {
 
 		if len(brickInconsistencies) > 0 {
 			bricksCheckResponse.Inconsistencies = append(bricksCheckResponse.Inconsistencies, brickInconsistencies...)
+		}
+	}
+
+	return
+}
+
+func dbCheckPendingOps(dump Db) (pendingOpsCheckResponse DbBucketCheckResponse) {
+	for _, pendingOpEntry := range dump.PendingOperations {
+
+		pendingOpConsistent, pendingOpInconsistencies := pendingOpEntry.consistencyCheck(dump)
+
+		if pendingOpConsistent == true {
+			pendingOpsCheckResponse.Ok++
+		} else {
+			pendingOpsCheckResponse.NotOk++
+		}
+
+		if len(pendingOpInconsistencies) > 0 {
+			pendingOpsCheckResponse.Inconsistencies = append(pendingOpsCheckResponse.Inconsistencies, pendingOpInconsistencies...)
 		}
 	}
 
