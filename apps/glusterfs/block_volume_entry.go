@@ -19,6 +19,7 @@ import (
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/idgen"
+	"github.com/heketi/heketi/pkg/sortedstrings"
 	"github.com/lpabon/godbc"
 )
 
@@ -447,4 +448,54 @@ func hasPendingBlockHostingVolume(tx *bolt.Tx) (bool, error) {
 		}
 	}
 	return (len(pmap) != 0), nil
+}
+
+// consistencyCheck ... verifies that a blockVolumeEntry is consistent with rest of the database.
+// It is a method on blockVolumeEntry and needs rest of the database as its input.
+func (v *BlockVolumeEntry) consistencyCheck(db Db) (consistent bool, inconsistencies []string) {
+
+	consistent = true
+
+	// No consistency check required for following attributes
+	// Id
+	// Name
+	// Size
+	// HaCount
+	// Auth
+
+	// PendingId
+	if v.Pending.Id != "" {
+		if _, found := db.PendingOperations[v.Pending.Id]; !found {
+			inconsistencies = append(inconsistencies, fmt.Sprintf("BlockVolume %v marked pending but no pending op %v", v.Info.Id, v.Pending.Id))
+			consistent = false
+		}
+		// TODO: Validate back the pending operations' relationship to the blockVolume
+		// This is skipped because some of it is handled in auto cleanup code.
+	}
+
+	// Cluster
+	if clusterEntry, found := db.Clusters[v.Info.Cluster]; !found {
+		inconsistencies = append(inconsistencies, fmt.Sprintf("BlockVolume %v unknown cluster %v", v.Info.Id, v.Info.Cluster))
+		consistent = false
+	} else {
+		if !sortedstrings.Has(clusterEntry.Info.BlockVolumes, v.Info.Id) {
+			inconsistencies = append(inconsistencies, fmt.Sprintf("BlockVolume %v no link back to blockVolume from cluster %v", v.Info.Id, v.Info.Cluster))
+			consistent = false
+		}
+		// TODO: Check if BlockVolume Hosts belong to the cluster.
+	}
+
+	// Volume
+	if volumeEntry, found := db.Volumes[v.Info.BlockHostingVolume]; !found {
+		inconsistencies = append(inconsistencies, fmt.Sprintf("BlockVolume %v unknown volume %v", v.Info.Id, v.Info.BlockHostingVolume))
+		consistent = false
+	} else {
+		if !sortedstrings.Has(volumeEntry.Info.BlockInfo.BlockVolumes, v.Info.Id) {
+			inconsistencies = append(inconsistencies, fmt.Sprintf("BlockVolume %v no link back to blockVolume from volume %v", v.Info.Id, v.Info.BlockHostingVolume))
+			consistent = false
+		}
+		// TODO: Check if BlockVolume Hosts belong to the volume.
+	}
+	return
+
 }
