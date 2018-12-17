@@ -72,6 +72,12 @@ var dbCmd = &cobra.Command{
 	Long:  "heketi db management",
 }
 
+var offlineCmd = &cobra.Command{
+	Use:   "offline",
+	Short: "perform offline operations",
+	Long:  "perform offline operations",
+}
+
 var importdbCmd = &cobra.Command{
 	Use:     "import",
 	Short:   "import creates a db file from JSON input",
@@ -204,6 +210,46 @@ var deletePendingEntriesCmd = &cobra.Command{
 	},
 }
 
+var cleanupOperationsCmd = &cobra.Command{
+	Use:     "cleanup-operations",
+	Short:   "clean up all pending operations stored in heketi db",
+	Long:    "clean up all pending operations stored in heketi db",
+	Example: "heketi offline cleanup-operations --config=heketi.json",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Fprintf(os.Stdout, "OFFLINE COMMAND: Clean All Pending Operations\n")
+		if configfile == "" {
+			fmt.Fprintf(os.Stderr, "Configuration file is required\n")
+			os.Exit(1)
+		}
+
+		// Read configuration
+		c, err := config.ReadConfig(configfile)
+		if err != nil {
+			os.Exit(1)
+		}
+
+		randSeed()
+		// always start if stale ops in the db
+		c.GlusterFS.IgnoreStaleOperations = true
+		// option to not start the background node monitor?
+		// FIXME, this is a hacky way to disable this background activity
+		// c.GlusterFS.DisableMonitorGlusterNodes = true
+		// Never start the background cleaner when running
+		// an offline cleanup
+		c.GlusterFS.DisableBackgroundCleaner = true
+		app := setupApp(c)
+
+		// run the operation cleanup in the foreground (offline mode)
+		fmt.Fprintf(os.Stderr, "Starting clean now...\n")
+		err = app.OfflineCleaner().Clean()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error cleaning operations: %v\n", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	},
+}
+
 func init() {
 	RootCmd.Flags().StringVar(&configfile, "config", "", "Configuration file")
 	RootCmd.Flags().BoolVarP(&showVersion, "version", "v", false, "Show version")
@@ -239,6 +285,13 @@ func init() {
 	deletePendingEntriesCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show actions that would be performed but don't perform them")
 	deletePendingEntriesCmd.Flags().BoolVar(&force, "force", false, "Clean entries even if they don't have an owner Pending Operation, incompatible with dry-run")
 	deletePendingEntriesCmd.SilenceUsage = true
+
+	RootCmd.AddCommand(offlineCmd)
+	offlineCmd.SilenceUsage = true
+
+	offlineCmd.AddCommand(cleanupOperationsCmd)
+	cleanupOperationsCmd.SilenceUsage = true
+	cleanupOperationsCmd.Flags().StringVar(&configfile, "config", "", "Configuration file")
 }
 
 func setWithEnvVariables(options *config.Config) {
@@ -286,11 +339,15 @@ func setupApp(config *config.Config) (a *glusterfs.App) {
 	}()
 
 	// If one really needs to disable the health monitor for
-	// the server binary we provide only this env var.
-	env := os.Getenv("HEKETI_DISABLE_HEALTH_MONITOR")
-	if env != "true" {
-		glusterfs.MonitorGlusterNodes = true
-	}
+	// the server binary.
+	glusterfs.MonitorGlusterNodes = enableBackgroundTask(
+		config.GlusterFS.DisableMonitorGlusterNodes,
+		"HEKETI_DISABLE_HEALTH_MONITOR")
+	// If one really needs to disable the health monitor for
+	// the server binary.
+	glusterfs.EnableBackgroundCleaner = enableBackgroundTask(
+		config.GlusterFS.DisableBackgroundCleaner,
+		"HEKETI_DISABLE_BACKGROUND_CLEANER")
 
 	a = glusterfs.NewApp(config.GlusterFS)
 	if a != nil {
@@ -300,6 +357,19 @@ func setupApp(config *config.Config) (a *glusterfs.App) {
 		}
 	}
 	return a
+}
+
+// check if the config file or environment has disabled a internal
+// background task. Generally, this is only for developers or someone
+// debugging server issues, and isn't meant to be easy to flip.
+func enableBackgroundTask(cfgDisable bool, envDisable string) bool {
+	if cfgDisable {
+		return false
+	}
+	if os.Getenv(envDisable) == "true" {
+		return false
+	}
+	return true
 }
 
 func randSeed() {

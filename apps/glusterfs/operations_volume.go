@@ -24,6 +24,7 @@ type VolumeCreateOperation struct {
 	OperationManager
 	vol        *VolumeEntry
 	maxRetries int
+	reclaimed  ReclaimMap // gets set by Clean() call
 }
 
 // NewVolumeCreateOperation returns a new VolumeCreateOperation populated
@@ -148,21 +149,23 @@ func (vc *VolumeCreateOperation) Finalize() error {
 // systems and removes the corresponding pending volume and brick entries from
 // the db.
 func (vc *VolumeCreateOperation) Rollback(executor executors.Executor) error {
-	// TODO make this into one transaction too
-	brick_entries, err := bricksFromOp(vc.db, vc.op, vc.vol.Info.Gid)
-	if err != nil {
-		logger.LogError("Failed to get bricks from op: %v", err)
-		return err
-	}
-	err = vc.vol.cleanupCreateVolume(vc.db, executor, brick_entries)
-	if err != nil {
-		logger.LogError("Error on create volume rollback: %v", err)
-		return err
-	}
-	err = vc.db.Update(func(tx *bolt.Tx) error {
-		return vc.op.Delete(tx)
-	})
+	return rollbackViaClean(vc, executor)
+}
+
+func (vc *VolumeCreateOperation) Clean(executor executors.Executor) error {
+	var err error
+	logger.Info("Starting Clean for %v op:%v", vc.Label(), vc.op.Id)
+	vc.reclaimed, err = removeVolumeWithOp(
+		vc.db, executor, vc.op, vc.vol.Info.Id)
 	return err
+}
+
+func (vc *VolumeCreateOperation) CleanDone() error {
+	logger.Info("Clean is done for %v op:%v", vc.Label(), vc.op.Id)
+	if vc.reclaimed == nil || len(vc.reclaimed) == 0 {
+		return logger.LogError("brick reclaim map is empty (was Clean called?)")
+	}
+	return expungeVolumeWithOp(vc.db, vc.op, vc.vol.Info.Id, vc.reclaimed)
 }
 
 // VolumeExpandOperation implements the operation functions used to
@@ -174,6 +177,7 @@ type VolumeExpandOperation struct {
 
 	// modification values
 	ExpandSize int
+	reclaimed  ReclaimMap // gets set by Clean() call
 }
 
 // NewVolumeCreateOperation creates a new VolumeExpandOperation populated
@@ -190,6 +194,30 @@ func NewVolumeExpandOperation(
 		vol:        vol,
 		ExpandSize: sizeGB,
 	}
+}
+
+// loadVolumeExpandOperation returns a VolumeExpandOperation populated
+// from an existing pending operation entry in the db.
+func loadVolumeExpandOperation(
+	db wdb.DB, p *PendingOperationEntry) (*VolumeExpandOperation, error) {
+
+	vols, err := volumesFromOp(db, p)
+	if err != nil {
+		return nil, err
+	}
+	if len(vols) != 1 {
+		return nil, fmt.Errorf(
+			"Incorrect number of volumes (%v) for create operation: %v",
+			len(vols), p.Id)
+	}
+
+	return &VolumeExpandOperation{
+		OperationManager: OperationManager{
+			db: db,
+			op: p,
+		},
+		vol: vols[0],
+	}, nil
 }
 
 func (ve *VolumeExpandOperation) Label() string {
@@ -241,22 +269,7 @@ func (ve *VolumeExpandOperation) Exec(executor executors.Executor) error {
 // Rollback cancels the volume expansion and remove pending brick entries
 // from the db.
 func (ve *VolumeExpandOperation) Rollback(executor executors.Executor) error {
-	// TODO make this into one transaction too
-	brick_entries, err := bricksFromOp(ve.db, ve.op, ve.vol.Info.Gid)
-	if err != nil {
-		logger.LogError("Failed to get bricks from op: %v", err)
-		return err
-	}
-	err = ve.vol.cleanupExpandVolume(
-		ve.db, executor, brick_entries, ve.vol.Info.Size)
-	if err != nil {
-		logger.LogError("Error on create volume rollback: %v", err)
-		return err
-	}
-	err = ve.db.Update(func(tx *bolt.Tx) error {
-		return ve.op.Delete(tx)
-	})
-	return err
+	return rollbackViaClean(ve, executor)
 }
 
 // Finalize marks new bricks as no longer pending and updates the size
@@ -296,6 +309,62 @@ func (ve *VolumeExpandOperation) Finalize() error {
 	})
 }
 
+func (ve *VolumeExpandOperation) Clean(executor executors.Executor) error {
+	logger.Info("Starting Clean for %v op:%v", ve.Label(), ve.op.Id)
+	var (
+		err  error
+		bmap brickHostMap
+	)
+	err = ve.db.Update(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
+		v, err := NewVolumeEntryFromId(tx, ve.vol.Info.Id)
+		if err != nil {
+			return err
+		}
+		bricks, err := bricksFromOp(txdb, ve.op, v.Info.Gid)
+		if err != nil {
+			return err
+		}
+		bmap, err = newBrickHostMap(txdb, bricks)
+		return err
+	})
+	if err != nil {
+		logger.LogError("Failed to get bricks from op: %v", err)
+		return err
+	}
+	// nothing past this point needs a db reference
+	ve.reclaimed, err = bmap.destroy(executor)
+	if err != nil {
+		logger.LogError("Failed to destroy bricks: %v", err)
+		return err
+	}
+	return nil
+}
+
+func (ve *VolumeExpandOperation) CleanDone() error {
+	logger.Info("Clean is done for %v op:%v", ve.Label(), ve.op.Id)
+	// reminder: a volume's size is expanded during finalize and
+	// thus retains the original size until op succeeds
+	return ve.db.Update(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
+		v, err := NewVolumeEntryFromId(tx, ve.vol.Info.Id)
+		if err != nil {
+			return err
+		}
+		bricks, err := bricksFromOp(txdb, ve.op, v.Info.Gid)
+		for _, brick := range bricks {
+			err := brick.removeAndFree(tx, v, ve.reclaimed[brick.Info.Id])
+			if err != nil {
+				return err
+			}
+		}
+		if err := v.Save(tx); err != nil {
+			return err
+		}
+		return ve.op.Delete(tx)
+	})
+}
+
 // VolumeDeleteOperation implements the operation functions used to
 // delete an existing volume.
 type VolumeDeleteOperation struct {
@@ -315,6 +384,30 @@ func NewVolumeDeleteOperation(
 		},
 		vol: vol,
 	}
+}
+
+// loadVolumeDeleteOperation returns a VolumeDeleteOperation populated
+// from an existing pending operation entry in the db.
+func loadVolumeDeleteOperation(
+	db wdb.DB, p *PendingOperationEntry) (*VolumeDeleteOperation, error) {
+
+	vols, err := volumesFromOp(db, p)
+	if err != nil {
+		return nil, err
+	}
+	if len(vols) != 1 {
+		return nil, fmt.Errorf(
+			"Incorrect number of volumes (%v) for delete operation: %v",
+			len(vols), p.Id)
+	}
+
+	return &VolumeDeleteOperation{
+		OperationManager: OperationManager{
+			db: db,
+			op: p,
+		},
+		vol: vols[0],
+	}, nil
 }
 
 func (vdel *VolumeDeleteOperation) Label() string {
@@ -368,16 +461,9 @@ func (vdel *VolumeDeleteOperation) Build() error {
 
 // Exec performs the volume and brick deletions on the storage systems.
 func (vdel *VolumeDeleteOperation) Exec(executor executors.Executor) error {
-	brick_entries, err := bricksFromOp(vdel.db, vdel.op, vdel.vol.Info.Gid)
-	if err != nil {
-		logger.LogError("Failed to get bricks from op: %v", err)
-		return err
-	}
-	sshhost, err := vdel.vol.manageHostFromBricks(vdel.db, brick_entries)
-	if err != nil {
-		return err
-	}
-	vdel.reclaimed, err = vdel.vol.deleteVolumeExec(vdel.db, executor, brick_entries, sshhost)
+	var err error
+	vdel.reclaimed, err = removeVolumeWithOp(
+		vdel.db, executor, vdel.op, vdel.vol.Info.Id)
 	if err != nil {
 		logger.LogError("Error executing delete volume: %v", err)
 	}
@@ -415,45 +501,24 @@ func (vdel *VolumeDeleteOperation) Rollback(executor executors.Executor) error {
 // Finalize marks all brick and volume entries for this operation as
 // fully deleted.
 func (vdel *VolumeDeleteOperation) Finalize() error {
-	return vdel.db.Update(func(tx *bolt.Tx) error {
-		txdb := wdb.WrapTx(tx)
+	if vdel.reclaimed == nil || len(vdel.reclaimed) == 0 {
+		return logger.LogError("brick reclaim map is empty (was Exec called?)")
+	}
+	return expungeVolumeWithOp(vdel.db, vdel.op, vdel.vol.Info.Id, vdel.reclaimed)
+}
 
-		brick_entries, err := bricksFromOp(txdb, vdel.op, vdel.vol.Info.Gid)
-		if err != nil {
-			logger.LogError("Failed to get bricks from op: %v", err)
-			return err
-		}
+// Clean tries to re-execute the volume delete operation.
+func (vdel *VolumeDeleteOperation) Clean(executor executors.Executor) error {
+	// for a delete, clean is essentially a replay of exec
+	// because exec must be robust against restarts now we can just call Exec
+	logger.Info("Starting Clean for %v op:%v", vdel.Label(), vdel.op.Id)
+	return vdel.Exec(executor)
+}
 
-		// update the device' free/used space after removing bricks
-		for _, b := range brick_entries {
-			for dev_id, reclaimed := range vdel.reclaimed {
-				if b.Info.DeviceId != dev_id {
-					continue
-				}
-				if !reclaimed {
-					// nothing reclaimed, no need to update the DeviceEntry
-					continue
-				}
-
-				device, err := NewDeviceEntryFromId(tx, dev_id)
-				if err != nil {
-					logger.Err(err)
-					return err
-				}
-
-				// Deallocate space on device
-				device.StorageFree(device.SpaceNeeded(b.Info.Size, float64(vdel.vol.Info.Snapshot.Factor)).Total)
-				device.Save(tx)
-			}
-		}
-
-		if err := vdel.vol.saveDeleteVolume(txdb, brick_entries); err != nil {
-			return err
-		}
-
-		vdel.op.Delete(tx)
-		return nil
-	})
+func (vdel *VolumeDeleteOperation) CleanDone() error {
+	// for a delete, clean done is essentially a replay of finalize
+	logger.Info("Clean is done for %v op:%v", vdel.Label(), vdel.op.Id)
+	return vdel.Finalize()
 }
 
 // VolumeCloneOperation implements the operation functions used to
@@ -606,5 +671,82 @@ func (vc *VolumeCloneOperation) Finalize() error {
 
 		vc.op.Delete(tx)
 		return nil
+	})
+}
+
+// removeVolumeWithOp is a helper function that implements common
+// code for getting the needed parts of a volume from the db and
+// using them to remove the volume and bricks from the db.
+// This logic is shared by both volume create and volume delete.
+func removeVolumeWithOp(
+	db wdb.RODB, executor executors.Executor,
+	op *PendingOperationEntry, volId string) (ReclaimMap, error) {
+
+	var (
+		err   error
+		v     *VolumeEntry
+		hosts nodeHosts
+		bmap  brickHostMap
+	)
+	logger.Info("preparing to remove volume %v in op:%v", volId, op.Id)
+	err = db.View(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
+		// get a fresh volume object from db
+		v, err = NewVolumeEntryFromId(tx, volId)
+		if err != nil {
+			return err
+		}
+		hosts, err = v.hosts(txdb)
+		if err != nil {
+			return err
+		}
+		bricks, err := bricksFromOp(txdb, op, v.Info.Gid)
+		if err != nil {
+			return err
+		}
+		bmap, err = newBrickHostMap(txdb, bricks)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		logger.LogError(
+			"failed to get state needed to destroy volume: %v", err)
+		return nil, err
+	}
+	// nothing past this point needs a db reference
+	logger.Info("executing removal of volume %v in op:%v", volId, op.Id)
+	err = newTryOnHosts(hosts).run(func(h string) error {
+		return v.destroyVolumeFromHost(executor, h)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return bmap.destroy(executor)
+}
+
+// expandSizeFromOp is a helper function that removes a given volume
+// and associated operation from the db. It can be shared with
+// volume create and volume delete operation functions.
+func expungeVolumeWithOp(
+	db wdb.DB,
+	op *PendingOperationEntry, volId string,
+	reclaimed ReclaimMap) error {
+
+	return db.Update(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
+		v, err := NewVolumeEntryFromId(tx, volId)
+		if err != nil {
+			return err
+		}
+		bricks, err := bricksFromOp(txdb, op, v.Info.Gid)
+		if err != nil {
+			return err
+		}
+		if err := v.teardown(txdb, bricks, reclaimed); err != nil {
+			return err
+		}
+		return op.Delete(tx)
 	})
 }

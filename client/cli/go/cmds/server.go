@@ -138,6 +138,34 @@ var operationsListCommand = &cobra.Command{
 	},
 }
 
+var operationsCleanUpCommand = &cobra.Command{
+	Use:     "cleanup",
+	Short:   "Clean up stale or failed pending operations",
+	Long:    "Clean up stale or failed pending operations",
+	Example: `  $ heketi-cli server operations cleanup`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
+		request := api.PendingOperationsCleanRequest{}
+		if len(args) > 0 {
+			request.Operations = args
+		}
+		err = heketi.PendingOperationCleanUp(&request)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(os.Stderr,
+			"Note: Operation clean up is a batch operation.\n"+
+				"* The results of individual operation clean ups"+
+				" are not reported here.\n"+
+				"* Use 'heketi-cli server operations [list|info]'"+
+				" to view operations.")
+		return nil
+	},
+}
+
 var modeCommand = &cobra.Command{
 	Use:   "mode",
 	Short: "Manage server mode",
@@ -194,6 +222,8 @@ func init() {
 	operationsInfoCommand.SilenceUsage = true
 	operationsCommand.AddCommand(operationsListCommand)
 	operationsListCommand.SilenceUsage = true
+	operationsCommand.AddCommand(operationsCleanUpCommand)
+	operationsCleanUpCommand.SilenceUsage = true
 	// admin mode command(s)
 	serverCommand.AddCommand(modeCommand)
 	modeCommand.SilenceUsage = true

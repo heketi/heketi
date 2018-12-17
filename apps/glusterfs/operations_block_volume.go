@@ -24,7 +24,8 @@ type BlockVolumeCreateOperation struct {
 	OperationManager
 	noRetriesOperation
 	bvol *BlockVolumeEntry
-	//vol *VolumeEntry
+
+	reclaimed ReclaimMap // gets set by Clean() call
 }
 
 // NewBlockVolumeCreateOperation  returns a new BlockVolumeCreateOperation  populated
@@ -40,6 +41,30 @@ func NewBlockVolumeCreateOperation(
 		},
 		bvol: bv,
 	}
+}
+
+// loadBlockVolumeCreateOperation returns a BlockVolumeCreateOperation populated
+// from an existing pending operation entry in the db.
+func loadBlockVolumeCreateOperation(
+	db wdb.DB, p *PendingOperationEntry) (*BlockVolumeCreateOperation, error) {
+
+	bvs, err := blockVolumesFromOp(db, p)
+	if err != nil {
+		return nil, err
+	}
+	if len(bvs) != 1 {
+		return nil, fmt.Errorf(
+			"Incorrect number of block volumes (%v) for create operation: %v",
+			len(bvs), p.Id)
+	}
+
+	return &BlockVolumeCreateOperation{
+		OperationManager: OperationManager{
+			db: db,
+			op: p,
+		},
+		bvol: bvs[0],
+	}, nil
 }
 
 func (bvc *BlockVolumeCreateOperation) Label() string {
@@ -237,25 +262,108 @@ func (bvc *BlockVolumeCreateOperation) Finalize() error {
 // systems and removes the corresponding pending volume and brick entries from
 // the db.
 func (bvc *BlockVolumeCreateOperation) Rollback(executor executors.Executor) error {
-	// TODO make this into one transaction too
-	vol, brick_entries, err := bvc.volAndBricks(bvc.db)
+	return rollbackViaClean(bvc, executor)
+}
+
+func (bvc *BlockVolumeCreateOperation) Clean(executor executors.Executor) error {
+	logger.Info("Starting Clean for %v op:%v", bvc.Label(), bvc.op.Id)
+	var (
+		err error
+		bv  *BlockVolumeEntry
+		// hvname is the name of the hosting volume and is required
+		hvname string
+		// hv is only non-nil if this op is creating the hosting volume
+		hv *VolumeEntry
+		// host mappings for exec-on-up-host try util
+		bvHosts nodeHosts
+		hvHosts nodeHosts
+		// mapping of bricks to clean up, only used if hv is non-nil
+		bmap brickHostMap
+	)
+	logger.Info("preparing to remove block volume %v in op:%v",
+		bvc.bvol.Info.Id, bvc.op.Id)
+	err = bvc.db.View(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
+		bv, err = NewBlockVolumeEntryFromId(tx, bvc.bvol.Info.Id)
+		if err != nil {
+			return err
+		}
+		hvname, err = bv.blockHostingVolumeName(txdb)
+		if err != nil {
+			return err
+		}
+		bvHosts, err = bv.hosts(txdb)
+		if err != nil {
+			return err
+		}
+		var bricks []*BrickEntry
+		hv, bricks, err = bvc.volAndBricks(txdb)
+		if err != nil {
+			return err
+		}
+		if hv != nil {
+			hvHosts, err = hv.hosts(txdb)
+			if err != nil {
+				return err
+			}
+			bmap, err = newBrickHostMap(txdb, bricks)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		logger.LogError(
+			"failed to get state needed to destroy block volume: %v", err)
+		return err
+	}
+	// nothing past this point needs a db reference
+	logger.Info("executing removal of block volume %v in op:%v",
+		bvc.bvol.Info.Id, bvc.op.Id)
+	err = newTryOnHosts(bvHosts).once().run(func(h string) error {
+		return bv.destroyFromHost(executor, hvname, h)
+	})
 	if err != nil {
 		return err
 	}
-	if e := bvc.bvol.cleanupBlockVolumeCreate(bvc.db, executor); e != nil {
-		return e
-	}
-	if vol != nil {
-		err = vol.cleanupCreateVolume(bvc.db, executor, brick_entries)
+	if hv != nil {
+		err = newTryOnHosts(hvHosts).run(func(h string) error {
+			return hv.destroyVolumeFromHost(executor, h)
+		})
 		if err != nil {
-			logger.LogError("Error on create volume rollback: %v", err)
+			return err
+		}
+		bvc.reclaimed, err = bmap.destroy(executor)
+		if err != nil {
 			return err
 		}
 	}
-	err = bvc.db.Update(func(tx *bolt.Tx) error {
+	return nil
+}
+
+func (bvc *BlockVolumeCreateOperation) CleanDone() error {
+	logger.Info("Clean is done for %v op:%v", bvc.Label(), bvc.op.Id)
+	return bvc.db.Update(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
+		bv, err := NewBlockVolumeEntryFromId(tx, bvc.bvol.Info.Id)
+		if err != nil {
+			return err
+		}
+		hv, bricks, err := bvc.volAndBricks(txdb)
+		if err != nil {
+			return err
+		}
+		if err := bv.removeComponents(txdb, false); err != nil {
+			return err
+		}
+		if hv != nil {
+			if err := hv.teardown(txdb, bricks, bvc.reclaimed); err != nil {
+				return err
+			}
+		}
 		return bvc.op.Delete(tx)
 	})
-	return err
 }
 
 // BlockVolumeDeleteOperation implements the operation functions used to
@@ -276,6 +384,30 @@ func NewBlockVolumeDeleteOperation(
 		},
 		bvol: bvol,
 	}
+}
+
+// loadBlockVolumeDeleteOperation returns a BlockVolumeDeleteOperation populated
+// from an existing pending operation entry in the db.
+func loadBlockVolumeDeleteOperation(
+	db wdb.DB, p *PendingOperationEntry) (*BlockVolumeDeleteOperation, error) {
+
+	bvs, err := blockVolumesFromOp(db, p)
+	if err != nil {
+		return nil, err
+	}
+	if len(bvs) != 1 {
+		return nil, fmt.Errorf(
+			"Incorrect number of block volumes (%v) for create operation: %v",
+			len(bvs), p.Id)
+	}
+
+	return &BlockVolumeDeleteOperation{
+		OperationManager: OperationManager{
+			db: db,
+			op: p,
+		},
+		bvol: bvs[0],
+	}, nil
 }
 
 func (vdel *BlockVolumeDeleteOperation) Label() string {
@@ -313,11 +445,39 @@ func (vdel *BlockVolumeDeleteOperation) Build() error {
 
 // Exec performs the volume and brick deletions on the storage systems.
 func (vdel *BlockVolumeDeleteOperation) Exec(executor executors.Executor) error {
-	hvname, err := vdel.bvol.blockHostingVolumeName(vdel.db)
+	var (
+		err     error
+		bv      *BlockVolumeEntry
+		hvname  string
+		bvHosts nodeHosts
+	)
+	err = vdel.db.View(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
+		bv, err = NewBlockVolumeEntryFromId(tx, vdel.bvol.Info.Id)
+		if err != nil {
+			return err
+		}
+		hvname, err = bv.blockHostingVolumeName(txdb)
+		if err != nil {
+			return err
+		}
+		bvHosts, err = bv.hosts(txdb)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
+		logger.LogError(
+			"failed to get state needed to destroy block volume: %v", err)
 		return err
 	}
-	return vdel.bvol.deleteBlockVolumeExec(vdel.db, hvname, executor)
+	// nothing past this point needs a db reference
+	logger.Info("executing removal of block volume %v in op:%v",
+		vdel.bvol.Info.Id, vdel.op.Id)
+	return newTryOnHosts(bvHosts).once().run(func(h string) error {
+		return bv.destroyFromHost(executor, hvname, h)
+	})
 }
 
 func (vdel *BlockVolumeDeleteOperation) Rollback(executor executors.Executor) error {
@@ -347,7 +507,43 @@ func (vdel *BlockVolumeDeleteOperation) Finalize() error {
 			return e
 		}
 
-		vdel.op.Delete(tx)
+		return vdel.op.Delete(tx)
+	})
+}
+
+// Clean tries to re-execute the volume delete operation.
+func (vdel *BlockVolumeDeleteOperation) Clean(executor executors.Executor) error {
+	// for a delete, clean is essentially a replay of exec
+	// because exec must be robust against restarts now we can just call Exec
+	logger.Info("Starting Clean for %v op:%v", vdel.Label(), vdel.op.Id)
+	return vdel.Exec(executor)
+}
+
+func (vdel *BlockVolumeDeleteOperation) CleanDone() error {
+	// for a delete, clean done is essentially a replay of finalize
+	logger.Info("Clean is done for %v op:%v", vdel.Label(), vdel.op.Id)
+	return vdel.Finalize()
+}
+
+// blockVolumesFromOp iterates over the associated changes in the
+// pending operation entry and returns entries for any
+// block volumes within that pending op.
+func blockVolumesFromOp(db wdb.RODB,
+	op *PendingOperationEntry) ([]*BlockVolumeEntry, error) {
+
+	bvs := []*BlockVolumeEntry{}
+	err := db.View(func(tx *bolt.Tx) error {
+		for _, a := range op.Actions {
+			switch a.Change {
+			case OpAddBlockVolume, OpDeleteBlockVolume:
+				v, err := NewBlockVolumeEntryFromId(tx, a.Id)
+				if err != nil {
+					return err
+				}
+				bvs = append(bvs, v)
+			}
+		}
 		return nil
 	})
+	return bvs, err
 }

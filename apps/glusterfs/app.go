@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
@@ -56,6 +57,10 @@ var (
 	// while avoiding having to touch all of the unit tests.
 	MonitorGlusterNodes = false
 
+	// global var to enable the use of the background pending
+	// operations cleanup mechanism.
+	EnableBackgroundCleaner = false
+
 	// global var that contains list of volume options that are set *before*
 	// setting the volume options that come as part of volume request.
 	PreReqVolumeOptions = ""
@@ -75,6 +80,8 @@ type App struct {
 
 	// health monitor
 	nhealth *NodeHealthCache
+	// background operations cleaner
+	bgcleaner *backgroundOperationCleaner
 
 	// operations tracker
 	optracker *OpTracker
@@ -222,6 +229,17 @@ func NewApp(conf *GlusterFSConfig) *App {
 		app.nhealth = NewNodeHealthCache(timer, startDelay, app.db, app.executor)
 		app.nhealth.Monitor()
 		currentNodeHealthCache = app.nhealth
+	}
+	// configure background cleaner params
+	if app.conf.StartTimeBackgroundCleaner == 0 {
+		app.conf.StartTimeBackgroundCleaner = 60
+	}
+	if app.conf.RefreshTimeBackgroundCleaner == 0 {
+		app.conf.RefreshTimeBackgroundCleaner = 3600
+	}
+	if EnableBackgroundCleaner {
+		app.bgcleaner = app.BackgroundCleaner()
+		app.bgcleaner.Start()
 	}
 
 	// set up the operations counter
@@ -598,6 +616,12 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Method:      "GET",
 			Pattern:     "/operations/pending/{id:[A-Fa-f0-9]+}",
 			HandlerFunc: a.PendingOperationDetails},
+		// request operation clean up
+		rest.Route{
+			Name:        "PendingOperationCleanUp",
+			Method:      "POST",
+			Pattern:     "/operations/pending/cleanup",
+			HandlerFunc: a.PendingOperationCleanUp},
 	}
 
 	// Register all routes from the App
@@ -622,6 +646,9 @@ func (a *App) Close() {
 	// stop the health goroutine
 	if a.nhealth != nil {
 		a.nhealth.Stop()
+	}
+	if a.bgcleaner != nil {
+		a.bgcleaner.Stop()
 	}
 
 	// Close the DB
@@ -662,6 +689,54 @@ func (a *App) ServerReset() error {
 		}
 		return nil
 	})
+}
+
+// OfflineCleaner returns an operations cleaner based on the current
+// app object that can be used to perform an offline cleanup.
+// An offline cleanup assumes that the binary is only doing cleanups
+// and nothing else.
+func (a *App) OfflineCleaner() OperationCleaner {
+	return OperationCleaner{
+		db:       a.db,
+		executor: a.executor,
+		sel:      CleanAll,
+	}
+}
+
+// OnDemandCleaner returns an operations cleaner based on the current
+// app object that can be used to perform clean ups requested by
+// a user (on demand).
+func (a *App) OnDemandCleaner(ops map[string]bool) OperationCleaner {
+	sel := CleanAll
+	if len(ops) > 0 {
+		// user specified specific ops to clean
+		sel = CleanSelectedOps(ops)
+	}
+	return OperationCleaner{
+		db:        a.db,
+		executor:  a.executor,
+		sel:       sel,
+		optracker: a.optracker,
+		opClass:   TrackNormal,
+	}
+}
+
+// BackgroundCleaner returns a background operations cleaner
+// suitable for use as a background "process" in the heketi server.
+func (a *App) BackgroundCleaner() *backgroundOperationCleaner {
+	startSec := time.Duration(a.conf.StartTimeBackgroundCleaner)
+	checkSec := time.Duration(a.conf.RefreshTimeBackgroundCleaner)
+	return &backgroundOperationCleaner{
+		cleaner: OperationCleaner{
+			db:        a.db,
+			executor:  a.executor,
+			sel:       CleanAll,
+			optracker: a.optracker,
+			opClass:   TrackClean,
+		},
+		StartInterval: startSec * time.Second,
+		CheckInterval: checkSec * time.Second,
+	}
 }
 
 // currentNodeHealthStatus returns a map of node ids to the most

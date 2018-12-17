@@ -106,6 +106,17 @@ type CleanableOperation interface {
 	CleanDone() error
 }
 
+// FailableOperation is any operation that supports marking
+// itself as failed. A failed operation is one in which
+// the rollback function was run but encountered an error.
+type FailableOperation interface {
+	Operation
+
+	// MarkFailed function marks any persistent metadata
+	// associated with the operation as failed.
+	MarkFailed() error
+}
+
 type noRetriesOperation struct{}
 
 func (n *noRetriesOperation) MaxRetries() int {
@@ -122,6 +133,20 @@ type OperationManager struct {
 // Id returns the id of this operation's pending operation entry.
 func (om *OperationManager) Id() string {
 	return om.op.Id
+}
+
+// MarkFailed marks the pending operation entry associated with
+// the operation as failed.
+func (om *OperationManager) MarkFailed() error {
+	return om.db.Update(func(tx *bolt.Tx) error {
+		// refresh entry
+		pop, err := NewPendingOperationEntryFromId(tx, om.op.Id)
+		if err != nil {
+			return err
+		}
+		pop.Status = FailedOperation
+		return pop.Save(tx)
+	})
 }
 
 // bricksFromOp returns pending brick entry objects from the db corresponding
@@ -154,20 +179,21 @@ func bricksFromOp(db wdb.RODB,
 func volumesFromOp(db wdb.RODB,
 	op *PendingOperationEntry) ([]*VolumeEntry, error) {
 
-	volume_entries := []*VolumeEntry{}
+	volumeEntries := []*VolumeEntry{}
 	err := db.View(func(tx *bolt.Tx) error {
 		for _, a := range op.Actions {
-			if a.Change == OpAddVolume {
-				brick, err := NewVolumeEntryFromId(tx, a.Id)
+			switch a.Change {
+			case OpAddVolume, OpDeleteVolume, OpExpandVolume:
+				v, err := NewVolumeEntryFromId(tx, a.Id)
 				if err != nil {
 					return err
 				}
-				volume_entries = append(volume_entries, brick)
+				volumeEntries = append(volumeEntries, v)
 			}
 		}
 		return nil
 	})
-	return volume_entries, err
+	return volumeEntries, err
 }
 
 // expandSizeFromOp returns the size of a volume expand operation assuming

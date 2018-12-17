@@ -25,6 +25,7 @@ type OpClass int
 const (
 	TrackNormal OpClass = iota
 	TrackToken
+	TrackClean
 )
 
 // OpTracker is used to track and manage how many operations are being
@@ -36,19 +37,27 @@ type OpTracker struct {
 	// internals
 	lock      sync.RWMutex
 	normalOps map[string]bool
+	bgOps     map[string]bool
 }
 
 func newOpTracker(limit uint64) *OpTracker {
 	return &OpTracker{
 		Limit:     limit,
 		normalOps: make(map[string]bool),
+		bgOps:     make(map[string]bool),
 	}
 }
 
 func (ot *OpTracker) insert(id string, c OpClass) {
 	godbc.Require(id != "", "id must not be empty")
 	godbc.Require(!ot.normalOps[id], "id already tracked", id)
-	ot.normalOps[id] = true
+	godbc.Require(!ot.bgOps[id], "id already tracked", id)
+	switch c {
+	case TrackClean:
+		ot.bgOps[id] = true
+	default:
+		ot.normalOps[id] = true
+	}
 }
 
 // Add records a new in-flight operation.
@@ -63,15 +72,16 @@ func (ot *OpTracker) Remove(id string) {
 	ot.lock.Lock()
 	defer ot.lock.Unlock()
 	godbc.Require(id != "", "id must not be empty")
-	godbc.Require(ot.normalOps[id], "id not tracked", id)
+	godbc.Require(ot.normalOps[id] || ot.bgOps[id], "id not tracked", id)
 	delete(ot.normalOps, id)
+	delete(ot.bgOps, id)
 }
 
 // Get returns the number of operations currently tracked.
 func (ot *OpTracker) Get() uint64 {
 	ot.lock.RLock()
 	defer ot.lock.RUnlock()
-	return uint64(len(ot.normalOps))
+	return uint64(len(ot.normalOps) + len(ot.bgOps))
 }
 
 // Tracked returns a mapping of tracked IDs to booleans.
@@ -82,6 +92,9 @@ func (ot *OpTracker) Tracked() map[string]bool {
 	// copy internal map to out map
 	out := map[string]bool{}
 	for k, _ := range ot.normalOps {
+		out[k] = true
+	}
+	for k, _ := range ot.bgOps {
 		out[k] = true
 	}
 	return out
@@ -95,6 +108,16 @@ func (ot *OpTracker) ThrottleOrAdd(id string, c OpClass) bool {
 	ot.lock.Lock()
 	defer ot.lock.Unlock()
 	n := len(ot.normalOps)
+	b := len(ot.bgOps)
+	if c == TrackClean && b > 0 {
+		// only one background op allowed at a time
+		logger.Warning(
+			"background operation already in progress")
+		return true
+	}
+	// normal limit throttles both normal and background ops
+	// background ops take real resources but we try to avoid
+	// having an pre-existing background op block new demand ops
 	if uint64(n) >= ot.Limit {
 		logger.Warning(
 			"operations in-flight (%v) exceeds limit (%v)", n, ot.Limit)
@@ -158,6 +181,7 @@ func AsyncHttpOperation(app *App,
 			}
 			if rerr := op.Rollback(app.executor); rerr != nil {
 				logger.LogError("%v Rollback error: %v", label, rerr)
+				markFailedIfSupported(op)
 			}
 			logger.LogError("%v Failed: %v", label, err)
 			return "", err
@@ -198,11 +222,32 @@ func RunOperation(o Operation,
 		}
 		if rerr := o.Rollback(executor); rerr != nil {
 			logger.LogError("%v Rollback error: %v", label, rerr)
+			markFailedIfSupported(o)
 		}
 		logger.LogError("%v Failed: %v", label, err)
 		return err
 	}
 	if err := o.Finalize(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// rollbackViaClean runs a CleanableOperation's clean methods as
+// needed to perform operation rollback. Any operation that
+// implements clean methods ought to be able to use
+// rollbackViaClean as the core of its rollback action.
+func rollbackViaClean(o CleanableOperation, executor executors.Executor) error {
+	if err := o.Clean(executor); err != nil {
+		logger.LogError(
+			"error running Clean in rollback for %v: %v",
+			o.Label(), err)
+		return err
+	}
+	if err := o.CleanDone(); err != nil {
+		logger.LogError(
+			"error running CleanDone in rollback for %v: %v",
+			o.Label(), err)
 		return err
 	}
 	return nil
@@ -219,6 +264,7 @@ func retryOperation(o Operation,
 			// when retrying rollback must succeed cleanly or it
 			// is not safe to retry
 			logger.LogError("%v Rollback error: %v", label, e)
+			markFailedIfSupported(o)
 			return e
 		}
 		if e := o.Build(); e != nil {
@@ -244,6 +290,26 @@ func retryOperation(o Operation,
 		err = ore.OriginalError
 	}
 	return
+}
+
+// markFailedIfSupported takes any operation and if that operation
+// supports being marked failed, it marks it as not failed.
+// An error is returned only if the operation is failable and
+// marking it failed fails.
+func markFailedIfSupported(o Operation) error {
+	logger.Debug("Operation [%v] has failed, want to mark failed", o.Id())
+	fo, ok := o.(FailableOperation)
+	if !ok {
+		logger.Debug("Operation [%v] is not a failable operation", o.Id())
+		// not a failable operation. nothing to do
+		return nil
+	}
+	err := fo.MarkFailed()
+	if err != nil {
+		logger.LogError("Unable to mark failed [%v]: %v",
+			fo.Id(), err)
+	}
+	return err
 }
 
 // OperationHttpErrorf writes the appropriate http error responses for

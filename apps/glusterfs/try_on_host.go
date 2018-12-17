@@ -26,6 +26,17 @@ func newTryOnHosts(hosts nodeHosts) *tryOnHosts {
 	return &tryOnHosts{Hosts: hosts}
 }
 
+// once returns a tryOnHosts that only tries one host known
+// to be up.
+func (c *tryOnHosts) once() *tryOnHosts {
+	return &tryOnHosts{
+		Hosts: c.Hosts,
+		done: func(err error) bool {
+			return true
+		},
+	}
+}
+
 func (c *tryOnHosts) run(f func(host string) error) error {
 	// if a custom done is not provided only stop
 	// if err == nil

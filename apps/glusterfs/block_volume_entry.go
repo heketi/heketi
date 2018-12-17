@@ -225,22 +225,6 @@ func (v *BlockVolumeEntry) eligibleClustersAndVolumes(db wdb.RODB) (
 	return
 }
 
-func (v *BlockVolumeEntry) cleanupBlockVolumeCreate(db wdb.DB,
-	executor executors.Executor) error {
-
-	hvname, err := v.blockHostingVolumeName(db)
-	if err != nil {
-		return err
-	}
-
-	err = v.deleteBlockVolumeExec(db, hvname, executor)
-	if err != nil {
-		return err
-	}
-
-	return v.removeComponents(db, false)
-}
-
 func (v *BlockVolumeEntry) Create(db wdb.DB,
 	executor executors.Executor) (e error) {
 
@@ -313,8 +297,15 @@ func (v *BlockVolumeEntry) deleteBlockVolumeExec(db wdb.RODB,
 	}
 
 	logger.Debug("Using executor host [%v]", executorhost)
+	return v.destroyFromHost(executor, hvname, executorhost)
+}
 
-	err = executor.BlockVolumeDestroy(executorhost, hvname, v.Info.Name)
+// destroyFromHost removes the block volume using the provided
+// executor, block hosting volume name, and host.
+func (v *BlockVolumeEntry) destroyFromHost(
+	executor executors.Executor, hvname, h string) error {
+
+	err := executor.BlockVolumeDestroy(h, hvname, v.Info.Name)
 	if _, ok := err.(*executors.VolumeDoesNotExistErr); ok {
 		logger.Warning(
 			"Block volume %v (%v) does not exist: assuming already deleted",
@@ -411,6 +402,21 @@ func canHostBlockVolume(tx *bolt.Tx, bv *BlockVolumeEntry, vol *VolumeEntry) (bo
 
 func (v *BlockVolumeEntry) updateHosts(hosts []string) {
 	v.Info.BlockVolume.Hosts = hosts
+}
+
+// hosts returns a node-to-host mapping for all nodes suitable
+// for running commands related to this block volume
+func (v *BlockVolumeEntry) hosts(db wdb.RODB) (nodeHosts, error) {
+	var hosts nodeHosts
+	err := db.View(func(tx *bolt.Tx) error {
+		cluster, err := NewClusterEntryFromId(tx, v.Info.Cluster)
+		if err != nil {
+			return err
+		}
+		hosts, err = cluster.hosts(wdb.WrapTx(tx))
+		return err
+	})
+	return hosts, err
 }
 
 // hasPendingBlockHostingVolume returns true if the db contains pending

@@ -421,7 +421,7 @@ func (v *VolumeEntry) replaceBrickInVolume(db wdb.DB, executor executors.Executo
 			return err
 		}
 		reReadVolEntry.BrickAdd(newBrickEntry.Id())
-		err = reReadVolEntry.removeBrickFromDb(tx, oldBrickEntry)
+		err = oldBrickEntry.remove(tx, reReadVolEntry)
 		if err != nil {
 			return err
 		}
@@ -455,7 +455,7 @@ func (v *VolumeEntry) allocBricks(
 			logger.Debug("Error detected.  Cleaning up volume %v: Len(%v) ", v.Info.Id, len(brick_entries))
 			db.Update(func(tx *bolt.Tx) error {
 				for _, brick := range brick_entries {
-					v.removeBrickFromDb(tx, brick)
+					brick.remove(tx, v)
 				}
 				return nil
 			})
@@ -496,28 +496,4 @@ func (v *VolumeEntry) allocBricks(
 	}
 
 	return brick_entries, nil
-}
-
-func (v *VolumeEntry) removeBrickFromDb(tx *bolt.Tx, brick *BrickEntry) error {
-	err := brick.RemoveFromDevice(tx)
-	if err != nil {
-		logger.Err(err)
-		return err
-	}
-
-	// Delete brick entryfrom db
-	err = brick.Delete(tx)
-	if err != nil {
-		logger.Err(err)
-		return err
-	}
-
-	// Delete brick from volume db
-	v.BrickDelete(brick.Info.Id)
-	if err != nil {
-		logger.Err(err)
-		return err
-	}
-
-	return nil
 }
