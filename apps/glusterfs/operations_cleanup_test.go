@@ -100,7 +100,7 @@ func TestOperationsCleanupThreeOps(t *testing.T) {
 	e := RunOperation(vc, app.executor)
 	tests.Assert(t, e == nil, "expected e == nil, got", e)
 
-	app.db.Update(func(tx *bolt.Tx) error {
+	app.db.View(func(tx *bolt.Tx) error {
 		l, e := PendingOperationList(tx)
 		tests.Assert(t, e == nil, "expected e == nil, got", e)
 		tests.Assert(t, len(l) == 0, "expected len(l) == 0, got:", len(l))
@@ -179,7 +179,7 @@ func TestOperationsCleanupSkipNonLoadable(t *testing.T) {
 	tests.Assert(t, e == nil, "expected e == nil, got", e)
 
 	var deviceId string
-	app.db.Update(func(tx *bolt.Tx) error {
+	app.db.View(func(tx *bolt.Tx) error {
 		l, e := PendingOperationList(tx)
 		tests.Assert(t, e == nil, "expected e == nil, got", e)
 		tests.Assert(t, len(l) == 0, "expected len(l) == 0, got:", len(l))
@@ -254,7 +254,7 @@ func TestOperationsCleanupVolumeExpand(t *testing.T) {
 	e := RunOperation(vc, app.executor)
 	tests.Assert(t, e == nil, "expected e == nil, got", e)
 
-	app.db.Update(func(tx *bolt.Tx) error {
+	app.db.View(func(tx *bolt.Tx) error {
 		l, e := PendingOperationList(tx)
 		tests.Assert(t, e == nil, "expected e == nil, got", e)
 		tests.Assert(t, len(l) == 0, "expected len(l) == 0, got:", len(l))
