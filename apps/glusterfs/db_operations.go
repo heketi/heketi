@@ -504,6 +504,8 @@ func dbCheckConsistency(db *bolt.DB) (response DbCheckResponse, err error) {
 	response.TotalInconsistencies += len(response.Volumes.Inconsistencies)
 	response.Clusters = dbCheckClusters(dump)
 	response.TotalInconsistencies += len(response.Clusters.Inconsistencies)
+	response.Nodes = dbCheckNodes(dump)
+	response.TotalInconsistencies += len(response.Nodes.Inconsistencies)
 
 	if response.TotalInconsistencies > 0 {
 		response.Inconsistent = true
@@ -538,7 +540,6 @@ func dbCheckVolumes(dump Db) (volumesCheckResponse DbBucketCheckResponse) {
 }
 
 func dbCheckClusters(dump Db) (clustersCheckResponse DbBucketCheckResponse) {
-
 	for _, clusterEntry := range dump.Clusters {
 
 		clustersCheckResponse.Total++
@@ -554,6 +555,28 @@ func dbCheckClusters(dump Db) (clustersCheckResponse DbBucketCheckResponse) {
 
 		if len(clusterInconsistencies) > 0 {
 			clustersCheckResponse.Inconsistencies = append(clustersCheckResponse.Inconsistencies, clusterInconsistencies...)
+		}
+	}
+
+	return
+}
+
+func dbCheckNodes(dump Db) (nodesCheckResponse DbBucketCheckResponse) {
+	for _, nodeEntry := range dump.Nodes {
+
+		nodesCheckResponse.Total++
+		// Node Entries don't have pending operations
+
+		nodeConsistent, nodeInconsistencies := nodeEntry.consistencyCheck(dump)
+
+		if nodeConsistent == true {
+			nodesCheckResponse.Ok++
+		} else {
+			nodesCheckResponse.NotOk++
+		}
+
+		if len(nodeInconsistencies) > 0 {
+			nodesCheckResponse.Inconsistencies = append(nodesCheckResponse.Inconsistencies, nodeInconsistencies...)
 		}
 	}
 
