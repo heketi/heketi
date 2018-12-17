@@ -508,6 +508,8 @@ func dbCheckConsistency(db *bolt.DB) (response DbCheckResponse, err error) {
 	response.TotalInconsistencies += len(response.Nodes.Inconsistencies)
 	response.Devices = dbCheckDevices(dump)
 	response.TotalInconsistencies += len(response.Devices.Inconsistencies)
+	response.BlockVolumes = dbCheckBlockVolumes(dump)
+	response.TotalInconsistencies += len(response.BlockVolumes.Inconsistencies)
 
 	if response.TotalInconsistencies > 0 {
 		response.Inconsistent = true
@@ -601,6 +603,30 @@ func dbCheckDevices(dump Db) (devicesCheckResponse DbBucketCheckResponse) {
 
 		if len(deviceInconsistencies) > 0 {
 			devicesCheckResponse.Inconsistencies = append(devicesCheckResponse.Inconsistencies, deviceInconsistencies...)
+		}
+	}
+
+	return
+}
+
+func dbCheckBlockVolumes(dump Db) (blockVolumesCheckResponse DbBucketCheckResponse) {
+	for _, blockVolumeEntry := range dump.BlockVolumes {
+
+		blockVolumesCheckResponse.Total++
+		if blockVolumeEntry.Pending.Id != "" {
+			blockVolumesCheckResponse.Pending++
+		}
+
+		blockVolumeConsistent, blockVolumeInconsistencies := blockVolumeEntry.consistencyCheck(dump)
+
+		if blockVolumeConsistent == true {
+			blockVolumesCheckResponse.Ok++
+		} else {
+			blockVolumesCheckResponse.NotOk++
+		}
+
+		if len(blockVolumeInconsistencies) > 0 {
+			blockVolumesCheckResponse.Inconsistencies = append(blockVolumesCheckResponse.Inconsistencies, blockVolumeInconsistencies...)
 		}
 	}
 
