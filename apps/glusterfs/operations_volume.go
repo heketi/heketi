@@ -726,9 +726,9 @@ func removeVolumeWithOp(
 	return bmap.destroy(executor)
 }
 
-// expandSizeFromOp is a helper function that removes a given volume
-// and associated operation from the db. It can be shared with
-// volume create and volume delete operation functions.
+// expungeVolumeWithOp is a helper function that removes a given volume and
+// associated operation from the db. It can be shared with volume create and
+// volume delete operation functions.
 func expungeVolumeWithOp(
 	db wdb.DB,
 	op *PendingOperationEntry, volId string,
