@@ -580,6 +580,11 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Method:      "GET",
 			Pattern:     "/db/dump",
 			HandlerFunc: a.DbDump},
+		rest.Route{
+			Name:        "DbCheck",
+			Method:      "GET",
+			Pattern:     "/db/check",
+			HandlerFunc: a.DbCheck},
 
 		// Logging
 		rest.Route{
