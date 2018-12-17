@@ -506,6 +506,8 @@ func dbCheckConsistency(db *bolt.DB) (response DbCheckResponse, err error) {
 	response.TotalInconsistencies += len(response.Clusters.Inconsistencies)
 	response.Nodes = dbCheckNodes(dump)
 	response.TotalInconsistencies += len(response.Nodes.Inconsistencies)
+	response.Devices = dbCheckDevices(dump)
+	response.TotalInconsistencies += len(response.Devices.Inconsistencies)
 
 	if response.TotalInconsistencies > 0 {
 		response.Inconsistent = true
@@ -577,6 +579,28 @@ func dbCheckNodes(dump Db) (nodesCheckResponse DbBucketCheckResponse) {
 
 		if len(nodeInconsistencies) > 0 {
 			nodesCheckResponse.Inconsistencies = append(nodesCheckResponse.Inconsistencies, nodeInconsistencies...)
+		}
+	}
+
+	return
+}
+
+func dbCheckDevices(dump Db) (devicesCheckResponse DbBucketCheckResponse) {
+	for _, deviceEntry := range dump.Devices {
+
+		devicesCheckResponse.Total++
+		// Device Entries don't have pending operations
+
+		deviceConsistent, deviceInconsistencies := deviceEntry.consistencyCheck(dump)
+
+		if deviceConsistent == true {
+			devicesCheckResponse.Ok++
+		} else {
+			devicesCheckResponse.NotOk++
+		}
+
+		if len(deviceInconsistencies) > 0 {
+			devicesCheckResponse.Inconsistencies = append(devicesCheckResponse.Inconsistencies, deviceInconsistencies...)
 		}
 	}
 

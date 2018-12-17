@@ -623,3 +623,56 @@ func (d *DeviceEntry) SetTags(t map[string]string) error {
 	d.Info.Tags = t
 	return nil
 }
+
+// consistencyCheck ... verifies that a deviceEntry is consistent with rest of the database.
+// It is a method on deviceEntry and needs rest of the database as its input.
+func (d *DeviceEntry) consistencyCheck(db Db) (consistent bool, inconsistencies []string) {
+
+	consistent = true
+	var aggregateBricksSize uint64
+
+	// No consistency check required for following attributes
+	// Id
+	// Name
+	// Tags
+	// EntryState
+	// ExtentSize
+
+	// Node
+	if nodeEntry, found := db.Nodes[d.NodeId]; !found {
+		inconsistencies = append(inconsistencies, fmt.Sprintf("Device %v unknown node %v", d.Info.Id, d.NodeId))
+		consistent = false
+	} else {
+		if !sortedstrings.Has(nodeEntry.Devices, d.Info.Id) {
+			inconsistencies = append(inconsistencies, fmt.Sprintf("Device %v no link back to device from node %v", d.Info.Id, d.NodeId))
+			consistent = false
+		}
+	}
+
+	// Bricks
+	for _, brick := range d.Bricks {
+		if brickEntry, found := db.Bricks[brick]; !found {
+			inconsistencies = append(inconsistencies, fmt.Sprintf("Device %v unknown brick %v", d.Info.Id, brick))
+			consistent = false
+		} else {
+			if brickEntry.Info.DeviceId != d.Info.Id {
+				inconsistencies = append(inconsistencies, fmt.Sprintf("Device %v no link back to device from brick %v", d.Info.Id, brick))
+				consistent = false
+			}
+			aggregateBricksSize += brickEntry.TpSize + brickEntry.PoolMetadataSize
+		}
+	}
+
+	// Size validation
+	if d.Info.Storage.Total != d.Info.Storage.Free+d.Info.Storage.Used {
+		inconsistencies = append(inconsistencies, fmt.Sprintf("Device %v size values differ Total(%v) != Free(%v) + Used(%v)", d.Info.Id, d.Info.Storage.Total, d.Info.Storage.Free, d.Info.Storage.Used))
+		consistent = false
+	}
+	if aggregateBricksSize != d.Info.Storage.Used {
+		inconsistencies = append(inconsistencies, fmt.Sprintf("Device %v size values differ Used(%v) != aggregateBricksSize(%v)", d.Info.Id, d.Info.Storage.Used, aggregateBricksSize))
+		consistent = false
+	}
+
+	return
+
+}
