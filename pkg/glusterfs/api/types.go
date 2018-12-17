@@ -665,3 +665,30 @@ type PendingOperationDetails struct {
 type PendingOperationListResponse struct {
 	PendingOperations []PendingOperationInfo `json:"pendingoperations"`
 }
+
+type PendingOperationsCleanRequest struct {
+	Operations []string `json:"operations,omitempty"`
+}
+
+func (pocr PendingOperationsCleanRequest) Validate() error {
+	return validation.ValidateStruct(&pocr,
+		validation.Field(&pocr.Operations, validation.By(ValidateIds)),
+	)
+}
+
+func ValidateIds(v interface{}) error {
+	ids, ok := v.([]string)
+	if !ok {
+		return fmt.Errorf("must be a list of strings")
+	}
+	if len(ids) > 32 {
+		return fmt.Errorf("too many ids specified (%v), up to %v supported",
+			len(ids), 32)
+	}
+	for _, id := range ids {
+		if err := ValidateUUID(id); err != nil {
+			return err
+		}
+	}
+	return nil
+}

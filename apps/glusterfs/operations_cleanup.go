@@ -10,6 +10,9 @@
 package glusterfs
 
 import (
+	"errors"
+	"time"
+
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 
@@ -20,6 +23,10 @@ type OperationCleaner struct {
 	db       wdb.DB
 	sel      func(*PendingOperationEntry) bool
 	executor executors.Executor
+
+	// operations tracker. This will be unset if run in offline mode
+	optracker *OpTracker
+	opClass   OpClass
 }
 
 func (oc OperationCleaner) Clean() error {
@@ -64,6 +71,11 @@ func (oc OperationCleaner) Clean() error {
 }
 
 func (oc OperationCleaner) cleanOp(cop CleanableOperation) error {
+	if !oc.cleanBegin(cop.Id()) {
+		logger.Warning("Not starting clean of %v, not ready", cop.Id())
+		return nil
+	}
+	defer oc.cleanEnd(cop.Id())
 	err := cop.Clean(oc.executor)
 	if err != nil {
 		return err
@@ -71,6 +83,141 @@ func (oc OperationCleaner) cleanOp(cop CleanableOperation) error {
 	return cop.CleanDone()
 }
 
+// cleanBegin returns true if a clean of the given operation
+// can start at this time.
+func (oc OperationCleaner) cleanBegin(id string) bool {
+	if oc.optracker == nil {
+		// no tracker in use
+		return true
+	}
+	if oc.optracker.ThrottleOrAdd(id, oc.opClass) {
+		logger.Warning("Clean of operation %v thottled (class=%v)",
+			id, oc.opClass)
+		return false
+	}
+	return true
+}
+
+// cleanEnd releases any resources taken by cleanBegin
+func (oc OperationCleaner) cleanEnd(id string) {
+	if oc.optracker == nil {
+		return
+	}
+	oc.optracker.Remove(id)
+}
+
+// MarkStale finds pending operations in the db that are not yet
+// stale and marks them as such. This is useful in case the
+// pending operation failed but the pending op could not be
+// marked failed (db error) in a long running server.
+func (oc OperationCleaner) MarkStale() error {
+	if oc.optracker == nil {
+		return errors.New("Can not mark stale without op tracker")
+	}
+	logger.Debug("Going to mark stale operations")
+	now := operationTimestamp()
+	sel := func(p *PendingOperationEntry) bool {
+		// operations must be new & older than 60 seconds to be selected
+		return p.Status == NewOperation && (now-p.Timestamp) >= 60
+	}
+	return oc.db.Update(func(tx *bolt.Tx) error {
+		pops, err := PendingOperationEntrySelection(tx, sel)
+		if err != nil {
+			return err
+		}
+		tracked := oc.optracker.Tracked()
+		for _, pop := range pops {
+			if tracked[pop.Id] {
+				continue
+			}
+			logger.Info("found untracked new operation [%v]: marking stale",
+				pop.Id)
+			pop.Status = StaleOperation
+			if err := pop.Save(tx); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+type backgroundOperationCleaner struct {
+	cleaner OperationCleaner
+
+	// timing params
+	StartInterval time.Duration
+	CheckInterval time.Duration
+
+	// to stop the monitor
+	stop chan<- interface{}
+}
+
+// Start creates a background goroutine to run periodic cleans
+// of stale and failed pending operations.
+func (boc *backgroundOperationCleaner) Start() {
+	startTimer := time.NewTimer(boc.StartInterval)
+	ticker := time.NewTicker(boc.CheckInterval)
+	stop := make(chan interface{})
+	boc.stop = stop
+
+	go func() {
+		logger.Info("Started background pending operations cleaner")
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stop:
+				logger.Info("Stopping background pending operations cleaner")
+				return
+			case <-startTimer.C:
+				err := boc.cleaner.Clean()
+				if err != nil {
+					logger.LogError(
+						"Background pending operations cleaner: %v", err)
+				}
+			case <-ticker.C:
+				// the periodic clean first looks for any ops that have
+				// gone stale in the meantime. This is not done for the
+				// start time because we would have just restarted and
+				// marked everything in the db as stale.
+				err := boc.cleaner.MarkStale()
+				if err != nil {
+					logger.LogError(
+						"Background pending operations mark stale: %v", err)
+				}
+				err = boc.cleaner.Clean()
+				if err != nil {
+					logger.LogError(
+						"Background pending operations cleaner: %v", err)
+				}
+			}
+		}
+	}()
+}
+
+// Stop the background operations cleaner.
+func (boc *backgroundOperationCleaner) Stop() {
+	boc.stop <- true
+}
+
 func CleanAll(p *PendingOperationEntry) bool {
 	return p.Status == StaleOperation || p.Status == FailedOperation
+}
+
+// CleanSelectedOps is a factory function that returns a new selection
+// function which will only match cleanable pending ops with IDs
+// in the specified map.
+func CleanSelectedOps(
+	ops map[string]bool) func(p *PendingOperationEntry) bool {
+
+	return func(p *PendingOperationEntry) bool {
+		if !ops[p.Id] {
+			return false
+		}
+		if !CleanAll(p) {
+			logger.Debug("Selected pending op id %v was not cleanable", p.Id)
+			return false
+		}
+		logger.Debug("matched pending operation id: %v", p.Id)
+		return true
+	}
 }
