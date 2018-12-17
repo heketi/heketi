@@ -44,7 +44,9 @@ func (a *App) DbCheck(w http.ResponseWriter, r *http.Request) {
 	// Write msg
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(checkResponse); err != nil {
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "    ")
+	if err := encoder.Encode(checkResponse); err != nil {
 		panic(err)
 	}
 }
