@@ -16,10 +16,11 @@ import (
 	"strings"
 
 	"github.com/boltdb/bolt"
+	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 )
 
-func dbDumpInternal(db *bolt.DB) (Db, error) {
+func dbDumpInternal(db wdb.DB) (Db, error) {
 	var dump Db
 	clusterEntryList := make(map[string]ClusterEntry, 0)
 	volEntryList := make(map[string]VolumeEntry, 0)
@@ -383,7 +384,7 @@ func DbCreate(jsonfile string, dbfile string) error {
 	return nil
 }
 
-func DeleteBricksWithEmptyPath(db *bolt.DB, all bool, clusterIDs []string, nodeIDs []string, deviceIDs []string) error {
+func DeleteBricksWithEmptyPath(db wdb.DB, all bool, clusterIDs []string, nodeIDs []string, deviceIDs []string) error {
 
 	for _, id := range clusterIDs {
 		if err := api.ValidateUUID(id); err != nil {
