@@ -38,6 +38,7 @@ var opInfoTemplate = `Operation Counts:
   Total: {{.Total}}
   In-Flight: {{.InFlight}}
   New: {{.New}}
+  Failed: {{.Failed}}
   Stale: {{.Stale}}
 `
 
