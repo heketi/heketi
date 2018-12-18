@@ -28,6 +28,7 @@ type RemoteCommandTransport interface {
 	RebalanceOnExpansion() bool
 	SnapShotLimit() int
 	GlusterCliTimeout() uint32
+	PVDataAlignment() string
 }
 
 type CmdExecutor struct {
@@ -133,4 +134,11 @@ func (c *CmdExecutor) GlusterCliExecTimeout() int {
 	}
 
 	return timeout
+}
+
+func (c *CmdExecutor) PVDataAlignment() string {
+	if c.config.PVDataAlignment == "" {
+		return "256K"
+	}
+	return c.config.PVDataAlignment
 }

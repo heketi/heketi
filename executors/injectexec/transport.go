@@ -56,6 +56,10 @@ func (w *WrapCommandTransport) GlusterCliTimeout() uint32 {
 	return w.Transport.GlusterCliTimeout()
 }
 
+func (w *WrapCommandTransport) PVDataAlignment() string {
+	return w.Transport.PVDataAlignment()
+}
+
 // Before calls the WrapCommandTransport's handleBefore function
 // if one is set. If the command was handled the and no additional
 // processing of the command is needed the first return value will

@@ -43,7 +43,7 @@ func (s *CmdExecutor) DeviceSetup(host, device, vgid string, destroy bool) (d *e
 		logger.Info("Data on device %v (host %v) will be destroyed", device, host)
 		commands = append(commands, fmt.Sprintf("wipefs --all %v", device))
 	}
-	commands = append(commands, fmt.Sprintf("pvcreate -qq --metadatasize=128M --dataalignment=256K '%v'", device))
+	commands = append(commands, fmt.Sprintf("pvcreate -qq --metadatasize=128M --dataalignment=%v '%v'", s.config.PVDataAlignment, device))
 	commands = append(commands, fmt.Sprintf("vgcreate -qq --autobackup=%v %v %v", conv.BoolToYN(s.BackupLVM), paths.VgIdToName(vgid), device))
 
 	// Execute command
