@@ -19,13 +19,15 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
+	"github.com/heketi/rest"
+	"github.com/lpabon/godbc"
+
 	"github.com/heketi/heketi/executors"
 	"github.com/heketi/heketi/executors/injectexec"
 	"github.com/heketi/heketi/executors/kubeexec"
 	"github.com/heketi/heketi/executors/mockexec"
 	"github.com/heketi/heketi/executors/sshexec"
 	"github.com/heketi/heketi/pkg/logging"
-	"github.com/heketi/rest"
 )
 
 const (
@@ -150,40 +152,10 @@ func NewApp(conf *GlusterFSConfig) *App {
 		dbfilename = app.conf.DBfile
 	}
 
-	// Setup database
-	app.db, err = OpenDB(dbfilename, false)
+	err = app.initDB()
 	if err != nil {
-		logger.LogError("Unable to open database: %v. Retrying using read only mode", err)
-
-		// Try opening as read-only
-		app.db, err = OpenDB(dbfilename, true)
-		if err != nil {
-			logger.LogError("Unable to open database: %v", err)
-			return nil
-		}
-		app.dbReadOnly = true
-	} else {
-		err = app.db.Update(func(tx *bolt.Tx) error {
-			err := initializeBuckets(tx)
-			if err != nil {
-				logger.LogError("Unable to initialize buckets")
-				return err
-			}
-
-			// Handle Upgrade Changes
-			err = UpgradeDB(tx)
-			if err != nil {
-				logger.LogError("Unable to Upgrade Changes")
-				return err
-			}
-
-			return nil
-
-		})
-		if err != nil {
-			logger.Err(err)
-			return nil
-		}
+		logger.Err(err)
+		return nil
 	}
 
 	// Abort the application if there are pending operations in the db.
@@ -216,6 +188,50 @@ func NewApp(conf *GlusterFSConfig) *App {
 	// Set block settings
 	app.setBlockSettings()
 
+	// initialize sub-objects and background tasks
+	app.initOpTracker()
+	app.initNodeMonitor()
+	app.initBackgroundCleaner()
+
+	// Show application has loaded
+	logger.Info("GlusterFS Application Loaded")
+
+	return app
+}
+
+func (app *App) initDB() error {
+	// Setup database
+	var err error
+	app.db, err = OpenDB(dbfilename, false)
+	if err != nil {
+		logger.LogError("Unable to open database: %v. Retrying using read only mode", err)
+
+		// Try opening as read-only
+		app.db, err = OpenDB(dbfilename, true)
+		if err != nil {
+			return logger.LogError("Unable to open database: %v", err)
+		}
+		app.dbReadOnly = true
+	} else {
+		err = app.db.Update(func(tx *bolt.Tx) error {
+			err := initializeBuckets(tx)
+			if err != nil {
+				return logger.LogError("Unable to initialize buckets: %v", err)
+			}
+
+			// Handle Upgrade Changes
+			err = UpgradeDB(tx)
+			if err != nil {
+				return logger.LogError("Unable to Upgrade DB: %v", err)
+			}
+
+			return nil
+		})
+	}
+	return nil
+}
+
+func (app *App) initNodeMonitor() {
 	//default monitor gluster node refresh time
 	var timer uint32 = 120
 	var startDelay uint32 = 10
@@ -230,6 +246,9 @@ func NewApp(conf *GlusterFSConfig) *App {
 		app.nhealth.Monitor()
 		currentNodeHealthCache = app.nhealth
 	}
+}
+
+func (app *App) initBackgroundCleaner() {
 	// configure background cleaner params
 	if app.conf.StartTimeBackgroundCleaner == 0 {
 		app.conf.StartTimeBackgroundCleaner = 60
@@ -241,18 +260,14 @@ func NewApp(conf *GlusterFSConfig) *App {
 		app.bgcleaner = app.BackgroundCleaner()
 		app.bgcleaner.Start()
 	}
+}
 
-	// set up the operations counter
+func (app *App) initOpTracker() {
 	oplimit := app.conf.MaxInflightOperations
 	if oplimit == 0 {
 		oplimit = DEFAULT_OP_LIMIT
 	}
 	app.optracker = newOpTracker(oplimit)
-
-	// Show application has loaded
-	logger.Info("GlusterFS Application Loaded")
-
-	return app
 }
 
 func SetLogLevel(level string) error {
@@ -724,6 +739,7 @@ func (a *App) OnDemandCleaner(ops map[string]bool) OperationCleaner {
 // BackgroundCleaner returns a background operations cleaner
 // suitable for use as a background "process" in the heketi server.
 func (a *App) BackgroundCleaner() *backgroundOperationCleaner {
+	godbc.Require(a.optracker != nil)
 	startSec := time.Duration(a.conf.StartTimeBackgroundCleaner)
 	checkSec := time.Duration(a.conf.RefreshTimeBackgroundCleaner)
 	return &backgroundOperationCleaner{

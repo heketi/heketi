@@ -64,7 +64,10 @@ func (oc OperationCleaner) Clean() error {
 		// TODO gather errors
 		err = oc.cleanOp(cop)
 		if err != nil {
-			logger.Err(err)
+			// cleanOp errors are non-fatal as they can always
+			// be retried later
+			logger.Warning("Unable to clean operation %v: %v",
+				cop.Id(), err)
 		}
 	}
 	return nil
@@ -78,6 +81,8 @@ func (oc OperationCleaner) cleanOp(cop CleanableOperation) error {
 	defer oc.cleanEnd(cop.Id())
 	err := cop.Clean(oc.executor)
 	if err != nil {
+		logger.Warning("Clean phase of operation %v encountered error: %v",
+			cop.Id(), err)
 		return err
 	}
 	return cop.CleanDone()

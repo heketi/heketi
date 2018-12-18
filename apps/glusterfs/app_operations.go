@@ -36,6 +36,7 @@ func (a *App) OperationsInfo(w http.ResponseWriter, r *http.Request) {
 		}
 		info.New = uint64(m[NewOperation])
 		info.Stale = uint64(m[StaleOperation])
+		info.Failed = uint64(m[FailedOperation])
 		return nil
 	})
 	if err != nil {
