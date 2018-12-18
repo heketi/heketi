@@ -33,6 +33,12 @@ type Db struct {
 	PendingOperations map[string]PendingOperationEntry `json:"pendingoperations"`
 }
 
+//DbEntryCheckResponse ... is summary of check on a db entry.
+type DbEntryCheckResponse struct {
+	Pending         bool     `json:"pending"`
+	Inconsistencies []string `json:"inconsistencies"`
+}
+
 //DbBucketCheckResponse ... is summary of check on a db bucket.
 type DbBucketCheckResponse struct {
 	Total           int      `json:"total"`

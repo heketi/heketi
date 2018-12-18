@@ -1013,9 +1013,8 @@ func (v *VolumeEntry) cloneVolumeRequest(db wdb.RODB, clonename string) (*execut
 
 // consistencyCheck ... verifies that a volumeEntry is consistent with rest of the database.
 // It is a method on volumeEntry and needs rest of the database as its input.
-func (v *VolumeEntry) consistencyCheck(db Db) (consistent bool, inconsistencies []string) {
+func (v *VolumeEntry) consistencyCheck(db Db) (response DbEntryCheckResponse) {
 
-	consistent = true
 	var aggregateBlockVolumesSize = 0
 
 	// No consistency check required for following attributes
@@ -1027,9 +1026,9 @@ func (v *VolumeEntry) consistencyCheck(db Db) (consistent bool, inconsistencies 
 
 	// PendingId
 	if v.Pending.Id != "" {
+		response.Pending = true
 		if _, found := db.PendingOperations[v.Pending.Id]; !found {
-			inconsistencies = append(inconsistencies, fmt.Sprintf("Volume %v marked pending but no pending op %v", v.Info.Id, v.Pending.Id))
-			consistent = false
+			response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Volume %v marked pending but no pending op %v", v.Info.Id, v.Pending.Id))
 		}
 		// TODO: Validate back the pending operations' relationship to the volume
 		// This is skipped because some of it is handled in auto cleanup code.
@@ -1037,16 +1036,13 @@ func (v *VolumeEntry) consistencyCheck(db Db) (consistent bool, inconsistencies 
 
 	// Cluster and mount hosts
 	if clusterEntry, found := db.Clusters[v.Info.Cluster]; !found {
-		inconsistencies = append(inconsistencies, fmt.Sprintf("Volume %v unknown cluster %v", v.Info.Id, v.Info.Cluster))
-		consistent = false
+		response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Volume %v unknown cluster %v", v.Info.Id, v.Info.Cluster))
 	} else {
 		if !sortedstrings.Has(clusterEntry.Info.Volumes, v.Info.Id) {
-			inconsistencies = append(inconsistencies, fmt.Sprintf("Volume %v no link back to volume from cluster %v", v.Info.Id, v.Info.Cluster))
-			consistent = false
+			response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Volume %v no link back to volume from cluster %v", v.Info.Id, v.Info.Cluster))
 		}
 		if len(v.Info.Mount.GlusterFS.Hosts) != len(clusterEntry.Info.Nodes) {
-			inconsistencies = append(inconsistencies, fmt.Sprintf("Volume %v mount hosts list(%v) is not same as list of all nodes of the cluster(%v)", v.Info.Id, v.Info.Mount.GlusterFS.Hosts, clusterEntry.Info.Nodes))
-			consistent = false
+			response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Volume %v mount hosts list(%v) is not same as list of all nodes of the cluster(%v)", v.Info.Id, v.Info.Mount.GlusterFS.Hosts, clusterEntry.Info.Nodes))
 		}
 		// TODO: I should probably match the IPs of the mount hosts to that of storage hostnames but not sure if it is worth it.
 	}
@@ -1054,12 +1050,10 @@ func (v *VolumeEntry) consistencyCheck(db Db) (consistent bool, inconsistencies 
 	// Bricks
 	for _, brick := range v.Bricks {
 		if brickEntry, found := db.Bricks[brick]; !found {
-			inconsistencies = append(inconsistencies, fmt.Sprintf("Volume %v unknown brick %v", v.Info.Id, brick))
-			consistent = false
+			response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Volume %v unknown brick %v", v.Info.Id, brick))
 		} else {
 			if brickEntry.Info.VolumeId != v.Info.Id {
-				inconsistencies = append(inconsistencies, fmt.Sprintf("Volume %v no link back to volume from brick %v", v.Info.Id, brick))
-				consistent = false
+				response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Volume %v no link back to volume from brick %v", v.Info.Id, brick))
 			}
 		}
 	}
@@ -1067,26 +1061,22 @@ func (v *VolumeEntry) consistencyCheck(db Db) (consistent bool, inconsistencies 
 	// BlockVolumes and sizes
 	for _, blockVolume := range v.Info.BlockInfo.BlockVolumes {
 		if blockVolumeEntry, found := db.BlockVolumes[blockVolume]; !found {
-			inconsistencies = append(inconsistencies, fmt.Sprintf("Volume %v unknown blockvolume %v", v.Info.Id, blockVolume))
-			consistent = false
+			response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Volume %v unknown blockvolume %v", v.Info.Id, blockVolume))
 		} else {
 			if blockVolumeEntry.Info.BlockHostingVolume != v.Info.Id {
-				inconsistencies = append(inconsistencies, fmt.Sprintf("Volume %v no link back to volume from blockvolume %v", v.Info.Id, blockVolume))
-				consistent = false
+				response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Volume %v no link back to volume from blockvolume %v", v.Info.Id, blockVolume))
 			}
 			aggregateBlockVolumesSize += blockVolumeEntry.Info.Size
 		}
 	}
 	if v.Info.Block == true {
 		if aggregateBlockVolumesSize != v.Info.Size-v.Info.BlockInfo.FreeSize-v.Info.BlockInfo.ReservedSize {
-			inconsistencies = append(inconsistencies,
+			response.Inconsistencies = append(response.Inconsistencies,
 				fmt.Sprintf("Volume %v blocksize differs aggregateSize %v != volumeSize %v - freeSize %v - reservedSize %v",
 					v.Info.Id, aggregateBlockVolumesSize, v.Info.Size, v.Info.BlockInfo.FreeSize, v.Info.BlockInfo.ReservedSize))
-			consistent = false
 		}
 	} else if aggregateBlockVolumesSize != 0 {
-		inconsistencies = append(inconsistencies, fmt.Sprintf("Volume %v has blockvolumes but not block flag", v.Info.Id))
-		consistent = false
+		response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Volume %v has blockvolumes but not block flag", v.Info.Id))
 	}
 
 	return

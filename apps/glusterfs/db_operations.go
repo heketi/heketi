@@ -517,20 +517,17 @@ func dbCheckVolumes(dump Db) (volumesCheckResponse DbBucketCheckResponse) {
 	for _, volumeEntry := range dump.Volumes {
 
 		volumesCheckResponse.Total++
-		if volumeEntry.Pending.Id != "" {
+
+		volumeCheckResponse := volumeEntry.consistencyCheck(dump)
+		if volumeCheckResponse.Pending {
 			volumesCheckResponse.Pending++
 		}
 
-		volConsistent, volCheckInconsistencies := volumeEntry.consistencyCheck(dump)
-
-		if volConsistent == true {
-			volumesCheckResponse.Ok++
-		} else {
+		if len(volumeCheckResponse.Inconsistencies) > 0 {
+			volumesCheckResponse.Inconsistencies = append(volumesCheckResponse.Inconsistencies, volumeCheckResponse.Inconsistencies...)
 			volumesCheckResponse.NotOk++
-		}
-
-		if len(volCheckInconsistencies) > 0 {
-			volumesCheckResponse.Inconsistencies = append(volumesCheckResponse.Inconsistencies, volCheckInconsistencies...)
+		} else {
+			volumesCheckResponse.Ok++
 		}
 	}
 
@@ -543,16 +540,13 @@ func dbCheckClusters(dump Db) (clustersCheckResponse DbBucketCheckResponse) {
 		clustersCheckResponse.Total++
 		// Cluster Entries don't have pending operations
 
-		clusterConsistent, clusterInconsistencies := clusterEntry.consistencyCheck(dump)
+		clusterCheckResponse := clusterEntry.consistencyCheck(dump)
 
-		if clusterConsistent == true {
-			clustersCheckResponse.Ok++
-		} else {
+		if len(clusterCheckResponse.Inconsistencies) > 0 {
+			clustersCheckResponse.Inconsistencies = append(clustersCheckResponse.Inconsistencies, clusterCheckResponse.Inconsistencies...)
 			clustersCheckResponse.NotOk++
-		}
-
-		if len(clusterInconsistencies) > 0 {
-			clustersCheckResponse.Inconsistencies = append(clustersCheckResponse.Inconsistencies, clusterInconsistencies...)
+		} else {
+			clustersCheckResponse.Ok++
 		}
 	}
 
@@ -565,16 +559,13 @@ func dbCheckNodes(dump Db) (nodesCheckResponse DbBucketCheckResponse) {
 		nodesCheckResponse.Total++
 		// Node Entries don't have pending operations
 
-		nodeConsistent, nodeInconsistencies := nodeEntry.consistencyCheck(dump)
+		nodeCheckResponse := nodeEntry.consistencyCheck(dump)
 
-		if nodeConsistent == true {
-			nodesCheckResponse.Ok++
-		} else {
+		if len(nodeCheckResponse.Inconsistencies) > 0 {
+			nodesCheckResponse.Inconsistencies = append(nodesCheckResponse.Inconsistencies, nodeCheckResponse.Inconsistencies...)
 			nodesCheckResponse.NotOk++
-		}
-
-		if len(nodeInconsistencies) > 0 {
-			nodesCheckResponse.Inconsistencies = append(nodesCheckResponse.Inconsistencies, nodeInconsistencies...)
+		} else {
+			nodesCheckResponse.Ok++
 		}
 	}
 
@@ -587,16 +578,13 @@ func dbCheckDevices(dump Db) (devicesCheckResponse DbBucketCheckResponse) {
 		devicesCheckResponse.Total++
 		// Device Entries don't have pending operations
 
-		deviceConsistent, deviceInconsistencies := deviceEntry.consistencyCheck(dump)
+		deviceCheckResponse := deviceEntry.consistencyCheck(dump)
 
-		if deviceConsistent == true {
-			devicesCheckResponse.Ok++
-		} else {
+		if len(deviceCheckResponse.Inconsistencies) > 0 {
+			devicesCheckResponse.Inconsistencies = append(devicesCheckResponse.Inconsistencies, deviceCheckResponse.Inconsistencies...)
 			devicesCheckResponse.NotOk++
-		}
-
-		if len(deviceInconsistencies) > 0 {
-			devicesCheckResponse.Inconsistencies = append(devicesCheckResponse.Inconsistencies, deviceInconsistencies...)
+		} else {
+			devicesCheckResponse.Ok++
 		}
 	}
 
@@ -607,20 +595,16 @@ func dbCheckBlockVolumes(dump Db) (blockVolumesCheckResponse DbBucketCheckRespon
 	for _, blockVolumeEntry := range dump.BlockVolumes {
 
 		blockVolumesCheckResponse.Total++
-		if blockVolumeEntry.Pending.Id != "" {
+
+		blockVolumeCheckResponse := blockVolumeEntry.consistencyCheck(dump)
+		if blockVolumeCheckResponse.Pending {
 			blockVolumesCheckResponse.Pending++
 		}
-
-		blockVolumeConsistent, blockVolumeInconsistencies := blockVolumeEntry.consistencyCheck(dump)
-
-		if blockVolumeConsistent == true {
-			blockVolumesCheckResponse.Ok++
-		} else {
+		if len(blockVolumeCheckResponse.Inconsistencies) > 0 {
+			blockVolumesCheckResponse.Inconsistencies = append(blockVolumesCheckResponse.Inconsistencies, blockVolumeCheckResponse.Inconsistencies...)
 			blockVolumesCheckResponse.NotOk++
-		}
-
-		if len(blockVolumeInconsistencies) > 0 {
-			blockVolumesCheckResponse.Inconsistencies = append(blockVolumesCheckResponse.Inconsistencies, blockVolumeInconsistencies...)
+		} else {
+			blockVolumesCheckResponse.Ok++
 		}
 	}
 
@@ -631,20 +615,17 @@ func dbCheckBricks(dump Db) (bricksCheckResponse DbBucketCheckResponse) {
 	for _, brickEntry := range dump.Bricks {
 
 		bricksCheckResponse.Total++
-		if brickEntry.Pending.Id != "" {
+
+		brickCheckResponse := brickEntry.consistencyCheck(dump)
+		if brickCheckResponse.Pending {
 			bricksCheckResponse.Pending++
 		}
 
-		brickConsistent, brickInconsistencies := brickEntry.consistencyCheck(dump)
-
-		if brickConsistent == true {
-			bricksCheckResponse.Ok++
-		} else {
+		if len(brickCheckResponse.Inconsistencies) > 0 {
+			bricksCheckResponse.Inconsistencies = append(bricksCheckResponse.Inconsistencies, brickCheckResponse.Inconsistencies...)
 			bricksCheckResponse.NotOk++
-		}
-
-		if len(brickInconsistencies) > 0 {
-			bricksCheckResponse.Inconsistencies = append(bricksCheckResponse.Inconsistencies, brickInconsistencies...)
+		} else {
+			bricksCheckResponse.Ok++
 		}
 	}
 
@@ -654,16 +635,13 @@ func dbCheckBricks(dump Db) (bricksCheckResponse DbBucketCheckResponse) {
 func dbCheckPendingOps(dump Db) (pendingOpsCheckResponse DbBucketCheckResponse) {
 	for _, pendingOpEntry := range dump.PendingOperations {
 
-		pendingOpConsistent, pendingOpInconsistencies := pendingOpEntry.consistencyCheck(dump)
+		pendingOpCheckResponse := pendingOpEntry.consistencyCheck(dump)
 
-		if pendingOpConsistent == true {
-			pendingOpsCheckResponse.Ok++
-		} else {
+		if len(pendingOpCheckResponse.Inconsistencies) > 0 {
+			pendingOpsCheckResponse.Inconsistencies = append(pendingOpsCheckResponse.Inconsistencies, pendingOpCheckResponse.Inconsistencies...)
 			pendingOpsCheckResponse.NotOk++
-		}
-
-		if len(pendingOpInconsistencies) > 0 {
-			pendingOpsCheckResponse.Inconsistencies = append(pendingOpsCheckResponse.Inconsistencies, pendingOpInconsistencies...)
+		} else {
+			pendingOpsCheckResponse.Ok++
 		}
 	}
 

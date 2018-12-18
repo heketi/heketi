@@ -426,15 +426,13 @@ func (b *BrickEntry) removeAndFree(
 
 // consistencyCheck ... verifies that a brickEntry is consistent with rest of the database.
 // It is a method on brickEntry and needs rest of the database as its input.
-func (b *BrickEntry) consistencyCheck(db Db) (consistent bool, inconsistencies []string) {
-
-	consistent = true
+func (b *BrickEntry) consistencyCheck(db Db) (response DbEntryCheckResponse) {
 
 	// PendingId
 	if b.Pending.Id != "" {
+		response.Pending = true
 		if _, found := db.PendingOperations[b.Pending.Id]; !found {
-			inconsistencies = append(inconsistencies, fmt.Sprintf("Brick %v marked pending but no pending op %v", b.Info.Id, b.Pending.Id))
-			consistent = false
+			response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Brick %v marked pending but no pending op %v", b.Info.Id, b.Pending.Id))
 		}
 		// TODO: Validate back the pending operations' relationship to the brick
 		// This is skipped because some of it is handled in auto cleanup code.
@@ -442,29 +440,24 @@ func (b *BrickEntry) consistencyCheck(db Db) (consistent bool, inconsistencies [
 
 	// Node
 	if _, found := db.Nodes[b.Info.NodeId]; !found {
-		inconsistencies = append(inconsistencies, fmt.Sprintf("Brick %v unknown node %v", b.Info.Id, b.Info.NodeId))
-		consistent = false
+		response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Brick %v unknown node %v", b.Info.Id, b.Info.NodeId))
 	}
 
 	// Volume
 	if volumeEntry, found := db.Volumes[b.Info.VolumeId]; !found {
-		inconsistencies = append(inconsistencies, fmt.Sprintf("Brick %v unknown volume %v", b.Info.Id, b.Info.VolumeId))
-		consistent = false
+		response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Brick %v unknown volume %v", b.Info.Id, b.Info.VolumeId))
 	} else {
 		if !sortedstrings.Has(volumeEntry.Bricks, b.Info.Id) {
-			inconsistencies = append(inconsistencies, fmt.Sprintf("Brick %v no link back to brick from volume %v", b.Info.Id, b.Info.VolumeId))
-			consistent = false
+			response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Brick %v no link back to brick from volume %v", b.Info.Id, b.Info.VolumeId))
 		}
 	}
 
 	// Device
 	if deviceEntry, found := db.Devices[b.Info.DeviceId]; !found {
-		inconsistencies = append(inconsistencies, fmt.Sprintf("Brick %v unknown device %v", b.Info.Id, b.Info.DeviceId))
-		consistent = false
+		response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Brick %v unknown device %v", b.Info.Id, b.Info.DeviceId))
 	} else {
 		if !sortedstrings.Has(deviceEntry.Bricks, b.Info.Id) {
-			inconsistencies = append(inconsistencies, fmt.Sprintf("Brick %v no link back to brick from device %v", b.Info.Id, b.Info.DeviceId))
-			consistent = false
+			response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Brick %v no link back to brick from device %v", b.Info.Id, b.Info.DeviceId))
 		}
 	}
 
