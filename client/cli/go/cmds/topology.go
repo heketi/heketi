@@ -300,12 +300,12 @@ var topologyInfoCommand = &cobra.Command{
 		} else {
 
 			// Get the cluster list and iterate over
-			for i, _ := range topoinfo.ClusterList {
+			for i := range topoinfo.ClusterList {
 				fmt.Fprintf(stdout, "\nCluster Id: %v\n", topoinfo.ClusterList[i].Id)
 				fmt.Fprintf(stdout, "\n    File:  %v\n", topoinfo.ClusterList[i].File)
 				fmt.Fprintf(stdout, "    Block: %v\n", topoinfo.ClusterList[i].Block)
 				fmt.Fprintf(stdout, "\n    %s\n", "Volumes:")
-				for k, _ := range topoinfo.ClusterList[i].Volumes {
+				for k := range topoinfo.ClusterList[i].Volumes {
 
 					// Format and print volumeinfo  on this cluster
 					v := topoinfo.ClusterList[i].Volumes[k]
@@ -359,7 +359,7 @@ var topologyInfoCommand = &cobra.Command{
 
 				// format and print each Node information on this cluster
 				fmt.Fprintf(stdout, "\n    %s\n", "Nodes:")
-				for j, _ := range topoinfo.ClusterList[i].Nodes {
+				for j := range topoinfo.ClusterList[i].Nodes {
 					info := topoinfo.ClusterList[i].Nodes[j]
 					fmt.Fprintf(stdout, "\n\tNode Id: %v\n"+
 						"\tState: %v\n"+
