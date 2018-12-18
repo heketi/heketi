@@ -621,6 +621,13 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Method:      "POST",
 			Pattern:     "/operations/pending/cleanup",
 			HandlerFunc: a.PendingOperationCleanUp},
+
+		// State examination
+		rest.Route{
+			Name:        "ExamineGluster",
+			Method:      "GET",
+			Pattern:     "/internal/state/examine/gluster",
+			HandlerFunc: a.ExamineGluster},
 	}
 
 	// Register all routes from the App
@@ -729,6 +736,17 @@ func (a *App) OnDemandCleaner(ops map[string]bool) OperationCleaner {
 		sel:       sel,
 		optracker: a.optracker,
 		opClass:   TrackNormal,
+	}
+}
+
+// OnDemandExaminer returns an examiner based on the current
+// app object that can be used to examine state on user demand.
+func (a *App) OnDemandExaminer() Examiner {
+	return Examiner{
+		db:        a.db,
+		executor:  a.executor,
+		optracker: a.optracker,
+		mode:      OnDemandExaminer,
 	}
 }
 
