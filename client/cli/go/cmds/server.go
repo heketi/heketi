@@ -214,6 +214,41 @@ var setModeCommand = &cobra.Command{
 	},
 }
 
+var stateCommand = &cobra.Command{
+	Use:   "state",
+	Short: "View and/or modify state of server",
+	Long:  "View and/or modify state of server",
+}
+
+var stateExamineCommand = &cobra.Command{
+	Use:   "examine",
+	Short: "Compare state of server",
+	Long:  "Compare state of server",
+}
+
+var stateExamineGlusterCommand = &cobra.Command{
+	Use:     "gluster",
+	Short:   "Compare state of server with gluster",
+	Long:    "Compare state of server with gluster",
+	Example: `  $ heketi-cli server state examine gluster`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		heketi, err := newHeketiClient()
+		if err != nil {
+			return err
+		}
+
+		result, err := heketi.StateExamineGluster()
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprintf(stdout, "%v", result)
+
+		return nil
+
+	},
+}
+
 func init() {
 	RootCmd.AddCommand(serverCommand)
 	// operations command(s)
@@ -232,4 +267,11 @@ func init() {
 	getModeCommand.SilenceUsage = true
 	modeCommand.AddCommand(setModeCommand)
 	setModeCommand.SilenceUsage = true
+	// state command(s)
+	serverCommand.AddCommand(stateCommand)
+	stateCommand.SilenceUsage = true
+	stateCommand.AddCommand(stateExamineCommand)
+	stateExamineCommand.SilenceUsage = true
+	stateExamineCommand.AddCommand(stateExamineGlusterCommand)
+	stateExamineGlusterCommand.SilenceUsage = true
 }
