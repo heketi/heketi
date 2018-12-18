@@ -536,7 +536,7 @@ func (v *VolumeEntry) cleanupCreateVolume(db wdb.DB,
 	// bricks. TODO: find out if that is true with functional tests
 	reclaimed, err := DestroyBricks(db, executor, brick_entries)
 	if err != nil {
-		logger.LogError("failed to destory bricks during cleanup: %v", err)
+		logger.LogError("failed to destroy bricks during cleanup: %v", err)
 	}
 	return v.teardown(db, brick_entries, reclaimed)
 }
