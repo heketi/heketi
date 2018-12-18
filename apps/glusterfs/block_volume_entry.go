@@ -452,9 +452,7 @@ func hasPendingBlockHostingVolume(tx *bolt.Tx) (bool, error) {
 
 // consistencyCheck ... verifies that a blockVolumeEntry is consistent with rest of the database.
 // It is a method on blockVolumeEntry and needs rest of the database as its input.
-func (v *BlockVolumeEntry) consistencyCheck(db Db) (consistent bool, inconsistencies []string) {
-
-	consistent = true
+func (v *BlockVolumeEntry) consistencyCheck(db Db) (response DbEntryCheckResponse) {
 
 	// No consistency check required for following attributes
 	// Id
@@ -465,9 +463,9 @@ func (v *BlockVolumeEntry) consistencyCheck(db Db) (consistent bool, inconsisten
 
 	// PendingId
 	if v.Pending.Id != "" {
+		response.Pending = true
 		if _, found := db.PendingOperations[v.Pending.Id]; !found {
-			inconsistencies = append(inconsistencies, fmt.Sprintf("BlockVolume %v marked pending but no pending op %v", v.Info.Id, v.Pending.Id))
-			consistent = false
+			response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("BlockVolume %v marked pending but no pending op %v", v.Info.Id, v.Pending.Id))
 		}
 		// TODO: Validate back the pending operations' relationship to the blockVolume
 		// This is skipped because some of it is handled in auto cleanup code.
@@ -475,24 +473,20 @@ func (v *BlockVolumeEntry) consistencyCheck(db Db) (consistent bool, inconsisten
 
 	// Cluster
 	if clusterEntry, found := db.Clusters[v.Info.Cluster]; !found {
-		inconsistencies = append(inconsistencies, fmt.Sprintf("BlockVolume %v unknown cluster %v", v.Info.Id, v.Info.Cluster))
-		consistent = false
+		response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("BlockVolume %v unknown cluster %v", v.Info.Id, v.Info.Cluster))
 	} else {
 		if !sortedstrings.Has(clusterEntry.Info.BlockVolumes, v.Info.Id) {
-			inconsistencies = append(inconsistencies, fmt.Sprintf("BlockVolume %v no link back to blockVolume from cluster %v", v.Info.Id, v.Info.Cluster))
-			consistent = false
+			response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("BlockVolume %v no link back to blockVolume from cluster %v", v.Info.Id, v.Info.Cluster))
 		}
 		// TODO: Check if BlockVolume Hosts belong to the cluster.
 	}
 
 	// Volume
 	if volumeEntry, found := db.Volumes[v.Info.BlockHostingVolume]; !found {
-		inconsistencies = append(inconsistencies, fmt.Sprintf("BlockVolume %v unknown volume %v", v.Info.Id, v.Info.BlockHostingVolume))
-		consistent = false
+		response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("BlockVolume %v unknown volume %v", v.Info.Id, v.Info.BlockHostingVolume))
 	} else {
 		if !sortedstrings.Has(volumeEntry.Info.BlockInfo.BlockVolumes, v.Info.Id) {
-			inconsistencies = append(inconsistencies, fmt.Sprintf("BlockVolume %v no link back to blockVolume from volume %v", v.Info.Id, v.Info.BlockHostingVolume))
-			consistent = false
+			response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("BlockVolume %v no link back to blockVolume from volume %v", v.Info.Id, v.Info.BlockHostingVolume))
 		}
 		// TODO: Check if BlockVolume Hosts belong to the volume.
 	}

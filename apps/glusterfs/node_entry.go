@@ -497,9 +497,7 @@ func (n *NodeEntry) SetTags(t map[string]string) error {
 
 // consistencyCheck ... verifies that a nodeEntry is consistent with rest of the database.
 // It is a method on nodeEntry and needs rest of the database as its input.
-func (n *NodeEntry) consistencyCheck(db Db) (consistent bool, inconsistencies []string) {
-
-	consistent = true
+func (n *NodeEntry) consistencyCheck(db Db) (response DbEntryCheckResponse) {
 
 	// No consistency check required for following attributes
 	// Id
@@ -510,24 +508,20 @@ func (n *NodeEntry) consistencyCheck(db Db) (consistent bool, inconsistencies []
 	// Devices
 	for _, device := range n.Devices {
 		if deviceEntry, found := db.Devices[device]; !found {
-			inconsistencies = append(inconsistencies, fmt.Sprintf("Node %v unknown device %v", n.Info.Id, device))
-			consistent = false
+			response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Node %v unknown device %v", n.Info.Id, device))
 		} else {
 			if deviceEntry.NodeId != n.Info.Id {
-				inconsistencies = append(inconsistencies, fmt.Sprintf("Node %v no link back to node from device %v", n.Info.Id, device))
-				consistent = false
+				response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Node %v no link back to node from device %v", n.Info.Id, device))
 			}
 		}
 	}
 
 	// Cluster
 	if clusterEntry, found := db.Clusters[n.Info.ClusterId]; !found {
-		inconsistencies = append(inconsistencies, fmt.Sprintf("Node %v unknown cluster %v", n.Info.Id, n.Info.ClusterId))
-		consistent = false
+		response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Node %v unknown cluster %v", n.Info.Id, n.Info.ClusterId))
 	} else {
 		if !sortedstrings.Has(clusterEntry.Info.Nodes, n.Info.Id) {
-			inconsistencies = append(inconsistencies, fmt.Sprintf("Node %v no link back to node from cluster %v", n.Info.Id, n.Info.ClusterId))
-			consistent = false
+			response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Node %v no link back to node from cluster %v", n.Info.Id, n.Info.ClusterId))
 		}
 	}
 
