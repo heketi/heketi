@@ -22,6 +22,7 @@ type DummyTransport struct {
 	snapShotLimit int
 	rebalance     bool
 	cliTimeout    uint32
+	dataAlignment string
 }
 
 func (d *DummyTransport) ExecCommands(
@@ -45,6 +46,10 @@ func (d *DummyTransport) SnapShotLimit() int {
 
 func (d *DummyTransport) GlusterCliTimeout() uint32 {
 	return d.cliTimeout
+}
+
+func (d *DummyTransport) PVDataAlignment() string {
+	return d.dataAlignment
 }
 
 func TestWrapCommandTransport(t *testing.T) {

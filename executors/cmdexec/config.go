@@ -16,4 +16,5 @@ type CmdConfig struct {
 	RebalanceOnExpansion bool   `json:"rebalance_on_expansion"`
 	BackupLVM            bool   `json:"backup_lvm_metadata"`
 	GlusterCliTimeout    uint32 `json:"gluster_cli_timeout"`
+	PVDataAlignment      string `json:"pv_data_alignment"`
 }

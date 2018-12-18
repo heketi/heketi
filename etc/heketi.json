@@ -52,6 +52,7 @@
       "user": "sshuser",
       "port": "Optional: ssh port.  Default is 22",
       "fstab": "Optional: Specify fstab file on node.  Default is /etc/fstab",
+      "pv_data_alignment": "Optional: Specify PV data alignment size. Default is 256K",
       "backup_lvm_metadata": false,
       "gluster_cli_timeout": "Optional: Timeout, in seconds, passed to the gluster cli invocations"
     },
@@ -65,6 +66,7 @@
       "password": "password for kubernetes user",
       "namespace": "OpenShift project or Kubernetes namespace",
       "fstab": "Optional: Specify fstab file on node.  Default is /etc/fstab",
+      "pv_data_alignment": "Optional: Specify PV data alignment size. Default is 256K",
       "backup_lvm_metadata": false,
       "gluster_cli_timeout": "Optional: Timeout, in seconds, passed to the gluster cli invocations"
     },
