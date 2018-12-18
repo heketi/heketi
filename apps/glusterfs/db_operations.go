@@ -509,10 +509,6 @@ func dbCheckConsistency(db *bolt.DB) (response DbCheckResponse, err error) {
 	response.PendingOperations = dbCheckPendingOps(dump)
 	response.TotalInconsistencies += len(response.PendingOperations.Inconsistencies)
 
-	if response.TotalInconsistencies > 0 {
-		response.Inconsistent = true
-	}
-
 	return
 }
 

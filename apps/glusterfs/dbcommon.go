@@ -54,7 +54,6 @@ type DbCheckResponse struct {
 	DbAttributes         DbBucketCheckResponse `json:"dbattributes"`
 	PendingOperations    DbBucketCheckResponse `json:"pendingoperations"`
 	TotalInconsistencies int                   `json:"totalinconsistencies"`
-	Inconsistent         bool                  `json:"inconsistent"`
 }
 
 func initializeBuckets(tx *bolt.Tx) error {
