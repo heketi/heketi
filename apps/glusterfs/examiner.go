@@ -12,6 +12,7 @@ package glusterfs
 import (
 	"fmt"
 	"reflect"
+	"sort"
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
@@ -79,6 +80,7 @@ func matchVolumes(heketidb Db, cdata ClusterData) (errorstrings []string) {
 	for _, volume := range heketidb.Clusters[cdata.ClusterHeketiID].Info.Volumes {
 		heketiVolList = append(heketiVolList, heketidb.Volumes[volume].Info.Name)
 	}
+	sort.Strings(heketiVolList)
 
 	for _, node := range cdata.NodesData {
 		var volList []string
@@ -89,6 +91,7 @@ func matchVolumes(heketidb Db, cdata ClusterData) (errorstrings []string) {
 		for _, volume := range node.VolumeInfo.Volumes.VolumeList {
 			volList = append(volList, volume.VolumeName)
 		}
+		sort.Strings(volList)
 		if !reflect.DeepEqual(heketiVolList, volList) {
 			errorstrings = append(errorstrings, fmt.Sprintf("heketi volume list does not match with volume list of node %v", node.NodeHeketiID))
 		}
