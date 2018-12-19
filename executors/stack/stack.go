@@ -186,6 +186,16 @@ func (es *ExecutorStack) VolumeInfo(host string, volume string) (*executors.Volu
 	return nil, NotSupportedError
 }
 
+func (es *ExecutorStack) VolumesInfo(host string) (*executors.VolInfo, error) {
+	for _, e := range es.executors {
+		v, err := e.VolumesInfo(host)
+		if err != NotSupportedError {
+			return v, err
+		}
+	}
+	return nil, NotSupportedError
+}
+
 func (es *ExecutorStack) HealInfo(host string, volume string) (*executors.HealInfo, error) {
 	for _, e := range es.executors {
 		hi, err := e.HealInfo(host, volume)

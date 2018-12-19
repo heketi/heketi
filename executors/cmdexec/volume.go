@@ -289,6 +289,35 @@ func (s *CmdExecutor) VolumeInfo(host string, volume string) (*executors.Volume,
 	return &volumeInfo.VolInfo.Volumes.VolumeList[0], nil
 }
 
+func (s *CmdExecutor) VolumesInfo(host string) (*executors.VolInfo, error) {
+
+	godbc.Require(host != "")
+
+	type CliOutput struct {
+		OpRet    int               `xml:"opRet"`
+		OpErrno  int               `xml:"opErrno"`
+		OpErrStr string            `xml:"opErrstr"`
+		VolInfo  executors.VolInfo `xml:"volInfo"`
+	}
+
+	command := []string{
+		fmt.Sprintf("%v volume info --xml", s.glusterCommand()),
+	}
+
+	//Get the xml output of volume info
+	results, err := s.RemoteExecutor.ExecCommands(host, command,
+		s.GlusterCliExecTimeout())
+	if err := rex.AnyError(results, err); err != nil {
+		return nil, fmt.Errorf("Unable to get volume info")
+	}
+	var volumeInfo CliOutput
+	err = xml.Unmarshal([]byte(results[0].Output), &volumeInfo)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to unmarshal volume info")
+	}
+	return &volumeInfo.VolInfo, nil
+}
+
 func (s *CmdExecutor) VolumeReplaceBrick(host string, volume string, oldBrick *executors.BrickInfo, newBrick *executors.BrickInfo) error {
 	godbc.Require(volume != "")
 	godbc.Require(host != "")

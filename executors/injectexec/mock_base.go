@@ -62,6 +62,9 @@ func newMockBase() *mockexec.MockExecutor {
 	m.MockVolumeInfo = func(host string, volume string) (*executors.Volume, error) {
 		return nil, NotSupportedError
 	}
+	m.MockVolumesInfo = func(host string) (*executors.VolInfo, error) {
+		return nil, NotSupportedError
+	}
 	m.MockHealInfo = func(host string, volume string) (*executors.HealInfo, error) {
 		return nil, NotSupportedError
 	}

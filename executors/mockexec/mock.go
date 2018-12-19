@@ -29,6 +29,7 @@ type MockExecutor struct {
 	MockVolumeDestroyCheck       func(host, volume string) error
 	MockVolumeReplaceBrick       func(host string, volume string, oldBrick *executors.BrickInfo, newBrick *executors.BrickInfo) error
 	MockVolumeInfo               func(host string, volume string) (*executors.Volume, error)
+	MockVolumesInfo              func(host string) (*executors.VolInfo, error)
 	MockVolumeClone              func(host string, volume *executors.VolumeCloneRequest) (*executors.Volume, error)
 	MockVolumeSnapshot           func(host string, volume *executors.VolumeSnapshotRequest) (*executors.Snapshot, error)
 	MockSnapshotCloneVolume      func(host string, volume *executors.SnapshotCloneRequest) (*executors.Volume, error)
@@ -123,6 +124,34 @@ func NewMockExecutor() (*MockExecutor, error) {
 			Bricks: Bricks,
 		}
 		return vinfo, nil
+	}
+
+	m.MockVolumesInfo = func(host string) (*executors.VolInfo, error) {
+		var bricks []executors.Brick
+		brick := executors.Brick{Name: host + ":/mockpath"}
+		bricks = append(bricks, brick)
+		brick = executors.Brick{Name: host + ":/mockpath"}
+		bricks = append(bricks, brick)
+		brick = executors.Brick{Name: host + ":/mockpath"}
+		bricks = append(bricks, brick)
+		Bricks := executors.Bricks{
+			BrickList: bricks,
+		}
+		vinfo := executors.Volume{
+			Bricks: Bricks,
+		}
+		volumelist := make([]executors.Volume, 0)
+		volumelist = append(volumelist, vinfo)
+		volumelist = append(volumelist, vinfo)
+
+		volumes := executors.Volumes{
+			Count:      2,
+			VolumeList: volumelist,
+		}
+		volinfo := &executors.VolInfo{
+			Volumes: volumes,
+		}
+		return volinfo, nil
 	}
 
 	m.MockVolumeSnapshot = func(host string, vsr *executors.VolumeSnapshotRequest) (*executors.Snapshot, error) {
@@ -255,6 +284,10 @@ func (m *MockExecutor) VolumeReplaceBrick(host string, volume string, oldBrick *
 
 func (m *MockExecutor) VolumeInfo(host string, volume string) (*executors.Volume, error) {
 	return m.MockVolumeInfo(host, volume)
+}
+
+func (m *MockExecutor) VolumesInfo(host string) (*executors.VolInfo, error) {
+	return m.MockVolumesInfo(host)
 }
 
 func (m *MockExecutor) VolumeClone(host string, vcr *executors.VolumeCloneRequest) (*executors.Volume, error) {
