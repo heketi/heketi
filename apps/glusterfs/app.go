@@ -702,6 +702,18 @@ func (a *App) OfflineCleaner() OperationCleaner {
 	}
 }
 
+// OfflineExaminer returns an examiner based on the current
+// app object that can be used to perform an offline examination.
+// An offline examiner assumes that the binary is only doing examination of the
+// state and nothing else.
+func (a *App) OfflineExaminer() Examiner {
+	return Examiner{
+		db:       a.db,
+		executor: a.executor,
+		mode:     OfflineExaminer,
+	}
+}
+
 // OnDemandCleaner returns an operations cleaner based on the current
 // app object that can be used to perform clean ups requested by
 // a user (on demand).
