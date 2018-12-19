@@ -461,3 +461,189 @@ func DeleteBricksWithEmptyPath(db *bolt.DB, all bool, clusterIDs []string, nodeI
 	}
 	return nil
 }
+
+// DbCheck ... is the offline version
+func DbCheck(dbfile string) error {
+
+	db, err := OpenDB(dbfile, false)
+	if err != nil {
+		return fmt.Errorf("Unable to open database: %v", err)
+	}
+
+	checkresponse, err := dbCheckConsistency(db)
+	if err != nil {
+		return fmt.Errorf("Unable to check the database: %v", err)
+	}
+
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetIndent("", "    ")
+
+	if err := encoder.Encode(checkresponse); err != nil {
+		return fmt.Errorf("Unable to encode the response into json: %v", err)
+	}
+
+	return nil
+}
+
+// dbCheckConsistency ... checks the current db state to determine if contents
+// of all the buckets represent a consistent view.
+func dbCheckConsistency(db *bolt.DB) (response DbCheckResponse, err error) {
+
+	dump, err := dbDumpInternal(db)
+	if err != nil {
+		return response, fmt.Errorf("Could not construct dump from DB: %v", err.Error())
+	}
+
+	response.Volumes = dbCheckVolumes(dump)
+	response.TotalInconsistencies += len(response.Volumes.Inconsistencies)
+	response.Clusters = dbCheckClusters(dump)
+	response.TotalInconsistencies += len(response.Clusters.Inconsistencies)
+	response.Nodes = dbCheckNodes(dump)
+	response.TotalInconsistencies += len(response.Nodes.Inconsistencies)
+	response.Devices = dbCheckDevices(dump)
+	response.TotalInconsistencies += len(response.Devices.Inconsistencies)
+	response.BlockVolumes = dbCheckBlockVolumes(dump)
+	response.TotalInconsistencies += len(response.BlockVolumes.Inconsistencies)
+	response.Bricks = dbCheckBricks(dump)
+	response.TotalInconsistencies += len(response.Bricks.Inconsistencies)
+	response.PendingOperations = dbCheckPendingOps(dump)
+	response.TotalInconsistencies += len(response.PendingOperations.Inconsistencies)
+
+	return
+}
+
+func dbCheckVolumes(dump Db) (volumesCheckResponse DbBucketCheckResponse) {
+
+	for _, volumeEntry := range dump.Volumes {
+
+		volumesCheckResponse.Total++
+
+		volumeCheckResponse := volumeEntry.consistencyCheck(dump)
+		if volumeCheckResponse.Pending {
+			volumesCheckResponse.Pending++
+		}
+
+		if len(volumeCheckResponse.Inconsistencies) > 0 {
+			volumesCheckResponse.Inconsistencies = append(volumesCheckResponse.Inconsistencies, volumeCheckResponse.Inconsistencies...)
+			volumesCheckResponse.NotOk++
+		} else {
+			volumesCheckResponse.Ok++
+		}
+	}
+
+	return
+}
+
+func dbCheckClusters(dump Db) (clustersCheckResponse DbBucketCheckResponse) {
+	for _, clusterEntry := range dump.Clusters {
+
+		clustersCheckResponse.Total++
+		// Cluster Entries don't have pending operations
+
+		clusterCheckResponse := clusterEntry.consistencyCheck(dump)
+
+		if len(clusterCheckResponse.Inconsistencies) > 0 {
+			clustersCheckResponse.Inconsistencies = append(clustersCheckResponse.Inconsistencies, clusterCheckResponse.Inconsistencies...)
+			clustersCheckResponse.NotOk++
+		} else {
+			clustersCheckResponse.Ok++
+		}
+	}
+
+	return
+}
+
+func dbCheckNodes(dump Db) (nodesCheckResponse DbBucketCheckResponse) {
+	for _, nodeEntry := range dump.Nodes {
+
+		nodesCheckResponse.Total++
+		// Node Entries don't have pending operations
+
+		nodeCheckResponse := nodeEntry.consistencyCheck(dump)
+
+		if len(nodeCheckResponse.Inconsistencies) > 0 {
+			nodesCheckResponse.Inconsistencies = append(nodesCheckResponse.Inconsistencies, nodeCheckResponse.Inconsistencies...)
+			nodesCheckResponse.NotOk++
+		} else {
+			nodesCheckResponse.Ok++
+		}
+	}
+
+	return
+}
+
+func dbCheckDevices(dump Db) (devicesCheckResponse DbBucketCheckResponse) {
+	for _, deviceEntry := range dump.Devices {
+
+		devicesCheckResponse.Total++
+		// Device Entries don't have pending operations
+
+		deviceCheckResponse := deviceEntry.consistencyCheck(dump)
+
+		if len(deviceCheckResponse.Inconsistencies) > 0 {
+			devicesCheckResponse.Inconsistencies = append(devicesCheckResponse.Inconsistencies, deviceCheckResponse.Inconsistencies...)
+			devicesCheckResponse.NotOk++
+		} else {
+			devicesCheckResponse.Ok++
+		}
+	}
+
+	return
+}
+
+func dbCheckBlockVolumes(dump Db) (blockVolumesCheckResponse DbBucketCheckResponse) {
+	for _, blockVolumeEntry := range dump.BlockVolumes {
+
+		blockVolumesCheckResponse.Total++
+
+		blockVolumeCheckResponse := blockVolumeEntry.consistencyCheck(dump)
+		if blockVolumeCheckResponse.Pending {
+			blockVolumesCheckResponse.Pending++
+		}
+		if len(blockVolumeCheckResponse.Inconsistencies) > 0 {
+			blockVolumesCheckResponse.Inconsistencies = append(blockVolumesCheckResponse.Inconsistencies, blockVolumeCheckResponse.Inconsistencies...)
+			blockVolumesCheckResponse.NotOk++
+		} else {
+			blockVolumesCheckResponse.Ok++
+		}
+	}
+
+	return
+}
+
+func dbCheckBricks(dump Db) (bricksCheckResponse DbBucketCheckResponse) {
+	for _, brickEntry := range dump.Bricks {
+
+		bricksCheckResponse.Total++
+
+		brickCheckResponse := brickEntry.consistencyCheck(dump)
+		if brickCheckResponse.Pending {
+			bricksCheckResponse.Pending++
+		}
+
+		if len(brickCheckResponse.Inconsistencies) > 0 {
+			bricksCheckResponse.Inconsistencies = append(bricksCheckResponse.Inconsistencies, brickCheckResponse.Inconsistencies...)
+			bricksCheckResponse.NotOk++
+		} else {
+			bricksCheckResponse.Ok++
+		}
+	}
+
+	return
+}
+
+func dbCheckPendingOps(dump Db) (pendingOpsCheckResponse DbBucketCheckResponse) {
+	for _, pendingOpEntry := range dump.PendingOperations {
+
+		pendingOpCheckResponse := pendingOpEntry.consistencyCheck(dump)
+
+		if len(pendingOpCheckResponse.Inconsistencies) > 0 {
+			pendingOpsCheckResponse.Inconsistencies = append(pendingOpsCheckResponse.Inconsistencies, pendingOpCheckResponse.Inconsistencies...)
+			pendingOpsCheckResponse.NotOk++
+		} else {
+			pendingOpsCheckResponse.Ok++
+		}
+	}
+
+	return
+}

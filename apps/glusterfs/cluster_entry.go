@@ -256,3 +256,48 @@ func (c *ClusterEntry) hosts(db wdb.RODB) (nodeHosts, error) {
 	})
 	return hosts, err
 }
+
+// consistencyCheck ... verifies that a clusterEntry is consistent with rest of the database.
+// It is a method on clusterEntry and needs rest of the database as its input.
+func (c *ClusterEntry) consistencyCheck(db Db) (response DbEntryCheckResponse) {
+
+	// No consistency check required for following attributes
+	// Id
+	// ClusterFlags
+
+	// Nodes
+	for _, node := range c.Info.Nodes {
+		if nodeEntry, found := db.Nodes[node]; !found {
+			response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Cluster %v unknown node %v", c.Info.Id, node))
+		} else {
+			if nodeEntry.Info.ClusterId != c.Info.Id {
+				response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Cluster %v no link back to cluster from node %v", c.Info.Id, node))
+			}
+		}
+	}
+
+	// Volumes
+	for _, volume := range c.Info.Volumes {
+		if volumeEntry, found := db.Volumes[volume]; !found {
+			response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Cluster %v unknown volume %v", c.Info.Id, volume))
+		} else {
+			if volumeEntry.Info.Cluster != c.Info.Id {
+				response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Cluster %v no link back to cluster from volume %v", c.Info.Id, volume))
+			}
+		}
+	}
+
+	// BlockVolumes
+	for _, blockvolume := range c.Info.BlockVolumes {
+		if blockvolumeEntry, found := db.BlockVolumes[blockvolume]; !found {
+			response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Cluster %v unknown blockvolume %v", c.Info.Id, blockvolume))
+		} else {
+			if blockvolumeEntry.Info.Cluster != c.Info.Id {
+				response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Cluster %v no link back to cluster from blockvolume %v", c.Info.Id, blockvolume))
+			}
+		}
+	}
+
+	return
+
+}
