@@ -463,9 +463,11 @@ func (v *VolumeEntry) allocBricks(
 	}()
 
 	// mimic the previous unconditional db update behavior
+	opts := NewVolumePlacementOpts(v, brick_size, bricksets)
 	err := db.Update(func(tx *bolt.Tx) error {
-		wtx := wdb.WrapTx(tx)
-		r, e := allocateBricks(wtx, cluster, v, bricksets, brick_size)
+		dsrc := NewClusterDeviceSource(tx, cluster)
+		placer := PlacerForVolume(v)
+		r, e := placer.PlaceAll(dsrc, opts, nil)
 		if e != nil {
 			return e
 		}
