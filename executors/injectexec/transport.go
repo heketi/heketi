@@ -60,6 +60,22 @@ func (w *WrapCommandTransport) PVDataAlignment() string {
 	return w.Transport.PVDataAlignment()
 }
 
+func (w *WrapCommandTransport) VGPhysicalExtentSize() string {
+	return w.Transport.VGPhysicalExtentSize()
+}
+
+func (w *WrapCommandTransport) LVChunkSize() string {
+	return w.Transport.LVChunkSize()
+}
+
+func (w *WrapCommandTransport) XfsSw() int {
+	return w.Transport.XfsSw()
+}
+
+func (w *WrapCommandTransport) XfsSu() int {
+	return w.Transport.XfsSu()
+}
+
 // Before calls the WrapCommandTransport's handleBefore function
 // if one is set. If the command was handled the and no additional
 // processing of the command is needed the first return value will

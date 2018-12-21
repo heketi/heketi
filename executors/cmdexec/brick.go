@@ -39,26 +39,43 @@ func (s *CmdExecutor) BrickCreate(host string,
 	mountPath := paths.BrickMountFromPath(brickPath)
 
 	var xfsInodeOptions string
+	var lvChunkSize string
+	var xfsSw int
+	var xfsSu int
+	var mkfsXfs string
 	if brick.Format == executors.ArbiterFormat {
 		xfsInodeOptions = "maxpct=100"
+		lvChunkSize = "256K"
 	} else {
 		xfsInodeOptions = "size=512"
+		lvChunkSize = s.LVChunkSize()
+		xfsSw = s.XfsSw()
+		xfsSu = s.XfsSu()
 	}
 
 	// Create command set to execute on the node
 	devnode := paths.BrickDevNode(brick.VgId, brick.Name)
+	// Create mkfs.xfs command
+	if xfsSw == 0 || xfsSu == 0 {
+		mkfsXfs = fmt.Sprintf("mkfs.xfs -i %v -n size=8192 %v", xfsInodeOptions, devnode)
+	} else {
+		mkfsXfs = fmt.Sprintf("mkfs.xfs -i %v -d su=%v,sw=%v -n size=8192 %v", xfsInodeOptions, xfsSu, xfsSw, devnode)
+	}
 	commands := []string{
 
 		// Create a directory
 		fmt.Sprintf("mkdir -p %v", mountPath),
 
 		// Setup the LV
-		fmt.Sprintf("lvcreate -qq --autobackup=%v --poolmetadatasize %vK --chunksize 256K --size %vK --thin %v/%v --virtualsize %vK --name %v",
+		fmt.Sprintf("lvcreate -qq --autobackup=%v --poolmetadatasize %vK --chunksize %v --size %vK --thin %v/%v --virtualsize %vK --name %v",
 			// backup LVM metadata
 			conv.BoolToYN(s.BackupLVM),
 
 			// MetadataSize
 			brick.PoolMetadataSize,
+
+			// ChunkSize
+			lvChunkSize,
 
 			//Thin Pool Size
 			brick.TpSize,
@@ -76,7 +93,7 @@ func (s *CmdExecutor) BrickCreate(host string,
 			brick.LvName),
 
 		// Format
-		fmt.Sprintf("mkfs.xfs -i %v -n size=8192 %v", xfsInodeOptions, devnode),
+		mkfsXfs,
 
 		// Fstab
 		fmt.Sprintf("awk \"BEGIN {print \\\"%v %v xfs rw,inode64,noatime,nouuid 1 2\\\" >> \\\"%v\\\"}\"",

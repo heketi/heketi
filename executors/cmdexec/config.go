@@ -17,4 +17,8 @@ type CmdConfig struct {
 	BackupLVM            bool   `json:"backup_lvm_metadata"`
 	GlusterCliTimeout    uint32 `json:"gluster_cli_timeout"`
 	PVDataAlignment      string `json:"pv_data_alignment"`
+	VGPhysicalExtentSize string `json:"vg_physicalextentsize"`
+	LVChunkSize          string `json:"lv_chunksize"`
+	XfsSw                int    `json:"xfs_sw"`
+	XfsSu                int    `json:"xfs_su"`
 }
