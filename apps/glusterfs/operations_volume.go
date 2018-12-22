@@ -165,7 +165,7 @@ func (vc *VolumeCreateOperation) CleanDone() error {
 	if vc.reclaimed == nil || len(vc.reclaimed) == 0 {
 		return logger.LogError("brick reclaim map is empty (was Clean called?)")
 	}
-	return expungeVolumeWithOp(vc.db, vc.op, vc.vol.Info.Id, vc.reclaimed)
+	return expungeVolumeWithOp(vc.db, vc.op, vc.vol, vc.reclaimed)
 }
 
 // VolumeExpandOperation implements the operation functions used to
@@ -504,7 +504,7 @@ func (vdel *VolumeDeleteOperation) Finalize() error {
 	if vdel.reclaimed == nil || len(vdel.reclaimed) == 0 {
 		return logger.LogError("brick reclaim map is empty (was Exec called?)")
 	}
-	return expungeVolumeWithOp(vdel.db, vdel.op, vdel.vol.Info.Id, vdel.reclaimed)
+	return expungeVolumeWithOp(vdel.db, vdel.op, vdel.vol, vdel.reclaimed)
 }
 
 // Clean tries to re-execute the volume delete operation.
@@ -731,15 +731,11 @@ func removeVolumeWithOp(
 // volume delete operation functions.
 func expungeVolumeWithOp(
 	db wdb.DB,
-	op *PendingOperationEntry, volId string,
+	op *PendingOperationEntry, v *VolumeEntry,
 	reclaimed ReclaimMap) error {
 
 	return db.Update(func(tx *bolt.Tx) error {
 		txdb := wdb.WrapTx(tx)
-		v, err := NewVolumeEntryFromId(tx, volId)
-		if err != nil {
-			return err
-		}
 		bricks, err := bricksFromOp(txdb, op, v.Info.Gid)
 		if err != nil {
 			return err
