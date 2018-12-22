@@ -311,3 +311,13 @@ func (es *ExecutorStack) VGS(host string) (*executors.VGSCommandOutput, error) {
 	}
 	return nil, NotSupportedError
 }
+
+func (es *ExecutorStack) LVS(host string) (*executors.LVSCommandOutput, error) {
+	for _, e := range es.executors {
+		v, err := e.LVS(host)
+		if err != NotSupportedError {
+			return v, err
+		}
+	}
+	return nil, NotSupportedError
+}
