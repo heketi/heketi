@@ -61,6 +61,19 @@ type PVSCommandOutput struct {
 	} `json:"report"`
 }
 
+type VGSCommandOutput struct {
+	VGSReport []struct {
+		VGS []struct {
+			VGName    string `json:"vg_name"`
+			PVCount   string `json:"pv_count:"`
+			LVCount   string `json:"lv_count"`
+			SnapCount string `json:"snap_count"`
+			VGAttr    string `json:"vg_attr"`
+			VGSize    string `json:"vg_size"`
+			VGFree    string `json:"vg_free"`
+		} `json:"vg"`
+	} `json:"report"`
+}
 // Returns the size of the device
 type DeviceInfo struct {
 	// Size in KB
