@@ -102,6 +102,26 @@ func (s *CmdExecutor) VGS(host string) (d *executors.VGSCommandOutput, e error) 
 	return &vgsCommandOutput, nil
 }
 
+func (s *CmdExecutor) LVS(host string) (d *executors.LVSCommandOutput, e error) {
+
+	// Setup commands
+	commands := []string{}
+
+	commands = append(commands, fmt.Sprintf("lvs --reportformat json --units k"))
+
+	results, err := s.RemoteExecutor.ExecCommands(host, commands,
+		s.GlusterCliExecTimeout())
+	if err := rex.AnyError(results, err); err != nil {
+		return nil, fmt.Errorf("Unable to get data for LVM LVs")
+	}
+	var lvsCommandOutput executors.LVSCommandOutput
+	err = json.Unmarshal([]byte(results[0].Output), &lvsCommandOutput)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to determine LVM LVs : %v", err)
+	}
+	return &lvsCommandOutput, nil
+}
+
 func (s *CmdExecutor) GetDeviceInfo(host, device, vgid string) (d *executors.DeviceInfo, e error) {
 	// Vg info
 	d = &executors.DeviceInfo{}

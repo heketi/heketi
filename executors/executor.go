@@ -74,6 +74,24 @@ type VGSCommandOutput struct {
 		} `json:"vg"`
 	} `json:"report"`
 }
+type LVSCommandOutput struct {
+	LVSReport []struct {
+		LVS []struct {
+			LVName          string `json:"lv_name"`
+			VGName          string `json:"vg_name"`
+			LVAttr          string `json:"lv_attr"`
+			LVSize          string `json:"lv_size"`
+			PoolLV          string `json:"pool_lv"`
+			Origin          string `json:"origin"`
+			DataPercent     string `json:"data_percent"`
+			MetaDataPercent string `json:"metadata_percent"`
+			MovePV          string `json:"move_pv"`
+			MirrorLog       string `json:"mirror_log"`
+			CopyPercent     string `json:"copy_percent"`
+			ConvertLV       string `json:"convert_lv"`
+		} `json:"lv"`
+	} `json:"report"`
+}
 // Returns the size of the device
 type DeviceInfo struct {
 	// Size in KB
