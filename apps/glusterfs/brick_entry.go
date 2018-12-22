@@ -386,6 +386,7 @@ func (b *BrickEntry) remove(tx *bolt.Tx, v *VolumeEntry) error {
 
 	// Delete brick from volume entry
 	v.BrickDelete(b.Info.Id)
+	err = v.Save(tx)
 	if err != nil {
 		logger.Err(err)
 		return err
