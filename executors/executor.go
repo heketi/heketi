@@ -37,6 +37,7 @@ type Executor interface {
 	SetLogLevel(level string)
 	BlockVolumeCreate(host string, blockVolume *BlockVolumeRequest) (*BlockVolumeInfo, error)
 	BlockVolumeDestroy(host string, blockHostingVolumeName string, blockVolumeName string) error
+	PVS(host string) (*PVSCommandOutput, error)
 }
 
 // Enumerate durability types

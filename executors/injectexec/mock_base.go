@@ -89,6 +89,8 @@ func newMockBase() *mockexec.MockExecutor {
 	m.MockSnapshotDestroy = func(host string, snapshot string) error {
 		return NotSupportedError
 	}
-
+	m.MockPVS = func(host string) (*executors.PVSCommandOutput, error) {
+		return nil, NotSupportedError
+	}
 	return m
 }

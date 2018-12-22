@@ -291,3 +291,13 @@ func (es *ExecutorStack) SnapshotDestroy(
 	}
 	return NotSupportedError
 }
+
+func (es *ExecutorStack) PVS(host string) (*executors.PVSCommandOutput, error) {
+	for _, e := range es.executors {
+		v, err := e.PVS(host)
+		if err != NotSupportedError {
+			return v, err
+		}
+	}
+	return nil, NotSupportedError
+}
