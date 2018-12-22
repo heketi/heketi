@@ -48,6 +48,19 @@ const (
 	DurabilityDispersion
 )
 
+type PVSCommandOutput struct {
+	PVSReport []struct {
+		PVS []struct {
+			PVName string `json:"pv_name"`
+			VGName string `json:"vg_name"`
+			PVFmt  string `json:"pv_fmt"`
+			PVAttr string `json:"pv_attr"`
+			PVSize string `json:"pv_size"`
+			PVFree string `json:"pv_free"`
+		} `json:"pv"`
+	} `json:"report"`
+}
+
 // Returns the size of the device
 type DeviceInfo struct {
 	// Size in KB
