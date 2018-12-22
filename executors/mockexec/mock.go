@@ -38,6 +38,7 @@ type MockExecutor struct {
 	MockHealInfo                 func(host string, volume string) (*executors.HealInfo, error)
 	MockBlockVolumeCreate        func(host string, blockVolume *executors.BlockVolumeRequest) (*executors.BlockVolumeInfo, error)
 	MockBlockVolumeDestroy       func(host string, blockHostingVolumeName string, blockVolumeName string) error
+	MockPVS                      func(host string) (*executors.PVSCommandOutput, error)
 }
 
 func NewMockExecutor() (*MockExecutor, error) {
@@ -219,6 +220,10 @@ func NewMockExecutor() (*MockExecutor, error) {
 		return nil
 	}
 
+	m.MockPVS = func(host string) (*executors.PVSCommandOutput, error) {
+		return &executors.PVSCommandOutput{}, nil
+	}
+
 	return m, nil
 }
 
@@ -320,4 +325,8 @@ func (m *MockExecutor) BlockVolumeCreate(host string, blockVolume *executors.Blo
 
 func (m *MockExecutor) BlockVolumeDestroy(host string, blockHostingVolumeName string, blockVolumeName string) error {
 	return m.MockBlockVolumeDestroy(host, blockHostingVolumeName, blockVolumeName)
+}
+
+func (m *MockExecutor) PVS(host string) (*executors.PVSCommandOutput, error) {
+	return m.MockPVS(host)
 }
