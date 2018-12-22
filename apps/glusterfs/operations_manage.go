@@ -283,6 +283,7 @@ func retryOperation(o Operation,
 	}
 	if e := o.Rollback(executor); e != nil {
 		logger.LogError("%v Rollback error: %v", label, e)
+		markFailedIfSupported(o)
 	}
 	// if we exceeded our retries, pull the "real" error out
 	// of the retry error so we return that
