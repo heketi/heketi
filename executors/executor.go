@@ -92,6 +92,18 @@ type LVSCommandOutput struct {
 		} `json:"lv"`
 	} `json:"report"`
 }
+type BrickMountStatus struct {
+	Device       string
+	MountPoint   string
+	Type         string
+	MountOptions string
+	Mounted      bool
+}
+
+type BricksMountStatus struct {
+	Statuses []BrickMountStatus
+}
+
 // Returns the size of the device
 type DeviceInfo struct {
 	// Size in KB
