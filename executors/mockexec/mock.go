@@ -42,6 +42,7 @@ type MockExecutor struct {
 	MockVGS                      func(host string) (*executors.VGSCommandOutput, error)
 	MockLVS                      func(host string) (*executors.LVSCommandOutput, error)
 	MockGetBrickMountStatus      func(host string) (*executors.BricksMountStatus, error)
+	MockListBlockVolumes         func(host string, blockhostingvolume string) ([]string, error)
 }
 
 func NewMockExecutor() (*MockExecutor, error) {
@@ -239,6 +240,10 @@ func NewMockExecutor() (*MockExecutor, error) {
 		return &executors.BricksMountStatus{}, nil
 	}
 
+	m.MockListBlockVolumes = func(host string, blockhostingvolume string) ([]string, error) {
+		return []string{}, nil
+	}
+
 	return m, nil
 }
 
@@ -356,4 +361,8 @@ func (m *MockExecutor) LVS(host string) (*executors.LVSCommandOutput, error) {
 
 func (m *MockExecutor) GetBrickMountStatus(host string) (*executors.BricksMountStatus, error) {
 	return m.MockGetBrickMountStatus(host)
+}
+
+func (m *MockExecutor) ListBlockVolumes(host string, blockhostingvolume string) ([]string, error) {
+	return m.MockListBlockVolumes(host, blockhostingvolume)
 }

@@ -331,3 +331,13 @@ func (es *ExecutorStack) GetBrickMountStatus(host string) (*executors.BricksMoun
 	}
 	return nil, NotSupportedError
 }
+
+func (es *ExecutorStack) ListBlockVolumes(host string, blockhostingvolume string) ([]string, error) {
+	for _, e := range es.executors {
+		v, err := e.ListBlockVolumes(host, blockhostingvolume)
+		if err != NotSupportedError {
+			return v, err
+		}
+	}
+	return nil, NotSupportedError
+}

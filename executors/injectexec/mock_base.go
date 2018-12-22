@@ -101,5 +101,8 @@ func newMockBase() *mockexec.MockExecutor {
 	m.MockGetBrickMountStatus = func(host string) (*executors.BricksMountStatus, error) {
 		return nil, NotSupportedError
 	}
+	m.MockListBlockVolumes = func(host string, blockhostingvolume string) ([]string, error) {
+		return nil, NotSupportedError
+	}
 	return m
 }
