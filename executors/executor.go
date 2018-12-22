@@ -41,6 +41,7 @@ type Executor interface {
 	VGS(host string) (*VGSCommandOutput, error)
 	LVS(host string) (*LVSCommandOutput, error)
 	GetBrickMountStatus(host string) (*BricksMountStatus, error)
+	ListBlockVolumes(host string, blockhostingvolume string) ([]string, error)
 }
 
 // Enumerate durability types
