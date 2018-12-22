@@ -38,6 +38,7 @@ type Executor interface {
 	BlockVolumeCreate(host string, blockVolume *BlockVolumeRequest) (*BlockVolumeInfo, error)
 	BlockVolumeDestroy(host string, blockHostingVolumeName string, blockVolumeName string) error
 	PVS(host string) (*PVSCommandOutput, error)
+	VGS(host string) (*VGSCommandOutput, error)
 }
 
 // Enumerate durability types
