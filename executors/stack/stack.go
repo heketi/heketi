@@ -321,3 +321,13 @@ func (es *ExecutorStack) LVS(host string) (*executors.LVSCommandOutput, error) {
 	}
 	return nil, NotSupportedError
 }
+
+func (es *ExecutorStack) GetBrickMountStatus(host string) (*executors.BricksMountStatus, error) {
+	for _, e := range es.executors {
+		v, err := e.GetBrickMountStatus(host)
+		if err != NotSupportedError {
+			return v, err
+		}
+	}
+	return nil, NotSupportedError
+}
