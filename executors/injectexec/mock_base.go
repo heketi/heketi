@@ -92,5 +92,8 @@ func newMockBase() *mockexec.MockExecutor {
 	m.MockPVS = func(host string) (*executors.PVSCommandOutput, error) {
 		return nil, NotSupportedError
 	}
+	m.MockVGS = func(host string) (*executors.VGSCommandOutput, error) {
+		return nil, NotSupportedError
+	}
 	return m
 }

@@ -301,3 +301,13 @@ func (es *ExecutorStack) PVS(host string) (*executors.PVSCommandOutput, error) {
 	}
 	return nil, NotSupportedError
 }
+
+func (es *ExecutorStack) VGS(host string) (*executors.VGSCommandOutput, error) {
+	for _, e := range es.executors {
+		v, err := e.VGS(host)
+		if err != NotSupportedError {
+			return v, err
+		}
+	}
+	return nil, NotSupportedError
+}
