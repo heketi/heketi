@@ -41,6 +41,7 @@ type MockExecutor struct {
 	MockPVS                      func(host string) (*executors.PVSCommandOutput, error)
 	MockVGS                      func(host string) (*executors.VGSCommandOutput, error)
 	MockLVS                      func(host string) (*executors.LVSCommandOutput, error)
+	MockGetBrickMountStatus      func(host string) (*executors.BricksMountStatus, error)
 }
 
 func NewMockExecutor() (*MockExecutor, error) {
@@ -234,6 +235,10 @@ func NewMockExecutor() (*MockExecutor, error) {
 		return &executors.LVSCommandOutput{}, nil
 	}
 
+	m.MockGetBrickMountStatus = func(host string) (*executors.BricksMountStatus, error) {
+		return &executors.BricksMountStatus{}, nil
+	}
+
 	return m, nil
 }
 
@@ -347,4 +352,8 @@ func (m *MockExecutor) VGS(host string) (*executors.VGSCommandOutput, error) {
 
 func (m *MockExecutor) LVS(host string) (*executors.LVSCommandOutput, error) {
 	return m.MockLVS(host)
+}
+
+func (m *MockExecutor) GetBrickMountStatus(host string) (*executors.BricksMountStatus, error) {
+	return m.MockGetBrickMountStatus(host)
 }

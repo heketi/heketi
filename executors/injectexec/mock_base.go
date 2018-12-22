@@ -98,5 +98,8 @@ func newMockBase() *mockexec.MockExecutor {
 	m.MockLVS = func(host string) (*executors.LVSCommandOutput, error) {
 		return nil, NotSupportedError
 	}
+	m.MockGetBrickMountStatus = func(host string) (*executors.BricksMountStatus, error) {
+		return nil, NotSupportedError
+	}
 	return m
 }
