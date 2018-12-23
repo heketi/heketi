@@ -56,11 +56,12 @@ func (examiner Examiner) fetchClusterData(cluster ClusterEntry, heketidb Db) (cl
 		nodeEntry := heketidb.Nodes[node]
 		var nodedata NodeData
 		nodedata.NodeHeketiID = nodeEntry.Info.Id
+		host := nodeEntry.ManageHostName()
 
 		// Volume Info
-		volinfo, err := examiner.executor.VolumesInfo(nodeEntry.ManageHostName())
+		volinfo, err := examiner.executor.VolumesInfo(host)
 		if err != nil {
-			errorstrings = append(errorstrings, fmt.Sprintf("could not fetch data from node %v", nodeEntry.ManageHostName()))
+			errorstrings = append(errorstrings, fmt.Sprintf("could not fetch data from node %v", host))
 		} else {
 			nodedata.VolumeInfo = volinfo
 		}
