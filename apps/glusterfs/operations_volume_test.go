@@ -527,6 +527,14 @@ func TestVolumeCreateOperationRetrying(t *testing.T) {
 		po, e := PendingOperationList(tx)
 		tests.Assert(t, e == nil, "expected e == nil, got", e)
 		tests.Assert(t, len(po) == 0, "expected len(po) == 0, got:", len(po))
+		vl, e := VolumeList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(vl) == 1, "expected len(bl) == 1, got:", len(bl))
+		vol, e := NewVolumeEntryFromId(tx, vl[0])
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, vol.Info.Size == 1024)
+		tests.Assert(t, len(vol.Bricks) == 3,
+			"expected len(vol.Bricks) == 3, got:", len(vol.Bricks))
 		return nil
 	})
 }
