@@ -33,8 +33,13 @@ type Examiner struct {
 }
 
 type NodeData struct {
-	NodeHeketiID string
-	VolumeInfo   *executors.VolInfo
+	NodeHeketiID      string
+	VolumeInfo        *executors.VolInfo
+	LVMPVInfo         *executors.PVSCommandOutput
+	LVMVGInfo         *executors.VGSCommandOutput
+	LVMLVInfo         *executors.LVSCommandOutput
+	BricksMountStatus *executors.BricksMountStatus
+	BlockVolumeNames  []string
 }
 
 type ClusterData struct {
@@ -64,6 +69,39 @@ func (examiner Examiner) fetchClusterData(cluster ClusterEntry, heketidb Db) (cl
 			errorstrings = append(errorstrings, fmt.Sprintf("could not fetch data from node %v", host))
 		} else {
 			nodedata.VolumeInfo = volinfo
+		}
+
+		// Device Info
+		nodedata.LVMPVInfo, err = examiner.executor.PVS(host)
+		if err != nil {
+			errorstrings = append(errorstrings, fmt.Sprintf("could not fetch LVM pvs data from node %v : %v", host, err))
+		}
+		nodedata.LVMVGInfo, err = examiner.executor.VGS(host)
+		if err != nil {
+			errorstrings = append(errorstrings, fmt.Sprintf("could not fetch LVM vgs data from node %v : %v", host, err))
+		}
+		nodedata.LVMLVInfo, err = examiner.executor.LVS(host)
+		if err != nil {
+			errorstrings = append(errorstrings, fmt.Sprintf("could not fetch LVM lvs data from node %v : %v", host, err))
+		}
+
+		// Brick Info
+		nodedata.BricksMountStatus, err = examiner.executor.GetBrickMountStatus(host)
+		if err != nil {
+			errorstrings = append(errorstrings, fmt.Sprintf("could not fetch brick mount status from node %v : %v", host, err))
+		}
+
+		// Block Volume Info
+		for _, blockHostingVolume := range heketidb.Volumes {
+			if blockHostingVolume.Info.Block {
+				names, err := examiner.executor.ListBlockVolumes(host, blockHostingVolume.Info.Name)
+				if err != nil {
+					errorstrings = append(errorstrings, fmt.Sprintf("could not fetch block volume list for block hosting volume %v : %v", blockHostingVolume.Info.Id, err))
+				}
+				for _, name := range names {
+					nodedata.BlockVolumeNames = append(nodedata.BlockVolumeNames, fmt.Sprintf("%v/%v", blockHostingVolume.Info.Name, name))
+				}
+			}
 		}
 
 		// Append whatever information we could gather, minimum is the node ID
