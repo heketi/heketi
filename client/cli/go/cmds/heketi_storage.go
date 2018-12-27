@@ -20,8 +20,8 @@ import (
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/spf13/cobra"
 
-	kubeapi "k8s.io/kubernetes/pkg/api/v1"
-	batch "k8s.io/kubernetes/pkg/apis/batch/v1"
+	batch "k8s.io/api/batch/v1"
+	kubeapi "k8s.io/api/core/v1"
 )
 
 type KubeList struct {

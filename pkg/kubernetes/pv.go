@@ -14,8 +14,8 @@ import (
 
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 
+	kubeapi "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	kubeapi "k8s.io/kubernetes/pkg/api/v1"
 )
 
 func VolumeToPv(volume *api.VolumeInfoResponse,

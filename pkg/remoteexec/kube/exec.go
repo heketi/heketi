@@ -14,9 +14,9 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
-	kubeletcmd "k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
+	api "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/remotecommand"
 
 	rex "github.com/heketi/heketi/pkg/remoteexec"
 )
@@ -41,7 +41,7 @@ func ExecCommands(
 		// SUDO is *not* supported
 
 		// Create REST command
-		req := k.rest.Post().
+		req := k.kube.CoreV1().RESTClient().Post().
 			Resource(t.resourceName()).
 			Name(t.PodName).
 			Namespace(t.Namespace).
@@ -52,10 +52,10 @@ func ExecCommands(
 			Command:   []string{"/bin/bash", "-c", command},
 			Stdout:    true,
 			Stderr:    true,
-		}, api.ParameterCodec)
+		}, scheme.ParameterCodec)
 
 		// Create SPDY connection
-		exec, err := remotecommand.NewExecutor(k.kubeConfig, "POST", req.URL())
+		exec, err := remotecommand.NewSPDYExecutor(k.kubeConfig, "POST", req.URL())
 		if err != nil {
 			k.logger.Err(err)
 			return nil, fmt.Errorf("Unable to setup a session with %v", t.PodName)
@@ -67,9 +67,8 @@ func ExecCommands(
 
 		// Excute command
 		err = exec.Stream(remotecommand.StreamOptions{
-			SupportedProtocols: kubeletcmd.SupportedStreamingProtocols,
-			Stdout:             &b,
-			Stderr:             &berr,
+			Stdout: &b,
+			Stderr: &berr,
 		})
 		r := rex.Result{
 			Completed: true,

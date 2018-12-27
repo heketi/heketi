@@ -12,9 +12,8 @@ package kube
 import (
 	"fmt"
 
+	client "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
-	client "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
-	coreclient "k8s.io/kubernetes/pkg/client/clientset_generated/clientset/typed/core/v1"
 )
 
 var (
@@ -38,7 +37,6 @@ type logger interface {
 type KubeConn struct {
 	kubeConfig *restclient.Config
 	kube       *client.Clientset
-	rest       restclient.Interface
 	logger     logger
 }
 
@@ -50,13 +48,6 @@ func NewKubeConnWithConfig(l logger, rc *restclient.Config) (*KubeConn, error) {
 		err error
 		k   = &KubeConn{logger: l, kubeConfig: rc}
 	)
-
-	// Get a raw REST client.  This is still needed for kube-exec
-	restCore, err := coreclient.NewForConfig(k.kubeConfig)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to create a client connection: %v", err)
-	}
-	k.rest = restCore.RESTClient()
 
 	// Get a Go-client for Kubernetes
 	k.kube, err = client.NewForConfig(k.kubeConfig)
