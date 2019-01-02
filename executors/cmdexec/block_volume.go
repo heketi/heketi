@@ -135,3 +135,31 @@ func (s *CmdExecutor) BlockVolumeDestroy(host string, blockHostingVolumeName str
 	}
 	return r.Err
 }
+
+func (c *CmdExecutor) ListBlockVolumes(host string, blockhostingvolume string) ([]string, error) {
+	godbc.Require(host != "")
+	godbc.Require(blockhostingvolume != "")
+
+	commands := []string{fmt.Sprintf("gluster-block list %v --json", blockhostingvolume)}
+
+	results, err := c.RemoteExecutor.ExecCommands(host, commands, 10)
+	if err := rex.AnyError(results, err); err != nil {
+		logger.Err(err)
+		return nil, fmt.Errorf("unable to list blockvolumes on block hosting volume %v : %v", blockhostingvolume, err)
+	}
+
+	type BlockVolumeListOutput struct {
+		Blocks []string `json:"blocks"`
+		RESULT string   `json:"RESULT"`
+	}
+
+	var blockVolumeList BlockVolumeListOutput
+
+	err = json.Unmarshal([]byte(results[0].Output), &blockVolumeList)
+	if err != nil {
+		logger.Err(err)
+		return nil, fmt.Errorf("Unable to get the block volume list for block hosting volume %v : %v", blockhostingvolume, err)
+	}
+
+	return blockVolumeList.Blocks, nil
+}
