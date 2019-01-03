@@ -5,11 +5,11 @@
     - /dev/vdc
     - /dev/vdd
 
-- name: install packages
+- name: install repo source packages
   yum: name={{ item }} state=present
   with_items:
     - epel-release
-    - centos-release-gluster
+    - centos-release-gluster41
 
 - name: copy private key
   copy: src=insecure_private_key owner=vagrant group=vagrant dest=/home/vagrant/.ssh/id_rsa force=no mode=0600

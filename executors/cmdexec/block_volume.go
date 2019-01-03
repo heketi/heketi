@@ -14,8 +14,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/heketi/heketi/executors"
 	"github.com/lpabon/godbc"
+
+	"github.com/heketi/heketi/executors"
+	rex "github.com/heketi/heketi/pkg/remoteexec"
 )
 
 func (s *CmdExecutor) BlockVolumeCreate(host string,
@@ -49,14 +51,14 @@ func (s *CmdExecutor) BlockVolumeCreate(host string,
 	commands := []string{cmd}
 
 	// Execute command
-	output, err := s.RemoteExecutor.RemoteCommandExecute(host, commands, 10)
-	if err != nil {
+	results, err := s.RemoteExecutor.ExecCommands(host, commands, 10)
+	if err := rex.AnyError(results, err); err != nil {
 		s.BlockVolumeDestroy(host, volume.GlusterVolumeName, volume.Name)
 		return nil, err
 	}
 
 	var blockVolumeCreate CliOutput
-	err = json.Unmarshal([]byte(output[0]), &blockVolumeCreate)
+	err = json.Unmarshal([]byte(results[0].Output), &blockVolumeCreate)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to get the block volume create info for block volume %v", volume.Name)
 	}
@@ -132,4 +134,32 @@ func (s *CmdExecutor) BlockVolumeDestroy(host string, blockHostingVolumeName str
 		return logger.LogError("%v", blockVolumeDelete.ErrMsg)
 	}
 	return r.Err
+}
+
+func (c *CmdExecutor) ListBlockVolumes(host string, blockhostingvolume string) ([]string, error) {
+	godbc.Require(host != "")
+	godbc.Require(blockhostingvolume != "")
+
+	commands := []string{fmt.Sprintf("gluster-block list %v --json", blockhostingvolume)}
+
+	results, err := c.RemoteExecutor.ExecCommands(host, commands, 10)
+	if err := rex.AnyError(results, err); err != nil {
+		logger.Err(err)
+		return nil, fmt.Errorf("unable to list blockvolumes on block hosting volume %v : %v", blockhostingvolume, err)
+	}
+
+	type BlockVolumeListOutput struct {
+		Blocks []string `json:"blocks"`
+		RESULT string   `json:"RESULT"`
+	}
+
+	var blockVolumeList BlockVolumeListOutput
+
+	err = json.Unmarshal([]byte(results[0].Output), &blockVolumeList)
+	if err != nil {
+		logger.Err(err)
+		return nil, fmt.Errorf("Unable to get the block volume list for block hosting volume %v : %v", blockhostingvolume, err)
+	}
+
+	return blockVolumeList.Blocks, nil
 }
