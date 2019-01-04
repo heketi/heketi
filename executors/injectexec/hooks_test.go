@@ -35,14 +35,18 @@ func TestResultHookString(t *testing.T) {
 
 func TestSimpleReaction(t *testing.T) {
 	r := Reaction{Result: "Hello"}
-	v, err := r.React()
-	tests.Assert(t, err == nil, "expected err == nil, got:", err)
-	tests.Assert(t, v == "Hello", "expected err == Hello, got:", v)
+	res := r.React()
+	tests.Assert(t, res.Ok(), "expected res.Ok() to be true")
+	tests.Assert(t, res.Output == "Hello",
+		"expected res.Output == Hello, got:", res.Output)
 
 	r = Reaction{Err: "Yikes"}
-	v, err = r.React()
-	tests.Assert(t, err.Error() == "Yikes", "expected err == Yikes, got:", err)
-	tests.Assert(t, v == "", "expected err == \"\", got:", v)
+	res = r.React()
+	tests.Assert(t, !res.Ok(), "expected res.Ok() to be false")
+	tests.Assert(t, res.Error() == "Yikes",
+		"expected res.Error() == Yikes, got:", res.Error())
+	tests.Assert(t, res.Output == "",
+		"expected res.Output == \"\", got:", res.Output)
 }
 
 func TestPanicReaction(t *testing.T) {
