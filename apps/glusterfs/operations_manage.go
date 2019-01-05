@@ -91,10 +91,10 @@ func (ot *OpTracker) Tracked() map[string]bool {
 	defer ot.lock.RUnlock()
 	// copy internal map to out map
 	out := map[string]bool{}
-	for k, _ := range ot.normalOps {
+	for k := range ot.normalOps {
 		out[k] = true
 	}
-	for k, _ := range ot.bgOps {
+	for k := range ot.bgOps {
 		out[k] = true
 	}
 	return out
