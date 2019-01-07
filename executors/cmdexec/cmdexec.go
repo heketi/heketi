@@ -61,6 +61,16 @@ func setWithEnvVariables(config *CmdConfig) {
 			config.GlusterCliTimeout = uint32(value)
 		}
 	}
+
+	env = os.Getenv("HEKETI_DEBUG_UMOUNT_FAILURES")
+	if env != "" {
+		value, err := strconv.ParseBool(env)
+		if err != nil {
+			logger.LogError("Error: While parsing HEKETI_DEBUG_UMOUNT_FAILURES: %v", err)
+		} else {
+			config.DebugUmountFailures = value
+		}
+	}
 }
 
 func (c *CmdExecutor) Init(config *CmdConfig) {
@@ -167,4 +177,8 @@ func (c *CmdExecutor) XfsSw() int {
 
 func (c *CmdExecutor) XfsSu() int {
 	return c.config.XfsSu
+}
+
+func (c *CmdExecutor) DebugUmountFailures() bool {
+	return c.config.DebugUmountFailures
 }
