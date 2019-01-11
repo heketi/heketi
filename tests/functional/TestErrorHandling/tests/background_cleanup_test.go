@@ -87,7 +87,7 @@ func TestCleanupAfterRestart(t *testing.T) {
 		time.Sleep(time.Second)
 		info, err = heketi.OperationsInfo()
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
-		if info.Stale == 0 {
+		if info.Stale == 0 && info.InFlight == 0 {
 			break
 		}
 	}
@@ -165,7 +165,7 @@ func TestCleanupPeriodic(t *testing.T) {
 		logger.Info("probing for server progress")
 		info, err = heketi.OperationsInfo()
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
-		if info.Stale == 0 && info.Failed == 0 {
+		if info.Stale == 0 && info.Failed == 0 && info.InFlight == 0 {
 			break
 		}
 	}
