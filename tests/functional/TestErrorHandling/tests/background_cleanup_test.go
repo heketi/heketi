@@ -81,9 +81,11 @@ func TestCleanupAfterRestart(t *testing.T) {
 	tests.Assert(t, info.Stale == 1,
 		"expected info.Stale == 1, got:", info.InFlight)
 
+	// wait for the background cleaner to be started
 	time.Sleep(5 * time.Second)
+
+	// wait around an additional 5 sec for stale ops to be cleaned up
 	for i := 0; i < 5; i++ {
-		// wait around and additional 5 sec for stale ops to be cleaned up
 		time.Sleep(time.Second)
 		info, err = heketi.OperationsInfo()
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
