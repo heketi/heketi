@@ -159,8 +159,8 @@ func TestCleanupPeriodic(t *testing.T) {
 	os.Remove(glusterCond)
 	time.Sleep(time.Second)
 
+	// wait around up to twice the refresh interval for stale ops to be cleaned up
 	for i := 0; i < 16; i++ {
-		// wait around and additional 5 sec for stale ops to be cleaned up
 		time.Sleep(time.Second)
 		logger.Info("probing for server progress")
 		info, err = heketi.OperationsInfo()
