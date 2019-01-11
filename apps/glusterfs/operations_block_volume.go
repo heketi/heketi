@@ -350,6 +350,7 @@ func (bvc *BlockVolumeCreateOperation) CleanDone() error {
 		if err != nil {
 			return err
 		}
+		bvc.bvol = bv // set in-memory copy to match db
 		hv, bricks, err := bvc.volAndBricks(txdb)
 		if err != nil {
 			return err

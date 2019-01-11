@@ -62,6 +62,9 @@ func newMockBase() *mockexec.MockExecutor {
 	m.MockVolumeInfo = func(host string, volume string) (*executors.Volume, error) {
 		return nil, NotSupportedError
 	}
+	m.MockVolumesInfo = func(host string) (*executors.VolInfo, error) {
+		return nil, NotSupportedError
+	}
 	m.MockHealInfo = func(host string, volume string) (*executors.HealInfo, error) {
 		return nil, NotSupportedError
 	}
@@ -86,6 +89,20 @@ func newMockBase() *mockexec.MockExecutor {
 	m.MockSnapshotDestroy = func(host string, snapshot string) error {
 		return NotSupportedError
 	}
-
+	m.MockPVS = func(host string) (*executors.PVSCommandOutput, error) {
+		return nil, NotSupportedError
+	}
+	m.MockVGS = func(host string) (*executors.VGSCommandOutput, error) {
+		return nil, NotSupportedError
+	}
+	m.MockLVS = func(host string) (*executors.LVSCommandOutput, error) {
+		return nil, NotSupportedError
+	}
+	m.MockGetBrickMountStatus = func(host string) (*executors.BricksMountStatus, error) {
+		return nil, NotSupportedError
+	}
+	m.MockListBlockVolumes = func(host string, blockhostingvolume string) ([]string, error) {
+		return nil, NotSupportedError
+	}
 	return m
 }

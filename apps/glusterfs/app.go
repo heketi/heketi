@@ -580,6 +580,11 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Method:      "GET",
 			Pattern:     "/db/dump",
 			HandlerFunc: a.DbDump},
+		rest.Route{
+			Name:        "DbCheck",
+			Method:      "GET",
+			Pattern:     "/db/check",
+			HandlerFunc: a.DbCheck},
 
 		// Logging
 		rest.Route{
@@ -616,6 +621,13 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Method:      "POST",
 			Pattern:     "/operations/pending/cleanup",
 			HandlerFunc: a.PendingOperationCleanUp},
+
+		// State examination
+		rest.Route{
+			Name:        "ExamineGluster",
+			Method:      "GET",
+			Pattern:     "/internal/state/examine/gluster",
+			HandlerFunc: a.ExamineGluster},
 	}
 
 	// Register all routes from the App
@@ -697,6 +709,18 @@ func (a *App) OfflineCleaner() OperationCleaner {
 	}
 }
 
+// OfflineExaminer returns an examiner based on the current
+// app object that can be used to perform an offline examination.
+// An offline examiner assumes that the binary is only doing examination of the
+// state and nothing else.
+func (a *App) OfflineExaminer() Examiner {
+	return Examiner{
+		db:       a.db,
+		executor: a.executor,
+		mode:     OfflineExaminer,
+	}
+}
+
 // OnDemandCleaner returns an operations cleaner based on the current
 // app object that can be used to perform clean ups requested by
 // a user (on demand).
@@ -712,6 +736,17 @@ func (a *App) OnDemandCleaner(ops map[string]bool) OperationCleaner {
 		sel:       sel,
 		optracker: a.optracker,
 		opClass:   TrackNormal,
+	}
+}
+
+// OnDemandExaminer returns an examiner based on the current
+// app object that can be used to examine state on user demand.
+func (a *App) OnDemandExaminer() Examiner {
+	return Examiner{
+		db:        a.db,
+		executor:  a.executor,
+		optracker: a.optracker,
+		mode:      OnDemandExaminer,
 	}
 }
 

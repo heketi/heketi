@@ -12,6 +12,7 @@ package glusterfs
 import (
 	"bytes"
 	"encoding/gob"
+	"fmt"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -379,4 +380,29 @@ func PendingOperationEntrySelection(
 		}
 	}
 	return selection, nil
+}
+
+func (p *PendingOperationEntry) consistencyCheck(db Db) (response DbEntryCheckResponse) {
+
+	for _, action := range p.Actions {
+		switch action.Change {
+		case OpAddBrick, OpDeleteBrick:
+			if p.Id != db.Bricks[action.Id].Pending.Id {
+				response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("pending op %v id in change missing %v not found in bricks", p.Id, action.Id))
+			}
+		case OpAddVolume, OpDeleteVolume, OpExpandVolume, OpCloneVolume, OpSnapshotVolume, OpAddVolumeClone:
+			if p.Id != db.Volumes[action.Id].Pending.Id {
+				response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("pending op %v id in change missing %v not found in volumes", p.Id, action.Id))
+			}
+		case OpAddBlockVolume, OpDeleteBlockVolume:
+			if p.Id != db.BlockVolumes[action.Id].Pending.Id {
+				response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("pending op %v id in change missing %v not found in blockvolumes", p.Id, action.Id))
+			}
+		case OpRemoveDevice:
+			// This is a noop
+		default:
+			response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Pending Op %v unexpected change type %v", p.Id, action.Change))
+		}
+	}
+	return
 }

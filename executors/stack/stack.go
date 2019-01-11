@@ -186,6 +186,16 @@ func (es *ExecutorStack) VolumeInfo(host string, volume string) (*executors.Volu
 	return nil, NotSupportedError
 }
 
+func (es *ExecutorStack) VolumesInfo(host string) (*executors.VolInfo, error) {
+	for _, e := range es.executors {
+		v, err := e.VolumesInfo(host)
+		if err != NotSupportedError {
+			return v, err
+		}
+	}
+	return nil, NotSupportedError
+}
+
 func (es *ExecutorStack) HealInfo(host string, volume string) (*executors.HealInfo, error) {
 	for _, e := range es.executors {
 		hi, err := e.HealInfo(host, volume)
@@ -280,4 +290,54 @@ func (es *ExecutorStack) SnapshotDestroy(
 		}
 	}
 	return NotSupportedError
+}
+
+func (es *ExecutorStack) PVS(host string) (*executors.PVSCommandOutput, error) {
+	for _, e := range es.executors {
+		v, err := e.PVS(host)
+		if err != NotSupportedError {
+			return v, err
+		}
+	}
+	return nil, NotSupportedError
+}
+
+func (es *ExecutorStack) VGS(host string) (*executors.VGSCommandOutput, error) {
+	for _, e := range es.executors {
+		v, err := e.VGS(host)
+		if err != NotSupportedError {
+			return v, err
+		}
+	}
+	return nil, NotSupportedError
+}
+
+func (es *ExecutorStack) LVS(host string) (*executors.LVSCommandOutput, error) {
+	for _, e := range es.executors {
+		v, err := e.LVS(host)
+		if err != NotSupportedError {
+			return v, err
+		}
+	}
+	return nil, NotSupportedError
+}
+
+func (es *ExecutorStack) GetBrickMountStatus(host string) (*executors.BricksMountStatus, error) {
+	for _, e := range es.executors {
+		v, err := e.GetBrickMountStatus(host)
+		if err != NotSupportedError {
+			return v, err
+		}
+	}
+	return nil, NotSupportedError
+}
+
+func (es *ExecutorStack) ListBlockVolumes(host string, blockhostingvolume string) ([]string, error) {
+	for _, e := range es.executors {
+		v, err := e.ListBlockVolumes(host, blockhostingvolume)
+		if err != NotSupportedError {
+			return v, err
+		}
+	}
+	return nil, NotSupportedError
 }

@@ -11,6 +11,7 @@ package main
 
 import (
 	crand "crypto/rand"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -132,6 +133,28 @@ var exportdbCmd = &cobra.Command{
 	},
 }
 
+var checkdbCmd = &cobra.Command{
+	Use:     "consistency-check",
+	Short:   "checks the db for inconsistencies",
+	Long:    "checks the db for inconsistencies",
+	Example: "heketi db consistency-check --dbfile=/db/file/path/",
+	Run: func(cmd *cobra.Command, args []string) {
+		if dbFile == "" {
+			fmt.Fprintln(os.Stderr, "Please provide path for db file")
+			os.Exit(1)
+		}
+		if debugOutput {
+			glusterfs.SetLogLevel("debug")
+		}
+		err := glusterfs.DbCheck(dbFile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to check db: %v\n", err.Error())
+			os.Exit(1)
+		}
+		os.Exit(0)
+	},
+}
+
 var deleteBricksWithEmptyPath = &cobra.Command{
 	Use:     "delete-bricks-with-empty-path",
 	Short:   "removes brick entries from db that have empty path",
@@ -221,6 +244,64 @@ var cleanupOperationsCmd = &cobra.Command{
 	},
 }
 
+var stateExamineCmd = &cobra.Command{
+	Use:   "examine",
+	Short: "compare heketi database with real state of backend/user systems",
+	Long:  "compare heketi database with real state of backend/user systems",
+}
+
+var stateCmd = &cobra.Command{
+	Use:   "state",
+	Short: "view or modify heketi's state",
+	Long:  "view or modify heketi's state",
+}
+
+var examineGlusterCmd = &cobra.Command{
+	Use:     "gluster",
+	Short:   "compare heketi database with state of Gluster",
+	Long:    "compare heketi database with state of Gluster",
+	Example: "heketi offline state examine gluster --config=keti.json",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Fprintf(os.Stdout, "OFFLINE COMMAND: Examine state of Gluster\n")
+		if configfile == "" {
+			fmt.Fprintf(os.Stderr, "Configuration file is required\n")
+			os.Exit(1)
+		}
+
+		// Read configuration
+		c, err := config.ReadConfig(configfile)
+		if err != nil {
+			os.Exit(1)
+		}
+
+		randSeed()
+		// option to not start the background node monitor?
+		// FIXME, this is a hacky way to disable this background activity
+		// c.GlusterFS.DisableMonitorGlusterNodes = true
+		// Never start the background cleaner when running
+		// an offline cleanup
+		c.GlusterFS.DisableBackgroundCleaner = true
+		app := setupApp(c)
+
+		fmt.Fprintf(os.Stdout, "Starting examiner now...\n")
+		response, err := app.OfflineExaminer().ExamineGluster()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to examine Gluster: %v\n", err)
+			os.Exit(1)
+		}
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "    ")
+
+		fmt.Fprintf(os.Stdout, "EXAMINER_OUTPUT_STARTS\n")
+		if err := enc.Encode(response); err != nil {
+			fmt.Fprintf(os.Stderr, "Could not encode dump as JSON: %v", err)
+			os.Exit(1)
+		}
+		fmt.Fprintf(os.Stdout, "EXAMINER_OUTPUT_ENDS\n")
+		os.Exit(0)
+	},
+}
+
 func init() {
 	RootCmd.Flags().StringVar(&configfile, "config", "", "Configuration file")
 	RootCmd.Flags().BoolVarP(&showVersion, "version", "v", false, "Show version")
@@ -241,6 +322,11 @@ func init() {
 	exportdbCmd.Flags().BoolVar(&debugOutput, "debug", false, "Show debug logs on stdout")
 	exportdbCmd.SilenceUsage = true
 
+	dbCmd.AddCommand(checkdbCmd)
+	checkdbCmd.Flags().StringVar(&dbFile, "dbfile", "", "File path for db to be exported")
+	checkdbCmd.Flags().BoolVar(&debugOutput, "debug", false, "Show debug logs on stdout")
+	checkdbCmd.SilenceUsage = true
+
 	dbCmd.AddCommand(deleteBricksWithEmptyPath)
 	deleteBricksWithEmptyPath.Flags().StringVar(&dbFile, "dbfile", "", "File path for db to operate on")
 	deleteBricksWithEmptyPath.Flags().BoolVar(&debugOutput, "debug", false, "Show debug logs on stdout")
@@ -256,6 +342,15 @@ func init() {
 	offlineCmd.AddCommand(cleanupOperationsCmd)
 	cleanupOperationsCmd.SilenceUsage = true
 	cleanupOperationsCmd.Flags().StringVar(&configfile, "config", "", "Configuration file")
+
+	offlineCmd.AddCommand(stateCmd)
+	stateCmd.SilenceUsage = true
+	stateCmd.AddCommand(stateExamineCmd)
+	stateExamineCmd.SilenceUsage = true
+	stateExamineCmd.AddCommand(examineGlusterCmd)
+	examineGlusterCmd.SilenceUsage = true
+	examineGlusterCmd.Flags().StringVar(&configfile, "config", "", "Configuration file")
+
 }
 
 func setWithEnvVariables(options *config.Config) {

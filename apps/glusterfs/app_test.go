@@ -183,6 +183,7 @@ func TestAppBlockSettings(t *testing.T) {
 		Executor:  "crazyexec",
 		Allocator: "simple",
 		DBfile:    "/path/to/nonexistent/heketi.db",
+		// this comment should make gofmt happy in versions >= 1.11 and <= 1.10
 		CreateBlockHostingVolumes: true,
 		BlockHostingVolumeSize:    500,
 	}

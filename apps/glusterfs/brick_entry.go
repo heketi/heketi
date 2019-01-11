@@ -12,6 +12,7 @@ package glusterfs
 import (
 	"bytes"
 	"encoding/gob"
+	"fmt"
 	"strings"
 
 	"github.com/boltdb/bolt"
@@ -20,6 +21,7 @@ import (
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/idgen"
 	"github.com/heketi/heketi/pkg/paths"
+	"github.com/heketi/heketi/pkg/sortedstrings"
 	"github.com/lpabon/godbc"
 )
 
@@ -384,6 +386,7 @@ func (b *BrickEntry) remove(tx *bolt.Tx, v *VolumeEntry) error {
 
 	// Delete brick from volume entry
 	v.BrickDelete(b.Info.Id)
+	err = v.Save(tx)
 	if err != nil {
 		logger.Err(err)
 		return err
@@ -420,4 +423,45 @@ func (b *BrickEntry) removeAndFree(
 		}
 	}
 	return nil
+}
+
+// consistencyCheck ... verifies that a brickEntry is consistent with rest of the database.
+// It is a method on brickEntry and needs rest of the database as its input.
+func (b *BrickEntry) consistencyCheck(db Db) (response DbEntryCheckResponse) {
+
+	// PendingId
+	if b.Pending.Id != "" {
+		response.Pending = true
+		if _, found := db.PendingOperations[b.Pending.Id]; !found {
+			response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Brick %v marked pending but no pending op %v", b.Info.Id, b.Pending.Id))
+		}
+		// TODO: Validate back the pending operations' relationship to the brick
+		// This is skipped because some of it is handled in auto cleanup code.
+	}
+
+	// Node
+	if _, found := db.Nodes[b.Info.NodeId]; !found {
+		response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Brick %v unknown node %v", b.Info.Id, b.Info.NodeId))
+	}
+
+	// Volume
+	if volumeEntry, found := db.Volumes[b.Info.VolumeId]; !found {
+		response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Brick %v unknown volume %v", b.Info.Id, b.Info.VolumeId))
+	} else {
+		if !sortedstrings.Has(volumeEntry.Bricks, b.Info.Id) {
+			response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Brick %v no link back to brick from volume %v", b.Info.Id, b.Info.VolumeId))
+		}
+	}
+
+	// Device
+	if deviceEntry, found := db.Devices[b.Info.DeviceId]; !found {
+		response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Brick %v unknown device %v", b.Info.Id, b.Info.DeviceId))
+	} else {
+		if !sortedstrings.Has(deviceEntry.Bricks, b.Info.Id) {
+			response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Brick %v no link back to brick from device %v", b.Info.Id, b.Info.DeviceId))
+		}
+	}
+
+	return
+
 }
