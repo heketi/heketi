@@ -67,7 +67,7 @@ func TestHookCommandsNoMatch(t *testing.T) {
 func TestHookCommandsSimpleMatch(t *testing.T) {
 	result := HookCommands(
 		[]CmdHook{
-			CmdHook{Cmd: "vgs", Reaction: Reaction{Result: "Yo"}},
+			{Cmd: "vgs", Reaction: Reaction{Result: "Yo"}},
 		},
 		"vgs")
 	tests.Assert(t, result.Completed, "expected hooked")
@@ -79,7 +79,7 @@ func TestHookCommandsSimpleMatch(t *testing.T) {
 func TestHookCommandsErrorMatch(t *testing.T) {
 	result := HookCommands(
 		[]CmdHook{
-			CmdHook{Cmd: "vgs", Reaction: Reaction{Err: "Zap"}},
+			{Cmd: "vgs", Reaction: Reaction{Err: "Zap"}},
 		},
 		"vgs")
 	tests.Assert(t, result.Completed, "expected hooked")

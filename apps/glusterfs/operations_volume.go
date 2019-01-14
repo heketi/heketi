@@ -165,7 +165,10 @@ func (vc *VolumeCreateOperation) CleanDone() error {
 	if vc.reclaimed == nil || len(vc.reclaimed) == 0 {
 		return logger.LogError("brick reclaim map is empty (was Clean called?)")
 	}
-	return expungeVolumeWithOp(vc.db, vc.op, vc.vol.Info.Id, vc.reclaimed)
+	var err error
+	// set in-memory copy of volume to match (torn down) db state
+	vc.vol, err = expungeVolumeWithOp(vc.db, vc.op, vc.vol.Info.Id, vc.reclaimed)
+	return err
 }
 
 // VolumeExpandOperation implements the operation functions used to
@@ -504,7 +507,8 @@ func (vdel *VolumeDeleteOperation) Finalize() error {
 	if vdel.reclaimed == nil || len(vdel.reclaimed) == 0 {
 		return logger.LogError("brick reclaim map is empty (was Exec called?)")
 	}
-	return expungeVolumeWithOp(vdel.db, vdel.op, vdel.vol.Info.Id, vdel.reclaimed)
+	_, err := expungeVolumeWithOp(vdel.db, vdel.op, vdel.vol.Info.Id, vdel.reclaimed)
+	return err
 }
 
 // Clean tries to re-execute the volume delete operation.
@@ -726,17 +730,19 @@ func removeVolumeWithOp(
 	return bmap.destroy(executor)
 }
 
-// expandSizeFromOp is a helper function that removes a given volume
-// and associated operation from the db. It can be shared with
-// volume create and volume delete operation functions.
+// expungeVolumeWithOp is a helper function that removes a given volume and
+// associated operation from the db. It can be shared with volume create and
+// volume delete operation functions.
 func expungeVolumeWithOp(
 	db wdb.DB,
 	op *PendingOperationEntry, volId string,
-	reclaimed ReclaimMap) error {
+	reclaimed ReclaimMap) (*VolumeEntry, error) {
 
-	return db.Update(func(tx *bolt.Tx) error {
+	var v *VolumeEntry
+	return v, db.Update(func(tx *bolt.Tx) error {
+		var err error
 		txdb := wdb.WrapTx(tx)
-		v, err := NewVolumeEntryFromId(tx, volId)
+		v, err = NewVolumeEntryFromId(tx, volId)
 		if err != nil {
 			return err
 		}

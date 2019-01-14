@@ -28,8 +28,6 @@ const (
 
 const (
 	KB uint64 = 1024
-	MB        = KB * 1024
-	GB        = MB * 1024
 )
 
 var (
@@ -201,7 +199,7 @@ func (m *Metrics) Collect(ch chan<- prometheus.Metric) {
 				ch <- prometheus.MustNewConstMetric(
 					deviceSizeInBytes,
 					prometheus.GaugeValue,
-					float64(device.Storage.Total*GB),
+					float64(device.Storage.Total*KB),
 					cluster.Id,
 					node.Hostnames.Manage[0],
 					device.Name,
@@ -209,14 +207,14 @@ func (m *Metrics) Collect(ch chan<- prometheus.Metric) {
 				ch <- prometheus.MustNewConstMetric(
 					deviceFreeInBytes,
 					prometheus.GaugeValue,
-					float64(device.Storage.Free*GB),
+					float64(device.Storage.Free*KB),
 					cluster.Id,
 					node.Hostnames.Manage[0],
 					device.Name,
 				)
 				ch <- prometheus.MustNewConstMetric(
 					deviceUsedInBytes, prometheus.GaugeValue,
-					float64(device.Storage.Used*GB),
+					float64(device.Storage.Used*KB),
 					cluster.Id,
 					node.Hostnames.Manage[0],
 					device.Name,

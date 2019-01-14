@@ -42,10 +42,14 @@ type GlusterFSConfig struct {
 	BlockHostingVolumeOptions string `json:"block_hosting_volume_options"`
 
 	// server behaviors
-	IgnoreStaleOperations          bool   `json:"ignore_stale_operations"`
+	DisableMonitorGlusterNodes     bool   `json:"disable_monitor_gluster_nodes"`
 	RefreshTimeMonitorGlusterNodes uint32 `json:"refresh_time_monitor_gluster_nodes"`
 	StartTimeMonitorGlusterNodes   uint32 `json:"start_time_monitor_gluster_nodes"`
 	MaxInflightOperations          uint64 `json:"max_inflight_operations"`
+
+	DisableBackgroundCleaner     bool   `json:"disable_background_cleaner"`
+	RefreshTimeBackgroundCleaner uint32 `json:"refresh_time_background_cleaner"`
+	StartTimeBackgroundCleaner   uint32 `json:"start_time_background_cleaner"`
 
 	// operation retry amounts
 	RetryLimits RetryLimitConfig `json:"operation_retry_limits"`

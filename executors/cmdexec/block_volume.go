@@ -117,15 +117,16 @@ func (s *CmdExecutor) BlockVolumeDestroy(host string, blockHostingVolumeName str
 	}
 	var blockVolumeDelete CliOutput
 	if e := json.Unmarshal([]byte(errOutput), &blockVolumeDelete); e != nil {
-		parseErr := logger.LogError(
-			"Unable to parse output from block volume delete: %v",
-			blockVolumeName)
-		if r.Err == nil {
-			return parseErr
-		} else {
-			return r.Err
+		logger.LogError("Failed to unmarshal response from block "+
+			"volume delete for volume %v", blockVolumeName)
+		if r.Err != nil {
+			return logger.Err(r.Err)
 		}
+
+		return logger.LogError("Unable to parse output from block "+
+			"volume delete: %v", e)
 	}
+
 	if blockVolumeDelete.Result == "FAIL" {
 		if strings.Contains(blockVolumeDelete.ErrMsg, "doesn't exist") &&
 			strings.Contains(blockVolumeDelete.ErrMsg, blockVolumeName) {
@@ -134,4 +135,32 @@ func (s *CmdExecutor) BlockVolumeDestroy(host string, blockHostingVolumeName str
 		return logger.LogError("%v", blockVolumeDelete.ErrMsg)
 	}
 	return r.Err
+}
+
+func (c *CmdExecutor) ListBlockVolumes(host string, blockhostingvolume string) ([]string, error) {
+	godbc.Require(host != "")
+	godbc.Require(blockhostingvolume != "")
+
+	commands := []string{fmt.Sprintf("gluster-block list %v --json", blockhostingvolume)}
+
+	results, err := c.RemoteExecutor.ExecCommands(host, commands, 10)
+	if err := rex.AnyError(results, err); err != nil {
+		logger.Err(err)
+		return nil, fmt.Errorf("unable to list blockvolumes on block hosting volume %v : %v", blockhostingvolume, err)
+	}
+
+	type BlockVolumeListOutput struct {
+		Blocks []string `json:"blocks"`
+		RESULT string   `json:"RESULT"`
+	}
+
+	var blockVolumeList BlockVolumeListOutput
+
+	err = json.Unmarshal([]byte(results[0].Output), &blockVolumeList)
+	if err != nil {
+		logger.Err(err)
+		return nil, fmt.Errorf("Unable to get the block volume list for block hosting volume %v : %v", blockhostingvolume, err)
+	}
+
+	return blockVolumeList.Blocks, nil
 }

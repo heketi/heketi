@@ -10,21 +10,23 @@
 package glusterfs
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
+	"github.com/heketi/rest"
+	"github.com/lpabon/godbc"
+
 	"github.com/heketi/heketi/executors"
 	"github.com/heketi/heketi/executors/injectexec"
 	"github.com/heketi/heketi/executors/kubeexec"
 	"github.com/heketi/heketi/executors/mockexec"
 	"github.com/heketi/heketi/executors/sshexec"
 	"github.com/heketi/heketi/pkg/logging"
-	"github.com/heketi/rest"
 )
 
 const (
@@ -56,6 +58,10 @@ var (
 	// while avoiding having to touch all of the unit tests.
 	MonitorGlusterNodes = false
 
+	// global var to enable the use of the background pending
+	// operations cleanup mechanism.
+	EnableBackgroundCleaner = false
+
 	// global var that contains list of volume options that are set *before*
 	// setting the volume options that come as part of volume request.
 	PreReqVolumeOptions = ""
@@ -75,6 +81,8 @@ type App struct {
 
 	// health monitor
 	nhealth *NodeHealthCache
+	// background operations cleaner
+	bgcleaner *backgroundOperationCleaner
 
 	// operations tracker
 	optracker *OpTracker
@@ -143,64 +151,22 @@ func NewApp(conf *GlusterFSConfig) *App {
 		dbfilename = app.conf.DBfile
 	}
 
-	// Setup database
-	app.db, err = OpenDB(dbfilename, false)
+	err = app.initDB()
 	if err != nil {
-		logger.LogError("Unable to open database: %v. Retrying using read only mode", err)
-
-		// Try opening as read-only
-		app.db, err = OpenDB(dbfilename, true)
-		if err != nil {
-			logger.LogError("Unable to open database: %v", err)
-			return nil
-		}
-		app.dbReadOnly = true
-	} else {
-		err = app.db.Update(func(tx *bolt.Tx) error {
-			err := initializeBuckets(tx)
-			if err != nil {
-				logger.LogError("Unable to initialize buckets")
-				return err
-			}
-
-			// Handle Upgrade Changes
-			err = UpgradeDB(tx)
-			if err != nil {
-				logger.LogError("Unable to Upgrade Changes")
-				return err
-			}
-
-			return nil
-
-		})
-		if err != nil {
-			logger.Err(err)
-			return nil
-		}
+		logger.Err(err)
+		return nil
 	}
 
-	// Abort the application if there are pending operations in the db.
-	// In the immediate future we need to prevent incomplete operations
-	// from piling up in the db. If there are any pending ops in the db
-	// (meaning heketi was uncleanly terminated during the op) we are
-	// simply going to refuse to start and provide offline tooling to
-	// repair the situation. In the long term we may gain the ability to
-	// auto-rollback or even try to resume some operations.
+	// Drop a note that the system had pending operations in the db
+	// at start up time. Even though we now have auto-cleanup
+	// This note can be helpful for curious users and or a debugging
+	// hint for changes to the environment over time.
 	if HasPendingOperations(app.db) {
-		e := errors.New(
-			"Heketi was terminated while performing one or more operations." +
-				" Server may refuse to start as long as pending operations" +
-				" are present in the db.")
-		logger.Err(e)
-		logger.Info(
-			"Please refer to the Heketi troubleshooting documentation for more" +
-				" information on how to resolve this issue.")
-		if !app.conf.IgnoreStaleOperations {
-			logger.Warning("Server refusing to start.")
-			panic(e)
-		}
-		logger.Warning("Ignoring stale pending operations." +
-			"Server will be running with incomplete/inconsistent state in DB.")
+		logger.Warning(
+			"Heketi has existing pending operations in the db." +
+				" Heketi will attempt to automatically clean up these items." +
+				" See the Heketi troubleshooting docs for more information" +
+				" about managing pending operations.")
 	}
 
 	// Set advanced settings
@@ -209,6 +175,50 @@ func NewApp(conf *GlusterFSConfig) *App {
 	// Set block settings
 	app.setBlockSettings()
 
+	// initialize sub-objects and background tasks
+	app.initOpTracker()
+	app.initNodeMonitor()
+	app.initBackgroundCleaner()
+
+	// Show application has loaded
+	logger.Info("GlusterFS Application Loaded")
+
+	return app
+}
+
+func (app *App) initDB() error {
+	// Setup database
+	var err error
+	app.db, err = OpenDB(dbfilename, false)
+	if err != nil {
+		logger.LogError("Unable to open database: %v. Retrying using read only mode", err)
+
+		// Try opening as read-only
+		app.db, err = OpenDB(dbfilename, true)
+		if err != nil {
+			return logger.LogError("Unable to open database: %v", err)
+		}
+		app.dbReadOnly = true
+	} else {
+		err = app.db.Update(func(tx *bolt.Tx) error {
+			err := initializeBuckets(tx)
+			if err != nil {
+				return logger.LogError("Unable to initialize buckets: %v", err)
+			}
+
+			// Handle Upgrade Changes
+			err = UpgradeDB(tx)
+			if err != nil {
+				return logger.LogError("Unable to Upgrade DB: %v", err)
+			}
+
+			return nil
+		})
+	}
+	return nil
+}
+
+func (app *App) initNodeMonitor() {
 	//default monitor gluster node refresh time
 	var timer uint32 = 120
 	var startDelay uint32 = 10
@@ -223,18 +233,28 @@ func NewApp(conf *GlusterFSConfig) *App {
 		app.nhealth.Monitor()
 		currentNodeHealthCache = app.nhealth
 	}
+}
 
-	// set up the operations counter
+func (app *App) initBackgroundCleaner() {
+	// configure background cleaner params
+	if app.conf.StartTimeBackgroundCleaner == 0 {
+		app.conf.StartTimeBackgroundCleaner = 60
+	}
+	if app.conf.RefreshTimeBackgroundCleaner == 0 {
+		app.conf.RefreshTimeBackgroundCleaner = 3600
+	}
+	if EnableBackgroundCleaner {
+		app.bgcleaner = app.BackgroundCleaner()
+		app.bgcleaner.Start()
+	}
+}
+
+func (app *App) initOpTracker() {
 	oplimit := app.conf.MaxInflightOperations
 	if oplimit == 0 {
 		oplimit = DEFAULT_OP_LIMIT
 	}
 	app.optracker = newOpTracker(oplimit)
-
-	// Show application has loaded
-	logger.Info("GlusterFS Application Loaded")
-
-	return app
 }
 
 func SetLogLevel(level string) error {
@@ -277,14 +297,6 @@ func (a *App) setFromEnvironmentalVariable() {
 	env = os.Getenv("HEKETI_GLUSTERAPP_LOGLEVEL")
 	if env != "" {
 		a.conf.Loglevel = env
-	}
-
-	env = os.Getenv("HEKETI_IGNORE_STALE_OPERATIONS")
-	if env != "" {
-		a.conf.IgnoreStaleOperations, err = strconv.ParseBool(env)
-		if err != nil {
-			logger.LogError("Error: While parsing HEKETI_IGNORE_STALE_OPERATIONS as bool: %v", err)
-		}
 	}
 
 	env = os.Getenv("HEKETI_AUTO_CREATE_BLOCK_HOSTING_VOLUME")
@@ -568,6 +580,11 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Method:      "GET",
 			Pattern:     "/db/dump",
 			HandlerFunc: a.DbDump},
+		rest.Route{
+			Name:        "DbCheck",
+			Method:      "GET",
+			Pattern:     "/db/check",
+			HandlerFunc: a.DbCheck},
 
 		// Logging
 		rest.Route{
@@ -598,6 +615,19 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Method:      "GET",
 			Pattern:     "/operations/pending/{id:[A-Fa-f0-9]+}",
 			HandlerFunc: a.PendingOperationDetails},
+		// request operation clean up
+		rest.Route{
+			Name:        "PendingOperationCleanUp",
+			Method:      "POST",
+			Pattern:     "/operations/pending/cleanup",
+			HandlerFunc: a.PendingOperationCleanUp},
+
+		// State examination
+		rest.Route{
+			Name:        "ExamineGluster",
+			Method:      "GET",
+			Pattern:     "/internal/state/examine/gluster",
+			HandlerFunc: a.ExamineGluster},
 	}
 
 	// Register all routes from the App
@@ -622,6 +652,9 @@ func (a *App) Close() {
 	// stop the health goroutine
 	if a.nhealth != nil {
 		a.nhealth.Stop()
+	}
+	if a.bgcleaner != nil {
+		a.bgcleaner.Stop()
 	}
 
 	// Close the DB
@@ -673,6 +706,66 @@ func (a *App) OfflineCleaner() OperationCleaner {
 		db:       a.db,
 		executor: a.executor,
 		sel:      CleanAll,
+	}
+}
+
+// OfflineExaminer returns an examiner based on the current
+// app object that can be used to perform an offline examination.
+// An offline examiner assumes that the binary is only doing examination of the
+// state and nothing else.
+func (a *App) OfflineExaminer() Examiner {
+	return Examiner{
+		db:       a.db,
+		executor: a.executor,
+		mode:     OfflineExaminer,
+	}
+}
+
+// OnDemandCleaner returns an operations cleaner based on the current
+// app object that can be used to perform clean ups requested by
+// a user (on demand).
+func (a *App) OnDemandCleaner(ops map[string]bool) OperationCleaner {
+	sel := CleanAll
+	if len(ops) > 0 {
+		// user specified specific ops to clean
+		sel = CleanSelectedOps(ops)
+	}
+	return OperationCleaner{
+		db:        a.db,
+		executor:  a.executor,
+		sel:       sel,
+		optracker: a.optracker,
+		opClass:   TrackNormal,
+	}
+}
+
+// OnDemandExaminer returns an examiner based on the current
+// app object that can be used to examine state on user demand.
+func (a *App) OnDemandExaminer() Examiner {
+	return Examiner{
+		db:        a.db,
+		executor:  a.executor,
+		optracker: a.optracker,
+		mode:      OnDemandExaminer,
+	}
+}
+
+// BackgroundCleaner returns a background operations cleaner
+// suitable for use as a background "process" in the heketi server.
+func (a *App) BackgroundCleaner() *backgroundOperationCleaner {
+	godbc.Require(a.optracker != nil)
+	startSec := time.Duration(a.conf.StartTimeBackgroundCleaner)
+	checkSec := time.Duration(a.conf.RefreshTimeBackgroundCleaner)
+	return &backgroundOperationCleaner{
+		cleaner: OperationCleaner{
+			db:        a.db,
+			executor:  a.executor,
+			sel:       CleanAll,
+			optracker: a.optracker,
+			opClass:   TrackClean,
+		},
+		StartInterval: startSec * time.Second,
+		CheckInterval: checkSec * time.Second,
 	}
 }
 

@@ -11,6 +11,7 @@ package main
 
 import (
 	crand "crypto/rand"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -132,6 +133,28 @@ var exportdbCmd = &cobra.Command{
 	},
 }
 
+var checkdbCmd = &cobra.Command{
+	Use:     "consistency-check",
+	Short:   "checks the db for inconsistencies",
+	Long:    "checks the db for inconsistencies",
+	Example: "heketi db consistency-check --dbfile=/db/file/path/",
+	Run: func(cmd *cobra.Command, args []string) {
+		if dbFile == "" {
+			fmt.Fprintln(os.Stderr, "Please provide path for db file")
+			os.Exit(1)
+		}
+		if debugOutput {
+			glusterfs.SetLogLevel("debug")
+		}
+		err := glusterfs.DbCheck(dbFile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to check db: %v\n", err.Error())
+			os.Exit(1)
+		}
+		os.Exit(0)
+	},
+}
+
 var deleteBricksWithEmptyPath = &cobra.Command{
 	Use:     "delete-bricks-with-empty-path",
 	Short:   "removes brick entries from db that have empty path",
@@ -183,33 +206,6 @@ var deleteBricksWithEmptyPath = &cobra.Command{
 	},
 }
 
-var deletePendingEntriesCmd = &cobra.Command{
-	Use:     "delete-pending-entries",
-	Short:   "removes entries from db that have pending attribute set",
-	Long:    "removes entries from db that have pending attribute set",
-	Example: "heketi db delete-pending-entries --dbfile=/db/file/path/",
-	Run: func(cmd *cobra.Command, args []string) {
-		if dryRun && force {
-			fmt.Fprintf(os.Stderr, "Cannot specify force along with dry-run\n")
-			os.Exit(1)
-		}
-		if debugOutput {
-			glusterfs.SetLogLevel("debug")
-		}
-		db, err := glusterfs.OpenDB(dbFile, false)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Unable to open database: %v\n", err)
-			os.Exit(1)
-		}
-		err = glusterfs.DeletePendingEntries(db, dryRun, force)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to delete entries with pending attribute: %v\n", err.Error())
-			os.Exit(1)
-		}
-		os.Exit(0)
-	},
-}
-
 var cleanupOperationsCmd = &cobra.Command{
 	Use:     "cleanup-operations",
 	Short:   "clean up all pending operations stored in heketi db",
@@ -229,11 +225,12 @@ var cleanupOperationsCmd = &cobra.Command{
 		}
 
 		randSeed()
-		// always start if stale ops in the db
-		c.GlusterFS.IgnoreStaleOperations = true
 		// option to not start the background node monitor?
 		// FIXME, this is a hacky way to disable this background activity
-		//os.Setenv("HEKETI_DISABLE_HEALTH_MONITOR", "true")
+		// c.GlusterFS.DisableMonitorGlusterNodes = true
+		// Never start the background cleaner when running
+		// an offline cleanup
+		c.GlusterFS.DisableBackgroundCleaner = true
 		app := setupApp(c)
 
 		// run the operation cleanup in the foreground (offline mode)
@@ -243,6 +240,64 @@ var cleanupOperationsCmd = &cobra.Command{
 			fmt.Fprintf(os.Stderr, "Error cleaning operations: %v\n", err)
 			os.Exit(1)
 		}
+		os.Exit(0)
+	},
+}
+
+var stateExamineCmd = &cobra.Command{
+	Use:   "examine",
+	Short: "compare heketi database with real state of backend/user systems",
+	Long:  "compare heketi database with real state of backend/user systems",
+}
+
+var stateCmd = &cobra.Command{
+	Use:   "state",
+	Short: "view or modify heketi's state",
+	Long:  "view or modify heketi's state",
+}
+
+var examineGlusterCmd = &cobra.Command{
+	Use:     "gluster",
+	Short:   "compare heketi database with state of Gluster",
+	Long:    "compare heketi database with state of Gluster",
+	Example: "heketi offline state examine gluster --config=keti.json",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Fprintf(os.Stdout, "OFFLINE COMMAND: Examine state of Gluster\n")
+		if configfile == "" {
+			fmt.Fprintf(os.Stderr, "Configuration file is required\n")
+			os.Exit(1)
+		}
+
+		// Read configuration
+		c, err := config.ReadConfig(configfile)
+		if err != nil {
+			os.Exit(1)
+		}
+
+		randSeed()
+		// option to not start the background node monitor?
+		// FIXME, this is a hacky way to disable this background activity
+		// c.GlusterFS.DisableMonitorGlusterNodes = true
+		// Never start the background cleaner when running
+		// an offline cleanup
+		c.GlusterFS.DisableBackgroundCleaner = true
+		app := setupApp(c)
+
+		fmt.Fprintf(os.Stdout, "Starting examiner now...\n")
+		response, err := app.OfflineExaminer().ExamineGluster()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to examine Gluster: %v\n", err)
+			os.Exit(1)
+		}
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "    ")
+
+		fmt.Fprintf(os.Stdout, "EXAMINER_OUTPUT_STARTS\n")
+		if err := enc.Encode(response); err != nil {
+			fmt.Fprintf(os.Stderr, "Could not encode dump as JSON: %v", err)
+			os.Exit(1)
+		}
+		fmt.Fprintf(os.Stdout, "EXAMINER_OUTPUT_ENDS\n")
 		os.Exit(0)
 	},
 }
@@ -267,6 +322,11 @@ func init() {
 	exportdbCmd.Flags().BoolVar(&debugOutput, "debug", false, "Show debug logs on stdout")
 	exportdbCmd.SilenceUsage = true
 
+	dbCmd.AddCommand(checkdbCmd)
+	checkdbCmd.Flags().StringVar(&dbFile, "dbfile", "", "File path for db to be exported")
+	checkdbCmd.Flags().BoolVar(&debugOutput, "debug", false, "Show debug logs on stdout")
+	checkdbCmd.SilenceUsage = true
+
 	dbCmd.AddCommand(deleteBricksWithEmptyPath)
 	deleteBricksWithEmptyPath.Flags().StringVar(&dbFile, "dbfile", "", "File path for db to operate on")
 	deleteBricksWithEmptyPath.Flags().BoolVar(&debugOutput, "debug", false, "Show debug logs on stdout")
@@ -276,19 +336,21 @@ func init() {
 	deleteBricksWithEmptyPath.Flags().StringSlice("devices", []string{}, "comma separated list of device IDs")
 	deleteBricksWithEmptyPath.SilenceUsage = true
 
-	dbCmd.AddCommand(deletePendingEntriesCmd)
-	deletePendingEntriesCmd.Flags().StringVar(&dbFile, "dbfile", "", "File path for db to operate on")
-	deletePendingEntriesCmd.Flags().BoolVar(&debugOutput, "debug", false, "Show debug logs on stdout")
-	deletePendingEntriesCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show actions that would be performed but don't perform them")
-	deletePendingEntriesCmd.Flags().BoolVar(&force, "force", false, "Clean entries even if they don't have an owner Pending Operation, incompatible with dry-run")
-	deletePendingEntriesCmd.SilenceUsage = true
-
 	RootCmd.AddCommand(offlineCmd)
 	offlineCmd.SilenceUsage = true
 
 	offlineCmd.AddCommand(cleanupOperationsCmd)
 	cleanupOperationsCmd.SilenceUsage = true
 	cleanupOperationsCmd.Flags().StringVar(&configfile, "config", "", "Configuration file")
+
+	offlineCmd.AddCommand(stateCmd)
+	stateCmd.SilenceUsage = true
+	stateCmd.AddCommand(stateExamineCmd)
+	stateExamineCmd.SilenceUsage = true
+	stateExamineCmd.AddCommand(examineGlusterCmd)
+	examineGlusterCmd.SilenceUsage = true
+	examineGlusterCmd.Flags().StringVar(&configfile, "config", "", "Configuration file")
+
 }
 
 func setWithEnvVariables(options *config.Config) {
@@ -336,11 +398,15 @@ func setupApp(config *config.Config) (a *glusterfs.App) {
 	}()
 
 	// If one really needs to disable the health monitor for
-	// the server binary we provide only this env var.
-	env := os.Getenv("HEKETI_DISABLE_HEALTH_MONITOR")
-	if env != "true" {
-		glusterfs.MonitorGlusterNodes = true
-	}
+	// the server binary.
+	glusterfs.MonitorGlusterNodes = enableBackgroundTask(
+		config.GlusterFS.DisableMonitorGlusterNodes,
+		"HEKETI_DISABLE_HEALTH_MONITOR")
+	// If one really needs to disable the health monitor for
+	// the server binary.
+	glusterfs.EnableBackgroundCleaner = enableBackgroundTask(
+		config.GlusterFS.DisableBackgroundCleaner,
+		"HEKETI_DISABLE_BACKGROUND_CLEANER")
 
 	a = glusterfs.NewApp(config.GlusterFS)
 	if a != nil {
@@ -350,6 +416,19 @@ func setupApp(config *config.Config) (a *glusterfs.App) {
 		}
 	}
 	return a
+}
+
+// check if the config file or environment has disabled a internal
+// background task. Generally, this is only for developers or someone
+// debugging server issues, and isn't meant to be easy to flip.
+func enableBackgroundTask(cfgDisable bool, envDisable string) bool {
+	if cfgDisable {
+		return false
+	}
+	if os.Getenv(envDisable) == "true" {
+		return false
+	}
+	return true
 }
 
 func randSeed() {

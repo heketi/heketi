@@ -267,6 +267,7 @@ func TestVolumeCreateRollbackCleanupFailure(t *testing.T) {
 
 	e = vc.Rollback(app.executor)
 	tests.Assert(t, e != nil, "expected e != nil, got", e)
+	markFailedIfSupported(vc)
 
 	// verify that the pending items remain in the db due to rollback
 	// failure
@@ -280,6 +281,10 @@ func TestVolumeCreateRollbackCleanupFailure(t *testing.T) {
 		pol, e := PendingOperationList(tx)
 		tests.Assert(t, e == nil, "expected e == nil, got", e)
 		tests.Assert(t, len(pol) == 1, "expected len(pol) == 1, got", len(pol))
+		pop, e := NewPendingOperationEntryFromId(tx, pol[0])
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, pop.Status == FailedOperation,
+			"expected pop.Status == FailedOperation, got:", pop.Status)
 		return nil
 	})
 }
@@ -522,6 +527,14 @@ func TestVolumeCreateOperationRetrying(t *testing.T) {
 		po, e := PendingOperationList(tx)
 		tests.Assert(t, e == nil, "expected e == nil, got", e)
 		tests.Assert(t, len(po) == 0, "expected len(po) == 0, got:", len(po))
+		vl, e := VolumeList(tx)
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, len(vl) == 1, "expected len(bl) == 1, got:", len(bl))
+		vol, e := NewVolumeEntryFromId(tx, vl[0])
+		tests.Assert(t, e == nil, "expected e == nil, got", e)
+		tests.Assert(t, vol.Info.Size == 1024)
+		tests.Assert(t, len(vol.Bricks) == 3,
+			"expected len(vol.Bricks) == 3, got:", len(vol.Bricks))
 		return nil
 	})
 }
@@ -880,5 +893,111 @@ func TestVolumeExpandOperation(t *testing.T) {
 		tests.Assert(t, e == nil, "expected e == nil, got", e)
 		tests.Assert(t, len(po) == 0, "expected len(po) == 0, got:", len(po))
 		return nil
+	})
+}
+
+func TestListCompleteVolumesDuringOperation(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		4,    // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	t.Run("VolumeCreate", func(t *testing.T) {
+		req := &api.VolumeCreateRequest{}
+		req.Size = 1024
+		req.Durability.Type = api.DurabilityReplicate
+		req.Durability.Replicate.Replica = 3
+		vol := NewVolumeEntryFromRequest(req)
+		o := NewVolumeCreateOperation(vol, app.db)
+		e := o.Build()
+		tests.Assert(t, e == nil, "expected e == nil, got:", e)
+		defer o.Rollback(app.executor)
+
+		app.db.View(func(tx *bolt.Tx) error {
+			vols, err := ListCompleteVolumes(tx)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			tests.Assert(t, len(vols) == 0,
+				"expected len(vols) == 0, got:", len(vols))
+			vols, err = VolumeList(tx)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			tests.Assert(t, len(vols) == 1,
+				"expected len(vols) == 1, got:", len(vols))
+			return nil
+		})
+	})
+	t.Run("VolumeDelete", func(t *testing.T) {
+		req := &api.VolumeCreateRequest{}
+		req.Size = 1024
+		req.Durability.Type = api.DurabilityReplicate
+		req.Durability.Replicate.Replica = 3
+		vol := NewVolumeEntryFromRequest(req)
+		vco := NewVolumeCreateOperation(vol, app.db)
+		e := RunOperation(vco, app.executor)
+		tests.Assert(t, e == nil, "expected e == nil, got:", e)
+
+		app.db.View(func(tx *bolt.Tx) error {
+			vols, err := ListCompleteVolumes(tx)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			tests.Assert(t, len(vols) == 1,
+				"expected len(vols) == 1, got:", len(vols))
+			vols, err = VolumeList(tx)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			tests.Assert(t, len(vols) == 1,
+				"expected len(vols) == 1, got:", len(vols))
+			return nil
+		})
+
+		vdo := NewVolumeDeleteOperation(vol, app.db)
+		e = vdo.Build()
+		tests.Assert(t, e == nil, "expected e == nil, got:", e)
+		defer func() {
+			e := vdo.Exec(app.executor)
+			tests.Assert(t, e == nil, "expected e == nil, got:", e)
+			e = vdo.Finalize()
+			tests.Assert(t, e == nil, "expected e == nil, got:", e)
+		}()
+
+		app.db.View(func(tx *bolt.Tx) error {
+			vols, err := ListCompleteVolumes(tx)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			tests.Assert(t, len(vols) == 0,
+				"expected len(vols) == 0, got:", len(vols))
+			vols, err = VolumeList(tx)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			tests.Assert(t, len(vols) == 1,
+				"expected len(vols) == 1, got:", len(vols))
+			return nil
+		})
+	})
+	t.Run("BlockVolumeCreate", func(t *testing.T) {
+		req := &api.BlockVolumeCreateRequest{}
+		req.Size = 1024
+		bvol := NewBlockVolumeEntryFromRequest(req)
+		bvco := NewBlockVolumeCreateOperation(bvol, app.db)
+		e := bvco.Build()
+		tests.Assert(t, e == nil, "expected e == nil, got:", e)
+		defer bvco.Rollback(app.executor)
+
+		app.db.View(func(tx *bolt.Tx) error {
+			vols, err := ListCompleteVolumes(tx)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			tests.Assert(t, len(vols) == 0,
+				"expected len(vols) == 0, got:", len(vols))
+			vols, err = VolumeList(tx)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			tests.Assert(t, len(vols) == 1,
+				"expected len(vols) == 1, got:", len(vols))
+			return nil
+		})
 	})
 }

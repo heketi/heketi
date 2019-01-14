@@ -281,3 +281,46 @@ func errIsLvNotFound(err error) bool {
 	return (strings.Contains(e, "not found") ||
 		strings.Contains(e, "failed to find"))
 }
+
+func (s *CmdExecutor) GetBrickMountStatus(host string) (*executors.BricksMountStatus, error) {
+	godbc.Require(host != "")
+
+	commands := []string{
+		"mount",
+		fmt.Sprintf("cat %v", s.Fstab),
+	}
+
+	res, err := s.RemoteExecutor.ExecCommands(
+		host, commands, 5)
+	if err := rex.AnyError(res, err); err != nil {
+		logger.Err(err)
+		return nil, fmt.Errorf("Unable to get mount status for bricks : %v", err)
+	}
+
+	var brickMounts executors.BricksMountStatus
+	isMounted := make(map[string]bool)
+
+	for _, mountedDevice := range strings.Split(res[0].Output, "\n") {
+		if strings.TrimSpace(mountedDevice) == "" || mountedDevice[0] == '#' {
+			continue
+		}
+		parts := strings.Fields(mountedDevice)
+		isMounted[parts[0]] = true
+	}
+
+	for _, line := range strings.Split(res[1].Output, "\n") {
+		if strings.TrimSpace(line) == "" || line[0] == '#' {
+			continue
+		}
+		parts := strings.Fields(line)
+		brickMounts.Statuses = append(brickMounts.Statuses, executors.BrickMountStatus{
+			Device:       parts[0],
+			MountPoint:   parts[1],
+			Type:         parts[2],
+			MountOptions: parts[3],
+			Mounted:      isMounted[parts[0]],
+		})
+	}
+
+	return &brickMounts, nil
+}
