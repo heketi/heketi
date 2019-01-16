@@ -133,9 +133,9 @@ func testThrottledVolumeCreateFails(t *testing.T) {
 	volumes, err := heketi.VolumeList()
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, len(volumes.Volumes) >= 8,
-		"expected len(volumes.Volumes) == 5, got:", len(volumes.Volumes))
+		"expected len(volumes.Volumes) >= 8, got:", len(volumes.Volumes))
 	tests.Assert(t, len(volumes.Volumes) < 20,
-		"expected len(volumes.Volumes) == 5, got:", len(volumes.Volumes))
+		"expected len(volumes.Volumes) < 20, got:", len(volumes.Volumes))
 }
 
 // testThrottledRemoves is intended to test that the throttling behaves
