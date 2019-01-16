@@ -53,7 +53,6 @@ func (s *CmdExecutor) BlockVolumeCreate(host string,
 	// Execute command
 	results, err := s.RemoteExecutor.ExecCommands(host, commands, 10)
 	if err := rex.AnyError(results, err); err != nil {
-		s.BlockVolumeDestroy(host, volume.GlusterVolumeName, volume.Name)
 		return nil, err
 	}
 
@@ -64,7 +63,6 @@ func (s *CmdExecutor) BlockVolumeCreate(host string,
 	}
 
 	if blockVolumeCreate.Result == "FAIL" {
-		s.BlockVolumeDestroy(host, volume.GlusterVolumeName, volume.Name)
 		logger.LogError("%v", blockVolumeCreate.ErrMsg)
 		return nil, fmt.Errorf("%v", blockVolumeCreate.ErrMsg)
 	}
