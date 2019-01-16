@@ -410,8 +410,8 @@ func TestRunOperationExecRetryRollbackFail(t *testing.T) {
 	e := RunOperation(o, app.executor)
 	tests.Assert(t, e != nil, "expected e != nil, got:", e)
 	// even if rollback fails we expect the error from Exec
-	tests.Assert(t, strings.Contains(e.Error(), "rollbackfail"),
-		`expected strings.Contains(e.Error(), "rollbackfail"), got:`, e)
+	tests.Assert(t, strings.Contains(e.Error(), "foobar"),
+		`expected strings.Contains(e.Error(), "foobar"), got:`, e)
 	// check that rollback got called
 	tests.Assert(t, rollback_cc == 1,
 		"expected rollback_cc == 1, got:", rollback_cc)
