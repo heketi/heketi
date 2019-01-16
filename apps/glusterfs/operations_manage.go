@@ -144,17 +144,46 @@ func runOperationAfterBuild(o Operation,
 	executor executors.Executor) (err error) {
 
 	label := o.Label()
-	if err := o.Exec(executor); err != nil {
-		if _, ok := err.(OperationRetryError); ok && o.MaxRetries() > 0 {
-			logger.Warning("%v Exec requested retry", label)
-			return retryOperation(o, executor)
+	max_tries := o.MaxRetries() + 1
+
+	for attempt := 1; ; attempt++ {
+		logger.Info("Trying %v (attempt #%v/%v)", label, attempt, max_tries)
+
+		err = o.Exec(executor)
+		if err == nil {
+			// success, exit
+			break
 		}
+
+		logger.LogError("%v Failed: %v", label, err)
+
+		oerr, isRetryError := err.(OperationRetryError)
+		if isRetryError {
+			err = oerr.OriginalError
+		}
+
 		if rerr := o.Rollback(executor); rerr != nil {
 			logger.LogError("%v Rollback error: %v", label, rerr)
 			markFailedIfSupported(o)
+			return err
 		}
-		logger.LogError("%v Failed: %v", label, err)
-		return err
+
+		if attempt >= max_tries {
+			logger.LogError("Max tries (%v) consumed", max_tries)
+			return err
+		}
+
+		if !isRetryError {
+			logger.LogError("Operation not retryable")
+			return err
+		}
+
+		logger.Info("Retrying %v", label)
+
+		if err := o.Build(); err != nil {
+			logger.LogError("%v Build Failed: %v", label, err)
+			return err
+		}
 	}
 
 	// if we reach this, we have succeeded
