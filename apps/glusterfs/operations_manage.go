@@ -140,6 +140,28 @@ func (ot *OpTracker) ThrottleOrToken() (bool, string) {
 	return false, token
 }
 
+func runOperationAfterBuild(o Operation,
+	executor executors.Executor) (err error) {
+
+	label := o.Label()
+	if err := o.Exec(executor); err != nil {
+		if _, ok := err.(OperationRetryError); ok && o.MaxRetries() > 0 {
+			logger.Warning("%v Exec requested retry", label)
+			return retryOperation(o, executor)
+		}
+		if rerr := o.Rollback(executor); rerr != nil {
+			logger.LogError("%v Rollback error: %v", label, rerr)
+			markFailedIfSupported(o)
+		}
+		logger.LogError("%v Failed: %v", label, err)
+		return err
+	}
+	if err := o.Finalize(); err != nil {
+		return err
+	}
+	return nil
+}
+
 // AsyncHttpOperation runs all the steps of an operation with the long-running
 // parts wrapped in an async http function. If AsyncHttpOperation returns nil
 // then it has started the async function and the caller should respond to the
@@ -170,27 +192,10 @@ func AsyncHttpOperation(app *App,
 		// either success or failure
 		defer app.optracker.Remove(op.Id())
 		logger.Info("Started async operation: %v", label)
-		if err := op.Exec(app.executor); err != nil {
-			if _, ok := err.(OperationRetryError); ok && op.MaxRetries() > 0 {
-				logger.Warning("%v Exec requested retry", label)
-				err := retryOperation(op, app.executor)
-				if err != nil {
-					return "", err
-				}
-				return op.ResourceUrl(), nil
-			}
-			if rerr := op.Rollback(app.executor); rerr != nil {
-				logger.LogError("%v Rollback error: %v", label, rerr)
-				markFailedIfSupported(op)
-			}
-			logger.LogError("%v Failed: %v", label, err)
+		if err := runOperationAfterBuild(op, app.executor); err != nil {
 			return "", err
 		}
-		if err := op.Finalize(); err != nil {
-			logger.LogError("%v Finalize failed: %v", label, err)
-			return "", err
-		}
-		logger.Info("%v succeeded", label)
+
 		return op.ResourceUrl(), nil
 	})
 	return nil
@@ -215,22 +220,8 @@ func RunOperation(o Operation,
 		logger.LogError("%v Build Failed: %v", label, err)
 		return err
 	}
-	if err := o.Exec(executor); err != nil {
-		if _, ok := err.(OperationRetryError); ok && o.MaxRetries() > 0 {
-			logger.Warning("%v Exec requested retry", label)
-			return retryOperation(o, executor)
-		}
-		if rerr := o.Rollback(executor); rerr != nil {
-			logger.LogError("%v Rollback error: %v", label, rerr)
-			markFailedIfSupported(o)
-		}
-		logger.LogError("%v Failed: %v", label, err)
-		return err
-	}
-	if err := o.Finalize(); err != nil {
-		return err
-	}
-	return nil
+
+	return runOperationAfterBuild(o, executor)
 }
 
 // rollbackViaClean runs a CleanableOperation's clean methods as
