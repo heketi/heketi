@@ -132,7 +132,7 @@ func testThrottledVolumeCreateFails(t *testing.T) {
 	//   the server and only a portion of them can ultimately be done
 	volumes, err := heketi.VolumeList()
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
-	tests.Assert(t, len(volumes.Volumes) >= 10,
+	tests.Assert(t, len(volumes.Volumes) >= 8,
 		"expected len(volumes.Volumes) == 5, got:", len(volumes.Volumes))
 	tests.Assert(t, len(volumes.Volumes) < 20,
 		"expected len(volumes.Volumes) == 5, got:", len(volumes.Volumes))
