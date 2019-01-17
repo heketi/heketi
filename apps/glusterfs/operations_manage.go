@@ -156,10 +156,8 @@ func runOperationAfterBuild(o Operation,
 		logger.LogError("%v Failed: %v", label, err)
 		return err
 	}
-	if err := o.Finalize(); err != nil {
-		return err
-	}
-	return nil
+
+	return o.Finalize()
 }
 
 // AsyncHttpOperation runs all the steps of an operation with the long-running
