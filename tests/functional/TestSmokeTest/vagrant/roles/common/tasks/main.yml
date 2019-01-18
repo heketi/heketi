@@ -14,7 +14,6 @@
   yum:
     name:
       - epel-release
-      - centos-release-gluster
       - centos-release-gluster41
     state: present
 
