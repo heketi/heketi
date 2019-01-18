@@ -12,21 +12,22 @@ package ssh
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
 	"os"
 	"time"
 
-	"github.com/heketi/heketi/pkg/utils"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
+
+	"github.com/heketi/heketi/pkg/logging"
+	rex "github.com/heketi/heketi/pkg/remoteexec"
 )
 
 type SshExec struct {
 	clientConfig *ssh.ClientConfig
-	logger       *utils.Logger
+	logger       *logging.Logger
 }
 
 func getKeyFile(file string) (key ssh.Signer, err error) {
@@ -41,7 +42,7 @@ func getKeyFile(file string) (key ssh.Signer, err error) {
 	return
 }
 
-func NewSshExecWithAuth(logger *utils.Logger, user string) *SshExec {
+func NewSshExecWithAuth(logger *logging.Logger, user string) *SshExec {
 
 	sshexec := &SshExec{}
 	sshexec.logger = logger
@@ -73,7 +74,7 @@ func NewSshExecWithAuth(logger *utils.Logger, user string) *SshExec {
 	return sshexec
 }
 
-func NewSshExecWithKeyFile(logger *utils.Logger, user string, file string) *SshExec {
+func NewSshExecWithKeyFile(logger *logging.Logger, user string, file string) *SshExec {
 
 	var key ssh.Signer
 	var err error
@@ -98,7 +99,7 @@ func NewSshExecWithKeyFile(logger *utils.Logger, user string, file string) *SshE
 }
 
 // This function requires the password string to be crypt encrypted
-func NewSshExecWithPassword(logger *utils.Logger, user string, password string) *SshExec {
+func NewSshExecWithPassword(logger *logging.Logger, user string, password string) *SshExec {
 
 	sshexec := &SshExec{}
 	sshexec.logger = logger
@@ -115,7 +116,18 @@ func NewSshExecWithPassword(logger *utils.Logger, user string, password string) 
 // This function was based from https://github.com/coreos/etcd-manager/blob/master/main.go
 func (s *SshExec) ConnectAndExec(host string, commands []string, timeoutMinutes int, useSudo bool) ([]string, error) {
 
-	buffers := make([]string, len(commands))
+	results, err := s.ExecCommands(host, commands, timeoutMinutes, useSudo)
+	if err != nil {
+		return nil, err
+	}
+	return results.SquashErrors()
+}
+
+func (s *SshExec) ExecCommands(
+	host string, commands []string,
+	timeoutMinutes int, useSudo bool) (rex.Results, error) {
+
+	results := make(rex.Results, len(commands))
 
 	// :TODO: Will need a timeout here in case the server does not respond
 	client, err := ssh.Dial("tcp", host, s.clientConfig)
@@ -165,13 +177,33 @@ func (s *SshExec) ConnectAndExec(host string, commands []string, timeoutMinutes 
 		// Wait for either the command completion or timeout
 		select {
 		case err := <-errch:
-			if err != nil {
-				s.logger.LogError("Failed to run command [%v] on %v: Err[%v]: Stdout [%v]: Stderr [%v]",
-					command, host, err, b.String(), berr.String())
-				return nil, fmt.Errorf("%s", berr.String())
+			r := rex.Result{
+				Completed: true,
+				Output:    b.String(),
+				ErrOutput: berr.String(),
+				Err:       err,
 			}
-			s.logger.Debug("Host: %v Command: %v\nResult: %v", host, command, b.String())
-			buffers[index] = b.String()
+			if err == nil {
+				s.logger.Debug(
+					"Ran command [%v] on %v: Stdout [%v]: Stderr [%v]",
+					command, host, r.Output, r.ErrOutput)
+			} else {
+				s.logger.LogError(
+					"Failed to run command [%v] on %v: Err[%v]: Stdout [%v]: Stderr [%v]",
+					command, host, err, r.Output, r.ErrOutput)
+				// extract the real error code if possible
+				if ee, ok := err.(*ssh.ExitError); ok {
+					r.ExitStatus = ee.ExitStatus()
+				} else {
+					r.ExitStatus = 1
+				}
+			}
+			results[index] = r
+			if r.ExitStatus != 0 {
+				// stop running commands on error
+				// TODO: make caller configurable?)
+				return results, nil
+			}
 
 		case <-timeout:
 			s.logger.LogError("Timeout on command [%v] on %v: Err[%v]: Stdout [%v]: Stderr [%v]",
@@ -181,9 +213,9 @@ func (s *SshExec) ConnectAndExec(host string, commands []string, timeoutMinutes 
 				s.logger.LogError("Unable to send kill signal to command [%v] on host [%v]: %v",
 					command, host, err)
 			}
-			return nil, errors.New("SSH command timeout")
+			return results, errors.New("SSH command timeout")
 		}
 	}
 
-	return buffers, nil
+	return results, nil
 }

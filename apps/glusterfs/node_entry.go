@@ -19,7 +19,8 @@ import (
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/idgen"
+	"github.com/heketi/heketi/pkg/sortedstrings"
 	"github.com/lpabon/godbc"
 )
 
@@ -42,7 +43,7 @@ func NewNodeEntryFromRequest(req *api.NodeAddRequest) *NodeEntry {
 	godbc.Require(req != nil)
 
 	node := NewNodeEntry()
-	node.Info.Id = utils.GenUUID()
+	node.Info.Id = idgen.GenUUID()
 	node.Info.ClusterId = req.ClusterId
 	node.Info.Hostnames = req.Hostnames
 	node.Info.Zone = req.Zone
@@ -435,14 +436,14 @@ func (n *NodeEntry) Unmarshal(buffer []byte) error {
 }
 
 func (n *NodeEntry) DeviceAdd(id string) {
-	godbc.Require(!utils.SortedStringHas(n.Devices, id))
+	godbc.Require(!sortedstrings.Has(n.Devices, id))
 
 	n.Devices = append(n.Devices, id)
 	n.Devices.Sort()
 }
 
 func (n *NodeEntry) DeviceDelete(id string) {
-	n.Devices = utils.SortedStringsDelete(n.Devices, id)
+	n.Devices = sortedstrings.Delete(n.Devices, id)
 }
 
 func NodeEntryUpgrade(tx *bolt.Tx) error {
@@ -492,4 +493,38 @@ func (n *NodeEntry) AllTags() map[string]string {
 func (n *NodeEntry) SetTags(t map[string]string) error {
 	n.Info.Tags = t
 	return nil
+}
+
+// consistencyCheck ... verifies that a nodeEntry is consistent with rest of the database.
+// It is a method on nodeEntry and needs rest of the database as its input.
+func (n *NodeEntry) consistencyCheck(db Db) (response DbEntryCheckResponse) {
+
+	// No consistency check required for following attributes
+	// Id
+	// NodeTags
+	// Zone
+	// EntryState
+
+	// Devices
+	for _, device := range n.Devices {
+		if deviceEntry, found := db.Devices[device]; !found {
+			response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Node %v unknown device %v", n.Info.Id, device))
+		} else {
+			if deviceEntry.NodeId != n.Info.Id {
+				response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Node %v no link back to node from device %v", n.Info.Id, device))
+			}
+		}
+	}
+
+	// Cluster
+	if clusterEntry, found := db.Clusters[n.Info.ClusterId]; !found {
+		response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Node %v unknown cluster %v", n.Info.Id, n.Info.ClusterId))
+	} else {
+		if !sortedstrings.Has(clusterEntry.Info.Nodes, n.Info.Id) {
+			response.Inconsistencies = append(response.Inconsistencies, fmt.Sprintf("Node %v no link back to node from cluster %v", n.Info.Id, n.Info.ClusterId))
+		}
+	}
+
+	return
+
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/heketi/heketi/apps/glusterfs"
 	"github.com/heketi/heketi/middleware"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/pkg/idgen"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/heketi/server/admin"
 	"github.com/heketi/tests"
@@ -163,7 +164,7 @@ func TestTopology(t *testing.T) {
 				defer sg.Done()
 
 				deviceReq := &api.DeviceAddRequest{}
-				deviceReq.Name = "/sd" + utils.GenUUID()
+				deviceReq.Name = "/sd" + idgen.GenUUID()
 				deviceReq.NodeId = node.Id
 
 				// Create device
@@ -613,7 +614,7 @@ func TestClientVolume(t *testing.T) {
 				defer sg.Done()
 
 				deviceReq := &api.DeviceAddRequest{}
-				deviceReq.Name = "/dev/by-magic/id:" + utils.GenUUID()
+				deviceReq.Name = "/dev/by-magic/id:" + idgen.GenUUID()
 				deviceReq.NodeId = node.Id
 
 				// Create device
@@ -1227,7 +1228,7 @@ func TestVolumeSetBlockRestriction(t *testing.T) {
 		tests.Assert(t, err == nil)
 
 		deviceReq := &api.DeviceAddRequest{}
-		deviceReq.Name = "/dev/by-magic/id:" + utils.GenUUID()
+		deviceReq.Name = "/dev/by-magic/id:" + idgen.GenUUID()
 		deviceReq.NodeId = node.Id
 
 		// Create device

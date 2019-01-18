@@ -10,28 +10,59 @@
 package cmdexec
 
 import (
+	"fmt"
+	"os"
+	"strconv"
 	"sync"
 
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/pkg/logging"
+	rex "github.com/heketi/heketi/pkg/remoteexec"
 )
 
 var (
-	logger = utils.NewLogger("[cmdexec]", utils.LEVEL_DEBUG)
+	logger = logging.NewLogger("[cmdexec]", logging.LEVEL_DEBUG)
 )
 
 type RemoteCommandTransport interface {
-	RemoteCommandExecute(host string, commands []string, timeoutMinutes int) ([]string, error)
+	ExecCommands(host string, commands []string, timeoutMinutes int) (rex.Results, error)
 	RebalanceOnExpansion() bool
 	SnapShotLimit() int
+	GlusterCliTimeout() uint32
 }
 
 type CmdExecutor struct {
+	config      *CmdConfig
 	Throttlemap map[string]chan bool
 	Lock        sync.Mutex
 
 	RemoteExecutor RemoteCommandTransport
 	Fstab          string
 	BackupLVM      bool
+}
+
+func (c *CmdExecutor) glusterCommand() string {
+	return fmt.Sprintf("gluster --mode=script --timeout=%v", c.GlusterCliTimeout())
+}
+
+func setWithEnvVariables(config *CmdConfig) {
+	var env string
+
+	env = os.Getenv("HEKETI_GLUSTER_CLI_TIMEOUT")
+	if env != "" {
+		value, err := strconv.ParseUint(env, 10, 32)
+		if err != nil {
+			logger.LogError("Error: While parsing HEKETI_GLUSTER_CLI_TIMEOUT: %v", err)
+		} else {
+			config.GlusterCliTimeout = uint32(value)
+		}
+	}
+}
+
+func (c *CmdExecutor) Init(config *CmdConfig) {
+	c.Throttlemap = make(map[string]chan bool)
+	c.config = config
+
+	setWithEnvVariables(config)
 }
 
 func (s *CmdExecutor) AccessConnection(host string) {
@@ -61,20 +92,45 @@ func (s *CmdExecutor) FreeConnection(host string) {
 func (s *CmdExecutor) SetLogLevel(level string) {
 	switch level {
 	case "none":
-		logger.SetLevel(utils.LEVEL_NOLOG)
+		logger.SetLevel(logging.LEVEL_NOLOG)
 	case "critical":
-		logger.SetLevel(utils.LEVEL_CRITICAL)
+		logger.SetLevel(logging.LEVEL_CRITICAL)
 	case "error":
-		logger.SetLevel(utils.LEVEL_ERROR)
+		logger.SetLevel(logging.LEVEL_ERROR)
 	case "warning":
-		logger.SetLevel(utils.LEVEL_WARNING)
+		logger.SetLevel(logging.LEVEL_WARNING)
 	case "info":
-		logger.SetLevel(utils.LEVEL_INFO)
+		logger.SetLevel(logging.LEVEL_INFO)
 	case "debug":
-		logger.SetLevel(utils.LEVEL_DEBUG)
+		logger.SetLevel(logging.LEVEL_DEBUG)
 	}
 }
 
-func (s *CmdExecutor) Logger() *utils.Logger {
+func (s *CmdExecutor) Logger() *logging.Logger {
 	return logger
+}
+
+func (c *CmdExecutor) GlusterCliTimeout() uint32 {
+	if c.config.GlusterCliTimeout == 0 {
+		// Use a longer timeout (10 minutes) than gluster cli's default
+		// of 2 minutes, because some commands take longer in a system
+		// with many volumes.
+		return 600
+	}
+
+	return c.config.GlusterCliTimeout
+}
+
+// The timeout, in minutes, for the command execution.
+// It used to be 10 minutes (or sometimes 5, for some simple commands),
+// but now it needs to be longer than the gluster cli timeout at
+// least where calling the gluster cli.
+func (c *CmdExecutor) GlusterCliExecTimeout() int {
+	timeout := 1 + (int(c.GlusterCliTimeout())+1)/60
+
+	if timeout < 10 {
+		timeout = 10
+	}
+
+	return timeout
 }

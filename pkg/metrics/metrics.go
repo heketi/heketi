@@ -26,6 +26,10 @@ const (
 	namespace = "heketi"
 )
 
+const (
+	KB uint64 = 1024
+)
+
 var (
 	up = promDesc(
 		"up",
@@ -75,6 +79,24 @@ var (
 		[]string{"cluster", "hostname", "device"},
 	)
 
+	deviceSizeInBytes = promDesc(
+		"device_size_bytes",
+		"Total size of the device in bytes",
+		[]string{"cluster", "hostname", "device"},
+	)
+
+	deviceFreeInBytes = promDesc(
+		"device_free_bytes",
+		"Amount of Free space available on the device in bytes",
+		[]string{"cluster", "hostname", "device"},
+	)
+
+	deviceUsedInBytes = promDesc(
+		"device_used_bytes",
+		"Amount of space used on the device in bytes",
+		[]string{"cluster", "hostname", "device"},
+	)
+
 	brickCount = promDesc(
 		"device_brick_count",
 		"Number of bricks on device",
@@ -100,6 +122,9 @@ func (m *Metrics) Describe(ch chan<- *prometheus.Desc) {
 	ch <- deviceSize
 	ch <- deviceFree
 	ch <- deviceUsed
+	ch <- deviceSizeInBytes
+	ch <- deviceFreeInBytes
+	ch <- deviceUsedInBytes
 	ch <- brickCount
 
 }
@@ -171,6 +196,30 @@ func (m *Metrics) Collect(ch chan<- prometheus.Metric) {
 					node.Hostnames.Manage[0],
 					device.Name,
 				)
+				ch <- prometheus.MustNewConstMetric(
+					deviceSizeInBytes,
+					prometheus.GaugeValue,
+					float64(device.Storage.Total*KB),
+					cluster.Id,
+					node.Hostnames.Manage[0],
+					device.Name,
+				)
+				ch <- prometheus.MustNewConstMetric(
+					deviceFreeInBytes,
+					prometheus.GaugeValue,
+					float64(device.Storage.Free*KB),
+					cluster.Id,
+					node.Hostnames.Manage[0],
+					device.Name,
+				)
+				ch <- prometheus.MustNewConstMetric(
+					deviceUsedInBytes, prometheus.GaugeValue,
+					float64(device.Storage.Used*KB),
+					cluster.Id,
+					node.Hostnames.Manage[0],
+					device.Name,
+				)
+
 				ch <- prometheus.MustNewConstMetric(
 					brickCount,
 					prometheus.GaugeValue,
