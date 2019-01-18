@@ -28,6 +28,11 @@ type RemoteCommandTransport interface {
 	RebalanceOnExpansion() bool
 	SnapShotLimit() int
 	GlusterCliTimeout() uint32
+	PVDataAlignment() string
+	VGPhysicalExtentSize() string
+	LVChunkSize() string
+	XfsSw() int
+	XfsSu() int
 }
 
 type CmdExecutor struct {
@@ -133,4 +138,33 @@ func (c *CmdExecutor) GlusterCliExecTimeout() int {
 	}
 
 	return timeout
+}
+
+func (c *CmdExecutor) PVDataAlignment() string {
+	if c.config.PVDataAlignment == "" {
+		return "256K"
+	}
+	return c.config.PVDataAlignment
+}
+
+func (c *CmdExecutor) VGPhysicalExtentSize() string {
+	if c.config.VGPhysicalExtentSize == "" {
+		return "4M"
+	}
+	return c.config.VGPhysicalExtentSize
+}
+
+func (c *CmdExecutor) LVChunkSize() string {
+	if c.config.LVChunkSize == "" {
+		return "256K"
+	}
+	return c.config.LVChunkSize
+}
+
+func (c *CmdExecutor) XfsSw() int {
+	return c.config.XfsSw
+}
+
+func (c *CmdExecutor) XfsSu() int {
+	return c.config.XfsSu
 }
