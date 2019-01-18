@@ -10,7 +10,6 @@ RUN yum -y install centos-release-gluster && \
     yum -y clean all
 
 # post install config and volume setup
-ADD heketi.json /etc/heketi/heketi.json
 ADD heketi-start.sh /usr/bin/heketi-start.sh
 
 VOLUME /etc/heketi
