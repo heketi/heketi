@@ -1434,3 +1434,84 @@ func TestBlockVolumeCreateInsufficientHosts(t *testing.T) {
 		return nil
 	})
 }
+
+func TestListCompleteBlockVolumesDuringOperation(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		4,    // devices_per_node,
+		6*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	t.Run("BlockVolumeCreate", func(t *testing.T) {
+		req := &api.BlockVolumeCreateRequest{}
+		req.Size = 1024
+		bvol := NewBlockVolumeEntryFromRequest(req)
+		bvco := NewBlockVolumeCreateOperation(bvol, app.db)
+		e := bvco.Build()
+		tests.Assert(t, e == nil, "expected e == nil, got:", e)
+		defer bvco.Rollback(app.executor)
+
+		app.db.View(func(tx *bolt.Tx) error {
+			vols, err := ListCompleteBlockVolumes(tx)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			tests.Assert(t, len(vols) == 0,
+				"expected len(vols) == 0, got:", len(vols))
+			vols, err = BlockVolumeList(tx)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			tests.Assert(t, len(vols) == 1,
+				"expected len(vols) == 1, got:", len(vols))
+			return nil
+		})
+	})
+	t.Run("BlockVolumeDelete", func(t *testing.T) {
+		req := &api.BlockVolumeCreateRequest{}
+		req.Size = 1024
+		bvol := NewBlockVolumeEntryFromRequest(req)
+		bvco := NewBlockVolumeCreateOperation(bvol, app.db)
+		e := RunOperation(bvco, app.executor)
+		tests.Assert(t, e == nil, "expected e == nil, got:", e)
+
+		app.db.View(func(tx *bolt.Tx) error {
+			vols, err := ListCompleteBlockVolumes(tx)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			tests.Assert(t, len(vols) == 1,
+				"expected len(vols) == 1, got:", len(vols))
+			vols, err = BlockVolumeList(tx)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			tests.Assert(t, len(vols) == 1,
+				"expected len(vols) == 1, got:", len(vols))
+			return nil
+		})
+
+		bvdo := NewBlockVolumeDeleteOperation(bvol, app.db)
+		e = bvdo.Build()
+		tests.Assert(t, e == nil, "expected e == nil, got:", e)
+		defer func() {
+			e := bvdo.Exec(app.executor)
+			tests.Assert(t, e == nil, "expected e == nil, got:", e)
+			e = bvdo.Finalize()
+			tests.Assert(t, e == nil, "expected e == nil, got:", e)
+		}()
+
+		app.db.View(func(tx *bolt.Tx) error {
+			vols, err := ListCompleteBlockVolumes(tx)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			tests.Assert(t, len(vols) == 0,
+				"expected len(vols) == 0, got:", len(vols))
+			vols, err = BlockVolumeList(tx)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			tests.Assert(t, len(vols) == 1,
+				"expected len(vols) == 1, got:", len(vols))
+			return nil
+		})
+	})
+}
