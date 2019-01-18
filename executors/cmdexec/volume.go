@@ -76,7 +76,6 @@ func (s *CmdExecutor) VolumeCreate(host string,
 	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands,
 		s.GlusterCliExecTimeout()))
 	if err != nil {
-		s.VolumeDestroy(host, volume.Name)
 		return nil, err
 	}
 
