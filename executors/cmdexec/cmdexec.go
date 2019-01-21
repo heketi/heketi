@@ -182,3 +182,10 @@ func (c *CmdExecutor) XfsSu() int {
 func (c *CmdExecutor) DebugUmountFailures() bool {
 	return c.config.DebugUmountFailures
 }
+
+func (c *CmdExecutor) BlockVolumeDefaultPrealloc() string {
+	if c.config.BlockVolumePrealloc == "" {
+		return "full"
+	}
+	return c.config.BlockVolumePrealloc
+}
