@@ -174,11 +174,6 @@ func (v *BlockVolumeEntry) eligibleClustersAndVolumes(db wdb.RODB) (
 	if e != nil {
 		return
 	}
-	if len(possibleClusters) == 0 {
-		logger.LogError("No clusters eligible to satisfy create block volume request")
-		e = ErrNoSpace
-		return
-	}
 	logger.Debug("Using the following clusters: %+v", possibleClusters)
 
 	var possibleVolumes []string

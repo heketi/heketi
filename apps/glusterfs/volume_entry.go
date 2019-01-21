@@ -541,8 +541,8 @@ func (v *VolumeEntry) cleanupCreateVolume(db wdb.DB,
 	return v.teardown(db, brick_entries, reclaimed)
 }
 
-func (v *VolumeEntry) createVolumeComponents(db wdb.DB) (
-	brick_entries []*BrickEntry, e error) {
+func (v *VolumeEntry) createVolumeComponents(
+	db wdb.DB) ([]*BrickEntry, error) {
 
 	// Get list of clusters
 	var possibleClusters []string
@@ -553,7 +553,7 @@ func (v *VolumeEntry) createVolumeComponents(db wdb.DB) (
 			return err
 		})
 		if err != nil {
-			return brick_entries, err
+			return nil, err
 		}
 	} else {
 		possibleClusters = v.Info.Clusters
@@ -562,11 +562,7 @@ func (v *VolumeEntry) createVolumeComponents(db wdb.DB) (
 	cr := ClusterReq{v.Info.Block, v.Info.Name}
 	possibleClusters, err := eligibleClusters(db, cr, possibleClusters)
 	if err != nil {
-		return brick_entries, err
-	}
-	if len(possibleClusters) == 0 {
-		logger.LogError("No clusters eligible to satisfy create volume request")
-		return brick_entries, ErrNoSpace
+		return nil, err
 	}
 	logger.Debug("Using the following clusters: %+v", possibleClusters)
 
@@ -847,7 +843,11 @@ func eligibleClusters(db wdb.RODB, req ClusterReq,
 	// If the request does *not* carry the Block flag, consider
 	// only those clusters that do not carry the Block flag.
 	//
+	if len(possibleClusters) == 0 {
+		return nil, fmt.Errorf("No clusters configured")
+	}
 	candidateClusters := []string{}
+	cerr := NewMultiClusterError("No eligible cluster for volume")
 	err := db.View(func(tx *bolt.Tx) error {
 		for _, clusterId := range possibleClusters {
 			c, err := NewClusterEntryFromId(tx, clusterId)
@@ -861,8 +861,14 @@ func eligibleClusters(db wdb.RODB, req ClusterReq,
 				// possibly bad cluster config
 				logger.Info("Cluster %v lacks both block and file flags",
 					clusterId)
+				cerr.Add(
+					c.Info.Id,
+					fmt.Errorf("Cluster has disabled all volume types"))
 				continue
 			default:
+				cerr.Add(
+					c.Info.Id,
+					fmt.Errorf("Cluster does not support requested volume type"))
 				continue
 			}
 			if req.Name != "" {
@@ -873,6 +879,9 @@ func eligibleClusters(db wdb.RODB, req ClusterReq,
 				if found {
 					logger.LogError("Name %v already in use in cluster %v",
 						req.Name, clusterId)
+					cerr.Add(
+						c.Info.Id,
+						fmt.Errorf("Volume name '%v' already in use", req.Name))
 					continue
 				}
 			}
@@ -881,6 +890,14 @@ func eligibleClusters(db wdb.RODB, req ClusterReq,
 		return nil
 	})
 
+	if err == nil && len(candidateClusters) == 0 {
+		logger.LogError("No clusters eligible to satisfy create volume request")
+		// use generic "no space" error if cluster errors is empty
+		err = ErrNoSpace
+		if cerr.Len() > 0 {
+			err = cerr
+		}
+	}
 	return candidateClusters, err
 }
 
