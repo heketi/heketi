@@ -220,18 +220,21 @@ func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
 			return logger.Err(err)
 		}
 
-		// Check if we can delete the device
-		if device.HasBricks() {
-			http.Error(w, device.ConflictString(), http.StatusConflict)
-			logger.LogError(device.ConflictString())
-			return ErrConflict
-		}
-
 		// Access node entry
 		node, err = NewNodeEntryFromId(tx, device.NodeId)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return logger.Err(err)
+		}
+
+		// Check if we can delete the device
+		if err := device.CheckDelete(); err != nil {
+			if err == ErrConflict {
+				http.Error(w, device.ConflictString(), http.StatusConflict)
+			} else {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+			}
+			return err
 		}
 
 		return nil
