@@ -71,6 +71,11 @@ func setWithEnvVariables(config *CmdConfig) {
 			config.DebugUmountFailures = value
 		}
 	}
+
+	env = os.Getenv("HEKETI_BLOCK_VOLUME_DEFAULT_PREALLOC")
+	if env != "" {
+		config.BlockVolumePrealloc = env
+	}
 }
 
 func (c *CmdExecutor) Init(config *CmdConfig) {
