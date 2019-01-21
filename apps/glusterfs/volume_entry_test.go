@@ -488,8 +488,9 @@ func TestVolumeEntryCreateMissingCluster(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	err = v.Create(app.db, app.executor)
-	tests.Assert(t, err == ErrNoSpace)
-
+	tests.Assert(t, err != nil, "expected err != nil")
+	tests.Assert(t, strings.Contains(err.Error(), "No clusters"),
+		`expected strings.Contains(err.Error(), "No clusters"), got:`, err)
 }
 
 func TestVolumeEntryCreateRunOutOfSpaceMinBrickSizeLimit(t *testing.T) {
@@ -2093,8 +2094,10 @@ func TestVolumeEntryNoMatchingFlags(t *testing.T) {
 	// request block volume
 	v.Info.Block = true
 	err = v.Create(app.db, app.executor)
-	// expect no space error due to no clusters able to satisfy block volume
-	tests.Assert(t, err == ErrNoSpace)
+	// expect error due to no clusters able to satisfy block volume
+	tests.Assert(t, err != nil, "expected err != nil")
+	_, ok := err.(*MultiClusterError)
+	tests.Assert(t, ok, "expected err to be MultiClusterError, got:", err)
 }
 
 func TestVolumeEntryMissingFlags(t *testing.T) {
@@ -2134,8 +2137,10 @@ func TestVolumeEntryMissingFlags(t *testing.T) {
 	// Create volume
 	v := createSampleReplicaVolumeEntry(1024, 2)
 	err = v.Create(app.db, app.executor)
-	// expect no space error due to no clusters able to satisfy block volume
-	tests.Assert(t, err == ErrNoSpace)
+	// expect error due to no clusters able to satisfy block volume
+	tests.Assert(t, err != nil, "expected err != nil")
+	_, ok := err.(*MultiClusterError)
+	tests.Assert(t, ok, "expected err to be MultiClusterError, got:", err)
 }
 
 func TestVolumeCreateBrickAlloc(t *testing.T) {
