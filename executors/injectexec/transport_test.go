@@ -19,9 +19,14 @@ import (
 )
 
 type DummyTransport struct {
-	snapShotLimit int
-	rebalance     bool
-	cliTimeout    uint32
+	snapShotLimit      int
+	rebalance          bool
+	cliTimeout         uint32
+	dataAlignment      string
+	physicalExtentSize string
+	chunkSize          string
+	xfsSw              int
+	xfsSu              int
 }
 
 func (d *DummyTransport) ExecCommands(
@@ -45,6 +50,26 @@ func (d *DummyTransport) SnapShotLimit() int {
 
 func (d *DummyTransport) GlusterCliTimeout() uint32 {
 	return d.cliTimeout
+}
+
+func (d *DummyTransport) PVDataAlignment() string {
+	return d.dataAlignment
+}
+
+func (d *DummyTransport) VGPhysicalExtentSize() string {
+	return d.physicalExtentSize
+}
+
+func (d *DummyTransport) LVChunkSize() string {
+	return d.chunkSize
+}
+
+func (d *DummyTransport) XfsSw() int {
+	return d.xfsSw
+}
+
+func (d *DummyTransport) XfsSu() int {
+	return d.xfsSu
 }
 
 func TestWrapCommandTransport(t *testing.T) {
