@@ -157,6 +157,7 @@ func runOperationAfterBuild(o Operation,
 		return err
 	}
 
+	// if we reach this, we have succeeded
 	return o.Finalize()
 }
 
