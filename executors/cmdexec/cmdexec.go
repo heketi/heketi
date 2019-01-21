@@ -12,6 +12,7 @@ package cmdexec
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"sync"
 
@@ -20,7 +21,8 @@ import (
 )
 
 var (
-	logger = logging.NewLogger("[cmdexec]", logging.LEVEL_DEBUG)
+	logger     = logging.NewLogger("[cmdexec]", logging.LEVEL_DEBUG)
+	preallocRe = regexp.MustCompile("^[a-zA-Z0-9-_]+$")
 )
 
 type RemoteCommandTransport interface {
@@ -189,8 +191,15 @@ func (c *CmdExecutor) DebugUmountFailures() bool {
 }
 
 func (c *CmdExecutor) BlockVolumeDefaultPrealloc() string {
+	defaultValue := "full"
 	if c.config.BlockVolumePrealloc == "" {
-		return "full"
+		return defaultValue
+	}
+	if !preallocRe.MatchString(c.config.BlockVolumePrealloc) {
+		logger.Warning(
+			"invalid value for prealloc option [%v], using default",
+			c.config.BlockVolumePrealloc)
+		return defaultValue
 	}
 	return c.config.BlockVolumePrealloc
 }
