@@ -272,45 +272,6 @@ func rollbackViaClean(o CleanableOperation, executor executors.Executor) error {
 	return nil
 }
 
-func retryOperation(o Operation,
-	executor executors.Executor) (err error) {
-
-	label := o.Label()
-	max := o.MaxRetries()
-	for i := 0; i < max; i++ {
-		logger.Info("Retry %v (%v)", label, i+1)
-		if e := o.Rollback(executor); e != nil {
-			// when retrying rollback must succeed cleanly or it
-			// is not safe to retry
-			logger.LogError("%v Rollback error: %v", label, e)
-			markFailedIfSupported(o)
-			return e
-		}
-		if e := o.Build(); e != nil {
-			logger.LogError("%v Build Failed: %v", label, e)
-			return e
-		}
-		err = o.Exec(executor)
-		if err == nil {
-			// exec succeeded. Finalize it and we're outta here.
-			return o.Finalize()
-		}
-		logger.LogError("%v Failed: %v", label, err)
-		if _, ok := err.(OperationRetryError); !ok {
-			break
-		}
-	}
-	if e := o.Rollback(executor); e != nil {
-		logger.LogError("%v Rollback error: %v", label, e)
-	}
-	// if we exceeded our retries, pull the "real" error out
-	// of the retry error so we return that
-	if ore, ok := err.(OperationRetryError); ok {
-		err = ore.OriginalError
-	}
-	return
-}
-
 // markFailedIfSupported takes any operation and if that operation
 // supports being marked failed, it marks it as not failed.
 // An error is returned only if the operation is failable and
