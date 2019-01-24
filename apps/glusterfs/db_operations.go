@@ -636,6 +636,8 @@ func dbCheckBricks(dump Db) (bricksCheckResponse DbBucketCheckResponse) {
 func dbCheckPendingOps(dump Db) (pendingOpsCheckResponse DbBucketCheckResponse) {
 	for _, pendingOpEntry := range dump.PendingOperations {
 
+		pendingOpsCheckResponse.Total++
+
 		pendingOpCheckResponse := pendingOpEntry.consistencyCheck(dump)
 
 		if len(pendingOpCheckResponse.Inconsistencies) > 0 {
