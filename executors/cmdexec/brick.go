@@ -192,6 +192,15 @@ func (s *CmdExecutor) BrickDestroy(host string,
 			logger.Warning("brick path [%v] not mounted, assuming deleted",
 				brick.Path)
 			umountErr = nil
+		} else {
+			if s.DebugUmountFailures() {
+				// in case unmounting failed, grab the output of 'lsof /path/to/brick'
+				commands = []string{
+					fmt.Sprintf("lsof %s", brick.Path),
+				}
+				res, _ = s.RemoteExecutor.ExecCommands(host, commands, 5)
+				logger.Warning("brick path [%s] kept open by:\n%s", brick.Path, res[0].Output)
+			}
 		}
 	}
 

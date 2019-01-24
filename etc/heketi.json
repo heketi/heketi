@@ -58,7 +58,9 @@
       "xfs_sw": "Optional: Specify number of data disks in the underlying RAID device",
       "xfs_su": "Optional: Specifies a stripe unit or RAID chunk size.",
       "backup_lvm_metadata": false,
-      "gluster_cli_timeout": "Optional: Timeout, in seconds, passed to the gluster cli invocations"
+      "gluster_cli_timeout": "Optional: Timeout, in seconds, passed to the gluster cli invocations",
+      "_debug_umount_failures": "Optional: boolean to capture more details in case brick unmounting fails",
+      "debug_umount_failures": true
     },
 
     "_kubeexec_comment": "Kubernetes configuration",
@@ -76,7 +78,9 @@
       "xfs_sw": "Optional: Specify number of data disks in the underlying RAID device.",
       "xfs_su": "Optional: Specifies a stripe unit or RAID chunk size.",
       "backup_lvm_metadata": false,
-      "gluster_cli_timeout": "Optional: Timeout, in seconds, passed to the gluster cli invocations"
+      "gluster_cli_timeout": "Optional: Timeout, in seconds, passed to the gluster cli invocations",
+      "_debug_umount_failures": "Optional: boolean to capture more details in case brick unmounting fails",
+      "debug_umount_failures": true
     },
 
     "_db_comment": "Database file name",
