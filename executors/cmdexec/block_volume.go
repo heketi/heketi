@@ -52,19 +52,38 @@ func (s *CmdExecutor) BlockVolumeCreate(host string,
 
 	// Execute command
 	results, err := s.RemoteExecutor.ExecCommands(host, commands, 10)
-	if err := rex.AnyError(results, err); err != nil {
+	if err != nil {
 		return nil, err
 	}
 
-	var blockVolumeCreate CliOutput
-	err = json.Unmarshal([]byte(results[0].Output), &blockVolumeCreate)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to get the block volume create info for block volume %v", volume.Name)
+	output := results[0].Output
+	if output == "" {
+		output = results[0].ErrOutput
 	}
 
-	if blockVolumeCreate.Result == "FAIL" {
-		logger.LogError("%v", blockVolumeCreate.ErrMsg)
-		return nil, fmt.Errorf("%v", blockVolumeCreate.ErrMsg)
+	var blockVolumeCreate CliOutput
+	err = json.Unmarshal([]byte(output), &blockVolumeCreate)
+	if err != nil {
+		logger.Warning("Unable to parse gluster-block output [%v]: %v",
+			output, err)
+		err = fmt.Errorf(
+			"Unparsable error during block volume create: %v",
+			output)
+	} else if blockVolumeCreate.Result == "FAIL" {
+		// the fail flag was set in the output json
+		err = fmt.Errorf("Failed to create block volume: %v",
+			blockVolumeCreate.ErrMsg)
+	} else if !results.Ok() {
+		// the fail flag is not set but the command still
+		// exited non-zero for some reason
+		err = fmt.Errorf("Failed to create block volume: %v",
+			results[0].Error())
+	}
+
+	// if any of the cases above set err, log it and return
+	if err != nil {
+		logger.LogError("%v", err)
+		return nil, err
 	}
 
 	var blockVolumeInfo executors.BlockVolumeInfo
