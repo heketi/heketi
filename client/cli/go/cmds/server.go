@@ -177,7 +177,7 @@ var getModeCommand = &cobra.Command{
 	Use:     "get",
 	Short:   "Print current server mode",
 	Long:    "Print current server mode",
-	Example: `  $ heketi-cli server operations info`,
+	Example: `  $ heketi-cli server mode get`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		heketi, err := newHeketiClient()
 		if err != nil {
@@ -196,7 +196,7 @@ var setModeCommand = &cobra.Command{
 	Use:     "set [normal|local-client|read-only]",
 	Short:   "Print current server mode",
 	Long:    "Print current server mode",
-	Example: `  $ heketi-cli server operations info`,
+	Example: `  $ heketi-cli server mode set read-only`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) < 1 {
 			return fmt.Errorf("missing mode argument")
