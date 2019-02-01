@@ -12,6 +12,71 @@ Troubleshooting Guide
 
 ## Management
 
+### Heketi starts up with a warning saying:
+
+    "Heketi has existing pending operations in the db."
+
+In the newest versions of Heketi the system has support for
+automatically cleaning up most operations that are either failed
+(started, encountered an error, but failed to rollback) and stale
+(server restarted before operation finished) operation.
+
+Until an operation can be cleaned up from the storage system an
+operation will remain in the Heketi database so that Heketi knows what
+must be checked on the storage system. The items (bricks, volumes, etc.)
+associated with that operation continue to virtually take up space so
+that Heketi does not double allocate that space on the storage system
+until it is sure that the items have been fully removed. Clean up may be
+retried many times.
+
+To view operations & pending operation metadata on a running server the
+commands `heketi-cli server operations info` and `heketi-cli server
+operations list` may be used. The first gives a tally of the state of
+the operations the server knows about.  The latter command lists all
+pending operations stored in db.  The command `heketi-cli server
+operations info <OP-ID>` can be used to get more detailed information
+about a particular pending operation.
+
+The server will attempt to clean up a short time after it starts and
+every so often while it is running. Additionally, an administrator may
+request that Heketi run the clean up process by running the command
+`heketi-cli server operations cleanup` or `heketi-cli server operations
+cleanup [OP-ID-1] [OP-ID-2] ... [OP-ID-N]`.  The first command will
+instruct Heketi to try and clean up all stale or failed operations in
+the db. The latter command requests Heketi try and clean up only those
+operations with the given IDs.
+
+Current versions of Heketi always start up regardless of the presence of
+stale pending operations in the db. If needed, the cleanup procedure of
+exporting the db to JSON, editing it, and re-importing the db still
+applies to the current version.
+
+
+### Preventing Stale Pending Operations
+
+To prevent stale pending operations from appearing in the system one
+needs to avoid stopping the Heketi server while it is processing
+existing operations. To do this, the server must be prevented from
+accepting new requests while the existing requests are processed and
+stopping the server only when the number of in-flight operations is
+zero.
+
+One simple approach to this is activate one of Heketi's administrative
+modes.  To do this run `heketi-cli server mode set local-client` or
+`heketi-cli server mode set read-only`. The former command will stop the
+server from accepting new change requests from all hosts except the
+localhost (127.0.0.1) and the latter will stop the server from accepting
+new change requests from all hosts.  Informational requests (GETs to the
+API) continue to be accepted so clients will be able to continue to wait
+for results and admins can monitor the server.
+
+Run the `heketi-cli server operations info` command and wait until the
+"in-flight" counter is zero. Once it is zero the server can be stopped
+knowing no new operations will be accepted.
+
+
+## Management (Older Versions)
+
 ### Heketi refuses to start and the log lines contain the string:
 
     "Heketi was terminated while performing one or more operations."

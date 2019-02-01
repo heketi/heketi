@@ -178,7 +178,7 @@ func createHeketiEndpointService() *kubeapi.Service {
 	service.APIVersion = "v1"
 	service.ObjectMeta.Name = HeketiStorageEndpointName
 	service.Spec.Ports = []kubeapi.ServicePort{
-		kubeapi.ServicePort{
+		{
 			Port: 1,
 		},
 	}
@@ -203,14 +203,14 @@ func createHeketiStorageEndpoints(c *client.Client,
 
 		// Set Hostname/IP
 		endpoint.Subsets[n].Addresses = []kubeapi.EndpointAddress{
-			kubeapi.EndpointAddress{
+			{
 				IP: host,
 			},
 		}
 
 		// Set to port 1
 		endpoint.Subsets[n].Ports = []kubeapi.EndpointPort{
-			kubeapi.EndpointPort{
+			{
 				Port: 1,
 			},
 		}
@@ -236,7 +236,7 @@ func createHeketiCopyJob(volume *api.VolumeInfoResponse) *batch.Job {
 	job.Spec.Completions = &c
 	job.Spec.Template.ObjectMeta.Name = HeketiStorageJobName
 	job.Spec.Template.Spec.Volumes = []kubeapi.Volume{
-		kubeapi.Volume{
+		{
 			Name: HeketiStorageVolTagName,
 			VolumeSource: kubeapi.VolumeSource{
 				Glusterfs: &kubeapi.GlusterfsVolumeSource{
@@ -245,7 +245,7 @@ func createHeketiCopyJob(volume *api.VolumeInfoResponse) *batch.Job {
 				},
 			},
 		},
-		kubeapi.Volume{
+		{
 			Name: HeketiStorageSecretName,
 			VolumeSource: kubeapi.VolumeSource{
 				Secret: &kubeapi.SecretVolumeSource{
@@ -256,7 +256,7 @@ func createHeketiCopyJob(volume *api.VolumeInfoResponse) *batch.Job {
 	}
 
 	job.Spec.Template.Spec.Containers = []kubeapi.Container{
-		kubeapi.Container{
+		{
 			Name:  "heketi",
 			Image: HeketiStorageJobContainer,
 			Command: []string{
@@ -265,11 +265,11 @@ func createHeketiCopyJob(volume *api.VolumeInfoResponse) *batch.Job {
 				"/heketi",
 			},
 			VolumeMounts: []kubeapi.VolumeMount{
-				kubeapi.VolumeMount{
+				{
 					Name:      HeketiStorageVolTagName,
 					MountPath: "/heketi",
 				},
-				kubeapi.VolumeMount{
+				{
 					Name:      HeketiStorageSecretName,
 					MountPath: "/db",
 				},
