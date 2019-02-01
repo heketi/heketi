@@ -440,7 +440,6 @@ var volumeInfoCommand = &cobra.Command{
 			return err
 		}
 
-		// Create cluster
 		info, err := heketi.VolumeInfo(volumeId)
 		if err != nil {
 			return err
