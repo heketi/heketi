@@ -12,6 +12,7 @@ package cmdexec
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"sync"
 
@@ -20,7 +21,8 @@ import (
 )
 
 var (
-	logger = logging.NewLogger("[cmdexec]", logging.LEVEL_DEBUG)
+	logger     = logging.NewLogger("[cmdexec]", logging.LEVEL_DEBUG)
+	preallocRe = regexp.MustCompile("^[a-zA-Z0-9-_]+$")
 )
 
 type RemoteCommandTransport interface {
@@ -70,6 +72,11 @@ func setWithEnvVariables(config *CmdConfig) {
 		} else {
 			config.DebugUmountFailures = value
 		}
+	}
+
+	env = os.Getenv("HEKETI_BLOCK_VOLUME_DEFAULT_PREALLOC")
+	if env != "" {
+		config.BlockVolumePrealloc = env
 	}
 }
 
@@ -181,4 +188,18 @@ func (c *CmdExecutor) XfsSu() int {
 
 func (c *CmdExecutor) DebugUmountFailures() bool {
 	return c.config.DebugUmountFailures
+}
+
+func (c *CmdExecutor) BlockVolumeDefaultPrealloc() string {
+	defaultValue := "full"
+	if c.config.BlockVolumePrealloc == "" {
+		return defaultValue
+	}
+	if !preallocRe.MatchString(c.config.BlockVolumePrealloc) {
+		logger.Warning(
+			"invalid value for prealloc option [%v], using default",
+			c.config.BlockVolumePrealloc)
+		return defaultValue
+	}
+	return c.config.BlockVolumePrealloc
 }
