@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"text/template"
 
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/kubernetes"
@@ -452,11 +453,47 @@ var volumeInfoCommand = &cobra.Command{
 			}
 			fmt.Fprintf(stdout, string(data))
 		} else {
-			fmt.Fprintf(stdout, "%v", info)
+			printVolumeInfo(info)
 		}
 		return nil
 
 	},
+}
+
+var volumeTemplate = `
+{{- /* remove whitespace */ -}}
+Name: {{.Name}}
+Size: {{.Size}}
+Volume Id: {{.Id}}
+Cluster Id: {{.Cluster}}
+Mount: {{.Mount.GlusterFS.MountPoint}}
+Mount Options: {{ range $k, $v := .Mount.GlusterFS.Options }}{{$k}}={{$v}}{{ end }}
+Block: {{.Block}}
+Free Size: {{.BlockInfo.FreeSize}}
+Reserved Size: {{.BlockInfo.ReservedSize}}
+Block Hosting Restriction: {{.BlockInfo.Restriction}}
+Block Volumes: {{.BlockInfo.BlockVolumes}}
+Durability Type: {{.Durability.Type}}
+{{- if eq .Durability.Type "replicate" }}
+Distributed+Replica: {{.Durability.Replicate.Replica}}
+{{- else if eq .Durability.Type "disperse" }}
+Disperse Data: {{.Durability.Disperse.Data}}
+Disperse Redundancy: {{.Durability.Disperse.Redundancy}}
+{{- end}}
+{{- if .Snapshot.Enable }}
+Snapshot Factor: {{.Snapshot.Factor | printf "%.2f"}}
+{{end}}
+`
+
+func printVolumeInfo(volume *api.VolumeInfoResponse) {
+	t, err := template.New("volume").Parse(volumeTemplate)
+	if err != nil {
+		panic(err)
+	}
+	err = t.Execute(os.Stdout, volume)
+	if err != nil {
+		panic(err)
+	}
 }
 
 var volumeListCommand = &cobra.Command{
