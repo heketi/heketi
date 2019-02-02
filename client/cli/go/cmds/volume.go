@@ -474,11 +474,12 @@ Reserved Size: {{.BlockInfo.ReservedSize}}
 Block Hosting Restriction: {{.BlockInfo.Restriction}}
 Block Volumes: {{.BlockInfo.BlockVolumes}}
 Durability Type: {{.Durability.Type}}
+Distribute Count: {{ . | distributeCount }}
 {{- if eq .Durability.Type "replicate" }}
-Distributed+Replica: {{.Durability.Replicate.Replica}}
+Replica Count: {{.Durability.Replicate.Replica}}
 {{- else if eq .Durability.Type "disperse" }}
-Disperse Data: {{.Durability.Disperse.Data}}
-Disperse Redundancy: {{.Durability.Disperse.Redundancy}}
+Disperse Data Count: {{.Durability.Disperse.Data}}
+Disperse Redundancy Count: {{.Durability.Disperse.Redundancy}}
 {{- end}}
 {{- if .Snapshot.Enable }}
 Snapshot Factor: {{.Snapshot.Factor | printf "%.2f"}}
@@ -486,7 +487,21 @@ Snapshot Factor: {{.Snapshot.Factor | printf "%.2f"}}
 `
 
 func printVolumeInfo(volume *api.VolumeInfoResponse) {
-	t, err := template.New("volume").Parse(volumeTemplate)
+	fm := template.FuncMap{
+		"distributeCount": func(v *api.VolumeInfoResponse) int {
+			switch v.Durability.Type {
+			case api.DurabilityDistributeOnly:
+				return len(v.Bricks)
+			case api.DurabilityReplicate:
+				return len(v.Bricks) / v.Durability.Replicate.Replica
+			case api.DurabilityEC:
+				return len(v.Bricks) / (v.Durability.Disperse.Data + v.Durability.Disperse.Redundancy)
+			default:
+				return 0
+			}
+		},
+	}
+	t, err := template.New("volume").Funcs(fm).Parse(volumeTemplate)
 	if err != nil {
 		panic(err)
 	}
