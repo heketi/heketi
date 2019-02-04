@@ -21,4 +21,6 @@ type CmdConfig struct {
 	LVChunkSize          string `json:"lv_chunksize"`
 	XfsSw                int    `json:"xfs_sw"`
 	XfsSu                int    `json:"xfs_su"`
+	DebugUmountFailures  bool   `json:"debug_umount_failures"`
+	BlockVolumePrealloc  string `json:"block_prealloc"`
 }

@@ -161,20 +161,27 @@ func (d *DeviceEntry) ConflictString() string {
 	return fmt.Sprintf("Unable to delete device [%v] because it contains bricks", d.Info.Id)
 }
 
-func (d *DeviceEntry) Delete(tx *bolt.Tx) error {
-	godbc.Require(tx != nil)
-
+func (d *DeviceEntry) CheckDelete() error {
 	// Don't delete device unless it is in failed state
 	if d.State != api.EntryStateFailed {
 		return logger.LogError("device: %v is not in failed state", d.Info.Id)
 	}
-
 	// Check if the device still has bricks
 	// Ideally, if the device is in failed state it should have no bricks
 	// This is just for bricks with empty paths
 	if d.HasBricks() {
 		logger.LogError(d.ConflictString())
 		return ErrConflict
+	}
+
+	return nil
+}
+
+func (d *DeviceEntry) Delete(tx *bolt.Tx) error {
+	godbc.Require(tx != nil)
+
+	if err := d.CheckDelete(); err != nil {
+		return err
 	}
 
 	return EntryDelete(tx, d, d.Info.Id)

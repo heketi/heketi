@@ -40,6 +40,9 @@ func (c *Client) OperationsInfo() (*api.OperationsInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	if r.StatusCode != http.StatusOK {
+		return nil, utils.GetErrorFromResponse(r)
+	}
 	var oi api.OperationsInfo
 	err = utils.GetJsonFromResponse(r, &oi)
 	if err != nil {
@@ -65,6 +68,9 @@ func (c *Client) PendingOperationList() (*api.PendingOperationListResponse, erro
 	r, err := c.do(req)
 	if err != nil {
 		return nil, err
+	}
+	if r.StatusCode != http.StatusOK {
+		return nil, utils.GetErrorFromResponse(r)
 	}
 	var ol api.PendingOperationListResponse
 	err = utils.GetJsonFromResponse(r, &ol)
@@ -93,6 +99,9 @@ func (c *Client) PendingOperationDetails(
 	r, err := c.do(req)
 	if err != nil {
 		return nil, err
+	}
+	if r.StatusCode != http.StatusOK {
+		return nil, utils.GetErrorFromResponse(r)
 	}
 	var pd api.PendingOperationDetails
 	err = utils.GetJsonFromResponse(r, &pd)
