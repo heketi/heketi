@@ -234,7 +234,7 @@ var volumeCreateCommand = &cobra.Command{
 				}
 				fmt.Fprintf(stdout, string(data))
 			} else {
-				fmt.Fprintf(stdout, "%v", volume)
+				printVolumeInfo(volume)
 			}
 		}
 
@@ -314,7 +314,7 @@ var volumeExpandCommand = &cobra.Command{
 			}
 			fmt.Fprintf(stdout, string(data))
 		} else {
-			fmt.Fprintf(stdout, "%v", volume)
+			printVolumeInfo(volume)
 		}
 		return nil
 	},
@@ -367,7 +367,7 @@ var volumeBlockHostingRestrictionLockCommand = &cobra.Command{
 			}
 			fmt.Fprintf(stdout, string(data))
 		} else {
-			fmt.Fprintf(stdout, "%v", volume)
+			printVolumeInfo(volume)
 		}
 		return nil
 	},
@@ -414,7 +414,7 @@ var volumeBlockHostingRestrictionUnlockCommand = &cobra.Command{
 			}
 			fmt.Fprintf(stdout, string(data))
 		} else {
-			fmt.Fprintf(stdout, "%v", volume)
+			printVolumeInfo(volume)
 		}
 		return nil
 	},
@@ -582,7 +582,7 @@ var volumeCloneCommand = &cobra.Command{
 			}
 			fmt.Fprintf(stdout, string(data))
 		} else {
-			fmt.Fprintf(stdout, "%v", volume)
+			printVolumeInfo(volume)
 		}
 		return nil
 	},
