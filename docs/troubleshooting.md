@@ -75,6 +75,29 @@ Run the `heketi-cli server operations info` command and wait until the
 knowing no new operations will be accepted.
 
 
+### Checking database consistency
+
+In older versions of Heketi, the database could become inconsistent due to bugs
+in those versions of the software. To check the consistency of the database, the
+cli variant of the command is `heketi-cli db check` and the server variant of
+the command is `heketi db check`. These commands only need access to the
+database. They don't collect or compare data with gluster.
+
+
+### Comparing state in heketi database with the state of Gluster
+
+Heketi manages Gluster Storage pools and stores the state in its database. In some cases, the state of Gluster may diverge from that stored in the database either due to bugs or due to activities performed directly on Gluster Storage pools bypassing Heketi. To summarize such differences, run the `heketi-cli server state examine gluster` command or `heketi offline state examine gluster --config /path/to/heketi.config.json` command. It fetches the following data from Gluster pools:
+  1. Gluster volume info
+  2. Blockvolumes list
+  3. Bricks mount information
+  4. Device information from LVM
+
+The command reports the data collected and also the following comparisons
+  1. Volume list of heketi with that of gluster volume info.
+
+Known issues:
+offline mode might not work with kubeexec executor if not run with right privileges.
+
 ## Management (Older Versions)
 
 ### Heketi refuses to start and the log lines contain the string:
