@@ -226,8 +226,10 @@ type ClusterFlags struct {
 
 type Cluster struct {
 	Volumes []VolumeInfoResponse `json:"volumes"`
-	Nodes   []NodeInfoResponse   `json:"nodes"`
-	Id      string               `json:"id"`
+	//currently BlockVolumes will be used only for metrics
+	BlockVolumes []BlockVolumeInfoResponse `json:"blockvolumes,omitempty"`
+	Nodes        []NodeInfoResponse        `json:"nodes"`
+	Id           string                    `json:"id"`
 	ClusterFlags
 }
 
