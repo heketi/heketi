@@ -42,6 +42,8 @@ func setupSampleDbWithTopology(app *App,
 	clusters, nodes_per_cluster, devices_per_node int,
 	disksize uint64) error {
 
+	zones_per_cluster := nodes_per_cluster
+
 	err := app.db.Update(func(tx *bolt.Tx) error {
 		for c := 0; c < clusters; c++ {
 			cluster := createSampleClusterEntry()
@@ -49,7 +51,7 @@ func setupSampleDbWithTopology(app *App,
 			for n := 0; n < nodes_per_cluster; n++ {
 				node := createSampleNodeEntry()
 				node.Info.ClusterId = cluster.Info.Id
-				node.Info.Zone = n % 2
+				node.Info.Zone = n % zones_per_cluster
 
 				cluster.NodeAdd(node.Info.Id)
 
