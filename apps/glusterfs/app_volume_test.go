@@ -1184,7 +1184,7 @@ func TestVolumeClusterResizeByAddingDevices(t *testing.T) {
 	v = createSampleReplicaVolumeEntry(495, 2)
 	tests.Assert(t, v != nil)
 	err = v.Create(app.db, app.executor)
-	tests.Assert(t, err == nil)
+	tests.Assert(t, err == nil, err)
 
 	// Try to create another volume, but this should fail
 	v = createSampleReplicaVolumeEntry(495, 2)
