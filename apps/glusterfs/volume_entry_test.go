@@ -2772,3 +2772,81 @@ func TestVolumeEntryBlockCapacityLimits(t *testing.T) {
 		tests.Assert(t, err != nil, "expected err != nil, got", err)
 	})
 }
+
+func TestVolumeCreateTooFewZones(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	origZoneChecking := ZoneChecking
+	defer func() {
+		ZoneChecking = origZoneChecking
+	}()
+
+	err := setupSampleDbWithTopologyWithZones(app,
+		1,    // clusters
+		2,    // zones_per_cluster
+		3,    // nodes_per_cluster
+		4,    // devices_per_node,
+		2*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got", err)
+
+	t.Run("ZoneChecking none replica 3", func(t *testing.T) {
+		// Without strict zone checking, a replica-3 volume fits into
+		// two zones.
+		ZoneChecking = ZONE_CHECKING_NONE
+		req := &api.VolumeCreateRequest{}
+		req.Size = 10
+		req.Durability.Type = api.DurabilityReplicate
+		req.Durability.Replicate.Replica = 2
+		v := NewVolumeEntryFromRequest(req)
+
+		err = v.Create(app.db, app.executor)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	})
+
+	t.Run("ZoneChecking invalid replica 3", func(t *testing.T) {
+		// Specifying an invalid string for ZoneChecking behaves
+		// like "none". A replica-3 volume can fit into two zones.
+		ZoneChecking = "invalid"
+		req := &api.VolumeCreateRequest{}
+		req.Size = 10
+		req.Durability.Type = api.DurabilityReplicate
+		req.Durability.Replicate.Replica = 3
+		v := NewVolumeEntryFromRequest(req)
+
+		err = v.Create(app.db, app.executor)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	})
+
+	t.Run("ZoneChecking strict replica 3", func(t *testing.T) {
+		// With strict zone checking, a replica-3 volume does not fit
+		// into two zones.
+		ZoneChecking = ZONE_CHECKING_STRICT
+		req := &api.VolumeCreateRequest{}
+		req.Size = 10
+		req.Durability.Type = api.DurabilityReplicate
+		req.Durability.Replicate.Replica = 3
+		v := NewVolumeEntryFromRequest(req)
+
+		err = v.Create(app.db, app.executor)
+		tests.Assert(t, err == ErrNoSpace, "expected err == ErrNoSpace, got:", err)
+	})
+
+	t.Run("ZoneChecking strict replica 2", func(t *testing.T) {
+		// But a replica-2 fits into the two zones.
+		ZoneChecking = ZONE_CHECKING_STRICT
+		req := &api.VolumeCreateRequest{}
+		req.Size = 10
+		req.Durability.Type = api.DurabilityReplicate
+		req.Durability.Replicate.Replica = 2
+		v := NewVolumeEntryFromRequest(req)
+
+		err = v.Create(app.db, app.executor)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	})
+}
