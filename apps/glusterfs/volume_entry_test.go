@@ -42,7 +42,17 @@ func setupSampleDbWithTopology(app *App,
 	clusters, nodes_per_cluster, devices_per_node int,
 	disksize uint64) error {
 
-	zones_per_cluster := nodes_per_cluster
+	return setupSampleDbWithTopologyWithZones(app,
+		clusters,
+		nodes_per_cluster,
+		nodes_per_cluster,
+		devices_per_node,
+		disksize)
+}
+
+func setupSampleDbWithTopologyWithZones(app *App,
+	clusters, zones_per_cluster, nodes_per_cluster, devices_per_node int,
+	disksize uint64) error {
 
 	err := app.db.Update(func(tx *bolt.Tx) error {
 		for c := 0; c < clusters; c++ {
