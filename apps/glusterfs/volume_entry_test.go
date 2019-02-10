@@ -2905,3 +2905,86 @@ func TestVolumeCreateTooFewZones(t *testing.T) {
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	})
 }
+
+//
+// Test the result of brick placement on an unbalanced node/device distribution.
+// This is to prove that without strict zone mode, we will end up with
+// some bricks in the same zone.
+//
+func TestVolumeCreateUnbalanced(t *testing.T) {
+
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	origZoneChecking := ZoneChecking
+	defer func() {
+		ZoneChecking = origZoneChecking
+	}()
+
+	err := setupSampleDbWithUnbalancedTopology(app, 3, 500*GB)
+	tests.Assert(t, err == nil, "expected err == nil, got", err)
+
+	t.Run("ZoneChecking strict", func(t *testing.T) {
+		ZoneChecking = ZONE_CHECKING_STRICT
+		ok := testVolumeCreateUnbalanced(t, app)
+		tests.Assert(t, ok)
+	})
+
+	// Verify that, without strict zone checking, this topology produces
+	// some volumes that have bricksets that don't span three zones.
+	t.Run("ZoneChecking none", func(t *testing.T) {
+		ZoneChecking = ZONE_CHECKING_NONE
+		ok := testVolumeCreateUnbalanced(t, app)
+		tests.Assert(t, !ok, "Expected to find volume with too few zones")
+	})
+}
+
+func testVolumeCreateUnbalanced(t *testing.T, app *App) bool {
+
+	req := &api.VolumeCreateRequest{}
+	req.Size = 1
+	req.Durability.Type = api.DurabilityReplicate
+	req.Durability.Replicate.Replica = 3
+
+	for i := 0; i < 100; i++ {
+		v := NewVolumeEntryFromRequest(req)
+		err := v.Create(app.db, app.executor)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+		zones := map[int]bool{}
+		err = app.db.View(func(tx *bolt.Tx) error {
+			for _, brickId := range v.Bricks {
+				be, err := NewBrickEntryFromId(tx, brickId)
+				if err != nil {
+					return err
+				}
+				ne, err := NewNodeEntryFromId(tx, be.Info.NodeId)
+				if err != nil {
+					return err
+				}
+
+				zones[ne.Info.Zone] = true
+			}
+
+			return nil
+		})
+		tests.Assert(t, err == nil, err)
+
+		// Usually, we would have to check each brick-set of three
+		// bricks separately to span three zones. But we can't rely on
+		// the order of bricks as they come from the DB. However in our
+		// special case of 1 GB volumes, we will only ever have one
+		// brick-set. So it is ok, to just check whether we have the
+		// correct number of zones across all bricks in the volume.
+		if len(zones) != 3 {
+			logger.Info("Unbalanced volume created in attempt #%v.", i)
+			return false
+		}
+	}
+
+	return true
+}
