@@ -350,6 +350,11 @@ func (a *App) setFromEnvironmentalVariable() {
 	if "" != env {
 		a.conf.PostReqVolumeOptions = env
 	}
+
+	env = os.Getenv("HEKETI_ZONE_CHECKING")
+	if "" != env {
+		a.conf.ZoneChecking = env
+	}
 }
 
 func (a *App) setAdvSettings() {
@@ -386,6 +391,10 @@ func (a *App) setAdvSettings() {
 		PostReqVolumeOptions = a.conf.PostReqVolumeOptions
 	}
 
+	if a.conf.ZoneChecking != "" {
+		logger.Info("Zone checking: '%v'", a.conf.ZoneChecking)
+		ZoneChecking = a.conf.ZoneChecking
+	}
 }
 
 func (a *App) setBlockSettings() {
