@@ -100,6 +100,61 @@ func setupSampleDbWithTopologyWithZones(app *App,
 	return nil
 }
 
+// This creates and unbalanced topology in the sense that the zones
+// do not contain the same number of nodes, but zone #i contains #i
+// nodes. Each node contains zone-number many devices.
+func setupSampleDbWithUnbalancedTopology(app *App,
+	zones int, disksize uint64) error {
+
+	err := app.db.Update(func(tx *bolt.Tx) error {
+		cluster := createSampleClusterEntry()
+
+		for z := 1; z <= zones; z++ {
+			// create zone number nodes in the zone
+			for n := 1; n <= z; n++ {
+				node := createSampleNodeEntry()
+				node.Info.ClusterId = cluster.Info.Id
+				node.Info.Zone = z
+
+				cluster.NodeAdd(node.Info.Id)
+
+				for d := 1; d <= z; d++ {
+					device := createSampleDeviceEntry(
+						node.Info.Id, disksize)
+					node.DeviceAdd(device.Id())
+
+					if err := device.Save(tx); err != nil {
+						return err
+					}
+				}
+
+				if err := node.Save(tx); err != nil {
+					return err
+				}
+
+			}
+		}
+
+		if err := cluster.Save(tx); err != nil {
+			return err
+		}
+
+		var err error
+		_, err = ClusterList(tx)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil
+	}
+
+	return nil
+}
+
 func TestNewVolumeEntry(t *testing.T) {
 	v := NewVolumeEntry()
 
