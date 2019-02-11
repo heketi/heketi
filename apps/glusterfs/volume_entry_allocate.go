@@ -262,6 +262,28 @@ func (v *VolumeEntry) prepForBrickReplacement(db wdb.DB,
 	return
 }
 
+func generateDeviceFilter(db wdb.RODB) (DeviceFilter, error) {
+
+	var filter DeviceFilter = nil
+
+	switch ZoneChecking {
+	case ZONE_CHECKING_STRICT:
+		dzm, err := NewDeviceZoneMapFromDb(db)
+		if err != nil {
+			return nil, err
+		}
+
+		filter = dzm.Filter
+	case ZONE_CHECKING_NONE:
+	default:
+		logger.Warning(
+			"ZoneChecking set to unknown value '%v', "+
+				"treating as 'none'", ZoneChecking)
+	}
+
+	return filter, nil
+}
+
 func (v *VolumeEntry) allocBrickReplacement(db wdb.DB,
 	oldBrickEntry *BrickEntry,
 	oldDeviceEntry *DeviceEntry,
@@ -277,11 +299,25 @@ func (v *VolumeEntry) allocBrickReplacement(db wdb.DB,
 		}
 
 		var err error
+		txdb := wdb.WrapTx(tx)
+		defaultFilter, err := generateDeviceFilter(txdb)
+		if err != nil {
+			return err
+		}
+
+		deviceFilter := func(bs *BrickSet, d *DeviceEntry) bool {
+			if defaultFilter != nil && !defaultFilter(bs, d) {
+				return false
+			}
+
+			return diffDevice(bs, d)
+		}
+
 		placer := PlacerForVolume(v)
 		r, err = placer.Replace(
 			NewClusterDeviceSource(tx, v.Info.Cluster),
 			NewVolumePlacementOpts(v, oldBrickEntry.Info.Size, bs.SetSize),
-			diffDevice, bs, index)
+			deviceFilter, bs, index)
 		if err == ErrNoSpace {
 			// swap error conditions to better match the intent
 			return ErrNoReplacement
@@ -467,7 +503,14 @@ func (v *VolumeEntry) allocBricks(
 	err := db.Update(func(tx *bolt.Tx) error {
 		dsrc := NewClusterDeviceSource(tx, cluster)
 		placer := PlacerForVolume(v)
-		r, e := placer.PlaceAll(dsrc, opts, nil)
+
+		txdb := wdb.WrapTx(tx)
+		deviceFilter, err := generateDeviceFilter(txdb)
+		if err != nil {
+			return err
+		}
+
+		r, e := placer.PlaceAll(dsrc, opts, deviceFilter)
 		if e != nil {
 			return e
 		}
