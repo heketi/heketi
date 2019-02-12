@@ -262,11 +262,15 @@ func (v *VolumeEntry) prepForBrickReplacement(db wdb.DB,
 	return
 }
 
-func generateDeviceFilter(db wdb.RODB) (DeviceFilter, error) {
+func (v *VolumeEntry) generateDeviceFilter(db wdb.RODB) (DeviceFilter, error) {
 
 	var filter DeviceFilter = nil
+	zoneChecking := v.GetZoneCheckingStrategy()
+	if zoneChecking == ZONE_CHECKING_UNSET {
+		zoneChecking = ZoneChecking
+	}
 
-	switch ZoneChecking {
+	switch zoneChecking {
 	case ZONE_CHECKING_STRICT:
 		dzm, err := NewDeviceZoneMapFromDb(db)
 		if err != nil {
@@ -300,7 +304,7 @@ func (v *VolumeEntry) allocBrickReplacement(db wdb.DB,
 
 		var err error
 		txdb := wdb.WrapTx(tx)
-		defaultFilter, err := generateDeviceFilter(txdb)
+		defaultFilter, err := v.generateDeviceFilter(txdb)
 		if err != nil {
 			return err
 		}
@@ -505,7 +509,7 @@ func (v *VolumeEntry) allocBricks(
 		placer := PlacerForVolume(v)
 
 		txdb := wdb.WrapTx(tx)
-		deviceFilter, err := generateDeviceFilter(txdb)
+		deviceFilter, err := v.generateDeviceFilter(txdb)
 		if err != nil {
 			return err
 		}
