@@ -393,7 +393,7 @@ func (a *App) setAdvSettings() {
 
 	if a.conf.ZoneChecking != "" {
 		logger.Info("Zone checking: '%v'", a.conf.ZoneChecking)
-		ZoneChecking = a.conf.ZoneChecking
+		ZoneChecking = ZoneCheckingStrategy(a.conf.ZoneChecking)
 	}
 }
 
