@@ -9,9 +9,12 @@
 
 package glusterfs
 
+type ZoneCheckingStrategy string
+
 const (
-	ZONE_CHECKING_NONE   = "none"
-	ZONE_CHECKING_STRICT = "strict"
+	ZONE_CHECKING_UNSET  ZoneCheckingStrategy = ""
+	ZONE_CHECKING_NONE   ZoneCheckingStrategy = "none"
+	ZONE_CHECKING_STRICT ZoneCheckingStrategy = "strict"
 )
 
 var (
