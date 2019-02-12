@@ -21,6 +21,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/heketi/executors"
+	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/sortedstrings"
 	"github.com/heketi/heketi/pkg/utils"
@@ -3047,4 +3048,92 @@ func testVolumeCreateUnbalanced(t *testing.T, app *App) bool {
 	}
 
 	return true
+}
+
+func TestVolumeExpandStrictZones(t *testing.T) {
+
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopologyWithZones(app, 1, 3, 4, 3, 500*GB)
+	tests.Assert(t, err == nil, "expected err == nil, got", err)
+
+	var singleZoneNode string
+	app.db.View(func(tx *bolt.Tx) error {
+		zc := map[int]int{}
+		zn := map[int]string{}
+		nids, err := NodeList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		for _, nid := range nids {
+			node, err := NewNodeEntryFromId(tx, nid)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			zc[node.Info.Zone] += 1
+			zn[node.Info.Zone] = nid
+		}
+		tests.Assert(t, len(zc) == 3, "expected 3 zones, got:", len(zc))
+		for z, count := range zc {
+			if count == 1 {
+				singleZoneNode = zn[z]
+				break
+			}
+		}
+		return nil
+	})
+	tests.Assert(t, singleZoneNode != "", "failed to find single zone node")
+
+	req := &api.VolumeCreateRequest{}
+	req.Size = 1
+	req.Durability.Type = api.DurabilityReplicate
+	req.Durability.Replicate.Replica = 3
+	req.GlusterVolumeOptions = []string{"user.heketi.zone-checking strict"}
+
+	v := NewVolumeEntryFromRequest(req)
+	err = v.Create(app.db, app.executor)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	vexpand := v.Info.Id
+
+	t.Run("nodeDown", func(t *testing.T) {
+		// disable the node leaving only three nodes and two zones
+		// online
+		var v2x *VolumeEntry
+		app.db.Update(func(tx *bolt.Tx) error {
+			var err error
+			v2x, err = NewVolumeEntryFromId(tx, vexpand)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			node, err := NewNodeEntryFromId(tx, singleZoneNode)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			err = node.SetState(
+				wdb.WrapTx(tx),
+				app.executor,
+				api.EntryStateOffline)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			return nil
+		})
+		err = v2x.Expand(app.db, app.executor, 50)
+		tests.Assert(t, err != nil, "expected err != nil, got:", err)
+	})
+
+	t.Run("nodeUp", func(t *testing.T) {
+		// ensure that the single node in a zone is online
+		var v2x *VolumeEntry
+		app.db.Update(func(tx *bolt.Tx) error {
+			var err error
+			v2x, err = NewVolumeEntryFromId(tx, vexpand)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			node, err := NewNodeEntryFromId(tx, singleZoneNode)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			err = node.SetState(
+				wdb.WrapTx(tx),
+				app.executor,
+				api.EntryStateOnline)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			return nil
+		})
+		err = v2x.Expand(app.db, app.executor, 50)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	})
 }
