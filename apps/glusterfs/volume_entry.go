@@ -44,6 +44,7 @@ const (
 
 	HEKETI_ARBITER_KEY           = "user.heketi.arbiter"
 	HEKETI_AVERAGE_FILE_SIZE_KEY = "user.heketi.average-file-size"
+	HEKETI_ZONE_CHECKING_KEY     = "user.heketi.zone-checking"
 )
 
 var (
@@ -313,6 +314,18 @@ func (v *VolumeEntry) GetAverageFileSize() uint64 {
 		}
 	}
 	return averageFileSize
+}
+
+// GetZoneCheckingStrategy returns a ZoneCheckingStrategy based on
+// the volume's options.
+func (v *VolumeEntry) GetZoneCheckingStrategy() ZoneCheckingStrategy {
+	for _, s := range v.GlusterVolumeOptions {
+		r := strings.Split(s, " ")
+		if len(r) == 2 && r[0] == HEKETI_ZONE_CHECKING_KEY {
+			return ZoneCheckingStrategy(r[1])
+		}
+	}
+	return ZONE_CHECKING_UNSET
 }
 
 func (v *VolumeEntry) BrickAdd(id string) {
