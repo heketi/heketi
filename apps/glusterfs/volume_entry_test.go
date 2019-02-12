@@ -3137,3 +3137,125 @@ func TestVolumeExpandStrictZones(t *testing.T) {
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	})
 }
+
+func TestVolumeReplaceBrickZoneChecking(t *testing.T) {
+	t.Run("NonStrict", func(t *testing.T) {
+		testVolumeReplaceBrickZoneChecking(t,
+			[]string{},
+			false)
+	})
+	t.Run("Strict", func(t *testing.T) {
+		testVolumeReplaceBrickZoneChecking(t,
+			[]string{"user.heketi.zone-checking strict"},
+			true)
+	})
+}
+
+func testVolumeReplaceBrickZoneChecking(
+	t *testing.T, volOpts []string, expectFail bool) {
+
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopologyWithZones(app, 1, 3, 4, 1, 500*GB)
+	tests.Assert(t, err == nil, "expected err == nil, got", err)
+
+	var singleZoneNode string
+	app.db.View(func(tx *bolt.Tx) error {
+		zc := map[int]int{}
+		zn := map[int]string{}
+		nids, err := NodeList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		for _, nid := range nids {
+			node, err := NewNodeEntryFromId(tx, nid)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			zc[node.Info.Zone] += 1
+			zn[node.Info.Zone] = nid
+		}
+		tests.Assert(t, len(zc) == 3, "expected 3 zones, got:", len(zc))
+		for z, count := range zc {
+			if count == 1 {
+				singleZoneNode = zn[z]
+				break
+			}
+		}
+		return nil
+	})
+	tests.Assert(t, singleZoneNode != "", "failed to find single zone node")
+
+	req := &api.VolumeCreateRequest{}
+	req.Size = 1
+	req.Durability.Type = api.DurabilityReplicate
+	req.Durability.Replicate.Replica = 3
+	req.GlusterVolumeOptions = volOpts
+
+	v := NewVolumeEntryFromRequest(req)
+	err = v.Create(app.db, app.executor)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	var brickNames []string
+	err = app.db.View(func(tx *bolt.Tx) error {
+		for _, brick := range v.Bricks {
+			be, err := NewBrickEntryFromId(tx, brick)
+			if err != nil {
+				return err
+			}
+			ne, err := NewNodeEntryFromId(tx, be.Info.NodeId)
+			if err != nil {
+				return err
+			}
+			brickName := fmt.Sprintf("%v:%v",
+				ne.Info.Hostnames.Storage[0], be.Info.Path)
+			brickNames = append(brickNames, brickName)
+		}
+		return nil
+	})
+	app.xo.MockVolumeInfo = func(host string, volume string) (*executors.Volume, error) {
+		var bricks []executors.Brick
+		for _, b := range brickNames {
+			bricks = append(bricks, executors.Brick{Name: b})
+		}
+		v := &executors.Volume{
+			Bricks: executors.Bricks{
+				BrickList: bricks,
+			},
+		}
+		return v, nil
+	}
+	app.xo.MockHealInfo = func(host string, volume string) (*executors.HealInfo, error) {
+		var bricks executors.HealInfoBricks
+		for _, b := range brickNames {
+			bricks.BrickList = append(bricks.BrickList,
+				executors.BrickHealStatus{Name: b, NumberOfEntries: "0"})
+		}
+		h := &executors.HealInfo{
+			Bricks: bricks,
+		}
+		return h, nil
+	}
+
+	app.db.Update(func(tx *bolt.Tx) error {
+		var err error
+		node, err := NewNodeEntryFromId(tx, singleZoneNode)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		err = node.SetState(
+			wdb.WrapTx(tx),
+			app.executor,
+			api.EntryStateOffline)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		err = node.SetState(
+			wdb.WrapTx(tx),
+			app.executor,
+			api.EntryStateFailed)
+		if expectFail {
+			tests.Assert(t, err != nil, "expected err != nil, got:", err)
+		} else {
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		}
+		return nil
+	})
+}
