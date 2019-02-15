@@ -174,6 +174,9 @@ func (hc *NodeHealthCache) toProbe() ([]*NodeHealthStatus, error) {
 
 func (s *NodeHealthStatus) update(e executors.Executor) {
 	// TODO: add ability to skip check if node was already recently checked
+	if !s.Up {
+		// skip  glusterd status check if node  is not  marked as  online
+	}
 	err := e.GlusterdCheck(s.Host)
 	s.Up = (err == nil)
 	s.LastUpdate = healthNow()
