@@ -650,6 +650,13 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Method:      "GET",
 			Pattern:     "/internal/state/examine/gluster",
 			HandlerFunc: a.ExamineGluster},
+
+		// Healthz
+		rest.Route{
+			Name:        "Healthz",
+			Method:      "GET",
+			Pattern:     "/healthz",
+			HandlerFunc: a.Healthz},
 	}
 
 	// Register all routes from the App
