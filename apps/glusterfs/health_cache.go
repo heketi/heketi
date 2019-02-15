@@ -83,11 +83,8 @@ func (hc *NodeHealthCache) Refresh() error {
 func (hc *NodeHealthCache) updateNode(s *NodeHealthStatus) {
 	hc.lock.Lock()
 	defer hc.lock.Unlock()
-	if prev, found := hc.nodes[s.NodeId]; found {
-		s = prev
-	} else {
-		hc.nodes[s.NodeId] = s
-	}
+
+	hc.nodes[s.NodeId] = s
 	s.update(hc.exec)
 }
 
