@@ -154,14 +154,17 @@ func (hc *NodeHealthCache) toProbe() ([]*NodeHealthStatus, error) {
 			if err != nil {
 				return err
 			}
-			// Ignore if the node is not online
-			if !node.isOnline() {
-				continue
-			}
+
 			nhs := &NodeHealthStatus{
 				NodeId: nodeId,
 				Host:   node.Info.Hostnames.Manage[0],
 			}
+			// Ignore if the node is not online
+			if !node.isOnline() {
+				continue
+			}
+			nhs.Up = true
+
 			probeNodes = append(probeNodes, nhs)
 		}
 		return nil
