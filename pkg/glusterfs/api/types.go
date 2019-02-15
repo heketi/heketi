@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"time"
 
 	"github.com/go-ozzo/ozzo-validation"
 	"github.com/go-ozzo/ozzo-validation/is"
@@ -677,4 +678,17 @@ func ValidateIds(v interface{}) error {
 		}
 	}
 	return nil
+}
+
+type NodeHealthStatus struct {
+	NodeId     string    `json:"node"`
+	Host       string    `json:"host"`
+	Up         bool      `json:"online"`
+	LastUpdate time.Time `json:"updated"`
+}
+
+type Healthz struct {
+	DbState      string             `json:"db-state"`
+	NodesStatus  []NodeHealthStatus `json:"nodes"`
+	ClusterHeath string             `json:"cluster-state,omitempty"`
 }
