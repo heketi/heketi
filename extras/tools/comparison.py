@@ -53,6 +53,9 @@ def main():
     parser.add_argument(
         '--match-storage-class', '-S', action='append',
         help='Match one or more storage class names')
+    parser.add_argument(
+        '--skip-block', action='store_true',
+        help='Exclude block volumes from output')
 
     cli = parser.parse_args()
 
@@ -78,7 +81,8 @@ def main():
             sys.stderr.write('ignoring: {}\n'.format(ign))
     compare(summary, check, cli.skip_ok,
             header=(not cli.no_header),
-            show_pending=(cli.pending))
+            show_pending=(cli.pending),
+            skip_block=cli.skip_block)
     return
 
 
@@ -122,6 +126,17 @@ def compile_heketi(summary, heketi):
         summary[n] = {'id': vid, 'heketi': True}
         if v['Pending']['Id']:
             summary[n]['heketi-pending'] = True
+        if v['Info'].get('block'):
+            summary[n]['heketi-bhv'] = True
+    for bvid, bv in heketi['blockvolumeentries'].items():
+        n = bv['Info']['name']
+        summary[n] = {
+            'block': True,
+            'heketi': True,
+            'id': bvid,
+        }
+        if bv['Pending']['Id']:
+            summary[n]['heketi-pending'] = True
 
 
 def compile_gvinfo(summary, gvinfo):
@@ -135,18 +150,26 @@ def compile_gvinfo(summary, gvinfo):
 def compile_pvdata(summary, pvdata, matchsc):
     for elem in pvdata['items']:
         g = elem.get('spec', {}).get('glusterfs', {})
-        if not g:
+        ma = elem.get('metadata', {}).get('annotations', {})
+        if not g and 'glusterBlockShare' not in ma:
             continue
         sc = elem.get('spec', {}).get('storageClassName', '')
         if matchsc and sc not in matchsc:
             sys.stderr.write(
                 'ignoring: {} from storage class "{}"\n'.format(g["path"], sc))
             continue
-        vn = g['path']
-        if vn in summary:
-            summary[vn]['pvs'] = True
+        if 'path' in g:
+            vn = g['path']
+            block = False
+        elif 'glusterBlockShare' in ma:
+            vn = ma['glusterBlockShare']
+            block = True
         else:
-            summary[vn] = {'pvs': True}
+            raise KeyError('path (volume name) not found in PV data')
+        dest = summary.setdefault(vn, {})
+        dest['pvs'] = True
+        if block:
+            dest['block'] = True
 
 
 def compile_summary(cli, gvinfo, heketi, pvdata):
@@ -160,25 +183,41 @@ def compile_summary(cli, gvinfo, heketi, pvdata):
     return summary
 
 
-def compare(summary, check, skip_ok=False, header=True, show_pending=False):
+def _check_item(vname, vstate, check):
+    tocheck = set(check)
+    flags = []
+    if vstate.get('block'):
+        flags.append('BV')
+        # block volumes will never be found in gluster info
+        tocheck.discard("gluster")
+    m = set(c for c in tocheck if vstate.get(c))
+    flags.extend(sorted(m))
+    return m == tocheck, flags
+
+
+def compare(summary, check, skip_ok=False, header=True, show_pending=False,
+            skip_block=False):
     if header:
         _print = Printer(['Volume-Name', 'Match', 'Volume-ID'])
     else:
         _print = Printer([])
 
     for vn, vs in summary.items():
-        ok = all(vs.get(c) for c in check)
+        ok, flags = _check_item(vn, vs, check)
         if ok and skip_ok:
+            continue
+        if 'BV' in flags and skip_block:
             continue
         heketi_info = vs.get('id', '')
         if show_pending and vs.get('heketi-pending'):
             heketi_info += '/pending'
+        if vs.get('heketi-bhv'):
+            heketi_info += '/block-hosting'
         if ok:
-            _print.line(vn, 'ok', heketi_info)
+            sts = 'ok'
         else:
-            matches = ','.join(
-                sorted(k for k in check if vs.get(k)))
-            _print.line(vn, matches, heketi_info)
+            sts = ','.join(flags)
+        _print.line(vn, sts, heketi_info)
 
 
 class Printer(object):
