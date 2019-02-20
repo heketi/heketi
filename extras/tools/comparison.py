@@ -19,13 +19,20 @@ Compare outputs of gluster and/or heketi and/or openshift/k8s.
 Prints lists of volumes where sources differ.
 """
 
-EXAMPLE= """
+EXAMPLE = """
 Example:
    $ python3 comparison.py
         --gluster-info gluster-volume-info.txt
         --heketi-json heketi-db.json
         --pv-yaml openshift-pv-yaml.yaml
 """
+
+# flag constants
+IN_GLUSTER = 'gluster'
+IN_HEKETI = 'heketi'
+IN_PVS = 'pvs'
+IS_BLOCK = 'BV'
+
 
 def main():
     parser = argparse.ArgumentParser(description=DESC, epilog=EXAMPLE)
@@ -62,13 +69,13 @@ def main():
     check = []
     gvinfo = heketi = pvdata = None
     if cli.gluster_info:
-        check.append('gluster')
+        check.append(IN_GLUSTER)
         gvinfo = parse_gvinfo(cli.gluster_info)
     if cli.heketi_json:
-        check.append('heketi')
+        check.append(IN_HEKETI)
         heketi = parse_heketi(cli.heketi_json)
     if cli.pv_yaml:
-        check.append('pvs')
+        check.append(IN_PVS)
         pvdata = parse_oshift(cli.pv_yaml)
 
     if not check:
@@ -123,7 +130,7 @@ def parse_gvinfo(gvi):
 def compile_heketi(summary, heketi):
     for vid, v in heketi['volumeentries'].items():
         n = v['Info']['name']
-        summary[n] = {'id': vid, 'heketi': True}
+        summary[n] = {'id': vid, IN_HEKETI: True}
         if v['Pending']['Id']:
             summary[n]['heketi-pending'] = True
         if v['Info'].get('block'):
@@ -131,8 +138,8 @@ def compile_heketi(summary, heketi):
     for bvid, bv in heketi['blockvolumeentries'].items():
         n = bv['Info']['name']
         summary[n] = {
+            IN_HEKETI: True,
             'block': True,
-            'heketi': True,
             'id': bvid,
         }
         if bv['Pending']['Id']:
@@ -142,9 +149,9 @@ def compile_heketi(summary, heketi):
 def compile_gvinfo(summary, gvinfo):
     for vn in gvinfo:
         if vn in summary:
-            summary[vn]['gluster'] = True
+            summary[vn][IN_GLUSTER] = True
         else:
-            summary[vn] = {'gluster': True}
+            summary[vn] = {IN_GLUSTER: True}
 
 
 def compile_pvdata(summary, pvdata, matchsc):
@@ -167,7 +174,7 @@ def compile_pvdata(summary, pvdata, matchsc):
         else:
             raise KeyError('path (volume name) not found in PV data')
         dest = summary.setdefault(vn, {})
-        dest['pvs'] = True
+        dest[IN_PVS] = True
         if block:
             dest['block'] = True
 
@@ -187,9 +194,9 @@ def _check_item(vname, vstate, check):
     tocheck = set(check)
     flags = []
     if vstate.get('block'):
-        flags.append('BV')
+        flags.append(IS_BLOCK)
         # block volumes will never be found in gluster info
-        tocheck.discard("gluster")
+        tocheck.discard(IN_GLUSTER)
     m = set(c for c in tocheck if vstate.get(c))
     flags.extend(sorted(m))
     return m == tocheck, flags
