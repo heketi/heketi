@@ -50,6 +50,9 @@ def main():
     parser.add_argument(
         '--ignore', '-I', action='append',
         help='Exlude given volume name (multiple allowed)')
+    parser.add_argument(
+        '--match-storage-class', '-S', action='append',
+        help='Match one or more storage class names')
 
     cli = parser.parse_args()
 
@@ -69,7 +72,7 @@ def main():
         parser.error(
             "Must provide: --gluster-info OR --heketi-json OR --pv-yaml")
 
-    summary = compile_summary(gvinfo, heketi, pvdata)
+    summary = compile_summary(cli, gvinfo, heketi, pvdata)
     for ign in (cli.ignore or []):
         if summary.pop(ign, None):
             sys.stderr.write('ignoring: {}\n'.format(ign))
@@ -129,10 +132,15 @@ def compile_gvinfo(summary, gvinfo):
             summary[vn] = {'gluster': True}
 
 
-def compile_pvdata(summary, pvdata):
+def compile_pvdata(summary, pvdata, matchsc):
     for elem in pvdata['items']:
         g = elem.get('spec', {}).get('glusterfs', {})
         if not g:
+            continue
+        sc = elem.get('spec', {}).get('storageClassName', '')
+        if matchsc and sc not in matchsc:
+            sys.stderr.write(
+                'ignoring: {} from storage class "{}"\n'.format(g["path"], sc))
             continue
         vn = g['path']
         if vn in summary:
@@ -141,14 +149,14 @@ def compile_pvdata(summary, pvdata):
             summary[vn] = {'pvs': True}
 
 
-def compile_summary(gvinfo, heketi, pvdata):
+def compile_summary(cli, gvinfo, heketi, pvdata):
     summary = {}
     if heketi:
         compile_heketi(summary, heketi)
     if gvinfo:
         compile_gvinfo(summary, gvinfo)
     if pvdata:
-        compile_pvdata(summary, pvdata)
+        compile_pvdata(summary, pvdata, matchsc=cli.match_storage_class)
     return summary
 
 
