@@ -63,9 +63,17 @@ def main():
     parser.add_argument(
         '--skip-block', action='store_true',
         help='Exclude block volumes from output')
+    parser.add_argument(
+        '--bricks', action='store_true',
+        help='Compare bricks rather than volumes')
 
     cli = parser.parse_args()
+    if cli.bricks:
+        return examine_bricks(cli)
+    return examine_volumes(cli)
 
+
+def examine_volumes(cli):
     check = []
     gvinfo = heketi = pvdata = None
     if cli.gluster_info:
@@ -91,6 +99,25 @@ def main():
             show_pending=(cli.pending),
             skip_block=cli.skip_block)
     return
+
+
+def examine_bricks(cli):
+    check = []
+    gvinfo = heketi = None
+    if cli.gluster_info:
+        check.append(IN_GLUSTER)
+        gvinfo = parse_gvinfo(cli.gluster_info)
+    if cli.heketi_json:
+        check.append(IN_HEKETI)
+        heketi = parse_heketi(cli.heketi_json)
+
+    if not check:
+        parser.error(
+            "Must provide: --gluster-info and --heketi-json")
+
+    summary = compile_brick_summary(cli, gvinfo, heketi)
+    compare_bricks(summary, check,
+                   skip_ok=cli.skip_ok)
 
 
 def parse_heketi(h_json):
@@ -146,12 +173,34 @@ def compile_heketi(summary, heketi):
             summary[n]['heketi-pending'] = True
 
 
+def compile_heketi_bricks(summary, heketi):
+    for bid, b in heketi['brickentries'].items():
+        path = b['Info']['path']
+        node_id = b['Info']['node']
+        vol_id = b['Info']['volume']
+        host = (heketi['nodeentries'][node_id]
+                      ['Info']['hostnames']['storage'][0])
+        vol_name = heketi['volumeentries'][vol_id]['Info']['name']
+        fbp = '{}:{}'.format(host, path)
+        dest = summary.setdefault(fbp, {})
+        dest[IN_HEKETI] = True
+        dest['heketi_volume'] = vol_name
+
+
 def compile_gvinfo(summary, gvinfo):
     for vn in gvinfo:
         if vn in summary:
             summary[vn][IN_GLUSTER] = True
         else:
             summary[vn] = {IN_GLUSTER: True}
+
+
+def compile_gvinfo_bricks(summary, gvinfo):
+    for vn, content in gvinfo.items():
+        for bn in content:
+            dest = summary.setdefault(bn, {})
+            dest[IN_GLUSTER] = True
+            dest['gluster_volume'] = vn
 
 
 def compile_pvdata(summary, pvdata, matchsc):
@@ -190,6 +239,15 @@ def compile_summary(cli, gvinfo, heketi, pvdata):
     return summary
 
 
+def compile_brick_summary(cli, gvinfo, heketi):
+    summary = {}
+    if gvinfo:
+        compile_gvinfo_bricks(summary, gvinfo)
+    if heketi:
+        compile_heketi_bricks(summary, heketi)
+    return summary
+
+
 def _check_item(vname, vstate, check):
     tocheck = set(check)
     flags = []
@@ -225,6 +283,43 @@ def compare(summary, check, skip_ok=False, header=True, show_pending=False,
         else:
             sts = ','.join(flags)
         _print.line(vn, sts, heketi_info)
+
+
+def _check_brick(bpath, bstate, check):
+    tocheck = set(check)
+    flags = []
+    volumes = []
+    m = set(c for c in tocheck if bstate.get(c))
+    flags.extend(sorted(m))
+    gv = bstate.get('gluster_volume')
+    hv = bstate.get('heketi_volume')
+    ok = False
+    if m == tocheck and gv == hv:
+        ok = True
+        volumes = ['match={}'.format(gv)]
+    else:
+        if gv:
+            volumes.append('gluster={}'.format(gv))
+        if hv:
+            volumes.append('heketi={}'.format(hv))
+    return ok, flags, volumes
+
+
+def compare_bricks(summary, check, header=True, skip_ok=False):
+    if header:
+        _print = Printer(['Brick-Path', 'Match', 'Volumes'])
+    else:
+        _print = Printer([])
+
+    for bp, bstate in summary.items():
+        ok, flags, volumes = _check_brick(bp, bstate, check)
+        if ok and skip_ok:
+            continue
+        if ok:
+            sts = 'ok'
+        else:
+            sts = ','.join(flags)
+        _print.line(bp, sts, ','.join(volumes))
 
 
 class Printer(object):
