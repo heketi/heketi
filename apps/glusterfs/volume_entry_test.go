@@ -1775,6 +1775,41 @@ func TestNewVolumeEntryWithVolumeOptions(t *testing.T) {
 	tests.Assert(t, strings.Contains(strings.Join(entry.GlusterVolumeOptions, ","), "test-option"))
 
 }
+
+func TestNewVolumeSetsIdInVolumeOptions(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	// Create a cluster in the database
+	err := setupSampleDbWithTopology(app,
+		1,      // clusters
+		3,      // nodes_per_cluster
+		1,      // devices_per_node,
+		500*GB, // disksize)
+	)
+	tests.Assert(t, err == nil)
+	req := &api.VolumeCreateRequest{}
+	req.Size = 1024
+
+	v := NewVolumeEntryFromRequest(req)
+
+	var glusterVolumeOptions []string
+	app.xo.MockVolumeCreate = func(host string, volume *executors.VolumeRequest) (*executors.Volume, error) {
+		glusterVolumeOptions = volume.GlusterVolumeOptions
+		return &executors.Volume{}, nil
+	}
+
+	err = v.Create(app.db, app.executor)
+	logger.Info("%v", v.Info.Cluster)
+	tests.Assert(t, err == nil, err)
+
+	heketiIDOption := fmt.Sprintf("%s %s", HEKETI_ID_KEY, v.Info.Id)
+	tests.Assert(t, glusterVolumeOptions[len(glusterVolumeOptions)-1] == heketiIDOption)
+}
+
 func TestNewVolumeEntryWithTSPForMountHosts(t *testing.T) {
 	tmpfile := tests.Tempfile()
 	defer os.Remove(tmpfile)

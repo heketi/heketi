@@ -42,6 +42,7 @@ const (
 	DEFAULT_EC_REDUNDANCY         = 2
 	DEFAULT_THINP_SNAPSHOT_FACTOR = 1.5
 
+	HEKETI_ID_KEY                = "user.heketi.id"
 	HEKETI_ARBITER_KEY           = "user.heketi.arbiter"
 	HEKETI_AVERAGE_FILE_SIZE_KEY = "user.heketi.average-file-size"
 	HEKETI_ZONE_CHECKING_KEY     = "user.heketi.zone-checking"

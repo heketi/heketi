@@ -465,6 +465,34 @@ func TestHeketiVolumeCreateWithOptions(t *testing.T) {
 
 }
 
+func TestHeketiVolumeCreateSetsIdOption(t *testing.T) {
+	na := testutils.RequireNodeAccess(t)
+	// Setup the VM storage topology
+	teardownCluster(t)
+	setupCluster(t, 2, 2)
+	defer teardownCluster(t)
+
+	// Create a volume
+	volReq := &api.VolumeCreateRequest{}
+	volReq.Size = 10
+	volReq.Durability.Type = api.DurabilityReplicate
+	volReq.Durability.Replicate.Replica = 2
+	volReq.Snapshot.Enable = true
+	volReq.Snapshot.Factor = 1.5
+
+	// Create the volume
+	volInfo, err := heketi.VolumeCreate(volReq)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	// SSH into system and check for user.heketi.id option
+	exec := na.Use(logger)
+	cmd := []string{
+		fmt.Sprintf("sudo gluster v info %v | grep user.heketi.id | grep %v", volInfo.Name, volInfo.Id),
+	}
+	_, err = exec.ConnectAndExec(cenv.SshHost(0), cmd, 10, true)
+	tests.Assert(t, err == nil, "Volume not created with user.heketi.id option")
+}
+
 func TestDeviceRemoveErrorHandling(t *testing.T) {
 	na := testutils.RequireNodeAccess(t)
 	teardownCluster(t)
