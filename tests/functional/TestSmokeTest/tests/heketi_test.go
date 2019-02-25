@@ -58,10 +58,6 @@ func setupCluster(t *testing.T, numNodes int, numDisks int) {
 	cenv.Setup(t, numNodes, numDisks)
 }
 
-func dbStateDump(t *testing.T) {
-	cenv.StateDump(t)
-}
-
 func teardownCluster(t *testing.T) {
 	cenv.Teardown(t)
 }
