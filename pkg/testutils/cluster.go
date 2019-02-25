@@ -32,6 +32,10 @@ type ClusterEnv struct {
 	Disks   []string
 
 	HeketiUrl string
+
+	// helper callbacks
+	CustomizeNodeRequest   func(int, *api.NodeAddRequest)
+	CustomizeDeviceRequest func(*api.DeviceAddRequest)
 }
 
 func (ce *ClusterEnv) Update() {
@@ -49,6 +53,19 @@ func (ce *ClusterEnv) Update() {
 			ce.Nodes[i] = value
 		}
 	}
+}
+
+func (ce *ClusterEnv) Copy() *ClusterEnv {
+	newce := ClusterEnv{}
+	newce.SSHPort = ce.SSHPort
+	newce.HeketiUrl = ce.HeketiUrl
+	newce.Nodes = make([]string, len(ce.Nodes))
+	copy(newce.Nodes, ce.Nodes)
+	newce.Disks = make([]string, len(ce.Disks))
+	copy(newce.Disks, ce.Disks)
+	newce.CustomizeNodeRequest = ce.CustomizeNodeRequest
+	newce.CustomizeDeviceRequest = ce.CustomizeDeviceRequest
+	return &newce
 }
 
 func (ce *ClusterEnv) client() *client.Client {
@@ -107,6 +124,7 @@ func (ce *ClusterEnv) SetupWithCluster(
 		nodeReq.Hostnames.Manage = []string{hostname}
 		nodeReq.Hostnames.Storage = []string{hostname}
 		nodeReq.Zone = index%2 + 1
+		ce.customizeNodeReq(index, nodeReq)
 
 		node, err := heketi.NodeAdd(nodeReq)
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
@@ -121,6 +139,7 @@ func (ce *ClusterEnv) SetupWithCluster(
 				driveReq := &api.DeviceAddRequest{}
 				driveReq.Name = d
 				driveReq.NodeId = node.Id
+				ce.customizeDeviceReq(driveReq)
 
 				err := heketi.DeviceAdd(driveReq)
 				sg.Err(err)
@@ -242,5 +261,17 @@ func (ce *ClusterEnv) Teardown(t *testing.T) {
 		// Delete cluster
 		err = heketi.ClusterDelete(cluster)
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	}
+}
+
+func (ce *ClusterEnv) customizeNodeReq(i int, req *api.NodeAddRequest) {
+	if ce.CustomizeNodeRequest != nil {
+		ce.CustomizeNodeRequest(i, req)
+	}
+}
+
+func (ce *ClusterEnv) customizeDeviceReq(req *api.DeviceAddRequest) {
+	if ce.CustomizeDeviceRequest != nil {
+		ce.CustomizeDeviceRequest(req)
 	}
 }
