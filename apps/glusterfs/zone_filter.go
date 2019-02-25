@@ -10,6 +10,8 @@
 package glusterfs
 
 import (
+	"strings"
+
 	"github.com/boltdb/bolt"
 
 	wdb "github.com/heketi/heketi/pkg/db"
@@ -35,6 +37,10 @@ func NewDeviceZoneMapFromDb(db wdb.RODB) (*DeviceZoneMap, error) {
 			return err
 		}
 		for _, deviceId := range dl {
+			if strings.HasPrefix(deviceId, "DEVICE") {
+				logger.Debug("ignoring registry key %v", deviceId)
+				continue
+			}
 			device, err := NewDeviceEntryFromId(tx, deviceId)
 			if err != nil {
 				return err
