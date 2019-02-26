@@ -58,10 +58,6 @@ func setupCluster(t *testing.T, numNodes int, numDisks int) {
 	cenv.Setup(t, numNodes, numDisks)
 }
 
-func dbStateDump(t *testing.T) {
-	cenv.StateDump(t)
-}
-
 func teardownCluster(t *testing.T) {
 	cenv.Teardown(t)
 }
@@ -578,4 +574,29 @@ func TestDeviceRemoveForceForget(t *testing.T) {
 	// this should be an error 'cause the device is gone
 	_, err = heketi.DeviceInfo(deviceInfo.Id)
 	tests.Assert(t, err != nil, "expected err != nil, got:", err)
+}
+
+func TestVolumeCreateOneZone(t *testing.T) {
+	// by default, heketi doesn't care if nodes are spread across
+	// multiple zones. Verify that.
+
+	tce := cenv.Copy()
+	tce.Update()
+	tce.CustomizeNodeRequest = func(i int, req *api.NodeAddRequest) {
+		req.Zone = 1
+	}
+
+	tce.Teardown(t)
+	tce.Setup(t, 4, 4)
+	defer tce.Teardown(t)
+
+	for i := 0; i < 3; i++ {
+		volReq := &api.VolumeCreateRequest{}
+		volReq.Size = 10
+		volReq.Durability.Type = api.DurabilityReplicate
+		volReq.Durability.Replicate.Replica = 3
+
+		_, err := heketi.VolumeCreate(volReq)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	}
 }
