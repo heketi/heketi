@@ -65,4 +65,23 @@ func TestVolumeCreateMultipleZone(t *testing.T) {
 		_, err := heketi.VolumeCreate(volReq)
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	})
+
+	t.Run("volumeCreateFails", func(t *testing.T) {
+		//Make sure we are adding nodes as below
+		//Node0 ---> Zone1
+		//Node1 ---> Zone1
+		//Node2,Node3 ---> Zone2
+		tce.CustomizeNodeRequest = func(i int, req *api.NodeAddRequest) {
+			if i >= 2 {
+				req.Zone = 2
+			} else {
+				req.Zone = 1
+			}
+		}
+		tce.Teardown(t)
+		tce.Setup(t, 4, 4)
+		defer tce.Teardown(t)
+		_, err := heketi.VolumeCreate(volReq)
+		tests.Assert(t, err != nil, "expected err != nil")
+	})
 }
