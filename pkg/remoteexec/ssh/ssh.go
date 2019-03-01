@@ -16,6 +16,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -157,7 +158,10 @@ func (s *SshExec) ExecCommands(
 			command = "sudo " + command
 		}
 		// Execute command in a shell
-		command = "/bin/bash -c '" + command + "'"
+		command = "/bin/bash -c '" +
+			// Escape single quotes in commands (' -> '\'')
+			strings.Replace(command, `'`, `'\''`, -1) +
+			"'"
 
 		// Execute command
 		err = session.Start(command)
