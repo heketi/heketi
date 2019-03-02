@@ -21,6 +21,6 @@ import:
   - ssh
   - ssh/agent
 - package: k8s.io/client-go
-  version: v8.0.0
+  version: v10.0.0
 - package: github.com/go-ozzo/ozzo-validation
   version: v3.3

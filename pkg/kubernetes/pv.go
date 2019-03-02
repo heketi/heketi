@@ -33,7 +33,7 @@ func VolumeToPv(volume *api.VolumeInfoResponse,
 		kubeapi.ReadWriteMany,
 	}
 	pv.Spec.Capacity = make(kubeapi.ResourceList)
-	pv.Spec.Glusterfs = &kubeapi.GlusterfsVolumeSource{}
+	pv.Spec.Glusterfs = &kubeapi.GlusterfsPersistentVolumeSource{}
 
 	// Set path
 	pv.Spec.Capacity[kubeapi.ResourceStorage] =

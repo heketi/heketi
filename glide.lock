@@ -1,5 +1,5 @@
-hash: a7e0c0723a91776f34ff8a742912c032e115701284efe18eed15e96da0ed00fd
-updated: 2019-02-07T15:18:42.253317799+01:00
+hash: 6bd2c6716037f841d8afd9f82bd8f81e425a6891f670583849fca7e955664808
+updated: 2019-03-02T00:22:57.658059Z
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -12,19 +12,19 @@ imports:
   subpackages:
   - quantile
 - name: github.com/boltdb/bolt
-  version: 583e8937c61f1af6513608ccc75c97b6abdf4ff9
+  version: 2f1ce7a837dcb8da3ec595b1dac9d0632f0f99e8
 - name: github.com/davecgh/go-spew
   version: 782f4967f2dc4564575ca782fe2d04090b5faca8
   subpackages:
   - spew
 - name: github.com/dgrijalva/jwt-go
-  version: d2709f9f1f31ebcda9651b03077758c1f3a0018c
+  version: 06ea1031745cb8b3dab3f6a236daf2b0aa468b7e
 - name: github.com/docker/spdystream
   version: 449fdfce4d962303d702fec724ef0ad181c92528
   subpackages:
   - spdy
-- name: github.com/ghodss/yaml
-  version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
+- name: github.com/evanphx/json-patch
+  version: 36442dbdb585210f8d5a1b45e67aa323c197d5c4
 - name: github.com/go-ozzo/ozzo-validation
   version: 85dcd8368eba387e65a03488b003e233994e87e9
   subpackages:
@@ -34,8 +34,6 @@ imports:
   subpackages:
   - proto
   - sortkeys
-- name: github.com/golang/glog
-  version: 44145f04b68cf362d9c4df2182967c2275eaefed
 - name: github.com/golang/protobuf
   version: b4deda0973fb4c70b50d226b1af49f3da59f5265
   subpackages:
@@ -107,19 +105,16 @@ imports:
 - name: github.com/urfave/negroni
   version: c6a59be0ce122566695fbd5e48a77f8f10c8a63a
 - name: golang.org/x/crypto
-  version: d172538b2cfce0c13cee31e647d0367aa8cd2486
+  version: de0752318171da717af4ce24d0a2e8626afaeb11
   subpackages:
   - curve25519
   - ed25519
   - ed25519/internal/edwards25519
-  - internal/chacha20
-  - internal/subtle
-  - poly1305
   - ssh
   - ssh/agent
   - ssh/terminal
 - name: golang.org/x/net
-  version: e90d6d0afc4c315a0d87a568ae68577cc15149a0
+  version: 0ed95abb35c445290478a5348a7b38bb154135fd
   subpackages:
   - context
   - context/ctxhttp
@@ -127,13 +122,20 @@ imports:
   - http2/hpack
   - idna
   - lex/httplex
+- name: golang.org/x/oauth2
+  version: a6bd8cefa1811bd24b86f8902872e4e8225f74c4
+  subpackages:
+  - google
+  - internal
+  - jws
+  - jwt
 - name: golang.org/x/sys
-  version: 8f0908ab3b2457e2e15403d3697c9ef5cb4b57a9
+  version: 95c6576299259db960f6c5b9b69ea52422860fce
   subpackages:
   - unix
   - windows
 - name: golang.org/x/text
-  version: 2910a502d2bf9e43193af9d68ca516529614eed3
+  version: b19bf474d317b857955b12035d2c5acb57ce8b01
   subpackages:
   - secure/bidirule
   - transform
@@ -143,28 +145,41 @@ imports:
   version: f51c12702a4d776e4c1fa9b0fabab841babae631
   subpackages:
   - rate
+- name: google.golang.org/appengine
+  version: 54a98f90d1c46b7731eb8fb305d2a321c30ef610
+  subpackages:
+  - internal
+  - internal/base
+  - internal/datastore
+  - internal/log
+  - internal/remote_api
+  - internal/urlfetch
+  - urlfetch
 - name: gopkg.in/inf.v0
   version: 3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4
 - name: gopkg.in/yaml.v2
-  version: 51d6538a90f86fe93ac480b35f37b2be17fef232
+  version: 5420a8b6744d3b0345ab293f6fcba19c978f1183
 - name: k8s.io/api
-  version: 072894a440bdee3a891dea811fe42902311cd2a3
+  version: 89a74a8d264df0e993299876a8cde88379b940ee
   subpackages:
   - admissionregistration/v1alpha1
   - admissionregistration/v1beta1
   - apps/v1
   - apps/v1beta1
   - apps/v1beta2
+  - auditregistration/v1alpha1
   - authentication/v1
   - authentication/v1beta1
   - authorization/v1
   - authorization/v1beta1
   - autoscaling/v1
   - autoscaling/v2beta1
+  - autoscaling/v2beta2
   - batch/v1
   - batch/v1beta1
   - batch/v2alpha1
   - certificates/v1beta1
+  - coordination/v1beta1
   - core/v1
   - events/v1beta1
   - extensions/v1beta1
@@ -181,15 +196,15 @@ imports:
   - storage/v1alpha1
   - storage/v1beta1
 - name: k8s.io/apimachinery
-  version: 103fd098999dc9c0c88536f5c9ad2e5da39373ae
+  version: 2b1284ed4c93a43499e781493253e2ac5959c4fd
   subpackages:
+  - pkg/api/apitesting
+  - pkg/api/apitesting/fuzzer
+  - pkg/api/apitesting/roundtrip
   - pkg/api/equality
   - pkg/api/errors
   - pkg/api/meta
   - pkg/api/resource
-  - pkg/api/testing
-  - pkg/api/testing/fuzzer
-  - pkg/api/testing/roundtrip
   - pkg/apis/meta/fuzzer
   - pkg/apis/meta/internalversion
   - pkg/apis/meta/v1
@@ -219,6 +234,7 @@ imports:
   - pkg/util/intstr
   - pkg/util/json
   - pkg/util/mergepatch
+  - pkg/util/naming
   - pkg/util/net
   - pkg/util/remotecommand
   - pkg/util/runtime
@@ -234,7 +250,7 @@ imports:
   - third_party/forked/golang/netutil
   - third_party/forked/golang/reflect
 - name: k8s.io/client-go
-  version: 7d04d0e2a0a1a4d4a1cd6baa432a2301492e4e65
+  version: e64494209f554a6723674bd494d69445fb76a1d4
   subpackages:
   - discovery
   - discovery/fake
@@ -251,6 +267,8 @@ imports:
   - kubernetes/typed/apps/v1beta1/fake
   - kubernetes/typed/apps/v1beta2
   - kubernetes/typed/apps/v1beta2/fake
+  - kubernetes/typed/auditregistration/v1alpha1
+  - kubernetes/typed/auditregistration/v1alpha1/fake
   - kubernetes/typed/authentication/v1
   - kubernetes/typed/authentication/v1/fake
   - kubernetes/typed/authentication/v1beta1
@@ -263,6 +281,8 @@ imports:
   - kubernetes/typed/autoscaling/v1/fake
   - kubernetes/typed/autoscaling/v2beta1
   - kubernetes/typed/autoscaling/v2beta1/fake
+  - kubernetes/typed/autoscaling/v2beta2
+  - kubernetes/typed/autoscaling/v2beta2/fake
   - kubernetes/typed/batch/v1
   - kubernetes/typed/batch/v1/fake
   - kubernetes/typed/batch/v1beta1
@@ -271,6 +291,8 @@ imports:
   - kubernetes/typed/batch/v2alpha1/fake
   - kubernetes/typed/certificates/v1beta1
   - kubernetes/typed/certificates/v1beta1/fake
+  - kubernetes/typed/coordination/v1beta1
+  - kubernetes/typed/coordination/v1beta1/fake
   - kubernetes/typed/core/v1
   - kubernetes/typed/core/v1/fake
   - kubernetes/typed/events/v1beta1
@@ -318,8 +340,12 @@ imports:
   - util/exec
   - util/flowcontrol
   - util/integer
+- name: k8s.io/klog
+  version: 8139d8cb77af419532b33dfa7dd09fbc5f1d344f
 - name: k8s.io/kube-openapi
-  version: 91cfa479c814065e420cee7ed227db0f63a5854e
+  version: c59034cc13d587f5ef4e85ca0ade0c1866ae8e1d
   subpackages:
   - pkg/util/proto
+- name: sigs.k8s.io/yaml
+  version: fd68e9863619f6ec2fdd8625fe1f02e7c877e480
 testImports: []
