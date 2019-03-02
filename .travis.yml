@@ -17,12 +17,13 @@ git:
   depth: 9999999
 matrix:
   include:
-  - go: 1.9.4
-    name: Test using Go 1.9
   - go: "1.10"
     name: Test using Go 1.10
   - go: "1.11"
     name: Test using Go 1.11
+  - go: "1.12"
+    name: Test using Go 1.12
+  # TODO: bump release to use Go 1.12
   - go: "1.11"
     script: make release
     name: make release on Go 1.11
