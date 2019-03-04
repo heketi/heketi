@@ -245,10 +245,16 @@ func (ce *ClusterEnv) Teardown(t *testing.T) {
 		}
 
 		// Delete nodes
+		sg := utils.NewStatusGroup()
 		for _, node := range clusterInfo.Nodes {
-			err := ce.nodePurge(heketi, node)
-			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			sg.Add(1)
+			go func(n string) {
+				defer sg.Done()
+				sg.Err(ce.nodePurge(heketi, n))
+			}(node)
 		}
+		err = sg.Result()
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 		// Delete cluster
 		err = heketi.ClusterDelete(cluster)
