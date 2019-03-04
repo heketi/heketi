@@ -84,4 +84,16 @@ func TestVolumeCreateMultipleZone(t *testing.T) {
 		_, err := heketi.VolumeCreate(volReq)
 		tests.Assert(t, err != nil, "expected err != nil")
 	})
+
+	t.Run("volumeCreateIgnoreServerSetting", func(t *testing.T) {
+		tce.CustomizeNodeRequest = func(i int, req *api.NodeAddRequest) {
+			req.Zone = 1
+		}
+		tce.Teardown(t)
+		tce.Setup(t, 4, 4)
+		defer tce.Teardown(t)
+		volReq.GlusterVolumeOptions = []string{"user.heketi.zone-checking none"}
+		_, err := heketi.VolumeCreate(volReq)
+		tests.Assert(t, err == nil, "expected err == nil")
+	})
 }
