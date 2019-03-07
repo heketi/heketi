@@ -92,10 +92,23 @@ type App struct {
 	xo *mockexec.MockExecutor
 }
 
-// Use for tests only
-func NewApp(conf *GlusterFSConfig) *App {
-	var err error
+// NewApp constructs a new glusterfs application object and populates
+// the internal structures according to the passed configuration (
+// and environment). If an error occurs the app object will be nil
+// and the error type will be populated.
+func NewApp(conf *GlusterFSConfig) (*App, error) {
 	app := &App{}
+	err := app.setup(conf)
+	if err != nil {
+		return nil, err
+	}
+	return app, nil
+}
+
+// setup fills in the internal types of the app based on
+// the configuration.
+func (app *App) setup(conf *GlusterFSConfig) error {
+	var err error
 
 	app.conf = conf
 
@@ -138,11 +151,11 @@ func NewApp(conf *GlusterFSConfig) *App {
 		app.executor = injectexec.NewInjectExecutor(
 			app.executor, &app.conf.InjectConfig)
 	default:
-		return nil
+		return fmt.Errorf("invalid executor: %v", app.conf.Executor)
 	}
 	if err != nil {
 		logger.Err(err)
-		return nil
+		return err
 	}
 	logger.Info("Loaded %v executor", app.conf.Executor)
 
@@ -154,7 +167,7 @@ func NewApp(conf *GlusterFSConfig) *App {
 	err = app.initDB()
 	if err != nil {
 		logger.Err(err)
-		return nil
+		return err
 	}
 
 	// Drop a note that the system had pending operations in the db
@@ -183,7 +196,7 @@ func NewApp(conf *GlusterFSConfig) *App {
 	// Show application has loaded
 	logger.Info("GlusterFS Application Loaded")
 
-	return app
+	return nil
 }
 
 func (app *App) initDB() error {
