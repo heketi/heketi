@@ -7,7 +7,13 @@
 : "${HEKETI_PATH:=/var/lib/heketi}"
 : "${BACKUPDB_PATH:=/backupdb}"
 : "${TMP_PATH:=/tmp}"
+: "${HEKETI_DB_ARCHIVE_PATH:=${HEKETI_PATH}/archive}"
 LOG="${HEKETI_PATH}/container.log"
+
+# allow disabling the archive path
+case "${HEKETI_DB_ARCHIVE_PATH}" in
+    -|/dev/null) HEKETI_DB_ARCHIVE_PATH="" ;;
+esac
 
 info() {
     echo "$*" | tee -a "$LOG"
@@ -20,6 +26,60 @@ error() {
 fail() {
     error "$@"
     exit 1
+}
+
+archive_db() {
+    # create an archive file for the previous copy of the db
+    # before the server starts up
+    mkdir -p "${HEKETI_DB_ARCHIVE_PATH}"
+
+    # only archive the db if the db content is valid
+    if ! /usr/bin/heketi db export --dbfile "${HEKETI_PATH}/heketi.db" --jsonfile - >/dev/null ; then
+        error "Unable to export db. DB contents may not be valid"
+        return 1
+    fi
+
+    mapfile -t afiles < <(find "${HEKETI_DB_ARCHIVE_PATH}" \
+        -maxdepth 1 -name 'heketi.db-archive-*.gz' | sort)
+    newname="heketi.db-archive-$(date +%Y-%m-%d.%s).gz"
+    newpath="${HEKETI_DB_ARCHIVE_PATH}/${newname}"
+    gzip -9 -c "${HEKETI_PATH}/heketi.db" > "${newpath}"
+    if [[ $? -ne 0 ]]; then
+        rm -f "${newpath}"
+        error "Unable to create archive"
+        return 1
+    fi
+    sha256sum "${newpath}" > "${newpath}.sha256"
+    if [[ $? -ne 0 ]]; then
+        rm -f "${newpath}" "${newpath}.sha256"
+        error "Unable to get sha256 sum of archive"
+        return 1
+    fi
+    # if the new file is a dupe, immediately prune it
+    if [ "${#afiles[@]}" -gt 0 ]; then
+        sum="$(awk '{print $1}' "${newpath}.sha256")"
+        prevpath="${afiles[-1]}"
+        if grep -q "$sum" "${prevpath}.sha256" >/dev/null; then
+            # found same hash as previous db, remove new copy
+            rm -f "${newpath}" "${newpath}.sha256"
+        fi
+    fi
+    return 0
+}
+
+prune_archives() {
+    # prune old archive copies
+    HEKETI_DB_ARCHIVE_COUNT="${HEKETI_DB_ARCHIVE_COUNT:-5}"
+    mapfile -t afiles < <(find "${HEKETI_DB_ARCHIVE_PATH}" \
+        -maxdepth 1 -name 'heketi.db-archive-*.gz' | sort)
+    if [[ "${#afiles[@]}" -gt ${HEKETI_DB_ARCHIVE_COUNT} ]]; then
+        curr=0
+        count=$((${#afiles[@]}-HEKETI_DB_ARCHIVE_COUNT))
+        while [[ $curr -lt $count ]]; do
+            rm -f "${afiles[$curr]}"*
+            curr=$((curr+1))
+        done
+    fi
 }
 
 info "Setting up heketi database"
@@ -71,6 +131,13 @@ if [[ $flock_status -ne 0 ]]; then
     fail "Database file is read-only"
 fi
 
+# this creates archival copies of the db if needed for disaster
+# recovery purposes
+if [[ "${HEKETI_DB_ARCHIVE_PATH}" && -f "${HEKETI_PATH}/heketi.db" ]]; then
+    archive_db && prune_archives
+fi
+
+# this is used to restore secret based backups
 if [[ -d "${BACKUPDB_PATH}" ]]; then
     if [[ -f "${BACKUPDB_PATH}/heketi.db.gz" ]] ; then
         gunzip -c "${BACKUPDB_PATH}/heketi.db.gz" > "${TMP_PATH}/heketi.db"
