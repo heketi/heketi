@@ -177,8 +177,9 @@ func TestVolumeCreateSmallSize(t *testing.T) {
 		BrickMinSize = bmin
 	}()
 
-	app := NewApp(conf)
+	app, _ := NewApp(conf)
 	defer app.Close()
+	tests.Assert(t, app != nil)
 
 	router := mux.NewRouter()
 	app.SetRoutes(router)
