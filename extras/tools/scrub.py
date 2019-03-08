@@ -135,8 +135,17 @@ def storage_free(device, brick):
     total_size = brick['TpSize'] + brick['PoolMetadataSize']
     device['Info']['storage']['free'] += total_size
     device['Info']['storage']['used'] -= total_size
-    log.info('added back free size %s to device %s',
-             total_size, device['Info']['id'])
+    log.info('added back free size %s to device %s, now: %r',
+             total_size, device['Info']['id'],
+             device['Info']['storage'])
+    if device['Info']['storage']['used'] < 0:
+        raise ValueError("used size went negative")
+    if device['Info']['storage']['free'] < 0:
+        raise ValueError("free size went negative")
+    if device['Info']['storage']['free'] > device['Info']['storage']['total']:
+        raise ValueError("free size greater than total size")
+    if device['Info']['storage']['used'] > device['Info']['storage']['total']:
+        raise ValueError("used size greater than total size")
 
 
 def scrub(data):

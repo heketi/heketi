@@ -387,11 +387,7 @@ func setWithEnvVariables(options *config.Config) {
 
 func setupApp(config *config.Config) (a *glusterfs.App) {
 	defer func() {
-		err := recover()
-		if a == nil {
-			fmt.Fprintln(os.Stderr, "ERROR: Unable to start application")
-			os.Exit(1)
-		} else if err != nil {
+		if err := recover(); err != nil {
 			fmt.Fprintf(os.Stderr, "ERROR: Unable to start application: %s\n", err)
 			os.Exit(1)
 		}
@@ -408,12 +404,14 @@ func setupApp(config *config.Config) (a *glusterfs.App) {
 		config.GlusterFS.DisableBackgroundCleaner,
 		"HEKETI_DISABLE_BACKGROUND_CLEANER")
 
-	a = glusterfs.NewApp(config.GlusterFS)
-	if a != nil {
-		if err := a.ServerReset(); err != nil {
-			fmt.Fprintln(os.Stderr, "ERROR: Failed to reset server application")
-			os.Exit(1)
-		}
+	a, e := glusterfs.NewApp(config.GlusterFS)
+	if e != nil {
+		fmt.Fprintf(os.Stderr, "ERROR: Unable to start application: %s\n", e)
+		os.Exit(1)
+	}
+	if err := a.ServerReset(); err != nil {
+		fmt.Fprintln(os.Stderr, "ERROR: Failed to reset server application")
+		os.Exit(1)
 	}
 	return a
 }
