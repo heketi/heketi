@@ -59,6 +59,7 @@ func (s *CmdExecutor) DeviceSetup(host, device, vgid string, destroy bool) (d *e
 	// Execute command
 	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 5))
 	if err != nil {
+		err = fmt.Errorf("Setup of device %v failed (already initialized or contains data?): %v", device, err)
 		return nil, err
 	}
 

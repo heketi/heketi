@@ -45,7 +45,7 @@ func TestAppAdvsettings(t *testing.T) {
 		BrickMaxSize, BrickMinSize, BrickMaxNum = bmax, bmin, bnum
 	}()
 
-	app := NewApp(conf)
+	app, _ := NewApp(conf)
 	defer app.Close()
 	tests.Assert(t, app != nil)
 	tests.Assert(t, app.conf.Executor == "mock")
@@ -77,7 +77,7 @@ func TestAppLogLevel(t *testing.T) {
 			Loglevel:  level,
 		}
 
-		app := NewApp(conf)
+		app, _ := NewApp(conf)
 		tests.Assert(t, app != nil, "expected app != nil, got:", app)
 
 		switch level {
@@ -106,7 +106,7 @@ func TestAppLogLevel(t *testing.T) {
 		Loglevel:  "blah",
 	}
 
-	app := NewApp(conf)
+	app, _ := NewApp(conf)
 	defer app.Close()
 	tests.Assert(t, app != nil)
 	tests.Assert(t, logger.Level() == logging.LEVEL_NOLOG)
@@ -122,7 +122,7 @@ func TestAppReadOnlyDb(t *testing.T) {
 		Executor: "mock",
 		DBfile:   dbfile,
 	}
-	app := NewApp(conf)
+	app, _ := NewApp(conf)
 	tests.Assert(t, app != nil)
 	tests.Assert(t, app.dbReadOnly == false)
 	app.Close()
@@ -136,7 +136,7 @@ func TestAppReadOnlyDb(t *testing.T) {
 	tests.Assert(t, db != nil)
 
 	// Now open it again and notice how it opened
-	app = NewApp(conf)
+	app, _ = NewApp(conf)
 	defer app.Close()
 	tests.Assert(t, app != nil)
 	tests.Assert(t, app.dbReadOnly == true)
@@ -193,7 +193,7 @@ func TestAppBlockSettings(t *testing.T) {
 		CreateBlockHostingVolumes, BlockHostingVolumeSize = blockauto, blocksize
 	}()
 
-	app := NewApp(conf)
+	app, _ := NewApp(conf)
 	defer app.Close()
 	tests.Assert(t, app != nil)
 	tests.Assert(t, app.conf.Executor == "mock")
