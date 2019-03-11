@@ -191,7 +191,7 @@ func (ce *ClusterEnv) VolumeTeardown(t *testing.T) {
 	}
 }
 
-func (ce *ClusterEnv) nodePurge(heketi *client.Client, nodeId string) error {
+func (ce *ClusterEnv) nodePurgeDevices(heketi *client.Client, nodeId string) error {
 	node, err := heketi.NodeInfo(nodeId)
 	if err != nil {
 		return err
@@ -216,8 +216,7 @@ func (ce *ClusterEnv) nodePurge(heketi *client.Client, nodeId string) error {
 			return err
 		}
 	}
-
-	return heketi.NodeDelete(nodeId)
+	return err
 }
 
 func (ce *ClusterEnv) Teardown(t *testing.T) {
@@ -250,11 +249,18 @@ func (ce *ClusterEnv) Teardown(t *testing.T) {
 			sg.Add(1)
 			go func(n string) {
 				defer sg.Done()
-				sg.Err(ce.nodePurge(heketi, n))
+				sg.Err(ce.nodePurgeDevices(heketi, n))
 			}(node)
 		}
 		err = sg.Result()
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		// it is apparently not safe to try and delete the nodes
+		// "in parallel" as part of the node purge loop. Instead do
+		// the node delete in a subsequent loop.
+		for _, node := range clusterInfo.Nodes {
+			err := heketi.NodeDelete(node)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		}
 
 		// Delete cluster
 		err = heketi.ClusterDelete(cluster)
