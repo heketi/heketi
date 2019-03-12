@@ -81,6 +81,13 @@ var defaultClientOptions = ClientOptions{
 	PollDelay:     POLL_DELAY,
 }
 
+// DefaultClientOptions returns a ClientOptions type with all the fields
+// initialized to the default values used internally by the new-client
+// functions.
+func DefaultClientOptions() ClientOptions {
+	return defaultClientOptions
+}
+
 // NewClient creates a new client to access a Heketi server
 func NewClient(host, user, key string) *Client {
 	return NewClientWithOptions(host, user, key, defaultClientOptions)
