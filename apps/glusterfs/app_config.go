@@ -36,6 +36,7 @@ type GlusterFSConfig struct {
 	PreReqVolumeOptions  string `json:"pre_request_volume_options"`
 	PostReqVolumeOptions string `json:"post_request_volume_options"`
 	ZoneChecking         string `json:"zone_checking"`
+	MaxVolumesPerCluster int    `json:"max_volumes_per_cluster"`
 
 	//block settings
 	CreateBlockHostingVolumes bool   `json:"auto_create_block_hosting_volume"`
