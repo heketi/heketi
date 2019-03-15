@@ -377,6 +377,14 @@ func (a *App) setFromEnvironmentalVariable() {
 	if "" != env {
 		a.conf.ZoneChecking = env
 	}
+
+	env = os.Getenv("HEKETI_GLUSTER_MAX_VOLUMES_PER_CLUSTER")
+	if env != "" {
+		a.conf.MaxVolumesPerCluster, err = strconv.Atoi(env)
+		if err != nil {
+			logger.LogError("Error: While parsing HEKETI_GLUSTER_MAX_VOLUMES_PER_CLUSTER: %v", err)
+		}
+	}
 }
 
 func (a *App) setAdvSettings() {
