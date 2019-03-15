@@ -908,6 +908,12 @@ func eligibleClusters(db wdb.RODB, req ClusterReq,
 					continue
 				}
 			}
+			if c.volumeCount() >= maxVolumesPerCluster {
+				cerr.Add(
+					c.Info.Id,
+					fmt.Errorf("Cluster has %v volumes and limit is %v", c.volumeCount(), maxVolumesPerCluster))
+				continue
+			}
 			candidateClusters = append(candidateClusters, clusterId)
 		}
 		return nil
