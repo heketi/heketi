@@ -12,6 +12,7 @@ package cmdexec
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"sync"
 
@@ -20,7 +21,8 @@ import (
 )
 
 var (
-	logger = logging.NewLogger("[cmdexec]", logging.LEVEL_DEBUG)
+	logger     = logging.NewLogger("[cmdexec]", logging.LEVEL_DEBUG)
+	preallocRe = regexp.MustCompile("^[a-zA-Z0-9-_]+$")
 )
 
 type RemoteCommandTransport interface {
@@ -28,6 +30,11 @@ type RemoteCommandTransport interface {
 	RebalanceOnExpansion() bool
 	SnapShotLimit() int
 	GlusterCliTimeout() uint32
+	PVDataAlignment() string
+	VGPhysicalExtentSize() string
+	LVChunkSize() string
+	XfsSw() int
+	XfsSu() int
 }
 
 type CmdExecutor struct {
@@ -55,6 +62,21 @@ func setWithEnvVariables(config *CmdConfig) {
 		} else {
 			config.GlusterCliTimeout = uint32(value)
 		}
+	}
+
+	env = os.Getenv("HEKETI_DEBUG_UMOUNT_FAILURES")
+	if env != "" {
+		value, err := strconv.ParseBool(env)
+		if err != nil {
+			logger.LogError("Error: While parsing HEKETI_DEBUG_UMOUNT_FAILURES: %v", err)
+		} else {
+			config.DebugUmountFailures = value
+		}
+	}
+
+	env = os.Getenv("HEKETI_BLOCK_VOLUME_DEFAULT_PREALLOC")
+	if env != "" {
+		config.BlockVolumePrealloc = env
 	}
 }
 
@@ -133,4 +155,51 @@ func (c *CmdExecutor) GlusterCliExecTimeout() int {
 	}
 
 	return timeout
+}
+
+func (c *CmdExecutor) PVDataAlignment() string {
+	if c.config.PVDataAlignment == "" {
+		return "256K"
+	}
+	return c.config.PVDataAlignment
+}
+
+func (c *CmdExecutor) VGPhysicalExtentSize() string {
+	if c.config.VGPhysicalExtentSize == "" {
+		return "4M"
+	}
+	return c.config.VGPhysicalExtentSize
+}
+
+func (c *CmdExecutor) LVChunkSize() string {
+	if c.config.LVChunkSize == "" {
+		return "256K"
+	}
+	return c.config.LVChunkSize
+}
+
+func (c *CmdExecutor) XfsSw() int {
+	return c.config.XfsSw
+}
+
+func (c *CmdExecutor) XfsSu() int {
+	return c.config.XfsSu
+}
+
+func (c *CmdExecutor) DebugUmountFailures() bool {
+	return c.config.DebugUmountFailures
+}
+
+func (c *CmdExecutor) BlockVolumeDefaultPrealloc() string {
+	defaultValue := "full"
+	if c.config.BlockVolumePrealloc == "" {
+		return defaultValue
+	}
+	if !preallocRe.MatchString(c.config.BlockVolumePrealloc) {
+		logger.Warning(
+			"invalid value for prealloc option [%v], using default",
+			c.config.BlockVolumePrealloc)
+		return defaultValue
+	}
+	return c.config.BlockVolumePrealloc
 }

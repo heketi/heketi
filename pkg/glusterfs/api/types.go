@@ -226,8 +226,10 @@ type ClusterFlags struct {
 
 type Cluster struct {
 	Volumes []VolumeInfoResponse `json:"volumes"`
-	Nodes   []NodeInfoResponse   `json:"nodes"`
-	Id      string               `json:"id"`
+	//currently BlockVolumes will be used only for metrics
+	BlockVolumes []BlockVolumeInfoResponse `json:"blockvolumes,omitempty"`
+	Nodes        []NodeInfoResponse        `json:"nodes"`
+	Id           string                    `json:"id"`
 	ClusterFlags
 }
 
@@ -535,23 +537,6 @@ func (v *VolumeInfoResponse) String() string {
 		s += fmt.Sprintf("Snapshot Factor: %.2f\n",
 			v.Snapshot.Factor)
 	}
-
-	/*
-		s += "\nBricks:\n"
-		for _, b := range v.Bricks {
-			s += fmt.Sprintf("Id: %v\n"+
-				"Path: %v\n"+
-				"Size (GiB): %v\n"+
-				"Node: %v\n"+
-				"Device: %v\n\n",
-				b.Id,
-				b.Path,
-				b.Size/(1024*1024),
-				b.NodeId,
-				b.DeviceId)
-		}
-	*/
-
 	return s
 }
 

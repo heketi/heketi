@@ -35,6 +35,7 @@ type GlusterFSConfig struct {
 	AverageFileSize      uint64 `json:"average_file_size_kb"`
 	PreReqVolumeOptions  string `json:"pre_request_volume_options"`
 	PostReqVolumeOptions string `json:"post_request_volume_options"`
+	ZoneChecking         string `json:"zone_checking"`
 
 	//block settings
 	CreateBlockHostingVolumes bool   `json:"auto_create_block_hosting_volume"`

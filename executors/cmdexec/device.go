@@ -43,12 +43,23 @@ func (s *CmdExecutor) DeviceSetup(host, device, vgid string, destroy bool) (d *e
 		logger.Info("Data on device %v (host %v) will be destroyed", device, host)
 		commands = append(commands, fmt.Sprintf("wipefs --all %v", device))
 	}
-	commands = append(commands, fmt.Sprintf("pvcreate -qq --metadatasize=128M --dataalignment=256K '%v'", device))
-	commands = append(commands, fmt.Sprintf("vgcreate -qq --autobackup=%v %v %v", conv.BoolToYN(s.BackupLVM), paths.VgIdToName(vgid), device))
+	commands = append(commands, fmt.Sprintf("pvcreate -qq --metadatasize=128M --dataalignment=%v '%v'", s.PVDataAlignment(), device))
+	commands = append(commands, fmt.Sprintf("vgcreate -qq --physicalextentsize=%v --autobackup=%v %v %v",
+
+		// Physical extent size
+		s.VGPhysicalExtentSize(),
+
+		// Autobackup
+		conv.BoolToYN(s.BackupLVM),
+
+		// Device
+		paths.VgIdToName(vgid), device),
+	)
 
 	// Execute command
 	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 5))
 	if err != nil {
+		err = fmt.Errorf("Setup of device %v failed (already initialized or contains data?): %v", device, err)
 		return nil, err
 	}
 

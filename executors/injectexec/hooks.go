@@ -31,22 +31,44 @@ type Reaction struct {
 	Pause uint64
 	// Panic will trigger a panic.
 	Panic string
+
+	// The following opts help specify more customized results
+
+	// ExitStatus allows tests to set a custom exit code
+	ExitStatus int
+	// ErrOutput allows tests to set custom "stderr" content
+	ErrOutput string
+	// ForceErr forces an empty error string
+	ForceErr bool
+	// ForceErrOutput prevents Err from overriding empty ErrOutput
+	ForceErrOutput bool
 }
 
 // React triggers the kind of error or result the Reaction
-// is configured for. The result and error returns are mutually
-// exclusive.
-func (r Reaction) React() (string, error) {
+// is configured for.
+func (r Reaction) React() rex.Result {
 	if r.Pause != 0 {
 		time.Sleep(time.Second * time.Duration(r.Pause))
 	}
 	if r.Panic != "" {
 		panic(r.Panic)
 	}
-	if r.Err != "" {
-		return "", fmt.Errorf(r.Err)
+	result := rex.Result{
+		Completed:  true,
+		Output:     r.Result,
+		ExitStatus: r.ExitStatus,
+		ErrOutput:  r.ErrOutput,
 	}
-	return r.Result, nil
+	if r.Err != "" || r.ForceErr {
+		result.Err = fmt.Errorf(r.Err)
+	}
+	if result.Err != nil && result.ExitStatus == 0 {
+		result.ExitStatus = 1
+	}
+	if result.Err != nil && result.ErrOutput == "" && !r.ForceErrOutput {
+		result.ErrOutput = r.Err
+	}
+	return result
 }
 
 // CmdHook is a hook for a given command. Provide a regex as a string
@@ -124,17 +146,7 @@ func HookCommands(hooks CmdHooks, c string) rex.Result {
 	for _, h := range hooks {
 		if h.Match(c) && h.CheckConditions() {
 			logger.Debug("found hook for %v: %v", c, h)
-			hr, herr := h.Reaction.React()
-			if herr != nil {
-				return rex.Result{
-					Completed: true,
-					Err:       herr,
-				}
-			}
-			return rex.Result{
-				Completed: true,
-				Output:    hr,
-			}
+			return logHookResult(c, h.Reaction.React())
 		}
 	}
 	return rex.Result{}
@@ -154,18 +166,21 @@ func HookResults(hooks ResultHooks, c string, result rex.Result) rex.Result {
 		logger.Info("Checking for hook on %v -> %v", c, compare)
 		if h.Match(c, compare) && h.CheckConditions() {
 			logger.Debug("found hook for %v/%v: %v", c, compare, h)
-			hr, herr := h.Reaction.React()
-			if herr != nil {
-				return rex.Result{
-					Completed: true,
-					Err:       herr,
-				}
-			}
-			return rex.Result{
-				Completed: true,
-				Output:    hr,
-			}
+			return logHookResult(c, h.Reaction.React())
 		}
 	}
 	return result
+}
+
+func logHookResult(c string, r rex.Result) rex.Result {
+	if r.Ok() {
+		logger.Debug(
+			"Hook command [%v] on [internal]: Stdout [%v]: Stderr [%v]",
+			c, r.Output, r.ErrOutput)
+	} else {
+		logger.LogError(
+			"Hook command [%v] on [internal]: Err[%v]: Stdout [%v]: Stderr [%v]",
+			c, r.Err, r.Output, r.ErrOutput)
+	}
+	return r
 }

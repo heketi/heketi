@@ -10,6 +10,9 @@
 package mockexec
 
 import (
+	"os"
+	"strconv"
+
 	"github.com/heketi/heketi/executors"
 )
 
@@ -43,6 +46,9 @@ type MockExecutor struct {
 	MockLVS                      func(host string) (*executors.LVSCommandOutput, error)
 	MockGetBrickMountStatus      func(host string) (*executors.BricksMountStatus, error)
 	MockListBlockVolumes         func(host string, blockhostingvolume string) ([]string, error)
+
+	// default values
+	DeviceSizeGb func() uint64
 }
 
 func NewMockExecutor() (*MockExecutor, error) {
@@ -61,10 +67,11 @@ func NewMockExecutor() (*MockExecutor, error) {
 	}
 
 	m.MockDeviceSetup = func(host, device, vgid string, destroy bool) (*executors.DeviceInfo, error) {
+		dsize := m.DeviceSizeGb() * 1024 * 1024
 		d := &executors.DeviceInfo{}
-		d.TotalSize = 500 * 1024 * 1024 // Size in KB
-		d.FreeSize = 500 * 1024 * 1024  // Size in KB
-		d.UsedSize = 0                  // Size in KB
+		d.TotalSize = dsize
+		d.FreeSize = dsize
+		d.UsedSize = 0
 		d.ExtentSize = 4096
 		return d, nil
 	}
@@ -74,9 +81,10 @@ func NewMockExecutor() (*MockExecutor, error) {
 	}
 
 	m.MockGetDeviceInfo = func(host, device, vgid string) (*executors.DeviceInfo, error) {
+		dsize := m.DeviceSizeGb() * 1024 * 1024
 		d := &executors.DeviceInfo{}
-		d.TotalSize = 500 * 1024 * 1024
-		d.FreeSize = 500 * 1024 * 1024
+		d.TotalSize = dsize
+		d.FreeSize = dsize
 		d.UsedSize = 0
 		d.ExtentSize = 4096
 		return d, nil
@@ -242,6 +250,17 @@ func NewMockExecutor() (*MockExecutor, error) {
 
 	m.MockListBlockVolumes = func(host string, blockhostingvolume string) ([]string, error) {
 		return []string{}, nil
+	}
+
+	m.DeviceSizeGb = func() uint64 {
+		env := os.Getenv("HEKETI_MOCK_DEVICE_SIZE_GB")
+		if env != "" {
+			value, err := strconv.ParseInt(env, 10, 64)
+			if err == nil {
+				return uint64(value)
+			}
+		}
+		return 500
 	}
 
 	return m, nil

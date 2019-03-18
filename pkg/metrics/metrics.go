@@ -49,6 +49,12 @@ var (
 		[]string{"cluster"},
 	)
 
+	blockVolumesCount = promDesc(
+		"block_volumes_count",
+		"Number of block volumes on cluster",
+		[]string{"cluster"},
+	)
+
 	nodesCount = promDesc(
 		"nodes_count",
 		"Number of nodes on cluster",
@@ -117,6 +123,7 @@ func promDesc(name, help string, variableLabels []string) *prometheus.Desc {
 func (m *Metrics) Describe(ch chan<- *prometheus.Desc) {
 	ch <- clusterCount
 	ch <- volumesCount
+	ch <- blockVolumesCount
 	ch <- nodesCount
 	ch <- deviceCount
 	ch <- deviceSize
@@ -158,6 +165,14 @@ func (m *Metrics) Collect(ch chan<- prometheus.Metric) {
 			float64(len(cluster.Volumes)),
 			cluster.Id,
 		)
+
+		ch <- prometheus.MustNewConstMetric(
+			blockVolumesCount,
+			prometheus.GaugeValue,
+			float64(len(cluster.BlockVolumes)),
+			cluster.Id,
+		)
+
 		ch <- prometheus.MustNewConstMetric(
 			nodesCount,
 			prometheus.GaugeValue,

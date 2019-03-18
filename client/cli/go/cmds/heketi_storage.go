@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/db"
@@ -45,6 +46,7 @@ var (
 	heketiStorageListFilename string
 	heketiStorageDurability   string
 	heketiStorageReplicaCount int
+	heketiStorageOptions      string
 )
 
 func init() {
@@ -68,6 +70,11 @@ func init() {
 		3,
 		"\n\tOptional: Replica value for durability type 'replicate'."+
 			"\n\tDefault is 3")
+	setupHeketiStorageCommand.Flags().StringVar(&heketiStorageOptions,
+		"gluster-volume-options",
+		"",
+		"\n\tOptional: Comma separated list of volume options."+
+			"\n\tSee volume create --help for details.")
 	setupHeketiStorageCommand.SilenceUsage = true
 }
 
@@ -129,6 +136,10 @@ func createHeketiStorageVolume(c *client.Client, dt api.DurabilityType, replicaC
 	req.Size = HeketiStorageVolumeSize
 	req.Name = db.HeketiStorageVolumeName
 	req.Durability.Type = dt
+	// Check volume options
+	if heketiStorageOptions != "" {
+		req.GlusterVolumeOptions = strings.Split(heketiStorageOptions, ",")
+	}
 
 	switch dt {
 	case api.DurabilityReplicate:

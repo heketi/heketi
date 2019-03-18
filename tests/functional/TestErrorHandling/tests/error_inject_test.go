@@ -17,6 +17,7 @@ package tests
 import (
 	"os"
 	"path"
+	"strings"
 	"testing"
 
 	"github.com/heketi/tests"
@@ -231,5 +232,116 @@ func TestErrorInjection(t *testing.T) {
 
 		isAlive := heketiServer.IsAlive()
 		tests.Assert(t, !isAlive, "expected heketi server stopped")
+	})
+}
+
+func TestGlusterBlockError(t *testing.T) {
+	heketiServer := testutils.NewServerCtlFromEnv("..")
+
+	origConf := path.Join(heketiServer.ServerDir, heketiServer.ConfPath)
+	heketiServer.ConfPath = tests.Tempfile()
+	defer os.Remove(heketiServer.ConfPath)
+	CopyFile(origConf, heketiServer.ConfPath)
+
+	defer testutils.ServerStopped(t, heketiServer)
+	testutils.ServerStarted(t, heketiServer)
+	heketiServer.KeepDB = true
+
+	defer func() {
+		CopyFile(origConf, heketiServer.ConfPath)
+		testutils.ServerRestarted(t, heketiServer)
+		testCluster.Teardown(t)
+	}()
+	testCluster.Setup(t, 3, 3)
+
+	t.Run("ParseableError", func(t *testing.T) {
+		UpdateConfig(origConf, heketiServer.ConfPath, func(c *config.Config) {
+			c.GlusterFS.Executor = "inject/ssh"
+			c.GlusterFS.InjectConfig.CmdInjection.CmdHooks = inj.CmdHooks{
+				inj.CmdHook{
+					Cmd: "^gluster-block create .*",
+					Reaction: inj.Reaction{
+						Result:         `{"RESULT": "FAIL", "errCode": 1, "errMsg": "ZOWIE"}`,
+						ForceErr:       true,
+						ForceErrOutput: true,
+					},
+				},
+			}
+		})
+		testutils.ServerRestarted(t, heketiServer)
+
+		// create a block volume
+		req := &api.BlockVolumeCreateRequest{}
+		req.Size = 5
+
+		_, err := heketi.BlockVolumeCreate(req)
+		tests.Assert(t, err != nil, "expected err != nil, got:", err)
+		tests.Assert(t,
+			strings.Contains(err.Error(), "Failed to create block volume"),
+			`expected string "Failed to create block volume" in err, got:`,
+			err.Error())
+		tests.Assert(t,
+			strings.Contains(err.Error(), "ZOWIE"),
+			`expected string "ZOWIE" in err, got:`,
+			err.Error())
+	})
+	t.Run("UnparseableError", func(t *testing.T) {
+		UpdateConfig(origConf, heketiServer.ConfPath, func(c *config.Config) {
+			c.GlusterFS.Executor = "inject/ssh"
+			c.GlusterFS.InjectConfig.CmdInjection.CmdHooks = inj.CmdHooks{
+				inj.CmdHook{
+					Cmd: "^gluster-block create .*",
+					Reaction: inj.Reaction{
+						Err: "SPLAT. I failed.",
+					},
+				},
+			}
+		})
+		testutils.ServerRestarted(t, heketiServer)
+
+		// create a block volume
+		req := &api.BlockVolumeCreateRequest{}
+		req.Size = 5
+
+		_, err := heketi.BlockVolumeCreate(req)
+		tests.Assert(t, err != nil, "expected err != nil, got:", err)
+		tests.Assert(t,
+			strings.Contains(err.Error(), "Unparsable error"),
+			`expected string "Unparsable error" in err, got:`,
+			err.Error())
+		tests.Assert(t,
+			strings.Contains(err.Error(), "SPLAT"),
+			`expected string "SPLAT" in err, got:`,
+			err.Error())
+	})
+	t.Run("NoFlaggedError", func(t *testing.T) {
+		// the command exits non-zero but FAIL flag is not set
+		UpdateConfig(origConf, heketiServer.ConfPath, func(c *config.Config) {
+			c.GlusterFS.Executor = "inject/ssh"
+			c.GlusterFS.InjectConfig.CmdInjection.CmdHooks = inj.CmdHooks{
+				inj.CmdHook{
+					Cmd: "^gluster-block create .*",
+					Reaction: inj.Reaction{
+						Err: `{"RESULT": "", "errCode": 1, "errMsg": "Me broken."}`,
+					},
+				},
+			}
+		})
+		testutils.ServerRestarted(t, heketiServer)
+
+		// create a block volume
+		req := &api.BlockVolumeCreateRequest{}
+		req.Size = 5
+
+		_, err := heketi.BlockVolumeCreate(req)
+		tests.Assert(t, err != nil, "expected err != nil, got:", err)
+		tests.Assert(t,
+			strings.Contains(err.Error(), "Failed to create block volume"),
+			`expected string "Failed to create block volume" in err, got:`,
+			err.Error())
+		tests.Assert(t,
+			strings.Contains(err.Error(), "Me broken"),
+			`expected string "Me broken" in err, got:`,
+			err.Error())
 	})
 }

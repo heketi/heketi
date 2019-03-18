@@ -175,7 +175,7 @@ func UpgradeDB(tx *bolt.Tx) error {
 	err = fixBlockHostingReservedSize(tx)
 	if err != nil {
 		logger.LogError(
-			"Failed to reserved sizes for block hosting volumes %v", err)
+			"Failed to fix reserved sizes for block hosting volumes %v", err)
 		return err
 	}
 

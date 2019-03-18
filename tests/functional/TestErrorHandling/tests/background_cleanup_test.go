@@ -81,13 +81,15 @@ func TestCleanupAfterRestart(t *testing.T) {
 	tests.Assert(t, info.Stale == 1,
 		"expected info.Stale == 1, got:", info.InFlight)
 
+	// wait for the background cleaner to be started
 	time.Sleep(5 * time.Second)
+
+	// wait around an additional 5 sec for stale ops to be cleaned up
 	for i := 0; i < 5; i++ {
-		// wait around and additional 5 sec for stale ops to be cleaned up
 		time.Sleep(time.Second)
 		info, err = heketi.OperationsInfo()
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
-		if info.Stale == 0 {
+		if info.Stale == 0 && info.InFlight == 0 {
 			break
 		}
 	}
@@ -159,13 +161,13 @@ func TestCleanupPeriodic(t *testing.T) {
 	os.Remove(glusterCond)
 	time.Sleep(time.Second)
 
+	// wait around up to twice the refresh interval for stale ops to be cleaned up
 	for i := 0; i < 16; i++ {
-		// wait around and additional 5 sec for stale ops to be cleaned up
 		time.Sleep(time.Second)
 		logger.Info("probing for server progress")
 		info, err = heketi.OperationsInfo()
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
-		if info.Stale == 0 && info.Failed == 0 {
+		if info.Stale == 0 && info.Failed == 0 && info.InFlight == 0 {
 			break
 		}
 	}

@@ -44,6 +44,9 @@ func NewFakeExecutor(f *CommandFaker) (*FakeExecutor, error) {
 	t.RemoteExecutor = t
 	config := &CmdConfig{}
 	config.GlusterCliTimeout = 42
+	config.LVChunkSize = "256K"
+	config.XfsSu = 0
+	config.XfsSw = 0
 	t.CmdExecutor.Init(config)
 	t.fake = f
 	t.Fstab = "/my/fstab"
