@@ -181,7 +181,8 @@ func (c *Client) doBasic(req *http.Request) (*http.Response, error) {
 	httpClient := &http.Client{}
 	if c.tlsClientConfig != nil {
 		httpClient.Transport = &http.Transport{
-			TLSClientConfig: c.tlsClientConfig,
+			TLSClientConfig:   c.tlsClientConfig,
+			DisableKeepAlives: true,
 		}
 	}
 	httpClient.CheckRedirect = c.checkRedirect
