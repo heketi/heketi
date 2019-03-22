@@ -178,15 +178,23 @@ func (c *Client) doBasic(req *http.Request) (*http.Response, error) {
 		<-c.throttle
 	}()
 
-	httpClient := &http.Client{}
-	if c.tlsClientConfig != nil {
-		httpClient.Transport = &http.Transport{
-			TLSClientConfig:   c.tlsClientConfig,
-			DisableKeepAlives: true,
-		}
-	}
-	httpClient.CheckRedirect = c.checkRedirect
+	httpClient := c.createHTTPClient()
 	return httpClient.Do(req)
+}
+
+// createHTTPClient performs the creation of HTTP client
+func (c *Client) createHTTPClient() *http.Client {
+	tr := http.DefaultTransport.(*http.Transport)
+
+	if c.tlsClientConfig != nil {
+		tr.TLSClientConfig = c.tlsClientConfig
+	}
+	tr.DisableKeepAlives = true
+
+	return &http.Client{
+		Transport:     tr,
+		CheckRedirect: c.checkRedirect,
+	}
 }
 
 // This function is called by the http package if it detects that it needs to
