@@ -8,6 +8,7 @@
 : "${BACKUPDB_PATH:=/backupdb}"
 : "${TMP_PATH:=/tmp}"
 : "${HEKETI_DB_ARCHIVE_PATH:=${HEKETI_PATH}/archive}"
+HEKETI_BIN="/usr/bin/heketi"
 LOG="${HEKETI_PATH}/container.log"
 
 # allow disabling the archive path
@@ -34,7 +35,7 @@ archive_db() {
     mkdir -p "${HEKETI_DB_ARCHIVE_PATH}"
 
     # only archive the db if the db content is valid
-    if ! /usr/bin/heketi db export --dbfile "${HEKETI_PATH}/heketi.db" --jsonfile - >/dev/null ; then
+    if ! "$HEKETI_BIN" db export --dbfile "${HEKETI_PATH}/heketi.db" --jsonfile - >/dev/null ; then
         error "Unable to export db. DB contents may not be valid"
         return 1
     fi
@@ -157,7 +158,7 @@ fi
 # heketi service back to the foreground again.
 if [[ "$(stat -c %s ${HEKETI_PATH}/heketi.db 2>/dev/null)" == 0 && -n "${HEKETI_TOPOLOGY_FILE}" ]]; then
     # start hketi in the background
-    /usr/bin/heketi --config=/etc/heketi/heketi.json &
+    "$HEKETI_BIN" --config=/etc/heketi/heketi.json &
 
     # wait until heketi replies
     while ! curl http://localhost:8080/hello; do
@@ -179,5 +180,5 @@ if [[ "$(stat -c %s ${HEKETI_PATH}/heketi.db 2>/dev/null)" == 0 && -n "${HEKETI_
     fg %1
 else
     # just start in the foreground
-    exec /usr/bin/heketi --config=/etc/heketi/heketi.json
+    exec "$HEKETI_BIN" --config=/etc/heketi/heketi.json
 fi
