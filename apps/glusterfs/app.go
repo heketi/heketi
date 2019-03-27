@@ -219,6 +219,14 @@ func (app *App) initDB() error {
 				return logger.LogError("Unable to initialize buckets: %v", err)
 			}
 
+			// Check that this is db we can safely use
+			validAttributes := validDbAttributeKeys(tx, mapDbAtrributeKeys())
+			if !validAttributes {
+				return logger.LogError(
+					"Unable to initialize db, unknown attributes are present" +
+						" (db from a newer version of heketi?)")
+			}
+
 			// Handle Upgrade Changes
 			err = UpgradeDB(tx)
 			if err != nil {
@@ -228,7 +236,7 @@ func (app *App) initDB() error {
 			return nil
 		})
 	}
-	return nil
+	return err
 }
 
 func (app *App) initNodeMonitor() {
