@@ -175,24 +175,14 @@ func (s *CmdExecutor) removeDevice(host, device, vgid string) error {
 }
 
 func (s *CmdExecutor) removeDeviceMountPoint(host, vgid string) error {
-	// TODO: remove this LBYL check and replace it with the rmdir
-	// followed by error condition check that handles ENOENT
 	pdir := paths.BrickMountPointParent(vgid)
 	commands := []string{
-		fmt.Sprintf("ls %v", pdir),
-	}
-	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 5))
-	if err != nil {
-		return nil
-	}
-
-	commands = []string{
 		fmt.Sprintf("rmdir %v", pdir),
 	}
 
-	err = rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 5))
-	if err != nil {
-		logger.LogError("Error while removing the VG directory")
+	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 5))
+	if err != nil && !strings.Contains(err.Error(), "No such file or directory") {
+		logger.LogError("Error while removing the VG directory: %v", err)
 	}
 	return nil
 }
