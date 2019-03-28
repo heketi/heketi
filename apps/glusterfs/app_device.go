@@ -16,6 +16,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
 
+	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
@@ -106,9 +107,10 @@ func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 		// Setup garbage collector on error
 		defer func() {
 			if e != nil {
-				a.executor.DeviceTeardown(node.ManageHostName(),
+				a.executor.DeviceTeardown(node.ManageHostName(), executors.SimpleDeviceVgHandle(
 					device.Info.Name,
-					device.Info.Id)
+					device.Info.Id))
+
 			}
 		}()
 
@@ -253,11 +255,13 @@ func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
 		var err error
 		if opts.ForceForget {
 			logger.Info("Delete request set force-forget option")
-			err = a.executor.DeviceForget(node.ManageHostName(),
-				device.Info.Name, device.Info.Id)
+			err = a.executor.DeviceForget(node.ManageHostName(), executors.SimpleDeviceVgHandle(
+				device.Info.Name, device.Info.Id))
+
 		} else {
-			err = a.executor.DeviceTeardown(node.ManageHostName(),
-				device.Info.Name, device.Info.Id)
+			err = a.executor.DeviceTeardown(node.ManageHostName(), executors.SimpleDeviceVgHandle(
+				device.Info.Name, device.Info.Id))
+
 		}
 		if err != nil {
 			return "", err
@@ -415,7 +419,7 @@ func (a *App) DeviceResync(w http.ResponseWriter, r *http.Request) {
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (seeOtherUrl string, e error) {
 
 		// Get actual device info from manage host
-		info, err := a.executor.GetDeviceInfo(node.ManageHostName(), device.Info.Name, device.Info.Id)
+		info, err := a.executor.GetDeviceInfo(node.ManageHostName(), executors.SimpleDeviceVgHandle(device.Info.Name, device.Info.Id))
 		if err != nil {
 			return "", err
 		}
