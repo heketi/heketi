@@ -28,6 +28,9 @@ const (
 	VGDISPLAY_TOTAL_NUMBER_EXTENTS     = 13
 	VGDISPLAY_ALLOCATED_NUMBER_EXTENTS = 14
 	VGDISPLAY_FREE_NUMBER_EXTENTS      = 15
+
+	// used for certain lvm functions
+	LV_UUID_PREFIX = "/dev/disk/by-id/lvm-pv-uuid-"
 )
 
 // Read:
@@ -70,7 +73,17 @@ func (s *CmdExecutor) DeviceSetup(host, device, vgid string, destroy bool) (d *e
 		}
 	}()
 
-	return s.GetDeviceInfo(host, executors.SimpleDeviceVgHandle(device, vgid))
+	d = &executors.DeviceInfo{}
+	dh, err := s.getDeviceHandle(host, device)
+	if err != nil {
+		return nil, err
+	}
+	d.Meta = dh
+	err = s.getVgSizeFromNode(d, host, device, vgid)
+	if err != nil {
+		return nil, err
+	}
+	return d, nil
 }
 
 func (s *CmdExecutor) PVS(host string) (d *executors.PVSCommandOutput, e error) {
@@ -134,9 +147,17 @@ func (s *CmdExecutor) LVS(host string) (d *executors.LVSCommandOutput, e error) 
 }
 
 func (s *CmdExecutor) GetDeviceInfo(host string, dh *executors.DeviceVgHandle) (d *executors.DeviceInfo, e error) {
-	// Vg info
+	if err := checkHandle(dh); err != nil {
+		return nil, err
+	}
+	paths := handlePaths(dh)
 	d = &executors.DeviceInfo{}
-	err := s.getVgSizeFromNode(d, host, dh.Paths[0], dh.VgId)
+	newdh, err := s.getDeviceHandle(host, paths[0])
+	if err != nil {
+		return nil, err
+	}
+	d.Meta = newdh
+	err = s.getVgSizeFromNode(d, host, paths[0], dh.VgId)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +165,11 @@ func (s *CmdExecutor) GetDeviceInfo(host string, dh *executors.DeviceVgHandle) (
 }
 
 func (s *CmdExecutor) DeviceTeardown(host string, dh *executors.DeviceVgHandle) error {
-	if err := s.removeDevice(host, dh.Paths[0], dh.VgId); err != nil {
+	if err := checkHandle(dh); err != nil {
+		return err
+	}
+	paths := handlePaths(dh)
+	if err := s.removeDevice(host, paths[0], dh.VgId); err != nil {
 		return err
 	}
 	return s.removeDeviceMountPoint(host, dh.VgId)
@@ -153,8 +178,12 @@ func (s *CmdExecutor) DeviceTeardown(host string, dh *executors.DeviceVgHandle) 
 // DeviceForget attempts a best effort remove of the device's vg and
 // pv and always returns a nil error.
 func (s *CmdExecutor) DeviceForget(host string, dh *executors.DeviceVgHandle) error {
+	if err := checkHandle(dh); err != nil {
+		return err
+	}
+	paths := handlePaths(dh)
 	s.removeDeviceMountPoint(host, dh.VgId)
-	s.removeDevice(host, dh.Paths[0], dh.VgId)
+	s.removeDevice(host, paths[0], dh.VgId)
 	return nil
 }
 
@@ -241,4 +270,106 @@ func (s *CmdExecutor) getVgSizeFromNode(
 	d.ExtentSize = extent_size
 	logger.Debug("%v in %v has TotalSize:%v, FreeSize:%v, UsedSize:%v", device, host, d.TotalSize, d.FreeSize, d.UsedSize)
 	return nil
+}
+
+func (s *CmdExecutor) getDeviceHandle(host, device string) (
+	*executors.DeviceHandle, error) {
+
+	commands := []string{}
+	commands = append(commands,
+		fmt.Sprintf("pvs -o pv_name,pv_uuid,vg_name --reportformat=json %v", device))
+	commands = append(commands,
+		fmt.Sprintf("udevadm info --query=symlink --name=%v", device))
+
+	results, err := s.RemoteExecutor.ExecCommands(host, commands, 5)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get device handle: %v", err)
+	}
+	if !results[0].Ok() {
+		// pvs command is expected to always work
+		return nil, fmt.Errorf("failed to read PV data for %v [%v]", device, results[0].Error())
+	}
+	dh := &executors.DeviceHandle{Paths: []string{}}
+	dh.UUID, err = parsePvsResult(results[0].Output)
+	if err != nil {
+		return nil, logger.LogError("failed to parse lvs output: %v", err)
+	}
+	if results[1].Ok() {
+		// udev returned a list of aliases (symlinks) for the device
+		// parse and collect them
+		foundPaths, err := parseUdevPaths(results[1].Output, device)
+		if err != nil {
+			return nil, err
+		}
+		dh.Paths = append(dh.Paths, foundPaths...)
+	} else {
+		dh.Paths = append(dh.Paths, device)
+	}
+	return dh, nil
+}
+
+func checkHandle(dh *executors.DeviceVgHandle) error {
+	if dh.UUID == "" && len(dh.Paths) == 0 {
+		return errors.New("device handle missing UUID and Paths")
+	}
+	if dh.VgId == "" {
+		return errors.New("device handle missing VG id")
+	}
+	return nil
+}
+
+func handlePaths(dh *executors.DeviceVgHandle) []string {
+	p := []string{}
+	if dh.UUID != "" {
+		p = append(p, fmt.Sprintf("%v%v", LV_UUID_PREFIX, dh.UUID))
+	}
+	p = append(p, dh.Paths...)
+	return p
+}
+
+func parsePvsResult(o string) (string, error) {
+	type pvEntry struct {
+		PVName string `json:"pv_name"`
+		PVUUID string `json:"pv_uuid"`
+		VGName string `json:"vg_name"`
+	}
+	type pvsInfoOutput struct {
+		Report []struct {
+			PVS []pvEntry `json:"pv"`
+			VGS []pvEntry `json:"vg"`
+		} `json:"report"`
+	}
+	var pvout pvsInfoOutput
+	err := json.Unmarshal([]byte(o), &pvout)
+	if err != nil {
+		return "", fmt.Errorf("Failed to parse output: %v", err)
+	}
+	if len(pvout.Report) != 1 {
+		return "", fmt.Errorf("Expected exactly 1 report in output")
+	}
+	if len(pvout.Report[0].PVS) == 1 {
+		return pvout.Report[0].PVS[0].PVUUID, nil
+	}
+	if len(pvout.Report[0].VGS) == 1 {
+		return pvout.Report[0].VGS[0].PVUUID, nil
+	}
+	return "", fmt.Errorf("Expected exactly 1 PV or 1 VG in output")
+}
+
+func parseUdevPaths(o, basePath string) ([]string, error) {
+	paths := []string{}
+	foundBasePath := false
+	for _, s := range strings.Fields(o) {
+		s = "/dev/" + s
+		if strings.HasPrefix(s, LV_UUID_PREFIX) {
+			// skip the lvm uuid path as we capture the lvm uuid separately
+			continue
+		}
+		foundBasePath = foundBasePath || s == basePath
+		paths = append(paths, s)
+	}
+	if !foundBasePath {
+		paths = append(paths, basePath)
+	}
+	return paths, nil
 }
