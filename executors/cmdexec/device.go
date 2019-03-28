@@ -66,11 +66,11 @@ func (s *CmdExecutor) DeviceSetup(host, device, vgid string, destroy bool) (d *e
 	// Create a cleanup function if anything fails
 	defer func() {
 		if e != nil {
-			s.DeviceTeardown(host, device, vgid)
+			s.DeviceTeardown(host, executors.SimpleDeviceVgHandle(device, vgid))
 		}
 	}()
 
-	return s.GetDeviceInfo(host, device, vgid)
+	return s.GetDeviceInfo(host, executors.SimpleDeviceVgHandle(device, vgid))
 }
 
 func (s *CmdExecutor) PVS(host string) (d *executors.PVSCommandOutput, e error) {
@@ -133,28 +133,28 @@ func (s *CmdExecutor) LVS(host string) (d *executors.LVSCommandOutput, e error) 
 	return &lvsCommandOutput, nil
 }
 
-func (s *CmdExecutor) GetDeviceInfo(host, device, vgid string) (d *executors.DeviceInfo, e error) {
+func (s *CmdExecutor) GetDeviceInfo(host string, dh *executors.DeviceVgHandle) (d *executors.DeviceInfo, e error) {
 	// Vg info
 	d = &executors.DeviceInfo{}
-	err := s.getVgSizeFromNode(d, host, device, vgid)
+	err := s.getVgSizeFromNode(d, host, dh.Paths[0], dh.VgId)
 	if err != nil {
 		return nil, err
 	}
 	return d, nil
 }
 
-func (s *CmdExecutor) DeviceTeardown(host, device, vgid string) error {
-	if err := s.removeDevice(host, device, vgid); err != nil {
+func (s *CmdExecutor) DeviceTeardown(host string, dh *executors.DeviceVgHandle) error {
+	if err := s.removeDevice(host, dh.Paths[0], dh.VgId); err != nil {
 		return err
 	}
-	return s.removeDeviceMountPoint(host, vgid)
+	return s.removeDeviceMountPoint(host, dh.VgId)
 }
 
 // DeviceForget attempts a best effort remove of the device's vg and
 // pv and always returns a nil error.
-func (s *CmdExecutor) DeviceForget(host, device, vgid string) error {
-	s.removeDeviceMountPoint(host, vgid)
-	s.removeDevice(host, device, vgid)
+func (s *CmdExecutor) DeviceForget(host string, dh *executors.DeviceVgHandle) error {
+	s.removeDeviceMountPoint(host, dh.VgId)
+	s.removeDevice(host, dh.Paths[0], dh.VgId)
 	return nil
 }
 
