@@ -116,6 +116,9 @@ type DeviceInfo struct {
 	FreeSize   uint64
 	UsedSize   uint64
 	ExtentSize uint64
+
+	// device identification metadata
+	Meta *DeviceHandle
 }
 
 type BrickFormatType int
