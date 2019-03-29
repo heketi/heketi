@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/spf13/cobra"
@@ -218,17 +219,19 @@ var deviceInfoCommand = &cobra.Command{
 			fmt.Fprintf(stdout, string(data))
 		} else {
 			fmt.Fprintf(stdout, "Device Id: %v\n"+
-				"Name: %v\n"+
 				"State: %v\n"+
 				"Size (GiB): %v\n"+
 				"Used (GiB): %v\n"+
 				"Free (GiB): %v\n",
 				info.Id,
-				info.Name,
 				info.State,
 				info.Storage.Total/(1024*1024),
 				info.Storage.Used/(1024*1024),
 				info.Storage.Free/(1024*1024))
+			fmt.Fprintf(stdout, "Create Path: %v\n", info.Name)
+			fmt.Fprintf(stdout, "Physical Volume UUID: %v\n", info.PvUUID)
+			fmt.Fprintf(stdout, "Known Paths: %v\n",
+				strings.Join(info.Paths, " "))
 			if len(info.Tags) != 0 {
 				fmt.Fprintf(stdout, "Tags:\n")
 				for k, v := range info.Tags {
