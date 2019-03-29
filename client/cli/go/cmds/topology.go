@@ -364,13 +364,17 @@ Cluster Id: {{.Id}}
 	Devices:
 {{- range .DevicesInfo}}
 		Id:{{.Id | printf "%-35v" -}}
-		Name:{{.Name | printf "%-20v" -}}
 		State:{{.State | printf "%-10v" -}}
 		Size (GiB):{{kibToGib .Storage.Total | printf "%-8v" -}}
 		Used (GiB):{{kibToGib .Storage.Used | printf "%-8v" -}}
 		Free (GiB):{{kibToGib .Storage.Free | printf "%-8v"}}
 {{- if len .Tags | ne 0 }}
 			Tags:{{range $tk, $tv := .Tags }} {{$tk}}:{{$tv -}}{{end}}
+{{end}}
+{{- if len .Paths | ne 0 }}
+			Known Paths:{{range $p := .Paths }} {{$p}}{{end}}
+{{else}}
+			Known Paths: {{.Name}}
 {{end}}
 			Bricks:
 {{- range .Bricks}}
