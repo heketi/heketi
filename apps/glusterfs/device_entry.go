@@ -676,3 +676,16 @@ func (d *DeviceEntry) consistencyCheck(db Db) (response DbEntryCheckResponse) {
 	return
 
 }
+
+// UpdateInfo takes the device info returned by the executor and updates
+// the corresponding fields of the device entry.
+func (d *DeviceEntry) UpdateInfo(info *executors.DeviceInfo) {
+	if info.Meta != nil {
+		// executor provided additional identifying metadata
+		d.Info.PvUUID = info.Meta.UUID
+		d.Info.Paths = make([]string, len(info.Meta.Paths))
+		copy(d.Info.Paths, info.Meta.Paths)
+	}
+	d.StorageSet(info.TotalSize, info.FreeSize, info.UsedSize)
+	d.SetExtentSize(info.ExtentSize)
+}
