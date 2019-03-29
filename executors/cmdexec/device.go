@@ -147,7 +147,9 @@ func (s *CmdExecutor) LVS(host string) (d *executors.LVSCommandOutput, e error) 
 }
 
 func (s *CmdExecutor) GetDeviceInfo(host string, dh *executors.DeviceVgHandle) (d *executors.DeviceInfo, e error) {
-	if err := checkHandle(dh); err != nil {
+	// TODO: the actions of upgradeHandle and getDeviceHandle are a bit
+	// overlapping. Perhaps it would be good to reduce the overlap if possible
+	if err := s.upgradeHandle(host, dh); err != nil {
 		return nil, err
 	}
 	paths := handlePaths(dh)
@@ -165,7 +167,7 @@ func (s *CmdExecutor) GetDeviceInfo(host string, dh *executors.DeviceVgHandle) (
 }
 
 func (s *CmdExecutor) DeviceTeardown(host string, dh *executors.DeviceVgHandle) error {
-	if err := checkHandle(dh); err != nil {
+	if err := s.upgradeHandle(host, dh); err != nil {
 		return err
 	}
 	paths := handlePaths(dh)
@@ -178,7 +180,7 @@ func (s *CmdExecutor) DeviceTeardown(host string, dh *executors.DeviceVgHandle) 
 // DeviceForget attempts a best effort remove of the device's vg and
 // pv and always returns a nil error.
 func (s *CmdExecutor) DeviceForget(host string, dh *executors.DeviceVgHandle) error {
-	if err := checkHandle(dh); err != nil {
+	if err := s.upgradeHandle(host, dh); err != nil {
 		return err
 	}
 	paths := handlePaths(dh)
@@ -306,6 +308,31 @@ func (s *CmdExecutor) getDeviceHandle(host, device string) (
 		dh.Paths = append(dh.Paths, device)
 	}
 	return dh, nil
+}
+
+func (s *CmdExecutor) upgradeHandle(host string, dh *executors.DeviceVgHandle) error {
+	if err := checkHandle(dh); err != nil {
+		return err
+	}
+	if dh.UUID != "" {
+		return nil
+	}
+	// this handle lacks a uuid, our preferred way to get a persistent
+	// path in /dev. Try to get one based on the vg id
+	commands := []string{}
+	commands = append(commands,
+		fmt.Sprintf("vgs -o pv_name,pv_uuid,vg_name --reportformat=json %v",
+			paths.VgIdToName(dh.VgId)))
+	results, err := s.RemoteExecutor.ExecCommands(host, commands, 5)
+	if e := rex.AnyError(results, err); e != nil {
+		logger.Warning("failed to get vgs info for handle: %v", err)
+		return nil
+	}
+	dh.UUID, err = parsePvsResult(results[0].Output)
+	if err != nil {
+		logger.Warning("failed to parse vgs output: %v", err)
+	}
+	return nil
 }
 
 func checkHandle(dh *executors.DeviceVgHandle) error {
