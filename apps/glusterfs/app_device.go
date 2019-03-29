@@ -99,10 +99,7 @@ func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return "", err
 		}
-
-		// Create an entry for the device and set the size
-		device.StorageSet(info.TotalSize, info.FreeSize, info.UsedSize)
-		device.SetExtentSize(info.ExtentSize)
+		device.UpdateInfo(info)
 
 		// Setup garbage collector on error
 		defer func() {
