@@ -181,6 +181,8 @@ type DeviceInfo struct {
 	Device
 	Storage StorageSize `json:"storage"`
 	Id      string      `json:"id"`
+	Paths   []string    `json:"paths,omitempty"`
+	PvUUID  string      `json:"pv_uuid,omitempty"`
 }
 
 type DeviceInfoResponse struct {
