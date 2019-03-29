@@ -285,6 +285,10 @@ func (d *DeviceEntry) NewInfoResponse(tx *bolt.Tx) (*api.DeviceInfoResponse, err
 	info.State = d.State
 	info.Bricks = make([]api.BrickInfo, 0)
 	info.Tags = copyTags(d.Info.Tags)
+	// copy new identifying metadata to info response
+	info.PvUUID = d.Info.PvUUID
+	info.Paths = make([]string, len(d.Info.Paths))
+	copy(info.Paths, d.Info.Paths)
 
 	// Add each drive information
 	for _, id := range d.Bricks {
