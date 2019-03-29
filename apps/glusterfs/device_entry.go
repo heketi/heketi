@@ -689,3 +689,19 @@ func (d *DeviceEntry) UpdateInfo(info *executors.DeviceInfo) {
 	d.StorageSet(info.TotalSize, info.FreeSize, info.UsedSize)
 	d.SetExtentSize(info.ExtentSize)
 }
+
+// ToHandle returns a executors.DeviceVgHandle for the current device.
+func (d *DeviceEntry) ToHandle() *executors.DeviceVgHandle {
+	dh := &executors.DeviceVgHandle{
+		VgId: d.Info.Id,
+	}
+	if d.Info.PvUUID != "" {
+		dh.UUID = d.Info.PvUUID
+	}
+	if len(d.Info.Paths) != 0 {
+		dh.Paths = d.Info.Paths
+	} else {
+		dh.Paths = []string{d.Info.Name}
+	}
+	return dh
+}
