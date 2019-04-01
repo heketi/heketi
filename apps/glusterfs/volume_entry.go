@@ -286,33 +286,43 @@ func (v *VolumeEntry) Unmarshal(buffer []byte) error {
 	return nil
 }
 
+// volOptsMap returns the volume options as a map of space separated
+// key-value pairs. Keys that are found later in the list will overwrite
+// the same key if it occurred earlier in the list. Strings that lack a
+// space separating key from value will be treated as a key  with a
+// value of "".
+func (v *VolumeEntry) volOptsMap() map[string]string {
+	om := map[string]string{}
+	for _, s := range v.GlusterVolumeOptions {
+		r := strings.SplitN(s, " ", 2)
+		if len(r) == 2 {
+			om[r[0]] = r[1]
+		} else {
+			om[r[0]] = ""
+		}
+	}
+	return om
+}
+
 // HasArbiterOption returns true if this volume is flagged for
 // arbiter support.
 func (v *VolumeEntry) HasArbiterOption() bool {
-	for _, s := range v.GlusterVolumeOptions {
-		r := strings.Split(s, " ")
-		if len(r) == 2 && r[0] == HEKETI_ARBITER_KEY {
-			if b, e := strconv.ParseBool(r[1]); e == nil {
-				return b
-			}
-		}
+	value := v.volOptsMap()[HEKETI_ARBITER_KEY]
+	if b, e := strconv.ParseBool(value); e == nil {
+		return b
 	}
 	return false
 }
 
 // GetAverageFileSize returns averageFileSize provided by user or default averageFileSize
 func (v *VolumeEntry) GetAverageFileSize() uint64 {
-	for _, s := range v.GlusterVolumeOptions {
-		r := strings.Split(s, " ")
-		if len(r) == 2 && r[0] == HEKETI_AVERAGE_FILE_SIZE_KEY {
-			if v, e := strconv.ParseUint(r[1], 10, 64); e == nil {
-				if v == 0 {
-					logger.LogError("Average File Size cannot be zero, using default file size %v", averageFileSize)
-					return averageFileSize
-				}
-				return v
-			}
+	value := v.volOptsMap()[HEKETI_AVERAGE_FILE_SIZE_KEY]
+	if size, e := strconv.ParseUint(value, 10, 64); e == nil {
+		if size == 0 {
+			logger.LogError("Average File Size cannot be zero, using default file size %v", averageFileSize)
+			return averageFileSize
 		}
+		return size
 	}
 	return averageFileSize
 }
@@ -320,11 +330,9 @@ func (v *VolumeEntry) GetAverageFileSize() uint64 {
 // GetZoneCheckingStrategy returns a ZoneCheckingStrategy based on
 // the volume's options.
 func (v *VolumeEntry) GetZoneCheckingStrategy() ZoneCheckingStrategy {
-	for _, s := range v.GlusterVolumeOptions {
-		r := strings.Split(s, " ")
-		if len(r) == 2 && r[0] == HEKETI_ZONE_CHECKING_KEY {
-			return ZoneCheckingStrategy(r[1])
-		}
+	value := v.volOptsMap()[HEKETI_ZONE_CHECKING_KEY]
+	if value != "" {
+		return ZoneCheckingStrategy(value)
 	}
 	return ZONE_CHECKING_UNSET
 }
