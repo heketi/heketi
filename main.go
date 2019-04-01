@@ -383,6 +383,11 @@ func setWithEnvVariables(options *config.Config) {
 	if "" != env {
 		options.Profiling = true
 	}
+
+	env = os.Getenv("HEKETI_DEFAULT_STATE")
+	if "" != env {
+		options.DefaultState = env
+	}
 }
 
 func setupApp(config *config.Config) (a *glusterfs.App) {
@@ -517,6 +522,10 @@ func main() {
 	adminss := admin.New()
 	n.Use(adminss)
 	adminss.SetRoutes(heketiRouter)
+	if err := adminss.SetString(options.DefaultState); err != nil {
+		fmt.Fprintln(os.Stderr, "ERROR: unable to set admin state:", err)
+		os.Exit(1)
+	}
 
 	if options.BackupDbToKubeSecret {
 		// Check if running in a Kubernetes environment
