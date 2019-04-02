@@ -61,7 +61,7 @@ type Client struct {
 	user     string
 	throttle chan bool
 
-	// http client
+	// HTTP client
 	httpClient *http.Client
 
 	// configuration for TLS support
@@ -172,7 +172,7 @@ func (c *Client) createHTTPClient() *http.Client {
 			Proxy: http.ProxyFromEnvironment,
 			DialContext: (&net.Dialer{
 				Timeout:   30 * time.Second,
-				KeepAlive: 2 * time.Minute,
+				KeepAlive: 30 * time.Second,
 				DualStack: true,
 			}).DialContext,
 			DisableKeepAlives:     false,
