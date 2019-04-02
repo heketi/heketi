@@ -93,6 +93,8 @@ var clusterCreateCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
+
 		// Create cluster
 		cluster, err := heketi.ClusterCreate(req)
 		if err != nil {
@@ -140,6 +142,7 @@ var clusterSetFlagsCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		info, err := heketi.ClusterInfo(clusterId)
 		if err != nil {
@@ -196,6 +199,7 @@ var clusterDeleteCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		//set url
 		err = heketi.ClusterDelete(clusterId)
@@ -226,6 +230,7 @@ var clusterInfoCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		info, err := heketi.ClusterInfo(clusterId)
 		if err != nil {
@@ -262,6 +267,7 @@ var clusterListCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		// List clusters
 		list, err := heketi.ClusterList()

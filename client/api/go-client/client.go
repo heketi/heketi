@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
@@ -59,6 +60,9 @@ type Client struct {
 	key      string
 	user     string
 	throttle chan bool
+
+	// http client
+	httpClient *http.Client
 
 	// configuration for TLS support
 	tlsClientConfig *tls.Config
@@ -115,6 +119,11 @@ func NewClientNoAuth(host string) *Client {
 	return NewClient(host, "", "")
 }
 
+// Close performs reset HTTP client
+func (c *Client) Close() {
+	c.resetHTTPClient()
+}
+
 // SetTLSOptions configures an existing heketi client for
 // TLS support based on the ClientTLSOptions.
 func (c *Client) SetTLSOptions(o *ClientTLSOptions) error {
@@ -140,7 +149,45 @@ func (c *Client) SetTLSOptions(o *ClientTLSOptions) error {
 		}
 	}
 	c.tlsClientConfig = tlsConfig
+
+	// we need reset http client if it created
+	c.resetHTTPClient()
+
 	return nil
+}
+
+// resetHTTPClient performs closing idle connections
+func (c *Client) resetHTTPClient() {
+	if c.httpClient != nil {
+		c.httpClient.CloseIdleConnections()
+		c.httpClient = nil
+	}
+}
+
+// createHTTPClient performs the creation of HTTP client
+// HTTP default transport configuration: https://golang.org/src/net/http/transport.go#L42
+func (c *Client) createHTTPClient() *http.Client {
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 2 * time.Minute,
+				DualStack: true,
+			}).DialContext,
+			DisableKeepAlives:     false,
+			DisableCompression:    false,
+			MaxIdleConns:          MAX_CONCURRENT_REQUESTS,
+			MaxIdleConnsPerHost:   MAX_CONCURRENT_REQUESTS,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+			TLSClientConfig:       c.tlsClientConfig,
+		},
+		CheckRedirect: c.checkRedirect,
+	}
+
+	return httpClient
 }
 
 // Simple Hello test to check if the server is up
@@ -178,23 +225,11 @@ func (c *Client) doBasic(req *http.Request) (*http.Response, error) {
 		<-c.throttle
 	}()
 
-	httpClient := c.createHTTPClient()
-	return httpClient.Do(req)
-}
-
-// createHTTPClient performs the creation of HTTP client
-func (c *Client) createHTTPClient() *http.Client {
-	tr := http.DefaultTransport.(*http.Transport)
-
-	if c.tlsClientConfig != nil {
-		tr.TLSClientConfig = c.tlsClientConfig
+	if c.httpClient == nil {
+		c.httpClient = c.createHTTPClient()
 	}
-	tr.DisableKeepAlives = true
 
-	return &http.Client{
-		Transport:     tr,
-		CheckRedirect: c.checkRedirect,
-	}
+	return c.httpClient.Do(req)
 }
 
 // This function is called by the http package if it detects that it needs to

@@ -194,6 +194,7 @@ var volumeCreateCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		// Add volume
 		volume, err := heketi.VolumeCreate(req)
@@ -263,6 +264,7 @@ var volumeDeleteCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		//set url
 		err = heketi.VolumeDelete(volumeId)
@@ -300,6 +302,7 @@ var volumeExpandCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		// Expand volume
 		volume, err := heketi.VolumeExpand(id, req)
@@ -353,6 +356,7 @@ var volumeBlockHostingRestrictionLockCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		// Set the flag
 		volume, err := heketi.VolumeSetBlockRestriction(volumeID, req)
@@ -400,6 +404,7 @@ var volumeBlockHostingRestrictionUnlockCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		// Set the flag
 		volume, err := heketi.VolumeSetBlockRestriction(volumeID, req)
@@ -440,6 +445,7 @@ var volumeInfoCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		info, err := heketi.VolumeInfo(volumeId)
 		if err != nil {
@@ -522,6 +528,7 @@ var volumeListCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		// List volumes
 		list, err := heketi.VolumeList()
@@ -583,6 +590,7 @@ var volumeCloneCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		// Clone the volume
 		volume, err := heketi.VolumeClone(volumeId, req)

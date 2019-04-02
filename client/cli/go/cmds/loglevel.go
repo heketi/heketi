@@ -41,6 +41,8 @@ var logLevelGetCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
+
 		llinfo, err := heketi.LogLevelGet()
 		if err == nil {
 			fmt.Fprintf(stdout, "%s\n", llinfo.LogLevel["glusterfs"])
@@ -65,6 +67,8 @@ var logLevelSetCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
+
 		err = heketi.LogLevelSet(&api.LogLevelInfo{
 			LogLevel: map[string]string{"glusterfs": args[0]},
 		})

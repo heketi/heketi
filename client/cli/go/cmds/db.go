@@ -39,6 +39,7 @@ var dumpDbCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		dump, err := heketi.DbDump()
 		if err != nil {
@@ -61,6 +62,7 @@ var checkDbCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		checkResponse, err := heketi.DbCheck()
 		if err != nil {

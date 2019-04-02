@@ -91,6 +91,7 @@ var deviceAddCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		// Add node
 		err = heketi.DeviceAdd(req)
@@ -130,6 +131,7 @@ var deviceDeleteCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		//set url
 		var opts api.DeviceDeleteOptions
@@ -164,6 +166,7 @@ var deviceRemoveCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		//set url
 		req := &api.StateRequest{
@@ -198,6 +201,7 @@ var deviceInfoCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		// Create cluster
 		info, err := heketi.DeviceInfo(deviceId)
@@ -272,6 +276,7 @@ var deviceEnableCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		//set url
 		req := &api.StateRequest{
@@ -307,6 +312,7 @@ var deviceDisableCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		//set url
 		req := &api.StateRequest{
@@ -341,6 +347,7 @@ var deviceResyncCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		//set url
 		err = heketi.DeviceResync(deviceId)
@@ -363,6 +370,8 @@ var deviceSetTagsCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
+
 		return setTagsCommand(cmd, heketi.DeviceSetTags)
 	},
 }
@@ -379,6 +388,8 @@ var deviceRmTagsCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
+
 		return rmTagsCommand(cmd, heketi.DeviceSetTags)
 	},
 }

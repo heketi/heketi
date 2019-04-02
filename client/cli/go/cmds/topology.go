@@ -158,6 +158,7 @@ var topologyLoadCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		// Load current topolgy
 		heketiTopology, err := heketi.TopologyInfo()
@@ -284,6 +285,7 @@ var topologyInfoCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		// Create Topology
 		topoinfo, err := heketi.TopologyInfo()

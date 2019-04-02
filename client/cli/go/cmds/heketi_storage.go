@@ -322,6 +322,7 @@ var setupHeketiStorageCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		// Create volume
 		volume, err := createHeketiStorageVolume(c, durability, heketiStorageReplicaCount)

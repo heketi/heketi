@@ -95,6 +95,7 @@ var nodeAddCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		// Add node
 		node, err := heketi.NodeAdd(req)
@@ -148,6 +149,7 @@ var nodeDeleteCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		//set url
 		err = heketi.NodeDelete(nodeId)
@@ -180,6 +182,7 @@ var nodeEnableCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		//set url
 		req := &api.StateRequest{
@@ -215,6 +218,7 @@ var nodeDisableCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		//set url
 		req := &api.StateRequest{
@@ -240,6 +244,7 @@ var nodeListCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		clusters, err := heketi.ClusterList()
 		if err != nil {
@@ -283,6 +288,7 @@ var nodeInfoCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		info, err := heketi.NodeInfo(nodeId)
 		if err != nil {
@@ -361,6 +367,7 @@ var nodeRemoveCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		//set url
 		req := &api.StateRequest{
@@ -386,6 +393,8 @@ var nodeSetTagsCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
+
 		return setTagsCommand(cmd, heketi.NodeSetTags)
 	},
 }
@@ -402,6 +411,8 @@ var nodeRmTagsCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
+
 		return rmTagsCommand(cmd, heketi.NodeSetTags)
 	},
 }

@@ -84,6 +84,8 @@ func operationsInfoSummary() error {
 	if err != nil {
 		return err
 	}
+	defer heketi.Close()
+
 	t, err := template.New("opInfo").Parse(opInfoTemplate)
 	if err != nil {
 		return err
@@ -100,6 +102,8 @@ func operationDetails(id string) error {
 	if err != nil {
 		return err
 	}
+	defer heketi.Close()
+
 	t, err := template.New("popDetails").Parse(popDetailsTemplate)
 	if err != nil {
 		return err
@@ -124,6 +128,8 @@ var operationsListCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
+
 		t, err := template.New("popList").Parse(popListTemplate)
 		if err != nil {
 			return err
@@ -149,6 +155,8 @@ var operationsCleanUpCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
+
 		request := api.PendingOperationsCleanRequest{}
 		if len(args) > 0 {
 			request.Operations = args
@@ -183,6 +191,8 @@ var getModeCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
+
 		adminStatus, err := heketi.AdminStatusGet()
 		if err != nil {
 			return err
@@ -208,6 +218,8 @@ var setModeCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
+
 		value := api.AdminState(args[0])
 		err = heketi.AdminStatusSet(&api.AdminStatus{State: value})
 		return err
@@ -236,6 +248,7 @@ var stateExamineGlusterCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		result, err := heketi.StateExamineGluster()
 		if err != nil {

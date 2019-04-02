@@ -106,6 +106,7 @@ var blockVolumeCreateCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		blockvolume, err := heketi.BlockVolumeCreate(req)
 		if err != nil {
@@ -147,6 +148,7 @@ var blockVolumeDeleteCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		//set url
 		err = heketi.BlockVolumeDelete(volumeId)
@@ -178,6 +180,7 @@ var blockVolumeInfoCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		// Create cluster
 		info, err := heketi.BlockVolumeInfo(volumeId)
@@ -210,6 +213,7 @@ var blockVolumeListCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer heketi.Close()
 
 		// List volumes
 		list, err := heketi.BlockVolumeList()
