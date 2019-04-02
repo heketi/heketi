@@ -158,12 +158,12 @@ func (c *Client) SetTLSOptions(o *ClientTLSOptions) error {
 
 // isHTTPClientCloseIdler returns true if HTTP client realize closeIdler interface
 // Details: https://github.com/golang/go/blob/release-branch.go1.12/src/net/http/client.go#L843
-func (c *Client) isHTTPClientCloseIdler() bool {
+func (c *Client) isHTTPClientCloseIdler(i interface{}) bool {
 	type closeIdler interface {
 		CloseIdleConnections()
 	}
 
-	_, ok := http.DefaultTransport.(closeIdler)
+	_, ok := i.(closeIdler)
 	return ok
 }
 
@@ -208,7 +208,7 @@ func (c *Client) createHTTPTransport() *http.Transport {
 	}
 
 	// For golang 1.11 and less we need disable KeepAlives
-	if !c.isHTTPClientCloseIdler() {
+	if !c.isHTTPClientCloseIdler(tr) {
 		tr.DialContext = (&net.Dialer{
 			Timeout:   30 * time.Second,
 			KeepAlive: -1 * time.Second,
