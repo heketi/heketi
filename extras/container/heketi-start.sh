@@ -52,7 +52,7 @@ if [[ ! -f "${HEKETI_PATH}/heketi.db" ]]; then
     fi
 fi
 
-stat "${HEKETI_PATH}/heketi.db" | tee -a "${LOG}"
+stat "${HEKETI_PATH}/heketi.db" 2>/dev/null | tee -a "${LOG}"
 # Workaround for scenario where a lock on the heketi.db has not been
 # released.
 # This code uses a non-blocking flock in a loop rather than a blocking
@@ -89,7 +89,7 @@ fi
 # if the heketi.db does not exist and HEKETI_TOPOLOGY_FILE is set, start the
 # heketi service in the background and load the topology. Once done, move the
 # heketi service back to the foreground again.
-if [[ "$(stat -c %s ${HEKETI_PATH}/heketi.db)" == 0 && -n "${HEKETI_TOPOLOGY_FILE}" ]]; then
+if [[ "$(stat -c %s ${HEKETI_PATH}/heketi.db 2>/dev/null)" == 0 && -n "${HEKETI_TOPOLOGY_FILE}" ]]; then
     # start hketi in the background
     /usr/bin/heketi --config=/etc/heketi/heketi.json &
 
