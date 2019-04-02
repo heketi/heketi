@@ -156,38 +156,72 @@ func (c *Client) SetTLSOptions(o *ClientTLSOptions) error {
 	return nil
 }
 
+// isHTTPClientCloseIdler returns true if HTTP client realize closeIdler interface
+// Details: https://github.com/golang/go/blob/release-branch.go1.12/src/net/http/client.go#L843
+func (c *Client) isHTTPClientCloseIdler() bool {
+	type closeIdler interface {
+		CloseIdleConnections()
+	}
+
+	_, ok := http.DefaultTransport.(closeIdler)
+	return ok
+}
+
+// closeIdleConnections performs closing idle connections if it possible
+// Details: https://github.com/golang/go/blob/release-branch.go1.12/src/net/http/client.go#L843
+func (c *Client) closeIdleConnections(i interface{}) {
+	type closeIdler interface {
+		CloseIdleConnections()
+	}
+
+	if closer, ok := i.(closeIdler); ok {
+		closer.CloseIdleConnections()
+	}
+}
+
 // resetHTTPClient performs closing idle connections
 func (c *Client) resetHTTPClient() {
 	if c.httpClient != nil {
-		c.httpClient.CloseIdleConnections()
+		c.closeIdleConnections(c.httpClient)
 		c.httpClient = nil
 	}
 }
 
-// createHTTPClient performs the creation of HTTP client
+// createHTTPTransport performs the creation of HTTP Transport
 // HTTP default transport configuration: https://golang.org/src/net/http/transport.go#L42
-func (c *Client) createHTTPClient() *http.Client {
-	httpClient := &http.Client{
-		Transport: &http.Transport{
-			Proxy: http.ProxyFromEnvironment,
-			DialContext: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-				DualStack: true,
-			}).DialContext,
-			DisableKeepAlives:     false,
-			DisableCompression:    false,
-			MaxIdleConns:          MAX_CONCURRENT_REQUESTS,
-			MaxIdleConnsPerHost:   MAX_CONCURRENT_REQUESTS,
-			IdleConnTimeout:       90 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-			TLSClientConfig:       c.tlsClientConfig,
-		},
-		CheckRedirect: c.checkRedirect,
+func (c *Client) createHTTPTransport() *http.Transport {
+	tr := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+			DualStack: true,
+		}).DialContext,
+		DisableKeepAlives:     false,
+		DisableCompression:    false,
+		MaxIdleConns:          MAX_CONCURRENT_REQUESTS,
+		MaxIdleConnsPerHost:   MAX_CONCURRENT_REQUESTS,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		TLSClientConfig:       c.tlsClientConfig,
 	}
 
-	return httpClient
+	// For golang 1.11 and less we need disable KeepAlives
+	if !c.isHTTPClientCloseIdler() {
+		tr.DialContext = (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: -1 * time.Second,
+			DualStack: true,
+		}).DialContext
+
+		tr.DisableKeepAlives = true
+		tr.MaxIdleConns = 0
+		tr.MaxIdleConnsPerHost = 0
+		tr.IdleConnTimeout = 100 * time.Millisecond
+	}
+
+	return tr
 }
 
 // Simple Hello test to check if the server is up
@@ -226,7 +260,10 @@ func (c *Client) doBasic(req *http.Request) (*http.Response, error) {
 	}()
 
 	if c.httpClient == nil {
-		c.httpClient = c.createHTTPClient()
+		c.httpClient = &http.Client{
+			Transport:     c.createHTTPTransport(),
+			CheckRedirect: c.checkRedirect,
+		}
 	}
 
 	return c.httpClient.Do(req)
