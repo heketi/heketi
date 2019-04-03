@@ -43,6 +43,21 @@ type closeIdler interface {
 	CloseIdleConnections()
 }
 
+// isCloseIdler returns true if HTTP client realize closeIdler interface
+// Details: https://github.com/golang/go/blob/release-branch.go1.12/src/net/http/client.go#L843
+func isCloseIdler(i interface{}) bool {
+	_, ok := i.(closeIdler)
+	return ok
+}
+
+// closeIdleConnections performs closing idle connections if it possible
+// Details: https://github.com/golang/go/blob/release-branch.go1.12/src/net/http/client.go#L843
+func closeIdleConnections(i interface{}) {
+	if c, ok := i.(closeIdler); ok {
+		c.CloseIdleConnections()
+	}
+}
+
 type ClientTLSOptions struct {
 	// directly borrow the field names from crypto/tls
 	InsecureSkipVerify bool
@@ -161,25 +176,10 @@ func (c *Client) SetTLSOptions(o *ClientTLSOptions) error {
 	return nil
 }
 
-// isHTTPClientCloseIdler returns true if HTTP client realize closeIdler interface
-// Details: https://github.com/golang/go/blob/release-branch.go1.12/src/net/http/client.go#L843
-func (c *Client) isHTTPClientCloseIdler(i interface{}) bool {
-	_, ok := i.(closeIdler)
-	return ok
-}
-
-// closeIdleConnections performs closing idle connections if it possible
-// Details: https://github.com/golang/go/blob/release-branch.go1.12/src/net/http/client.go#L843
-func (c *Client) closeIdleConnections(i interface{}) {
-	if closer, ok := i.(closeIdler); ok {
-		closer.CloseIdleConnections()
-	}
-}
-
 // resetHTTPClient performs closing idle connections
 func (c *Client) resetHTTPClient() {
 	if c.httpClient != nil {
-		c.closeIdleConnections(c.httpClient)
+		closeIdleConnections(c.httpClient)
 		c.httpClient = nil
 	}
 }
@@ -206,7 +206,7 @@ func (c *Client) createHTTPTransport() *http.Transport {
 
 	// If HTTP transport does not support to close idle
 	// connections manually, we need disable KeepAlives
-	if !c.isHTTPClientCloseIdler(tr) {
+	if !isCloseIdler(tr) {
 		tr.DialContext = (&net.Dialer{
 			Timeout:   30 * time.Second,
 			KeepAlive: -1 * time.Second,
