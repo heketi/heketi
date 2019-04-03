@@ -120,8 +120,9 @@ func NewClientNoAuth(host string) *Client {
 }
 
 // Close performs reset HTTP client
-func (c *Client) Close() {
+func (c *Client) Close() error {
 	c.resetHTTPClient()
+	return nil
 }
 
 // SetTLSOptions configures an existing heketi client for
