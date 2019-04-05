@@ -3000,6 +3000,25 @@ func TestVolumeCreateTooFewZones(t *testing.T) {
 		err = v.Create(app.db, app.executor)
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	})
+
+	t.Run("VolOpt ZoneChecking overwrite", func(t *testing.T) {
+		// server defaults to none but volume requests strict checking
+		// after setting none checking (test of option precedence).
+		ZoneChecking = ZONE_CHECKING_NONE
+		req := &api.VolumeCreateRequest{}
+		req.Size = 10
+		req.Durability.Type = api.DurabilityReplicate
+		req.Durability.Replicate.Replica = 3
+		req.GlusterVolumeOptions = []string{
+			"user.heketi.zone-checking none",
+			"user.phony.option 100",
+			"user.heketi.zone-checking strict",
+		}
+		v := NewVolumeEntryFromRequest(req)
+
+		err = v.Create(app.db, app.executor)
+		tests.Assert(t, err == ErrNoSpace, "expected err == ErrNoSpace, got:", err)
+	})
 }
 
 //
