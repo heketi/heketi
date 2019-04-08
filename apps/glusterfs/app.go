@@ -11,6 +11,7 @@ package glusterfs
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"os"
 	"strconv"
@@ -376,6 +377,14 @@ func (a *App) setFromEnvironmentalVariable() {
 	if "" != env {
 		a.conf.ZoneChecking = env
 	}
+
+	env = os.Getenv("HEKETI_GLUSTER_MAX_VOLUMES_PER_CLUSTER")
+	if env != "" {
+		a.conf.MaxVolumesPerCluster, err = strconv.Atoi(env)
+		if err != nil {
+			logger.LogError("Error: While parsing HEKETI_GLUSTER_MAX_VOLUMES_PER_CLUSTER: %v", err)
+		}
+	}
 }
 
 func (a *App) setAdvSettings() {
@@ -411,10 +420,18 @@ func (a *App) setAdvSettings() {
 		logger.Info("Post Request Volume Options: %v", a.conf.PostReqVolumeOptions)
 		PostReqVolumeOptions = a.conf.PostReqVolumeOptions
 	}
-
 	if a.conf.ZoneChecking != "" {
 		logger.Info("Zone checking: '%v'", a.conf.ZoneChecking)
 		ZoneChecking = ZoneCheckingStrategy(a.conf.ZoneChecking)
+	}
+	if a.conf.MaxVolumesPerCluster < 0 {
+		logger.Info("Volumes per cluster limit is removed as it is set to %v", a.conf.MaxVolumesPerCluster)
+		maxVolumesPerCluster = math.MaxInt32
+	} else if a.conf.MaxVolumesPerCluster == 0 {
+		logger.Info("Volumes per cluster limit is set to default value of %v", maxVolumesPerCluster)
+	} else {
+		logger.Info("Volumes per cluster limit is set to %v", a.conf.MaxVolumesPerCluster)
+		maxVolumesPerCluster = a.conf.MaxVolumesPerCluster
 	}
 }
 

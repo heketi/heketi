@@ -156,6 +156,11 @@ func (c *ClusterEntry) VolumeDelete(id string) {
 	c.Info.Volumes = sortedstrings.Delete(c.Info.Volumes, id)
 }
 
+// VolumeCount returns number of volumes in cluster *including* the pending ones
+func (c *ClusterEntry) volumeCount() int {
+	return len(c.Info.Volumes)
+}
+
 func (c *ClusterEntry) BlockVolumeAdd(id string) {
 	c.Info.BlockVolumes = append(c.Info.BlockVolumes, id)
 	c.Info.BlockVolumes.Sort()
