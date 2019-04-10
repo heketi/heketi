@@ -6,6 +6,7 @@
 
 : "${HEKETI_PATH:=/var/lib/heketi}"
 : "${BACKUPDB_PATH:=/backupdb}"
+: "${TMP_PATH:=/tmp}"
 LOG="${HEKETI_PATH}/container.log"
 
 info() {
@@ -72,13 +73,11 @@ fi
 
 if [[ -d "${BACKUPDB_PATH}" ]]; then
     if [[ -f "${BACKUPDB_PATH}/heketi.db.gz" ]] ; then
-        gunzip -c "${BACKUPDB_PATH}/heketi.db.gz" > "${BACKUPDB_PATH}/heketi.db"
+        gunzip -c "${BACKUPDB_PATH}/heketi.db.gz" > "${TMP_PATH}/heketi.db"
         if [[ $? -ne 0 ]]; then
             fail "Unable to extract backup database"
         fi
-    fi
-    if [[ -f "${BACKUPDB_PATH}/heketi.db" ]] ; then
-        cp "${BACKUPDB_PATH}/heketi.db" "${HEKETI_PATH}/heketi.db"
+        cp "${TMP_PATH}/heketi.db" "${HEKETI_PATH}/heketi.db"
         if [[ $? -ne 0 ]]; then
             fail "Unable to copy backup database"
         fi
