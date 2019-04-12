@@ -6,6 +6,7 @@
 
 : "${HEKETI_PATH:=/var/lib/heketi}"
 : "${BACKUPDB_PATH:=/backupdb}"
+: "${TMP_PATH:=/tmp}"
 LOG="${HEKETI_PATH}/container.log"
 
 info() {
@@ -52,7 +53,7 @@ if [[ ! -f "${HEKETI_PATH}/heketi.db" ]]; then
     fi
 fi
 
-stat "${HEKETI_PATH}/heketi.db" | tee -a "${LOG}"
+stat "${HEKETI_PATH}/heketi.db" 2>/dev/null | tee -a "${LOG}"
 # Workaround for scenario where a lock on the heketi.db has not been
 # released.
 # This code uses a non-blocking flock in a loop rather than a blocking
@@ -72,13 +73,11 @@ fi
 
 if [[ -d "${BACKUPDB_PATH}" ]]; then
     if [[ -f "${BACKUPDB_PATH}/heketi.db.gz" ]] ; then
-        gunzip -c "${BACKUPDB_PATH}/heketi.db.gz" > "${BACKUPDB_PATH}/heketi.db"
+        gunzip -c "${BACKUPDB_PATH}/heketi.db.gz" > "${TMP_PATH}/heketi.db"
         if [[ $? -ne 0 ]]; then
             fail "Unable to extract backup database"
         fi
-    fi
-    if [[ -f "${BACKUPDB_PATH}/heketi.db" ]] ; then
-        cp "${BACKUPDB_PATH}/heketi.db" "${HEKETI_PATH}/heketi.db"
+        cp "${TMP_PATH}/heketi.db" "${HEKETI_PATH}/heketi.db"
         if [[ $? -ne 0 ]]; then
             fail "Unable to copy backup database"
         fi
@@ -89,7 +88,7 @@ fi
 # if the heketi.db does not exist and HEKETI_TOPOLOGY_FILE is set, start the
 # heketi service in the background and load the topology. Once done, move the
 # heketi service back to the foreground again.
-if [[ "$(stat -c %s ${HEKETI_PATH}/heketi.db)" == 0 && -n "${HEKETI_TOPOLOGY_FILE}" ]]; then
+if [[ "$(stat -c %s ${HEKETI_PATH}/heketi.db 2>/dev/null)" == 0 && -n "${HEKETI_TOPOLOGY_FILE}" ]]; then
     # start hketi in the background
     /usr/bin/heketi --config=/etc/heketi/heketi.json &
 
