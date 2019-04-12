@@ -177,6 +177,12 @@ func TestTryOnHostsMultiError(t *testing.T) {
 		"baz": "789",
 	}
 
+	t.Run("noErrors", func(t *testing.T) {
+		err := newTryOnHosts(hosts).run(func(h string) error {
+			return nil
+		})
+		tests.Assert(t, err == nil)
+	})
 	t.Run("oneErrorSkipped", func(t *testing.T) {
 		err := newTryOnHosts(hosts).run(func(h string) error {
 			if h == "foo" {
