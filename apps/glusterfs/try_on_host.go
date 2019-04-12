@@ -62,7 +62,7 @@ func (c *tryOnHosts) run(f func(host string) error) error {
 		}
 	}
 
-	mherr := NewMultiHostError("")
+	mherr := HostErrorMap{}
 	tries := 0
 	nodeUp := c.nodeStatus()
 	for nodeId, host := range c.Hosts {
@@ -88,5 +88,5 @@ func (c *tryOnHosts) run(f func(host string) error) error {
 	}
 	logger.Warning(
 		"all hosts failed (%v total, %v tried)", len(c.Hosts), tries)
-	return mherr.Shorten()
+	return mherr.ToError("")
 }
