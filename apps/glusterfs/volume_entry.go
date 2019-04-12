@@ -462,7 +462,7 @@ func (v *VolumeEntry) tryAllocateBricks(
 	db wdb.DB,
 	possibleClusters []string) (brick_entries []*BrickEntry, err error) {
 
-	cerr := NewMultiClusterError("Unable to create volume on any cluster:")
+	cerr := ClusterErrorMap{}
 	for _, cluster := range possibleClusters {
 		// Check this cluster for space
 		brick_entries, err = v.allocBricksInCluster(db, cluster, v.Info.Size)
@@ -492,8 +492,8 @@ func (v *VolumeEntry) tryAllocateBricks(
 	}
 	// if our last attempt failed and we collected at least one error
 	// return the short form all the errors we collected
-	if err != nil && cerr.Len() > 0 {
-		err = cerr.Shorten()
+	if err != nil && len(cerr) > 0 {
+		err = cerr.ToError("Unable to create volume on any cluster:")
 	}
 	return
 }
@@ -875,7 +875,7 @@ func eligibleClusters(db wdb.RODB, req clusterReq,
 		return nil, fmt.Errorf("No clusters configured")
 	}
 	candidateClusters := []string{}
-	cerr := NewMultiClusterError("No eligible cluster for volume")
+	cerr := ClusterErrorMap{}
 	err := db.View(func(tx *bolt.Tx) error {
 		for _, clusterId := range possibleClusters {
 			c, err := NewClusterEntryFromId(tx, clusterId)
@@ -928,8 +928,8 @@ func eligibleClusters(db wdb.RODB, req clusterReq,
 		logger.LogError("No clusters eligible to satisfy create volume request")
 		// use generic "no space" error if cluster errors is empty
 		err = ErrNoSpace
-		if cerr.Len() > 0 {
-			err = cerr
+		if len(cerr) > 0 {
+			err = cerr.ToError("No eligible cluster for volume")
 		}
 	}
 	return candidateClusters, err
