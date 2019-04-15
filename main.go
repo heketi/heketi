@@ -44,6 +44,7 @@ var (
 	deleteAllBricksWithEmptyPath bool
 	dryRun                       bool
 	force                        bool
+	disableAuth                  bool
 )
 
 var RootCmd = &cobra.Command{
@@ -305,6 +306,8 @@ var examineGlusterCmd = &cobra.Command{
 func init() {
 	RootCmd.Flags().StringVar(&configfile, "config", "", "Configuration file")
 	RootCmd.Flags().BoolVarP(&showVersion, "version", "v", false, "Show version")
+	RootCmd.Flags().BoolVarP(&disableAuth, "disable-auth", "", false,
+		"Disable JWT Authentication")
 	RootCmd.SilenceUsage = true
 
 	RootCmd.AddCommand(dbCmd)
@@ -357,14 +360,12 @@ func setWithEnvVariables(options *config.Config) {
 	// Check for user key
 	env := os.Getenv("HEKETI_USER_KEY")
 	if "" != env {
-		options.AuthEnabled = true
 		options.JwtConfig.User.PrivateKey = env
 	}
 
 	// Check for user key
 	env = os.Getenv("HEKETI_ADMIN_KEY")
 	if "" != env {
-		options.AuthEnabled = true
 		options.JwtConfig.Admin.PrivateKey = env
 	}
 
@@ -503,7 +504,7 @@ func main() {
 	}
 
 	// Load authorization JWT middleware
-	if options.AuthEnabled {
+	if !disableAuth {
 		jwtauth := middleware.NewJwtAuth(&options.JwtConfig)
 		if jwtauth == nil {
 			fmt.Fprintln(os.Stderr, "ERROR: Missing JWT information in config file")
@@ -515,8 +516,8 @@ func main() {
 
 		// Add application middleware check
 		n.UseFunc(app.Auth)
-
-		fmt.Println("Authorization loaded")
+	} else {
+		fmt.Fprintln(os.Stderr, "WARNING: Heketi started with --disable-auth")
 	}
 
 	adminss := admin.New()

@@ -141,7 +141,7 @@ func (s *ServerCtl) Start() error {
 	if err := s.openLog(); err != nil {
 		return err
 	}
-	c := exec.Command(s.HeketiBin, s.ConfigArg())
+	c := exec.Command(s.HeketiBin, s.ConfigArg(), "--disable-auth")
 	if err := s.run(c, nil, nil); err != nil {
 		return err
 	}
