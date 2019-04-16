@@ -16,6 +16,8 @@ package tests
 
 import (
 	"fmt"
+	"os"
+	"path"
 	"testing"
 
 	"github.com/heketi/tests"
@@ -96,6 +98,126 @@ func TestDeviceAddRemoveSymlink(t *testing.T) {
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 }
 
+func TestDeviceStrippedMetadata(t *testing.T) {
+	heketiServer := testutils.NewServerCtlFromEnv("..")
+
+	defer func() {
+		testutils.ServerRestarted(t, heketiServer)
+		testCluster.Teardown(t)
+		testutils.ServerStopped(t, heketiServer)
+	}()
+
+	testutils.ServerStarted(t, heketiServer)
+	heketiServer.KeepDB = true
+	testCluster.Setup(t, 3, 2)
+
+	oldDevices := []string{}
+	topo, err := heketi.TopologyInfo()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	for _, n := range topo.ClusterList[0].Nodes {
+		for i, d := range n.DevicesInfo {
+			if i == 0 {
+				oldDevices = append(oldDevices, d.Id)
+			}
+		}
+	}
+
+	testutils.ServerStopped(t, heketiServer)
+	stripDeviceMetadata(t, heketiServer, oldDevices)
+	testutils.ServerStarted(t, heketiServer)
+
+	for _, devId := range oldDevices {
+		stateReq := &api.StateRequest{}
+		stateReq.State = api.EntryStateOffline
+		err = heketi.DeviceState(devId, stateReq)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+		stateReq = &api.StateRequest{}
+		stateReq.State = api.EntryStateFailed
+		err = heketi.DeviceState(devId, stateReq)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+		err = heketi.DeviceDelete(devId)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	}
+}
+
+func TestDeviceStrippedMetadataRemoveSymlink(t *testing.T) {
+	heketiServer := testutils.NewServerCtlFromEnv("..")
+
+	defer func() {
+		testutils.ServerRestarted(t, heketiServer)
+		testCluster.Teardown(t)
+		testutils.ServerStopped(t, heketiServer)
+	}()
+
+	testutils.ServerStarted(t, heketiServer)
+	heketiServer.KeepDB = true
+	testCluster.Setup(t, 3, 2)
+
+	na := testutils.RequireNodeAccess(t)
+	exec := na.Use(logger)
+
+	// create symlink aliases
+	for i := 0; i < len(testCluster.Nodes); i++ {
+		err := linkDevice(testCluster, exec, i, 3, "/dev/bender")
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	}
+
+	// add our new devices using the symlink-alias
+	topo, err := heketi.TopologyInfo()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	for _, n := range topo.ClusterList[0].Nodes {
+		req := &api.DeviceAddRequest{}
+		req.Name = "/dev/bender"
+		req.NodeId = n.Id
+		err = heketi.DeviceAdd(req)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	}
+
+	// remove our alias symlinks
+	for i := 0; i < len(testCluster.Nodes); i++ {
+		err := rmLink(testCluster, exec, i, "/dev/bender")
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	}
+
+	// gather devices to fiddle with
+	oldDevices := []string{}
+	topo, err = heketi.TopologyInfo()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	for _, n := range topo.ClusterList[0].Nodes {
+		for i, d := range n.DevicesInfo {
+			if i == 0 || d.Name == "/dev/bender" {
+				oldDevices = append(oldDevices, d.Id)
+			}
+		}
+	}
+
+	// strip devices of new identifying metadata
+	testutils.ServerStopped(t, heketiServer)
+	stripDeviceMetadata(t, heketiServer, oldDevices)
+	testutils.ServerStarted(t, heketiServer)
+
+	// Removing these devices should succeed even though they've been fiddled
+	// with because the code contains the ability to auto-detect the device
+	// based on the vg id, not just the extra metadata we added in this
+	// version.
+	for _, devId := range oldDevices {
+		stateReq := &api.StateRequest{}
+		stateReq.State = api.EntryStateOffline
+		err = heketi.DeviceState(devId, stateReq)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+		stateReq = &api.StateRequest{}
+		stateReq.State = api.EntryStateFailed
+		err = heketi.DeviceState(devId, stateReq)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+		err = heketi.DeviceDelete(devId)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	}
+}
+
 func linkDevice(
 	tc *testutils.ClusterEnv, exec *ssh.SshExec,
 	hostIdx, diskIdx int, newPath string) error {
@@ -117,4 +239,44 @@ func rmLink(
 		fmt.Sprintf("rm -f %s", path),
 	}
 	return rex.AnyError(exec.ExecCommands(sshHost, cmds, 10, true))
+}
+
+func stripDeviceMetadata(
+	t *testing.T, heketiServer *testutils.ServerCtl, deviceIds []string) {
+
+	dbJson := tests.Tempfile()
+	defer os.Remove(dbJson)
+
+	// export the db to json so we can hack it up
+	err := heketiServer.RunOfflineCmd(
+		[]string{"db", "export",
+			"--dbfile", heketiServer.DbPath,
+			"--jsonfile", dbJson})
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	// edit the json dump so that recently created device entries
+	// are stripped of the new device identifying metadata and
+	// act like old db entries
+	var dump map[string]interface{}
+	readJsonDump(t, dbJson, &dump)
+	deviceEntries, ok := dump["deviceentries"].(map[string]interface{})
+	tests.Assert(t, ok, "conversion failed")
+	for _, id := range deviceIds {
+		dev, ok := deviceEntries[id].(map[string]interface{})
+		tests.Assert(t, ok, "conversion failed")
+		info, ok := dev["Info"].(map[string]interface{})
+		tests.Assert(t, ok, "conversion failed")
+		delete(info, "paths")
+		delete(info, "pv_uuid")
+	}
+	writeJsonDump(t, dbJson, dump)
+
+	// restore the "hacked" json to a heketi db (replacing old version)
+	dbPath := path.Join(heketiServer.ServerDir, heketiServer.DbPath)
+	os.Remove(dbPath)
+	err = heketiServer.RunOfflineCmd(
+		[]string{"db", "import",
+			"--dbfile", heketiServer.DbPath,
+			"--jsonfile", dbJson})
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 }
