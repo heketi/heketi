@@ -383,15 +383,16 @@ func setWithEnvVariables(options *config.Config) {
 	if "" != env {
 		options.Profiling = true
 	}
+
+	env = os.Getenv("HEKETI_DEFAULT_STATE")
+	if "" != env {
+		options.DefaultState = env
+	}
 }
 
 func setupApp(config *config.Config) (a *glusterfs.App) {
 	defer func() {
-		err := recover()
-		if a == nil {
-			fmt.Fprintln(os.Stderr, "ERROR: Unable to start application")
-			os.Exit(1)
-		} else if err != nil {
+		if err := recover(); err != nil {
 			fmt.Fprintf(os.Stderr, "ERROR: Unable to start application: %s\n", err)
 			os.Exit(1)
 		}
@@ -408,12 +409,14 @@ func setupApp(config *config.Config) (a *glusterfs.App) {
 		config.GlusterFS.DisableBackgroundCleaner,
 		"HEKETI_DISABLE_BACKGROUND_CLEANER")
 
-	a = glusterfs.NewApp(config.GlusterFS)
-	if a != nil {
-		if err := a.ServerReset(); err != nil {
-			fmt.Fprintln(os.Stderr, "ERROR: Failed to reset server application")
-			os.Exit(1)
-		}
+	a, e := glusterfs.NewApp(config.GlusterFS)
+	if e != nil {
+		fmt.Fprintf(os.Stderr, "ERROR: Unable to start application: %s\n", e)
+		os.Exit(1)
+	}
+	if err := a.ServerReset(); err != nil {
+		fmt.Fprintln(os.Stderr, "ERROR: Failed to reset server application")
+		os.Exit(1)
 	}
 	return a
 }
@@ -519,6 +522,10 @@ func main() {
 	adminss := admin.New()
 	n.Use(adminss)
 	adminss.SetRoutes(heketiRouter)
+	if err := adminss.SetString(options.DefaultState); err != nil {
+		fmt.Fprintln(os.Stderr, "ERROR: unable to set admin state:", err)
+		os.Exit(1)
+	}
 
 	if options.BackupDbToKubeSecret {
 		// Check if running in a Kubernetes environment

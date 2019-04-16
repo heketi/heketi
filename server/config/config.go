@@ -28,6 +28,7 @@ type Config struct {
 	CertFile             string                   `json:"cert_file"`
 	KeyFile              string                   `json:"key_file"`
 	Profiling            bool                     `json:"profiling"`
+	DefaultState         string                   `json:"default_state"`
 
 	// pull in the config sub-object for glusterfs app
 	GlusterFS *glusterfs.GlusterFSConfig `json:"glusterfs"`

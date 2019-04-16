@@ -105,11 +105,21 @@ def delete_volume(data, vid):
 def delete_block_volume(data, vid):
     log.info('deleting block volume %s', vid)
     item = data['blockvolumeentries'].pop(vid, None)
+    # remove any reference (real or dangling) from cluster
     for c in data['clusterentries'].values():
         if vid in c['Info']['blockvolumes']:
             c['Info']['blockvolumes'].remove(vid)
+    # if no item in db, just stop
     if not item:
         return
+    # remove any reference (real or dangling) from BHV
+    vol = data['volumeentries'].get(item['Info']['blockhostingvolume'])
+    if vol:
+        try:
+            vol['Info']['blockinfo']['blockvolume'].remove(vid)
+        except ValueError:
+            log.warning('block volume %s not listed in hosting volume %s',
+                        vid, vol['Info']['id'])
     log.warning('may need manual cleanup: block volume: %s',
         item['Info']['blockvolume'].get('iqn') or '???')
 
@@ -135,8 +145,17 @@ def storage_free(device, brick):
     total_size = brick['TpSize'] + brick['PoolMetadataSize']
     device['Info']['storage']['free'] += total_size
     device['Info']['storage']['used'] -= total_size
-    log.info('added back free size %s to device %s',
-             total_size, device['Info']['id'])
+    log.info('added back free size %s to device %s, now: %r',
+             total_size, device['Info']['id'],
+             device['Info']['storage'])
+    if device['Info']['storage']['used'] < 0:
+        raise ValueError("used size went negative")
+    if device['Info']['storage']['free'] < 0:
+        raise ValueError("free size went negative")
+    if device['Info']['storage']['free'] > device['Info']['storage']['total']:
+        raise ValueError("free size greater than total size")
+    if device['Info']['storage']['used'] > device['Info']['storage']['total']:
+        raise ValueError("used size greater than total size")
 
 
 def scrub(data):

@@ -17,6 +17,7 @@ package tests
 import (
 	"os"
 	"path"
+	"strings"
 	"testing"
 
 	"github.com/heketi/tests"
@@ -87,5 +88,73 @@ func TestBlockVolumeAllocDefaults(t *testing.T) {
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 		tests.Assert(t, len(l.PendingOperations) == 0,
 			"expected len(l.PendingOperations) == 0, got:", len(l.PendingOperations))
+	})
+}
+
+func TestServerStateDefaults(t *testing.T) {
+	heketiServer := testutils.NewServerCtlFromEnv("..")
+	origConf := path.Join(heketiServer.ServerDir, heketiServer.ConfPath)
+
+	heketiServer.ConfPath = tests.Tempfile()
+	defer os.Remove(heketiServer.ConfPath)
+	CopyFile(origConf, heketiServer.ConfPath)
+
+	defer func() {
+		CopyFile(origConf, heketiServer.ConfPath)
+		testutils.ServerRestarted(t, heketiServer)
+		testCluster.Teardown(t)
+		testutils.ServerStopped(t, heketiServer)
+	}()
+
+	testutils.ServerStarted(t, heketiServer)
+	heketiServer.KeepDB = true
+	testCluster.Setup(t, 3, 3)
+
+	t.Run("ReadOnly", func(t *testing.T) {
+		UpdateConfig(origConf, heketiServer.ConfPath, func(c *config.Config) {
+			c.DefaultState = "read-only"
+		})
+		testutils.ServerRestarted(t, heketiServer)
+
+		req := &api.VolumeCreateRequest{}
+		req.Size = 1
+		_, err := heketi.VolumeCreate(req)
+		tests.Assert(t, err != nil, "expected err != nil, got:", err)
+		tests.Assert(t, strings.Contains(err.Error(), "maintenance"),
+			"expect err contains 'maintenance', got:", err)
+	})
+	t.Run("LocalOnly", func(t *testing.T) {
+		// unfortunately we don't have a way to really verify that local-client
+		// is local only here in these tests... :-\
+		UpdateConfig(origConf, heketiServer.ConfPath, func(c *config.Config) {
+			c.DefaultState = "local-client"
+		})
+		testutils.ServerRestarted(t, heketiServer)
+
+		req := &api.VolumeCreateRequest{}
+		req.Size = 1
+		_, err := heketi.VolumeCreate(req)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	})
+	t.Run("Normal", func(t *testing.T) {
+		UpdateConfig(origConf, heketiServer.ConfPath, func(c *config.Config) {
+			c.DefaultState = "normal"
+		})
+		testutils.ServerRestarted(t, heketiServer)
+
+		req := &api.VolumeCreateRequest{}
+		req.Size = 1
+		_, err := heketi.VolumeCreate(req)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	})
+	t.Run("Invalid", func(t *testing.T) {
+		UpdateConfig(origConf, heketiServer.ConfPath, func(c *config.Config) {
+			c.DefaultState = "blatt"
+		})
+		testutils.ServerStopped(t, heketiServer)
+		err := heketiServer.Start()
+		tests.Assert(t, err != nil, "expected err != nil, got:", err)
+		isAlive := heketiServer.IsAlive()
+		tests.Assert(t, !isAlive, "expected isAlive == false")
 	})
 }

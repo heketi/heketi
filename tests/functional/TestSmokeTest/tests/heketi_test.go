@@ -18,7 +18,6 @@ import (
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/logging"
-	"github.com/heketi/heketi/pkg/remoteexec/ssh"
 	"github.com/heketi/heketi/pkg/testutils"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
@@ -156,7 +155,7 @@ func TestHeketiSmokeTest(t *testing.T) {
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 }
 
-func HeketiCreateVolumeWithGid(t *testing.T) {
+func TestHeketiCreateVolumeWithGid(t *testing.T) {
 	na := testutils.RequireNodeAccess(t)
 	// Setup the VM storage topology
 	teardownCluster(t)
@@ -171,48 +170,34 @@ func HeketiCreateVolumeWithGid(t *testing.T) {
 	volReq.Snapshot.Enable = true
 	volReq.Snapshot.Factor = 1.5
 
-	// Set to the vagrant gid
-	volReq.Gid = 1000
+	volReq.Gid = 2345
 
 	// Create the volume
 	volInfo, err := heketi.VolumeCreate(volReq)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	// SSH into system and create two writers belonging to writegroup gid
-	vagrantexec := na.Use(logger)
+	// SSH into system, create two writers belonging to writegroup gid and
+	// make sure both can write and the sticky group bit is set
+	exec := na.Use(logger)
 	cmd := []string{
-		"sudo groupadd writegroup",
-		"sudo useradd writer1 -G writegroup -p'$6$WBG5yf03$3DvyE41cicXEZDW.HDeJg3S4oEoELqKWoS/n6l28vorNxhIlcBe2SLQFDhqq6.Pq'",
-		"sudo useradd writer2 -G writegroup -p'$6$WBG5yf03$3DvyE41cicXEZDW.HDeJg3S4oEoELqKWoS/n6l28vorNxhIlcBe2SLQFDhqq6.Pq'",
+		"sudo groupadd -f -g 2345 writegroup",
+		"grep -q ^writer1: /etc/passwd || sudo useradd writer1 -G writegroup",
+		"grep -q ^writer2: /etc/passwd || sudo useradd writer2 -G writegroup",
+		"sudo umount /mnt 2>/dev/null || true",
 		fmt.Sprintf("sudo mount -t glusterfs %v /mnt", volInfo.Mount.GlusterFS.MountPoint),
+		"sudo runuser -u writer1 -- touch /mnt/writer1testfile",
+		"sudo runuser -u writer1 -- mkdir /mnt/writer1dir",
+		"sudo runuser -u writer1 -- chmod 770 /mnt/writer1dir",
+		"sudo runuser -u writer1 -- touch /mnt/writer1dir/testfile",
+		"sudo runuser -u writer2 -- touch /mnt/writer2testfile",
+		"sudo runuser -u writer2 -- mkdir /mnt/writer2dir",
+		"sudo runuser -u writer2 -- touch /mnt/writer2dir/testfile",
+		"sudo runuser -u writer2 -- mkdir /mnt/writer1dir/writer2subdir",
+		"sudo runuser -u writer2 -- touch /mnt/writer1dir/writer2testfile",
+		"! sudo runuser -u nobody -- touch /mnt/nobodytestfile",
 	}
-	_, err = vagrantexec.ConnectAndExec(cenv.SshHost(0), cmd, 10, true)
+	_, err = exec.ConnectAndExec(cenv.SshHost(0), cmd, 10, false)
 	tests.Assert(t, err == nil, err)
-
-	writer1exec := ssh.NewSshExecWithPassword(logger, "writer1", "$6$WBG5yf03$3DvyE41cicXEZDW.HDeJg3S4oEoELqKWoS/n6l28vorNxhIlcBe2SLQFDhqq6.Pq")
-	cmd = []string{
-		"touch /mnt/writer1testfile",
-		"mkdir /mnt/writer1dir",
-		"touch /mnt/writer1dir/testfile",
-	}
-	_, err = writer1exec.ConnectAndExec(cenv.SshHost(0), cmd, 10, false)
-	tests.Assert(t, err == nil, err)
-
-	writer2exec := ssh.NewSshExecWithPassword(logger, "writer2", "$6$WBG5yf03$3DvyE41cicXEZDW.HDeJg3S4oEoELqKWoS/n6l28vorNxhIlcBe2SLQFDhqq6.Pq")
-	cmd = []string{
-		"touch /mnt/writer2testfile",
-		"mkdir /mnt/writer2dir",
-		"touch /mnt/writer2dir/testfile",
-	}
-	_, err = writer2exec.ConnectAndExec(cenv.SshHost(0), cmd, 10, false)
-	tests.Assert(t, err == nil, err)
-	cmd = []string{
-		"mkdir /mnt/writer1dir/writer2subdir",
-		"touch /mnt/writer1dir/writer2testfile",
-	}
-	_, err = writer2exec.ConnectAndExec(cenv.SshHost(0), cmd, 10, false)
-	tests.Assert(t, err == nil, err)
-
 }
 
 func TestRemoveDevice(t *testing.T) {
@@ -463,6 +448,34 @@ func TestHeketiVolumeCreateWithOptions(t *testing.T) {
 	_, err = vagrantexec.ConnectAndExec(cenv.SshHost(0), cmd, 10, true)
 	tests.Assert(t, err == nil, "Volume Created with specified options")
 
+}
+
+func TestHeketiVolumeCreateSetsIdOption(t *testing.T) {
+	na := testutils.RequireNodeAccess(t)
+	// Setup the VM storage topology
+	teardownCluster(t)
+	setupCluster(t, 2, 2)
+	defer teardownCluster(t)
+
+	// Create a volume
+	volReq := &api.VolumeCreateRequest{}
+	volReq.Size = 10
+	volReq.Durability.Type = api.DurabilityReplicate
+	volReq.Durability.Replicate.Replica = 2
+	volReq.Snapshot.Enable = true
+	volReq.Snapshot.Factor = 1.5
+
+	// Create the volume
+	volInfo, err := heketi.VolumeCreate(volReq)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	// SSH into system and check for user.heketi.id option
+	exec := na.Use(logger)
+	cmd := []string{
+		fmt.Sprintf("sudo gluster v info %v | grep user.heketi.id | grep %v", volInfo.Name, volInfo.Id),
+	}
+	_, err = exec.ConnectAndExec(cenv.SshHost(0), cmd, 10, true)
+	tests.Assert(t, err == nil, "Volume not created with user.heketi.id option")
 }
 
 func TestDeviceRemoveErrorHandling(t *testing.T) {

@@ -1,5 +1,5 @@
 - name: clean disks
-  command: dd if=/dev/zero of={{ item }} count=100 bs=1024k
+  command: wipefs -a {{ item }}
   with_items:
     - /dev/vdb
     - /dev/vdc
