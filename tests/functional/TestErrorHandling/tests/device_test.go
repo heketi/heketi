@@ -22,10 +22,12 @@ import (
 
 	"github.com/heketi/tests"
 
+	inj "github.com/heketi/heketi/executors/injectexec"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	rex "github.com/heketi/heketi/pkg/remoteexec"
 	"github.com/heketi/heketi/pkg/remoteexec/ssh"
 	"github.com/heketi/heketi/pkg/testutils"
+	"github.com/heketi/heketi/server/config"
 )
 
 func TestDeviceAddRemoveSymlink(t *testing.T) {
@@ -216,6 +218,146 @@ func TestDeviceStrippedMetadataRemoveSymlink(t *testing.T) {
 		err = heketi.DeviceDelete(devId)
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	}
+}
+
+func TestDeviceHandlingFallbacks(t *testing.T) {
+	heketiServer := testutils.NewServerCtlFromEnv("..")
+	origConf := path.Join(heketiServer.ServerDir, heketiServer.ConfPath)
+
+	heketiServer.ConfPath = tests.Tempfile()
+	defer os.Remove(heketiServer.ConfPath)
+	CopyFile(origConf, heketiServer.ConfPath)
+
+	partialTeardown := func() {
+		CopyFile(origConf, heketiServer.ConfPath)
+		testutils.ServerRestarted(t, heketiServer)
+	}
+
+	defer func() {
+		partialTeardown()
+		testCluster.Teardown(t)
+		testutils.ServerStopped(t, heketiServer)
+	}()
+
+	testutils.ServerStarted(t, heketiServer)
+	heketiServer.KeepDB = true
+	testCluster.Setup(t, 3, 2)
+
+	diskPath := testCluster.Disks[3]
+
+	t.Run("disableUdevadm", func(t *testing.T) {
+		UpdateConfig(origConf, heketiServer.ConfPath, func(c *config.Config) {
+			c.GlusterFS.Executor = "inject/ssh"
+			c.GlusterFS.InjectConfig.CmdInjection.CmdHooks = inj.CmdHooks{
+				inj.CmdHook{
+					Cmd: ".*udevadm.*",
+					Reaction: inj.Reaction{
+						Err: "boop!",
+					},
+				},
+			}
+		})
+		testutils.ServerRestarted(t, heketiServer)
+		defer partialTeardown()
+
+		topo, err := heketi.TopologyInfo()
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		for _, n := range topo.ClusterList[0].Nodes {
+			req := &api.DeviceAddRequest{}
+			req.Name = diskPath
+			req.NodeId = n.Id
+			err = heketi.DeviceAdd(req)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		}
+
+		rmDevices := []string{}
+		topo, err = heketi.TopologyInfo()
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		for _, n := range topo.ClusterList[0].Nodes {
+			for i, d := range n.DevicesInfo {
+				if i == 0 || d.Name == diskPath {
+					rmDevices = append(rmDevices, d.Id)
+				}
+			}
+		}
+		for _, devId := range rmDevices {
+			stateReq := &api.StateRequest{}
+			stateReq.State = api.EntryStateOffline
+			err = heketi.DeviceState(devId, stateReq)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+			stateReq = &api.StateRequest{}
+			stateReq.State = api.EntryStateFailed
+			err = heketi.DeviceState(devId, stateReq)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+			err = heketi.DeviceDelete(devId)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		}
+	})
+
+	t.Run("disableUdevadmAndVgs", func(t *testing.T) {
+		UpdateConfig(origConf, heketiServer.ConfPath, func(c *config.Config) {
+			c.GlusterFS.Executor = "inject/ssh"
+			c.GlusterFS.InjectConfig.CmdInjection.CmdHooks = inj.CmdHooks{
+				inj.CmdHook{
+					Cmd: ".*udevadm.*",
+					Reaction: inj.Reaction{
+						Err: "boop!",
+					},
+				},
+				inj.CmdHook{
+					Cmd: ".*vgs .*",
+					Reaction: inj.Reaction{
+						Err: "bonk!",
+					},
+				},
+			}
+		})
+		testutils.ServerRestarted(t, heketiServer)
+		defer partialTeardown()
+
+		topo, err := heketi.TopologyInfo()
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		for _, n := range topo.ClusterList[0].Nodes {
+			req := &api.DeviceAddRequest{}
+			req.Name = diskPath
+			req.NodeId = n.Id
+			err = heketi.DeviceAdd(req)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		}
+
+		rmDevices := []string{}
+		topo, err = heketi.TopologyInfo()
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		for _, n := range topo.ClusterList[0].Nodes {
+			for i, d := range n.DevicesInfo {
+				if i == 0 || d.Name == diskPath {
+					rmDevices = append(rmDevices, d.Id)
+				}
+			}
+		}
+
+		// strip devices of new identifying metadata
+		testutils.ServerStopped(t, heketiServer)
+		stripDeviceMetadata(t, heketiServer, rmDevices)
+		testutils.ServerStarted(t, heketiServer)
+
+		for _, devId := range rmDevices {
+			stateReq := &api.StateRequest{}
+			stateReq.State = api.EntryStateOffline
+			err = heketi.DeviceState(devId, stateReq)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+			stateReq = &api.StateRequest{}
+			stateReq.State = api.EntryStateFailed
+			err = heketi.DeviceState(devId, stateReq)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+			err = heketi.DeviceDelete(devId)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		}
+	})
 }
 
 func linkDevice(
