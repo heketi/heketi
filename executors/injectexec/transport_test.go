@@ -30,7 +30,7 @@ type DummyTransport struct {
 }
 
 func (d *DummyTransport) ExecCommands(
-	host string, commands []string, timeoutMinutes int) (rex.Results, error) {
+	host string, commands rex.Cmds, timeoutMinutes int) (rex.Results, error) {
 
 	out := make(rex.Results, len(commands))
 	for i, c := range commands {

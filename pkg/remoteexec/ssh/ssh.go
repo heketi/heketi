@@ -110,7 +110,7 @@ func (s *SshExec) ConnectAndExec(host string, commands []string, timeoutMinutes 
 }
 
 func (s *SshExec) ExecCommands(
-	host string, commands []string,
+	host string, commands rex.Cmds,
 	timeoutMinutes int, useSudo bool) (rex.Results, error) {
 
 	results := make(rex.Results, len(commands))
