@@ -9,4 +9,47 @@
 
 package remoteexec
 
-type Cmds []string
+type CmdOpts struct {
+}
+
+type Cmd interface {
+	String() string
+	Opts() CmdOpts
+}
+
+type StringCmd struct {
+	Command string
+	Options CmdOpts
+}
+
+func (sc StringCmd) String() string {
+	return sc.Command
+}
+
+func (sc StringCmd) Opts() CmdOpts {
+	return sc.Options
+}
+
+type Cmds []Cmd
+
+// conversion functions
+
+// ToCmd converts a single string representing a command to a StringCmd.
+func ToCmd(s string) StringCmd {
+	return StringCmd{Command: s}
+}
+
+// ToCmds converts a string slice to a Cmds group.
+func ToCmds(s []string) Cmds {
+	c := make(Cmds, len(s))
+	for i, val := range s {
+		c[i] = StringCmd{Command: val}
+	}
+	return c
+}
+
+// OneCmd converts a single string representing a command to a Cmds group
+// containing just one command.
+func OneCmd(s string) Cmds {
+	return Cmds{StringCmd{Command: s}}
+}
