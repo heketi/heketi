@@ -128,7 +128,7 @@ func NewKubeExecutor(config *KubeConfig) (*KubeExecutor, error) {
 }
 
 func (k *KubeExecutor) ExecCommands(
-	host string, commands []string,
+	host string, commands rex.Cmds,
 	timeoutMinutes int) (rex.Results, error) {
 
 	// Throttle

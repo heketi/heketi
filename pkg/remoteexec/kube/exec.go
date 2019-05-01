@@ -29,7 +29,7 @@ import (
 // are returned as the function's error condition.
 func ExecCommands(
 	k *KubeConn, t TargetContainer,
-	commands []string, timeoutMinutes int) (rex.Results, error) {
+	commands rex.Cmds, timeoutMinutes int) (rex.Results, error) {
 
 	results := make(rex.Results, len(commands))
 

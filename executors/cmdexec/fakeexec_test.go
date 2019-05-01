@@ -70,7 +70,7 @@ func (s *FakeExecutor) RemoteCommandExecute(host string,
 }
 
 func (s *FakeExecutor) ExecCommands(host string,
-	commands []string,
+	commands rex.Cmds,
 	timeoutMinutes int) (rex.Results, error) {
 
 	s.AccessConnection(host)

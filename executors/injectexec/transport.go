@@ -25,7 +25,7 @@ type WrapCommandTransport struct {
 }
 
 func (w *WrapCommandTransport) ExecCommands(
-	host string, commands []string, timeoutMinutes int) (rex.Results, error) {
+	host string, commands rex.Cmds, timeoutMinutes int) (rex.Results, error) {
 
 	results := make(rex.Results, len(commands))
 	for i, c := range commands {
