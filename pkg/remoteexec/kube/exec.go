@@ -33,7 +33,8 @@ func ExecCommands(
 
 	results := make(rex.Results, len(commands))
 
-	for index, command := range commands {
+	for index, cmd := range commands {
+		command := cmd.String()
 
 		// Remove any whitespace
 		command = strings.Trim(command, " ")

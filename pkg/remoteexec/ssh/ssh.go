@@ -102,7 +102,7 @@ func NewSshExecWithKeyFile(logger *logging.Logger, user string, file string) *Ss
 // This function was based from https://github.com/coreos/etcd-manager/blob/master/main.go
 func (s *SshExec) ConnectAndExec(host string, commands []string, timeoutMinutes int, useSudo bool) ([]string, error) {
 
-	results, err := s.ExecCommands(host, commands, timeoutMinutes, useSudo)
+	results, err := s.ExecCommands(host, rex.ToCmds(commands), timeoutMinutes, useSudo)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func (s *SshExec) ExecCommands(
 	defer client.Close()
 
 	// Execute each command
-	for index, command := range commands {
+	for index, cmd := range commands {
 
 		session, err := client.NewSession()
 		if err != nil {
@@ -139,6 +139,7 @@ func (s *SshExec) ExecCommands(
 		session.Stdout = &b
 		session.Stderr = &berr
 
+		command := cmd.String()
 		if useSudo {
 			command = "sudo " + command
 		}
