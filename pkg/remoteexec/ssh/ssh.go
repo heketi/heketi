@@ -24,6 +24,7 @@ import (
 
 	"github.com/heketi/heketi/pkg/logging"
 	rex "github.com/heketi/heketi/pkg/remoteexec"
+	rexlog "github.com/heketi/heketi/pkg/remoteexec/log"
 )
 
 type SshExec struct {
@@ -114,6 +115,7 @@ func (s *SshExec) ExecCommands(
 	timeoutMinutes int, useSudo bool) (rex.Results, error) {
 
 	results := make(rex.Results, len(commands))
+	cmdlog := rexlog.NewCommandLogger(s.logger)
 
 	// :TODO: Will need a timeout here in case the server does not respond
 	client, err := ssh.Dial("tcp", host, s.clientConfig)
@@ -125,6 +127,7 @@ func (s *SshExec) ExecCommands(
 
 	// Execute each command
 	for index, cmd := range commands {
+		cmdlog.Before(cmd, host)
 
 		session, err := client.NewSession()
 		if err != nil {
@@ -174,13 +177,9 @@ func (s *SshExec) ExecCommands(
 				Err:       err,
 			}
 			if err == nil {
-				s.logger.Debug(
-					"Ran command [%v] on %v: Stdout [%v]: Stderr [%v]",
-					command, host, r.Output, r.ErrOutput)
+				cmdlog.Success(cmd, host, r.Output, r.ErrOutput)
 			} else {
-				s.logger.LogError(
-					"Failed to run command [%v] on %v: Err[%v]: Stdout [%v]: Stderr [%v]",
-					command, host, err, r.Output, r.ErrOutput)
+				cmdlog.Error(cmd, err, host, r.Output, r.ErrOutput)
 				// extract the real error code if possible
 				if ee, ok := err.(*ssh.ExitError); ok {
 					r.ExitStatus = ee.ExitStatus()
@@ -196,8 +195,7 @@ func (s *SshExec) ExecCommands(
 			}
 
 		case <-timeout:
-			s.logger.LogError("Timeout on command [%v] on %v: Err[%v]: Stdout [%v]: Stderr [%v]",
-				command, host, err, b.String(), berr.String())
+			cmdlog.Timeout(cmd, err, host, b.String(), berr.String())
 			err := session.Signal(ssh.SIGKILL)
 			if err != nil {
 				s.logger.LogError("Unable to send kill signal to command [%v] on host [%v]: %v",
