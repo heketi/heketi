@@ -69,7 +69,7 @@ func ExecCommands(
 		var b bytes.Buffer
 		var berr bytes.Buffer
 
-		// Excute command
+		// Execute command
 		err = exec.Stream(remotecommand.StreamOptions{
 			SupportedProtocols: kubeletcmd.SupportedStreamingProtocols,
 			Stdout:             &b,
