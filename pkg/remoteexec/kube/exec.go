@@ -19,6 +19,7 @@ import (
 	kubeletcmd "k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
 
 	rex "github.com/heketi/heketi/pkg/remoteexec"
+	rexlog "github.com/heketi/heketi/pkg/remoteexec/log"
 )
 
 // ExecCommands executes the given array of commands on the given
@@ -32,8 +33,10 @@ func ExecCommands(
 	commands rex.Cmds, timeoutMinutes int) (rex.Results, error) {
 
 	results := make(rex.Results, len(commands))
+	cmdlog := rexlog.NewCommandLogger(k.logger)
 
 	for index, cmd := range commands {
+		cmdlog.Before(cmd, t.String())
 		command := cmd.String()
 
 		// Remove any whitespace
@@ -79,13 +82,9 @@ func ExecCommands(
 			Err:       err,
 		}
 		if err == nil {
-			k.logger.Debug(
-				"Ran command [%v] on [%v]: Stdout [%v]: Stderr [%v]",
-				command, t.String(), r.Output, r.ErrOutput)
+			cmdlog.Success(cmd, t.String(), r.Output, r.ErrOutput)
 		} else {
-			k.logger.LogError(
-				"Failed to run command [%v] on [%v]: Err[%v]: Stdout [%v]: Stderr [%v]",
-				command, t.String(), err, r.Output, r.ErrOutput)
+			cmdlog.Error(cmd, err, t.String(), r.Output, r.ErrOutput)
 			// TODO: extract the real error code if possible
 			r.ExitStatus = 1
 		}
