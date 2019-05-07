@@ -10,6 +10,8 @@
 package remoteexec
 
 type CmdOpts struct {
+	Quiet   bool // suppress output logging on success
+	ErrorOk bool // treat error conditions same as successes
 }
 
 type Cmd interface {
