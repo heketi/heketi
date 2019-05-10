@@ -15,6 +15,8 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
+
+	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 )
@@ -419,6 +421,15 @@ func (a *App) DeviceResync(w http.ResponseWriter, r *http.Request) {
 		}
 
 		err = a.db.Update(func(tx *bolt.Tx) error {
+
+			if p, err := PendingOperationsOnDevice(wdb.WrapTx(tx), deviceId); err != nil {
+				return err
+			} else if p {
+				logger.LogError("Found operations pending on device."+
+					" Can not resync device %v at this time.",
+					deviceId)
+				return ErrConflict
+			}
 
 			// Reload device in current transaction
 			device, err := NewDeviceEntryFromId(tx, deviceId)
