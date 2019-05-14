@@ -27,7 +27,10 @@ const (
 	DURABILITY_STRING_EC              = "disperse"
 )
 
-var jsonConfigFile string
+var (
+	jsonConfigFile string
+	customTemplate string
+)
 
 // Config file
 type ConfigFileDeviceOptions struct {
@@ -82,10 +85,12 @@ func (device *ConfigFileDevice) UnmarshalJSON(b []byte) error {
 func init() {
 	RootCmd.AddCommand(topologyCommand)
 	topologyCommand.AddCommand(topologyLoadCommand)
-	topologyCommand.AddCommand(topologyInfoCommand)
 	topologyLoadCommand.Flags().StringVarP(&jsonConfigFile, "json", "j", "",
 		"\n\tConfiguration containing devices, nodes, and clusters, in"+
 			"\n\tJSON format.")
+	topologyCommand.AddCommand(topologyInfoCommand)
+	topologyInfoCommand.Flags().StringVarP(&customTemplate, "template", "T", "",
+		"\n\tCustom Go-template for formatting topology info output.")
 	topologyLoadCommand.SilenceUsage = true
 	topologyInfoCommand.SilenceUsage = true
 }
@@ -299,8 +304,11 @@ var topologyInfoCommand = &cobra.Command{
 			}
 			fmt.Fprintf(stdout, string(data))
 		} else {
-			// Get the cluster list and iterate over
-			return printTopologyInfo(topoinfo, topologyTemplate)
+			ts := topologyTemplate
+			if customTemplate != "" {
+				ts = customTemplate
+			}
+			return printTopologyInfo(topoinfo, ts)
 		}
 
 		return nil
