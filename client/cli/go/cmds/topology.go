@@ -300,9 +300,7 @@ var topologyInfoCommand = &cobra.Command{
 			fmt.Fprintf(stdout, string(data))
 		} else {
 			// Get the cluster list and iterate over
-			for _, c := range topoinfo.ClusterList {
-				printClusterInfo(c)
-			}
+			return printTopologyInfo(topoinfo, topologyTemplate)
 		}
 
 		return nil
@@ -313,7 +311,8 @@ var topologyInfoCommand = &cobra.Command{
 // using a series of printf calls. This mixing is preserved in
 // the template and is intentional. Deciding to change formatting
 // is left as a future exercise if desired.
-var clusterTemplate = `
+var topologyTemplate = `
+{{- define "CLUSTER"}}
 Cluster Id: {{.Id}}
 
     File:  {{.File}}
@@ -384,21 +383,24 @@ Cluster Id: {{.Id}}
 {{- end}}
 {{- end}}
 {{end}}
+{{- end}}
+{{- range $cluster := .ClusterList}}{{template "CLUSTER" $cluster}}{{end}}
 `
 
-func printClusterInfo(cluster api.Cluster) {
+func printTopologyInfo(topo *api.TopologyInfoResponse, ts string) error {
 	fm := template.FuncMap{
 		"join": strings.Join,
 		"kibToGib": func(i uint64) string {
 			return fmt.Sprintf("%d", i/(1024*1024))
 		},
 	}
-	t, err := template.New("cluster").Funcs(fm).Parse(clusterTemplate)
+	t, err := template.New("topology").Funcs(fm).Parse(ts)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to parse template: %v", err)
 	}
-	err = t.Execute(os.Stdout, cluster)
+	err = t.Execute(os.Stdout, topo)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to execute template: %v", err)
 	}
+	return nil
 }
