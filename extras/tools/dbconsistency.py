@@ -54,6 +54,10 @@ def check_brick(data, bid, brick):
     _check_pending('Brick', bid, brick, data)
 
 
+def vol_bv_list(volume):
+    return volume[INFO].get("blockinfo", {}).get("blockvolume", [])
+
+
 def check_volume(data, vid, volume):
     if vid != volume[INFO]['id']:
         report('Volume', vid, 'id mismatch', volume[INFO]['id'])
@@ -61,7 +65,7 @@ def check_volume(data, vid, volume):
         if bid not in data['brickentries']:
             report('Volume', vid, 'unknown brick', bid)
     bvsize = 0
-    for bvid in volume[INFO].get("blockinfo", {}).get("blockvolume", []):
+    for bvid in vol_bv_list(volume):
         if bvid not in data["blockvolumeentries"]:
             report('Volume', vid, 'unknown block volume', bvid)
         else:
@@ -90,6 +94,8 @@ def check_block_volume(data, bvid, bvol):
         report("Block Volume", bvid, "cluster not found", cluster_id)
     if bhv_id not in data["volumeentries"]:
         report("Block Volume", bvid, "hosting volume not found", bhv_id)
+    elif bvid not in vol_bv_list(data["volumeentries"][bhv_id]):
+        report("Block Volume", bvid, "not tracked in hosting volume", bhv_id)
     _check_pending('Block Volume', bvid, bvol, data)
 
 
