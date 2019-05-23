@@ -74,7 +74,7 @@ def check_volume(data, vid, volume):
         used_size = vol_size - free_size - rsvd_size
         if bvsize != used_size:
             report('Volume', vid, 'block size differs',
-                'calulated-size={} size={} free-size={} reserved-size={} used-size={}'.format(
+                'calculated-size={} size={} free-size={} reserved-size={} used-size={}'.format(
                     bvsize, vol_size, free_size, rsvd_size, used_size))
     elif bvsize != 0:
         report('Volume', vid, 'has block volumes but not block flag')
