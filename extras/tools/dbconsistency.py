@@ -17,6 +17,7 @@ INFO = 'Info'
 
 ERR_COUNT = collections.Counter()
 
+
 def report(otype, oid, *msg):
     ERR_COUNT[otype] += 1
     print ('{} {}: {}'.format(otype, oid, ': '.join(msg)))
@@ -77,9 +78,11 @@ def check_volume(data, vid, volume):
         rsvd_size = volume[INFO].get("blockinfo", {}).get("reservedsize", 0)
         used_size = vol_size - free_size - rsvd_size
         if bvsize != used_size:
-            report('Volume', vid, 'block size differs',
-                'calculated-size={} size={} free-size={} reserved-size={} used-size={}'.format(
-                    bvsize, vol_size, free_size, rsvd_size, used_size))
+            rf = ('calculated-size={}'
+                  ' size={} free-size={} reserved-size={} used-size={}')
+            report(
+                'Volume', vid, 'block size differs',
+                rf.format(bvsize, vol_size, free_size, rsvd_size, used_size))
     elif bvsize != 0:
         report('Volume', vid, 'has block volumes but not block flag')
     _check_pending('Volume', vid, volume, data)
@@ -123,17 +126,17 @@ def check_pending(data, pid, pop):
     if pid != pop["Id"]:
         report("Pending Op", pid, "id mismatch", pop["Id"])
     changetype_to_key = {
-        1: "brickentries", # add brick
-        2: "volumeentries", # add vol
-        3: "brickentries", # del brick
-        4: "volumeentries", # del vol
-        5: "volumeentries", #ExpandVolume
-        6: "blockvolumeentries", #AddBlockVolume
-        7: "blockvolumeentries", #DeleteBlockVolume
-        8: "deviceentries", #RemoveDevice
-        9: "volumeentries", #CloneVolume
-        10: "volumeentries", #SnapshotVolume
-        11: "volumeentries", #AddVolumeClone
+        1: "brickentries",  # add brick
+        2: "volumeentries",  # add vol
+        3: "brickentries",  # del brick
+        4: "volumeentries",  # del vol
+        5: "volumeentries",  # ExpandVolume
+        6: "blockvolumeentries",  # AddBlockVolume
+        7: "blockvolumeentries",  # DeleteBlockVolume
+        8: "deviceentries",  # RemoveDevice
+        9: "volumeentries",  # CloneVolume
+        10: "volumeentries",  # SnapshotVolume
+        11: "volumeentries",  # AddVolumeClone
     }
     for a in pop["Actions"]:
         ch_type = a["Change"]
@@ -144,7 +147,7 @@ def check_pending(data, pid, pop):
             continue
         if ch_id not in data[key]:
             report("Pending Op", pid, "id in change missing",
-                "{} not found in {}".format(ch_id, key))
+                   "{} not found in {}".format(ch_id, key))
 
 
 def _check_pending(what, myid, item, data):
