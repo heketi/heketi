@@ -210,7 +210,7 @@ def summarize_db(data):
 try:
     filename = sys.argv[1]
 except IndexError:
-    sys.stderr.write("error: filename required")
+    sys.stderr.write("error: filename required\n")
     sys.exit(2)
 
 with open(filename) as fh:
