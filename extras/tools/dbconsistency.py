@@ -78,7 +78,7 @@ def check_volume(data, vid, volume):
         rsvd_size = volume[INFO].get("blockinfo", {}).get("reservedsize", 0)
         used_size = vol_size - free_size - rsvd_size
         if bvsize != used_size:
-            rf = ('calculated-size={}'
+            rf = ('block-vol-sum={}'
                   ' size={} free-size={} reserved-size={} used-size={}')
             report(
                 'Volume', vid, 'block size differs',
