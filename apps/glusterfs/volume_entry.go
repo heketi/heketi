@@ -582,7 +582,11 @@ func (v *VolumeEntry) createVolumeComponents(
 		possibleClusters = v.Info.Clusters
 	}
 
-	cr := ClusterReq{v.Info.Block, v.Info.Name}
+	cr := clusterReq{
+		allowBlock:  v.Info.Block,
+		allowName:   v.Info.Name,
+		allowCreate: true,
+	}
 	possibleClusters, err := eligibleClusters(db, cr, possibleClusters)
 	if err != nil {
 		return nil, err
@@ -852,12 +856,13 @@ func volumeNameExistsInCluster(tx *bolt.Tx, cluster *ClusterEntry,
 	return
 }
 
-type ClusterReq struct {
-	Block bool
-	Name  string
+type clusterReq struct {
+	allowBlock  bool
+	allowName   string
+	allowCreate bool
 }
 
-func eligibleClusters(db wdb.RODB, req ClusterReq,
+func eligibleClusters(db wdb.RODB, req clusterReq,
 	possibleClusters []string) ([]string, error) {
 	//
 	// If the request carries the Block flag, consider only
@@ -878,8 +883,8 @@ func eligibleClusters(db wdb.RODB, req ClusterReq,
 				return err
 			}
 			switch {
-			case req.Block && c.Info.Block:
-			case !req.Block && c.Info.File:
+			case req.allowBlock && c.Info.Block:
+			case !req.allowBlock && c.Info.File:
 			case !(c.Info.Block || c.Info.File):
 				// possibly bad cluster config
 				logger.Info("Cluster %v lacks both block and file flags",
@@ -894,21 +899,21 @@ func eligibleClusters(db wdb.RODB, req ClusterReq,
 					fmt.Errorf("Cluster does not support requested volume type"))
 				continue
 			}
-			if req.Name != "" {
-				found, err := volumeNameExistsInCluster(tx, c, req.Name)
+			if req.allowName != "" {
+				found, err := volumeNameExistsInCluster(tx, c, req.allowName)
 				if err != nil {
 					return err
 				}
 				if found {
 					logger.LogError("Name %v already in use in cluster %v",
-						req.Name, clusterId)
+						req.allowName, clusterId)
 					cerr.Add(
 						c.Info.Id,
-						fmt.Errorf("Volume name '%v' already in use", req.Name))
+						fmt.Errorf("Volume name '%v' already in use", req.allowName))
 					continue
 				}
 			}
-			if c.volumeCount() >= maxVolumesPerCluster {
+			if req.allowCreate && c.volumeCount() >= maxVolumesPerCluster {
 				cerr.Add(
 					c.Info.Id,
 					fmt.Errorf("Cluster has %v volumes and limit is %v", c.volumeCount(), maxVolumesPerCluster))
