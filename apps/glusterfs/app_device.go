@@ -15,6 +15,8 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
+
+	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
 )
@@ -389,7 +391,6 @@ func (a *App) DeviceResync(w http.ResponseWriter, r *http.Request) {
 		brickSizesSum uint64
 	)
 
-	// Get device info from DB
 	err := a.db.View(func(tx *bolt.Tx) error {
 		var err error
 		device, err = NewDeviceEntryFromId(tx, deviceId)
@@ -397,17 +398,7 @@ func (a *App) DeviceResync(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		node, err = NewNodeEntryFromId(tx, device.NodeId)
-		if err != nil {
-			return err
-		}
-		for _, brick := range device.Bricks {
-			brickEntry, err := NewBrickEntryFromId(tx, brick)
-			if err != nil {
-				return err
-			}
-			brickSizesSum += brickEntry.Info.Size
-		}
-		return nil
+		return err
 	})
 	if err == ErrNotFound {
 		http.Error(w, err.Error(), http.StatusNotFound)
@@ -431,11 +422,28 @@ func (a *App) DeviceResync(w http.ResponseWriter, r *http.Request) {
 
 		err = a.db.Update(func(tx *bolt.Tx) error {
 
+			if p, err := PendingOperationsOnDevice(wdb.WrapTx(tx), deviceId); err != nil {
+				return err
+			} else if p {
+				logger.LogError("Found operations pending on device."+
+					" Can not resync device %v at this time.",
+					deviceId)
+				return ErrConflict
+			}
+
 			// Reload device in current transaction
 			device, err := NewDeviceEntryFromId(tx, deviceId)
 			if err != nil {
 				logger.Err(err)
 				return err
+			}
+
+			for _, brick := range device.Bricks {
+				brickEntry, err := NewBrickEntryFromId(tx, brick)
+				if err != nil {
+					return err
+				}
+				brickSizesSum += brickEntry.Info.Size
 			}
 
 			if brickSizesSum != info.UsedSize {
