@@ -16,9 +16,9 @@ type Executor interface {
 	PeerProbe(exec_host, newnode string) error
 	PeerDetach(exec_host, detachnode string) error
 	DeviceSetup(host, device, vgid string, destroy bool) (*DeviceInfo, error)
-	GetDeviceInfo(host, device, vgid string) (*DeviceInfo, error)
-	DeviceTeardown(host, device, vgid string) error
-	DeviceForget(host, device, vgid string) error
+	GetDeviceInfo(host string, dh *DeviceVgHandle) (*DeviceInfo, error)
+	DeviceTeardown(host string, dh *DeviceVgHandle) error
+	DeviceForget(host string, dh *DeviceVgHandle) error
 	BrickCreate(host string, brick *BrickRequest) (*BrickInfo, error)
 	BrickDestroy(host string, brick *BrickRequest) (bool, error)
 	VolumeCreate(host string, volume *VolumeRequest) (*Volume, error)
@@ -116,6 +116,9 @@ type DeviceInfo struct {
 	FreeSize   uint64
 	UsedSize   uint64
 	ExtentSize uint64
+
+	// device identification metadata
+	Meta *DeviceHandle
 }
 
 type BrickFormatType int
@@ -320,4 +323,28 @@ type VolumeDoesNotExistErr struct {
 
 func (dne *VolumeDoesNotExistErr) Error() string {
 	return "Volume Does Not Exist: " + dne.Name
+}
+
+// DeviceHandle identifies a device on a node by either a UUID
+// or by a list of paths. Either one of UUID or Paths must be
+// populated.
+type DeviceHandle struct {
+	UUID  string
+	Paths []string
+}
+
+// DeviceVgHandle identifies a device and the vg paired with that
+// device.
+type DeviceVgHandle struct {
+	DeviceHandle
+	VgId string
+}
+
+func SimpleDeviceVgHandle(device, vgid string) *DeviceVgHandle {
+	return &DeviceVgHandle{
+		DeviceHandle: DeviceHandle{
+			Paths: []string{device},
+		},
+		VgId: vgid,
+	}
 }

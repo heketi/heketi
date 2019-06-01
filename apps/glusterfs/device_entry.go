@@ -285,6 +285,10 @@ func (d *DeviceEntry) NewInfoResponse(tx *bolt.Tx) (*api.DeviceInfoResponse, err
 	info.State = d.State
 	info.Bricks = make([]api.BrickInfo, 0)
 	info.Tags = copyTags(d.Info.Tags)
+	// copy new identifying metadata to info response
+	info.PvUUID = d.Info.PvUUID
+	info.Paths = make([]string, len(d.Info.Paths))
+	copy(info.Paths, d.Info.Paths)
 
 	// Add each drive information
 	for _, id := range d.Bricks {
@@ -675,4 +679,33 @@ func (d *DeviceEntry) consistencyCheck(db Db) (response DbEntryCheckResponse) {
 
 	return
 
+}
+
+// UpdateInfo takes the device info returned by the executor and updates
+// the corresponding fields of the device entry.
+func (d *DeviceEntry) UpdateInfo(info *executors.DeviceInfo) {
+	if info.Meta != nil {
+		// executor provided additional identifying metadata
+		d.Info.PvUUID = info.Meta.UUID
+		d.Info.Paths = make([]string, len(info.Meta.Paths))
+		copy(d.Info.Paths, info.Meta.Paths)
+	}
+	d.StorageSet(info.TotalSize, info.FreeSize, info.UsedSize)
+	d.SetExtentSize(info.ExtentSize)
+}
+
+// ToHandle returns a executors.DeviceVgHandle for the current device.
+func (d *DeviceEntry) ToHandle() *executors.DeviceVgHandle {
+	dh := &executors.DeviceVgHandle{
+		VgId: d.Info.Id,
+	}
+	if d.Info.PvUUID != "" {
+		dh.UUID = d.Info.PvUUID
+	}
+	if len(d.Info.Paths) != 0 {
+		dh.Paths = d.Info.Paths
+	} else {
+		dh.Paths = []string{d.Info.Name}
+	}
+	return dh
 }
