@@ -98,17 +98,12 @@ func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return "", err
 		}
-
-		// Create an entry for the device and set the size
-		device.StorageSet(info.TotalSize, info.FreeSize, info.UsedSize)
-		device.SetExtentSize(info.ExtentSize)
+		device.UpdateInfo(info)
 
 		// Setup garbage collector on error
 		defer func() {
 			if e != nil {
-				a.executor.DeviceTeardown(node.ManageHostName(),
-					device.Info.Name,
-					device.Info.Id)
+				a.executor.DeviceTeardown(node.ManageHostName(), device.ToHandle())
 			}
 		}()
 
@@ -251,13 +246,12 @@ func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
 
 		// Teardown device
 		var err error
+		dh := device.ToHandle()
 		if opts.ForceForget {
 			logger.Info("Delete request set force-forget option")
-			err = a.executor.DeviceForget(node.ManageHostName(),
-				device.Info.Name, device.Info.Id)
+			err = a.executor.DeviceForget(node.ManageHostName(), dh)
 		} else {
-			err = a.executor.DeviceTeardown(node.ManageHostName(),
-				device.Info.Name, device.Info.Id)
+			err = a.executor.DeviceTeardown(node.ManageHostName(), dh)
 		}
 		if err != nil {
 			return "", err
@@ -415,7 +409,8 @@ func (a *App) DeviceResync(w http.ResponseWriter, r *http.Request) {
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (seeOtherUrl string, e error) {
 
 		// Get actual device info from manage host
-		info, err := a.executor.GetDeviceInfo(node.ManageHostName(), device.Info.Name, device.Info.Id)
+		info, err := a.executor.GetDeviceInfo(
+			node.ManageHostName(), device.ToHandle())
 		if err != nil {
 			return "", err
 		}

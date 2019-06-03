@@ -849,7 +849,7 @@ func TestDeviceSync(t *testing.T) {
 	})
 	tests.Assert(t, err == nil)
 
-	app.xo.MockGetDeviceInfo = func(host, device, vgid string) (*executors.DeviceInfo, error) {
+	app.xo.MockGetDeviceInfo = func(host string, dh *executors.DeviceVgHandle) (*executors.DeviceInfo, error) {
 		d := &executors.DeviceInfo{}
 		d.TotalSize = total
 		d.FreeSize = free
@@ -947,7 +947,7 @@ func TestDeviceSyncBlockedByPending(t *testing.T) {
 		return nil
 	})
 
-	app.xo.MockGetDeviceInfo = func(host, device, vgid string) (*executors.DeviceInfo, error) {
+	app.xo.MockGetDeviceInfo = func(host string, dh *executors.DeviceVgHandle) (*executors.DeviceInfo, error) {
 		d := &executors.DeviceInfo{}
 		d.TotalSize = total
 		d.FreeSize = free

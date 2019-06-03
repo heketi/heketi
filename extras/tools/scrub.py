@@ -124,7 +124,7 @@ def delete_block_volume(data, vid):
         item['Info']['blockvolume'].get('iqn') or '???')
 
 
-def delete_brick(data, bid):
+def delete_brick(data, bid, subtract=True):
     log.info('deleting brick %s', bid)
     item = data['brickentries'].pop(bid, None)
     for v in data['volumeentries'].values():
@@ -133,7 +133,12 @@ def delete_brick(data, bid):
     for d in data['deviceentries'].values():
         if bid in d['Bricks']:
             d['Bricks'].remove(bid)
-            storage_free(d, item)
+            if subtract:
+                storage_free(d, item)
+            else:
+                log.warning(
+                    'Not subtracting brick space from device: %s',
+                    d['Info']['id'])
     if not item:
         return
     log.warning('may need manual cleanup: brick: %s', item['Info']['path'])
@@ -158,7 +163,7 @@ def storage_free(device, brick):
         raise ValueError("used size greater than total size")
 
 
-def scrub(data):
+def scrub(data, subtract=True):
     log.debug('starting scrub')
     pending_ops = set()
     p1 = EditSet()
@@ -232,13 +237,13 @@ def scrub(data):
     for vid in p1.block_volumes:
         delete_block_volume(data, vid)
     for bid in p1.bricks:
-        delete_brick(data, bid)
+        delete_brick(data, bid, subtract=subtract)
     for poid in pending_ops:
         data['pendingoperations'].pop(poid, None)
     return data
 
 
-def rm_volumes(data, targets):
+def rm_volumes(data, targets, subtract=True):
     if not targets:
         raise ValueError("volume ids to remove must be provided (use -r)")
     log.debug('starting remove volumes: %s', targets)
@@ -261,7 +266,7 @@ def rm_volumes(data, targets):
     for vid in es.volumes:
         delete_volume(data, vid)
     for bid in es.bricks:
-        delete_brick(data, bid)
+        delete_brick(data, bid, subtract=subtract)
     return data
 
 
@@ -270,6 +275,7 @@ def main():
     a.add_argument('--edit', '-e', default='pending',
                    choices=['pending', 'volumes'])
     a.add_argument('--remove', '-r', action='append', default=[])
+    a.add_argument('--no-subtract', action='store_true')
     a.add_argument('--logfile', '-l')
     a.add_argument('source')
     cli = a.parse_args()
@@ -285,10 +291,11 @@ def main():
         with open(cli.source) as fh:
             data = json.load(fh)
 
+    subtract = not cli.no_subtract
     if cli.edit == 'pending':
-        op = scrub
+        op = lambda d: scrub(d, subtract=subtract)
     elif cli.edit == 'volumes':
-        op = lambda d: rm_volumes(data, cli.remove)
+        op = lambda d: rm_volumes(d, cli.remove, subtract=subtract)
     else:
         raise ValueError('unknown edit: {}'.format(cli.edit))
 
