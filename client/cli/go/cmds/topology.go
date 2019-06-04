@@ -27,7 +27,10 @@ const (
 	DURABILITY_STRING_EC              = "disperse"
 )
 
-var jsonConfigFile string
+var (
+	jsonConfigFile string
+	customTemplate string
+)
 
 // Config file
 type ConfigFileDeviceOptions struct {
@@ -82,10 +85,12 @@ func (device *ConfigFileDevice) UnmarshalJSON(b []byte) error {
 func init() {
 	RootCmd.AddCommand(topologyCommand)
 	topologyCommand.AddCommand(topologyLoadCommand)
-	topologyCommand.AddCommand(topologyInfoCommand)
 	topologyLoadCommand.Flags().StringVarP(&jsonConfigFile, "json", "j", "",
 		"\n\tConfiguration containing devices, nodes, and clusters, in"+
 			"\n\tJSON format.")
+	topologyCommand.AddCommand(topologyInfoCommand)
+	topologyInfoCommand.Flags().StringVarP(&customTemplate, "template", "T", "",
+		"\n\tCustom Go-template for formatting topology info output.")
 	topologyLoadCommand.SilenceUsage = true
 	topologyInfoCommand.SilenceUsage = true
 }
@@ -299,10 +304,11 @@ var topologyInfoCommand = &cobra.Command{
 			}
 			fmt.Fprintf(stdout, string(data))
 		} else {
-			// Get the cluster list and iterate over
-			for _, c := range topoinfo.ClusterList {
-				printClusterInfo(c)
+			ts := topologyTemplate
+			if customTemplate != "" {
+				ts = customTemplate
 			}
+			return printTopologyInfo(topoinfo, ts)
 		}
 
 		return nil
@@ -313,7 +319,8 @@ var topologyInfoCommand = &cobra.Command{
 // using a series of printf calls. This mixing is preserved in
 // the template and is intentional. Deciding to change formatting
 // is left as a future exercise if desired.
-var clusterTemplate = `
+var topologyTemplate = `
+{{- define "CLUSTER"}}
 Cluster Id: {{.Id}}
 
     File:  {{.File}}
@@ -384,21 +391,24 @@ Cluster Id: {{.Id}}
 {{- end}}
 {{- end}}
 {{end}}
+{{- end}}
+{{- range $cluster := .ClusterList}}{{template "CLUSTER" $cluster}}{{end}}
 `
 
-func printClusterInfo(cluster api.Cluster) {
+func printTopologyInfo(topo *api.TopologyInfoResponse, ts string) error {
 	fm := template.FuncMap{
 		"join": strings.Join,
 		"kibToGib": func(i uint64) string {
 			return fmt.Sprintf("%d", i/(1024*1024))
 		},
 	}
-	t, err := template.New("cluster").Funcs(fm).Parse(clusterTemplate)
+	t, err := template.New("topology").Funcs(fm).Parse(ts)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to parse template: %v", err)
 	}
-	err = t.Execute(os.Stdout, cluster)
+	err = t.Execute(os.Stdout, topo)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to execute template: %v", err)
 	}
+	return nil
 }

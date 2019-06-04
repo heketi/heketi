@@ -15,7 +15,6 @@ import (
 	"net/http"
 	"testing"
 
-	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/logging"
 	"github.com/heketi/heketi/pkg/testutils"
@@ -26,7 +25,6 @@ import (
 var (
 	// Heketi client params
 	heketiUrl = "http://localhost:8080"
-	heketi    = client.NewClientNoAuth(heketiUrl)
 
 	cenv = &testutils.ClusterEnv{
 		HeketiUrl: heketiUrl,
@@ -48,6 +46,7 @@ var (
 			"/dev/vdi",
 		},
 	}
+	heketi = cenv.HeketiClient()
 
 	logger = logging.NewLogger("[test]", logging.LEVEL_DEBUG)
 )

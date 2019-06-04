@@ -19,7 +19,6 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
-	"github.com/heketi/rest"
 	"github.com/lpabon/godbc"
 
 	"github.com/heketi/heketi/executors"
@@ -28,6 +27,7 @@ import (
 	"github.com/heketi/heketi/executors/mockexec"
 	"github.com/heketi/heketi/executors/sshexec"
 	"github.com/heketi/heketi/pkg/logging"
+	"github.com/heketi/heketi/server/rest"
 )
 
 const (
