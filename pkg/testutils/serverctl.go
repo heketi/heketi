@@ -247,6 +247,7 @@ func (s *ServerCtl) Stop() error {
 // set of functionally from testing.T.
 type Tester interface {
 	Fatalf(format string, args ...interface{})
+	Helper()
 }
 
 // ServerStarted asserts that the server s is in the started
@@ -254,6 +255,7 @@ type Tester interface {
 // the server fails to start the function triggers a test
 // failure (through the Tester interface).
 func ServerStarted(t Tester, s *ServerCtl) {
+	t.Helper()
 	if s.IsAvailable() {
 		return
 	}
@@ -270,6 +272,7 @@ func ServerStarted(t Tester, s *ServerCtl) {
 // the server fails to stop the function triggers a test
 // failure (through the Tester interface).
 func ServerStopped(t Tester, s *ServerCtl) {
+	t.Helper()
 	if !s.IsAlive() {
 		return
 	}
@@ -286,6 +289,7 @@ func ServerStopped(t Tester, s *ServerCtl) {
 // steps fails the function triggers a test failure
 // (through the TestSuite interface).
 func ServerRestarted(t Tester, s *ServerCtl) {
+	t.Helper()
 	ServerStopped(t, s)
 	ServerStarted(t, s)
 }
