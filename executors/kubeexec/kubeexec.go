@@ -166,7 +166,9 @@ func (k *KubeExecutor) ExecCommands(
 		return nil, err
 	}
 
-	return kube.ExecCommands(k.kconn, tc, commands, timeoutMinutes)
+	return kube.ExecCommands(k.kconn, tc, commands, kube.TimeoutOptions{
+		TimeoutMinutes: timeoutMinutes,
+	})
 }
 
 func (k *KubeExecutor) RebalanceOnExpansion() bool {
