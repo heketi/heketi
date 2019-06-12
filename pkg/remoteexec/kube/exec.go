@@ -28,6 +28,7 @@ import (
 // indvidual commands if run. Commands are only run if the previous
 // command was successful. Any connection level error conditions
 // are returned as the function's error condition.
+// Using sudo is not supported by kubeexec.
 func ExecCommands(
 	k *KubeConn, t TargetContainer,
 	commands rex.Cmds, timeoutMinutes int) (rex.Results, error) {
@@ -42,39 +43,15 @@ func ExecCommands(
 		// Remove any whitespace
 		command = strings.Trim(command, " ")
 
-		// SUDO is *not* supported
-
-		// Create REST command
-		req := k.rest.Post().
-			Resource(t.resourceName()).
-			Name(t.PodName).
-			Namespace(t.Namespace).
-			SubResource("exec").
-			Param("container", t.ContainerName)
-		req.VersionedParams(&api.PodExecOptions{
-			Container: t.ContainerName,
-			Command:   []string{"/bin/bash", "-c", command},
-			Stdout:    true,
-			Stderr:    true,
-		}, api.ParameterCodec)
-
-		// Create SPDY connection
-		exec, err := remotecommand.NewExecutor(k.kubeConfig, "POST", req.URL())
-		if err != nil {
-			k.logger.Err(err)
-			return nil, fmt.Errorf("Unable to setup a session with %v", t.PodName)
-		}
-
 		// Create a buffer to trap session output
-		var b bytes.Buffer
-		var berr bytes.Buffer
+		var (
+			b    bytes.Buffer
+			berr bytes.Buffer
+			cmdv []string
+		)
+		cmdv = []string{"bash", "-c", command}
 
-		// Execute command
-		err = exec.Stream(remotecommand.StreamOptions{
-			SupportedProtocols: kubeletcmd.SupportedStreamingProtocols,
-			Stdout:             &b,
-			Stderr:             &berr,
-		})
+		err := execOnKube(k, t, cmdv, &b, &berr)
 		r := rex.Result{
 			Completed: true,
 			Output:    b.String(),
@@ -97,4 +74,37 @@ func ExecCommands(
 	}
 
 	return results, nil
+}
+
+func execOnKube(
+	k *KubeConn, t TargetContainer, cmdv []string,
+	b, berr *bytes.Buffer) error {
+
+	req := k.rest.Post().
+		Resource(t.resourceName()).
+		Name(t.PodName).
+		Namespace(t.Namespace).
+		SubResource("exec").
+		Param("container", t.ContainerName)
+	req.VersionedParams(&api.PodExecOptions{
+		Container: t.ContainerName,
+		Command:   cmdv,
+		Stdout:    true,
+		Stderr:    true,
+	}, api.ParameterCodec)
+
+	// Create SPDY connection
+	exec, err := remotecommand.NewExecutor(k.kubeConfig, "POST", req.URL())
+	if err != nil {
+		k.logger.Err(err)
+		return fmt.Errorf("Unable to setup a session with %v", t.PodName)
+	}
+
+	// Execute command
+	err = exec.Stream(remotecommand.StreamOptions{
+		SupportedProtocols: kubeletcmd.SupportedStreamingProtocols,
+		Stdout:             b,
+		Stderr:             berr,
+	})
+	return err
 }
