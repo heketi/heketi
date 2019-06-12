@@ -13,6 +13,7 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"time"
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
@@ -21,6 +22,11 @@ import (
 	rex "github.com/heketi/heketi/pkg/remoteexec"
 	rexlog "github.com/heketi/heketi/pkg/remoteexec/log"
 )
+
+type TimeoutOptions struct {
+	TimeoutMinutes   int
+	UseTimeoutPrefix bool
+}
 
 // ExecCommands executes the given array of commands on the given
 // target container using the given connection. The results type
@@ -31,7 +37,7 @@ import (
 // Using sudo is not supported by kubeexec.
 func ExecCommands(
 	k *KubeConn, t TargetContainer,
-	commands rex.Cmds, timeoutMinutes int) (rex.Results, error) {
+	commands rex.Cmds, topts TimeoutOptions) (rex.Results, error) {
 
 	results := make(rex.Results, len(commands))
 	cmdlog := rexlog.NewCommandLogger(k.logger)
@@ -49,27 +55,49 @@ func ExecCommands(
 			berr bytes.Buffer
 			cmdv []string
 		)
-		cmdv = []string{"bash", "-c", command}
-
-		err := execOnKube(k, t, cmdv, &b, &berr)
-		r := rex.Result{
-			Completed: true,
-			Output:    b.String(),
-			ErrOutput: berr.String(),
-			Err:       err,
-		}
-		if err == nil {
-			cmdlog.Success(cmd, t.String(), r.Output, r.ErrOutput)
+		if topts.TimeoutMinutes > 0 && topts.UseTimeoutPrefix {
+			cmdv = []string{
+				"timeout",
+				fmt.Sprintf("%vm", topts.TimeoutMinutes),
+				"bash",
+				"-c",
+				command,
+			}
 		} else {
-			cmdlog.Error(cmd, err, t.String(), r.Output, r.ErrOutput)
-			// TODO: extract the real error code if possible
-			r.ExitStatus = 1
+			cmdv = []string{"bash", "-c", command}
 		}
-		results[index] = r
-		if r.ExitStatus != 0 {
-			// stop running commands on error
-			// TODO: make caller configurable?)
-			return results, nil
+
+		errch := make(chan error)
+		go func() {
+			errch <- execOnKube(k, t, cmdv, &b, &berr)
+		}()
+		timeout := time.After(time.Minute * time.Duration(topts.TimeoutMinutes+1))
+
+		select {
+		case err := <-errch:
+			r := rex.Result{
+				Completed: true,
+				Output:    b.String(),
+				ErrOutput: berr.String(),
+				Err:       err,
+			}
+			if err == nil {
+				cmdlog.Success(cmd, t.String(), r.Output, r.ErrOutput)
+			} else {
+				cmdlog.Error(cmd, err, t.String(), r.Output, r.ErrOutput)
+				// TODO: extract the real error code if possible
+				r.ExitStatus = 1
+			}
+			results[index] = r
+			if r.ExitStatus != 0 {
+				// stop running commands on error
+				// TODO: make caller configurable?)
+				return results, nil
+			}
+
+		case <-timeout:
+			cmdlog.Timeout(cmd, nil, t.String(), b.String(), berr.String())
+			return results, fmt.Errorf("timeout")
 		}
 	}
 
