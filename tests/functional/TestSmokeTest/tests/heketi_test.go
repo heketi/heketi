@@ -612,3 +612,32 @@ func TestVolumeCreateOneZone(t *testing.T) {
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	}
 }
+
+func TestHeketiManyBricksVolume(t *testing.T) {
+
+	// Setup the VM storage topology
+	setupCluster(t, 4, 8)
+	defer teardownCluster(t)
+
+	// Create a volume with replica 3
+	volReq := &api.VolumeCreateRequest{}
+	volReq.Size = 2500
+	volReq.Durability.Type = api.DurabilityReplicate
+	volReq.Durability.Replicate.Replica = 3
+
+	volInfo, err := heketi.VolumeCreate(volReq)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, volInfo.Size == 2500)
+	tests.Assert(t, volInfo.Mount.GlusterFS.MountPoint != "")
+	tests.Assert(t, volInfo.Durability.Type == api.DurabilityReplicate)
+	tests.Assert(t, volInfo.Durability.Replicate.Replica == 3)
+	tests.Assert(t, volInfo.Name != "")
+
+	// ensure more than 6 bricks were created
+	topo, err := heketi.TopologyInfo()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, len(topo.ClusterList) == 1)
+	c0 := topo.ClusterList[0]
+	tests.Assert(t, len(c0.Volumes) == 1)
+	tests.Assert(t, len(c0.Volumes[0].Bricks) > 6, "expected > 6 volumes")
+}
