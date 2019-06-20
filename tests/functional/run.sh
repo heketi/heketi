@@ -47,7 +47,6 @@ if [[ "${#TESTS[@]}" -eq 0 ]]; then
 	TESTS+=("TestSmokeTest")
 	TESTS+=("TestVolumeNotDeletedWhenNodeIsDown")
 	TESTS+=("TestVolumeSnapshotBehavior")
-	TESTS+=("TestManyBricksVolume")
 	TESTS+=("TestUpgrade")
 	TESTS+=("TestEnabledTLS")
 	TESTS+=("TestErrorHandling")
