@@ -360,7 +360,7 @@ Cluster Id: {{.Id}}
     Nodes:
 {{range .Nodes}}
 	Node Id: {{.Id}}
-	State: {{.State}}
+	State: {{.State | entryStateString }}
 	Cluster Id: {{.ClusterId}}
 	Zone: {{.Zone}}
 	Management Hostnames: {{join .Hostnames.Manage ", "}}
@@ -371,7 +371,7 @@ Cluster Id: {{.Id}}
 	Devices:
 {{- range .DevicesInfo}}
 		Id:{{.Id | printf "%-35v" -}}
-		State:{{.State | printf "%-10v" -}}
+		State:{{.State | entryStateString | printf "%-10v" -}}
 		Size (GiB):{{kibToGib .Storage.Total | printf "%-8v" -}}
 		Used (GiB):{{kibToGib .Storage.Used | printf "%-8v" -}}
 		Free (GiB):{{kibToGib .Storage.Free | printf "%-8v"}}
@@ -401,6 +401,7 @@ func printTopologyInfo(topo *api.TopologyInfoResponse, ts string) error {
 		"kibToGib": func(i uint64) string {
 			return fmt.Sprintf("%d", i/(1024*1024))
 		},
+		"entryStateString": entryStateString,
 	}
 	t, err := template.New("topology").Funcs(fm).Parse(ts)
 	if err != nil {
