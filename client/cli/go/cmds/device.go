@@ -209,11 +209,6 @@ var deviceInfoCommand = &cobra.Command{
 			return err
 		}
 
-		var entryStateRemoved api.EntryState = "removed"
-		if info.State == api.EntryStateFailed {
-			info.State = entryStateRemoved
-		}
-
 		if options.Json {
 			data, err := json.Marshal(info)
 			if err != nil {
@@ -227,7 +222,7 @@ var deviceInfoCommand = &cobra.Command{
 				"Used (GiB): %v\n"+
 				"Free (GiB): %v\n",
 				info.Id,
-				info.State,
+				entryStateString(info.State),
 				info.Storage.Total/(1024*1024),
 				info.Storage.Used/(1024*1024),
 				info.Storage.Free/(1024*1024))
