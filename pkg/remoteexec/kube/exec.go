@@ -67,6 +67,13 @@ func ExecCommands(
 			cmdv = []string{"bash", "-c", command}
 		}
 
+		ccount := k.counter.get()
+		k.logger.Debug("Current kube connection count: %v", ccount)
+		if k.MaxConnThreshold > 0 && ccount >= k.MaxConnThreshold {
+			k.logger.LogError("Too many existing kube connections (%v)", ccount)
+			return results, NewMaxConnectionsErr(ccount)
+		}
+
 		errch := make(chan error)
 		go func() {
 			errch <- execOnKube(k, t, cmdv, &b, &berr)
@@ -107,6 +114,9 @@ func ExecCommands(
 func execOnKube(
 	k *KubeConn, t TargetContainer, cmdv []string,
 	b, berr *bytes.Buffer) error {
+
+	k.counter.increment()
+	defer k.counter.decrement()
 
 	req := k.rest.Post().
 		Resource(t.resourceName()).

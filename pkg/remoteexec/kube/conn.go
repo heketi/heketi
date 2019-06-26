@@ -40,6 +40,9 @@ type KubeConn struct {
 	kube       *client.Clientset
 	rest       restclient.Interface
 	logger     logger
+	counter    *connectionCounter
+	// tunables for connection threshold handling
+	MaxConnThreshold uint64
 }
 
 // NewKubeConnWithConfig creates a new KubeConn with the provided
@@ -48,7 +51,11 @@ type KubeConn struct {
 func NewKubeConnWithConfig(l logger, rc *restclient.Config) (*KubeConn, error) {
 	var (
 		err error
-		k   = &KubeConn{logger: l, kubeConfig: rc}
+		k   = &KubeConn{
+			logger:     l,
+			kubeConfig: rc,
+			counter:    newConnectionCounter(),
+		}
 	)
 
 	// Get a raw REST client.  This is still needed for kube-exec
@@ -77,4 +84,16 @@ func NewKubeConn(l logger) (*KubeConn, error) {
 			"Unable to create configuration for Kubernetes: %v", err)
 	}
 	return NewKubeConnWithConfig(l, rc)
+}
+
+type MaxConnectionsErr struct {
+	Count uint64
+}
+
+func NewMaxConnectionsErr(value uint64) MaxConnectionsErr {
+	return MaxConnectionsErr{Count: value}
+}
+
+func (e MaxConnectionsErr) Error() string {
+	return fmt.Sprintf("Too many kube exec connections active (%v)", e.Count)
 }
