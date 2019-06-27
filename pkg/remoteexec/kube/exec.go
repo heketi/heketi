@@ -18,6 +18,7 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
 	kubeletcmd "k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
+	"k8s.io/kubernetes/pkg/util/exec"
 
 	rex "github.com/heketi/heketi/pkg/remoteexec"
 	rexlog "github.com/heketi/heketi/pkg/remoteexec/log"
@@ -91,9 +92,15 @@ func ExecCommands(
 			if err == nil {
 				cmdlog.Success(cmd, t.String(), r.Output, r.ErrOutput)
 			} else {
-				cmdlog.Error(cmd, err, t.String(), r.Output, r.ErrOutput)
-				// TODO: extract the real error code if possible
 				r.ExitStatus = 1
+				if cee, ok := err.(exec.CodeExitError); ok {
+					r.ExitStatus = cee.Code
+				}
+				if topts.TimeoutMinutes > 0 && topts.UseTimeoutPrefix && r.ExitStatus == 124 {
+					cmdlog.Timeout(cmd, err, t.String(), b.String(), berr.String())
+					return results, fmt.Errorf("timeout")
+				}
+				cmdlog.Error(cmd, err, t.String(), r.Output, r.ErrOutput)
 			}
 			results[index] = r
 			if r.ExitStatus != 0 {
