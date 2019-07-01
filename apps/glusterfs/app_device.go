@@ -61,13 +61,6 @@ func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		// Register device
-		err = device.Register(tx)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusConflict)
-			return err
-		}
-
 		return nil
 	})
 	if err != nil {
@@ -79,20 +72,6 @@ func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 
 	// Add device in an asynchronous function
 	a.asyncManager.AsyncHttpRedirectFunc(w, r, func() (seeOtherUrl string, e error) {
-
-		defer func() {
-			if e != nil {
-				a.db.Update(func(tx *bolt.Tx) error {
-					err := device.Deregister(tx)
-					if err != nil {
-						logger.Err(err)
-						return err
-					}
-
-					return nil
-				})
-			}
-		}()
 
 		// Setup device on node
 		info, err := a.executor.DeviceSetup(node.ManageHostName(),
@@ -293,13 +272,6 @@ func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
 
 			// Delete device from db
 			err = device.Delete(tx)
-			if err != nil {
-				logger.Err(err)
-				return err
-			}
-
-			// Deregister device
-			err = device.Deregister(tx)
 			if err != nil {
 				logger.Err(err)
 				return err
