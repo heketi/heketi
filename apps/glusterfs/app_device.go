@@ -11,11 +11,13 @@ package glusterfs
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
 
+	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/heketi/heketi/pkg/utils"
@@ -94,7 +96,17 @@ func (a *App) DeviceAdd(w http.ResponseWriter, r *http.Request) {
 
 		// Setup device on node
 		info, err := a.executor.DeviceSetup(node.ManageHostName(),
-			device.Info.Name, device.Info.Id, msg.DestroyData)
+			device.Info.Name, device.Info.Id, false)
+		if err != nil && msg.DestroyData {
+			errReason := allowDestroyDevice(a.db, err)
+			if errReason != nil {
+				// not allowed to destroy the device. return reason
+				// as our error
+				return "", errReason
+			}
+			info, err = a.executor.DeviceSetup(node.ManageHostName(),
+				device.Info.Name, device.Info.Id, true)
+		}
 		if err != nil {
 			return "", err
 		}
@@ -516,4 +528,46 @@ func (a *App) DeviceSetTags(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(device.AllTags()); err != nil {
 		panic(err)
 	}
+}
+
+func allowDestroyDevice(db wdb.RODB, e error) error {
+	if derr, ok := e.(*executors.DeviceNotAvailableErr); ok {
+		if !derr.ConnectionOk {
+			// device status could not be checked. deny destroy
+			return derr
+		}
+		if derr.CurrentMeta == nil {
+			// device was checked but is not a Physical Volume. is ok to wipe.
+			return nil
+		}
+		pvmap, dcount, err := allDevicePvUUID(db)
+		if err != nil {
+			logger.LogError("failed to read PV UUIDs from db: %v", err)
+			// db lookups failed. deny
+			return derr
+		}
+		if len(pvmap) != dcount {
+			logger.Warning(
+				"devices without PV UUIDs detected (found %v uuids, %v devices)",
+				len(pvmap), dcount)
+			// can't check all devices (backwards compat old devices). deny
+			return fmt.Errorf(
+				"Can not destroy device, destroy may not be safe: %v",
+				derr)
+		}
+		if deviceId, found := pvmap[derr.CurrentMeta.UUID]; found {
+			logger.Warning(
+				"device uuid %v already tracked as %v",
+				derr.CurrentMeta.UUID, deviceId)
+			return fmt.Errorf(
+				"Device already in use (ID: %v)",
+				deviceId)
+		}
+		// it has lvm metadata but not (this) heketi's. ok to wipe
+		// destroydata is really never safe, but this is what we allowed
+		// prior to the new approach to devices, so whatever. :-\
+		return nil
+	}
+	// not an expected error type. better safe than sorry, deny destroy
+	return e
 }
