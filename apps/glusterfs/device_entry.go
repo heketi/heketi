@@ -709,3 +709,26 @@ func (d *DeviceEntry) ToHandle() *executors.DeviceVgHandle {
 	}
 	return dh
 }
+
+func allDevicePvUUID(db wdb.RODB) (map[string]string, int, error) {
+	pvmap := map[string]string{}
+	deviceCount := 0
+	err := db.View(func(tx *bolt.Tx) error {
+		dl, err := DeviceList(tx)
+		if err != nil {
+			return err
+		}
+		deviceCount = len(dl)
+		for _, id := range dl {
+			device, err := NewDeviceEntryFromId(tx, id)
+			if err != nil {
+				return err
+			}
+			if device.Info.PvUUID != "" {
+				pvmap[device.Info.PvUUID] = device.Info.Id
+			}
+		}
+		return nil
+	})
+	return pvmap, deviceCount, err
+}
