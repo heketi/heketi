@@ -360,6 +360,122 @@ func TestDeviceHandlingFallbacks(t *testing.T) {
 	})
 }
 
+func TestDeviceAddDupePaths(t *testing.T) {
+	heketiServer := testutils.NewServerCtlFromEnv("..")
+
+	defer func() {
+		testutils.ServerRestarted(t, heketiServer)
+		testCluster.Teardown(t)
+		testutils.ServerStopped(t, heketiServer)
+	}()
+
+	testutils.ServerStarted(t, heketiServer)
+	heketiServer.KeepDB = true
+	testCluster.Setup(t, 3, 2)
+
+	na := testutils.RequireNodeAccess(t)
+	exec := na.Use(logger)
+
+	// create symlink aliases
+	for i := 0; i < len(testCluster.Nodes); i++ {
+		err := linkDevice(testCluster, exec, i, 3, "/dev/bender")
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	}
+
+	// add our new devices using the symlink-alias
+	topo, err := heketi.TopologyInfo()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	for _, n := range topo.ClusterList[0].Nodes {
+		req := &api.DeviceAddRequest{}
+		req.Name = "/dev/bender"
+		req.NodeId = n.Id
+		err = heketi.DeviceAdd(req)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	}
+
+	// assert we can not add the same devices again
+	for _, n := range topo.ClusterList[0].Nodes {
+		req := &api.DeviceAddRequest{}
+		req.Name = "/dev/bender"
+		req.NodeId = n.Id
+		req.DestroyData = true
+		err = heketi.DeviceAdd(req)
+		tests.Assert(t, err != nil, "expected err != nil, got:", err)
+	}
+}
+
+func TestDeviceAddShuffledPaths(t *testing.T) {
+	heketiServer := testutils.NewServerCtlFromEnv("..")
+
+	defer func() {
+		testutils.ServerRestarted(t, heketiServer)
+		testCluster.Teardown(t)
+		testutils.ServerStopped(t, heketiServer)
+	}()
+
+	testutils.ServerStarted(t, heketiServer)
+	heketiServer.KeepDB = true
+	testCluster.Setup(t, 3, 2)
+
+	na := testutils.RequireNodeAccess(t)
+	exec := na.Use(logger)
+
+	// create symlink aliases
+	for i := 0; i < len(testCluster.Nodes); i++ {
+		err := linkDevice(testCluster, exec, i, 3, "/dev/bender")
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	}
+
+	// add our new devices using the symlink-alias
+	topo, err := heketi.TopologyInfo()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	for _, n := range topo.ClusterList[0].Nodes {
+		req := &api.DeviceAddRequest{}
+		req.Name = "/dev/bender"
+		req.NodeId = n.Id
+		err = heketi.DeviceAdd(req)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	}
+
+	// swap our alias symlinks
+	for i := 0; i < len(testCluster.Nodes); i++ {
+		err := rmLink(testCluster, exec, i, "/dev/bender")
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		err = linkDevice(testCluster, exec, i, 4, "/dev/bender")
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	}
+
+	// assert we can add new clean devices with the same paths used
+	// previously
+	for _, n := range topo.ClusterList[0].Nodes {
+		req := &api.DeviceAddRequest{}
+		req.Name = "/dev/bender"
+		req.NodeId = n.Id
+		err = heketi.DeviceAdd(req)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	}
+
+	// clean up all devices
+	topo, err = heketi.TopologyInfo()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	for _, n := range topo.ClusterList[0].Nodes {
+		for _, d := range n.DevicesInfo {
+			stateReq := &api.StateRequest{}
+			stateReq.State = api.EntryStateOffline
+			err = heketi.DeviceState(d.Id, stateReq)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+			stateReq = &api.StateRequest{}
+			stateReq.State = api.EntryStateFailed
+			err = heketi.DeviceState(d.Id, stateReq)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+			err = heketi.DeviceDelete(d.Id)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		}
+	}
+}
+
 func linkDevice(
 	tc *testutils.ClusterEnv, exec *ssh.SshExec,
 	hostIdx, diskIdx int, newPath string) error {
