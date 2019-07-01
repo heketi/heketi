@@ -62,7 +62,7 @@ func (s *CmdExecutor) DeviceSetup(host, device, vgid string, destroy bool) (d *e
 	// Execute command
 	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands), 5))
 	if err != nil {
-		err = fmt.Errorf("Setup of device %v failed (already initialized or contains data?): %v", device, err)
+		err = s.deviceSetupError(err, host, device)
 		return nil, err
 	}
 
@@ -285,7 +285,7 @@ func (s *CmdExecutor) getDeviceHandle(host, device string) (
 
 	results, err := s.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands), 5)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get device handle: %v", err)
+		return nil, connErr("failed to get device handle", err)
 	}
 	if !results[0].Ok() {
 		// pvs command is expected to always work
@@ -333,6 +333,40 @@ func (s *CmdExecutor) upgradeHandle(host string, dh *executors.DeviceVgHandle) e
 		logger.Warning("failed to parse vgs output: %v", err)
 	}
 	return nil
+}
+
+func (s *CmdExecutor) deviceSetupError(e error, host, device string) *executors.DeviceNotAvailableErr {
+	var out *executors.DeviceNotAvailableErr
+	dh, err := s.getDeviceHandle(host, device)
+	if err == nil {
+		// device has lvm metadata on it. return the specific error type
+		// with the current lvm metadata set
+		out = &executors.DeviceNotAvailableErr{
+			OriginalError: e,
+			Path:          device,
+			ConnectionOk:  true,
+			CurrentMeta:   dh,
+		}
+	} else if _, ok := err.(connectionErr); ok {
+		// we failed to get any metadata from the node. We can't trust
+		// this "non-result" so we assume device may still be in use
+		out = &executors.DeviceNotAvailableErr{
+			OriginalError: e,
+			Path:          device,
+			ConnectionOk:  false,
+			CurrentMeta:   nil,
+		}
+	} else {
+		// we connected to the node and ran our info commands but they
+		// did not return lvm pv metadata
+		out = &executors.DeviceNotAvailableErr{
+			OriginalError: e,
+			Path:          device,
+			ConnectionOk:  true,
+			CurrentMeta:   nil,
+		}
+	}
+	return out
 }
 
 func checkHandle(dh *executors.DeviceVgHandle) error {
@@ -399,4 +433,17 @@ func parseUdevPaths(o, basePath string) ([]string, error) {
 		paths = append(paths, basePath)
 	}
 	return paths, nil
+}
+
+type connectionErr struct {
+	msg string
+	err error
+}
+
+func (e connectionErr) Error() string {
+	return fmt.Sprintf("%s: %v", e.msg, e.err)
+}
+
+func connErr(m string, e error) connectionErr {
+	return connectionErr{m, e}
 }
