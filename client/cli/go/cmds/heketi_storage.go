@@ -245,6 +245,9 @@ func createHeketiCopyJob(volume *api.VolumeInfoResponse) *batch.Job {
 	job.Spec.Parallelism = &p
 	job.Spec.Completions = &c
 	job.Spec.Template.ObjectMeta.Name = HeketiStorageJobName
+	job.Spec.Template.Spec.NodeSelector = map[string]string{
+		"beta.kubernetes.io/os": "linux",
+	}
 	job.Spec.Template.Spec.Volumes = []kubeapi.Volume{
 		{
 			Name: HeketiStorageVolTagName,
