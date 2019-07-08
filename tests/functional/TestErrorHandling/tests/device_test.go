@@ -482,9 +482,9 @@ func linkDevice(
 
 	sshHost := tc.SshHost(hostIdx)
 	diskPath := tc.Disks[diskIdx]
-	cmds := []string{
+	cmds := rex.OneCmd(
 		fmt.Sprintf("ln -sf %s %s", diskPath, newPath),
-	}
+	)
 	return rex.AnyError(exec.ExecCommands(sshHost, cmds, 10, true))
 }
 
@@ -493,9 +493,9 @@ func rmLink(
 	hostIdx int, path string) error {
 
 	sshHost := tc.SshHost(hostIdx)
-	cmds := []string{
+	cmds := rex.OneCmd(
 		fmt.Sprintf("rm -f %s", path),
-	}
+	)
 	return rex.AnyError(exec.ExecCommands(sshHost, cmds, 10, true))
 }
 

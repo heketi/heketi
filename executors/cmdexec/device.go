@@ -60,7 +60,7 @@ func (s *CmdExecutor) DeviceSetup(host, device, vgid string, destroy bool) (d *e
 	)
 
 	// Execute command
-	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 5))
+	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands), 5))
 	if err != nil {
 		err = s.deviceSetupError(err, host, device)
 		return nil, err
@@ -93,7 +93,7 @@ func (s *CmdExecutor) PVS(host string) (d *executors.PVSCommandOutput, e error) 
 
 	commands = append(commands, fmt.Sprintf("pvs --reportformat json --units k"))
 
-	results, err := s.RemoteExecutor.ExecCommands(host, commands,
+	results, err := s.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands),
 		s.GlusterCliExecTimeout())
 	if err := rex.AnyError(results, err); err != nil {
 		return nil, fmt.Errorf("Unable to get data for LVM PVs")
@@ -113,7 +113,7 @@ func (s *CmdExecutor) VGS(host string) (d *executors.VGSCommandOutput, e error) 
 
 	commands = append(commands, fmt.Sprintf("vgs --reportformat json --units k"))
 
-	results, err := s.RemoteExecutor.ExecCommands(host, commands,
+	results, err := s.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands),
 		s.GlusterCliExecTimeout())
 	if err := rex.AnyError(results, err); err != nil {
 		return nil, fmt.Errorf("Unable to get data for LVM VGs")
@@ -133,7 +133,7 @@ func (s *CmdExecutor) LVS(host string) (d *executors.LVSCommandOutput, e error) 
 
 	commands = append(commands, fmt.Sprintf("lvs --reportformat json --units k"))
 
-	results, err := s.RemoteExecutor.ExecCommands(host, commands,
+	results, err := s.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands),
 		s.GlusterCliExecTimeout())
 	if err := rex.AnyError(results, err); err != nil {
 		return nil, fmt.Errorf("Unable to get data for LVM LVs")
@@ -196,7 +196,7 @@ func (s *CmdExecutor) removeDevice(host, device, vgid string) error {
 	}
 
 	// Execute command
-	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 5))
+	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands), 5))
 	if err != nil {
 		return logger.LogError(
 			"Failed to delete device %v with id %v on host %v: %v",
@@ -211,7 +211,7 @@ func (s *CmdExecutor) removeDeviceMountPoint(host, vgid string) error {
 		fmt.Sprintf("rmdir %v", pdir),
 	}
 
-	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, commands, 5))
+	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands), 5))
 	if err != nil && !strings.Contains(err.Error(), "No such file or directory") {
 		logger.LogError("Error while removing the VG directory: %v", err)
 	}
@@ -228,7 +228,7 @@ func (s *CmdExecutor) getVgSizeFromNode(
 	}
 
 	// Execute command
-	results, err := s.RemoteExecutor.ExecCommands(host, commands, 5)
+	results, err := s.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands), 5)
 	if err := rex.AnyError(results, err); err != nil {
 		return err
 	}
@@ -283,7 +283,7 @@ func (s *CmdExecutor) getDeviceHandle(host, device string) (
 	commands = append(commands,
 		fmt.Sprintf("udevadm info --query=symlink --name=%v", device))
 
-	results, err := s.RemoteExecutor.ExecCommands(host, commands, 5)
+	results, err := s.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands), 5)
 	if err != nil {
 		return nil, connErr("failed to get device handle", err)
 	}
@@ -323,7 +323,7 @@ func (s *CmdExecutor) upgradeHandle(host string, dh *executors.DeviceVgHandle) e
 	commands = append(commands,
 		fmt.Sprintf("vgs -o pv_name,pv_uuid,vg_name --reportformat=json %v",
 			paths.VgIdToName(dh.VgId)))
-	results, err := s.RemoteExecutor.ExecCommands(host, commands, 5)
+	results, err := s.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands), 5)
 	if e := rex.AnyError(results, err); e != nil {
 		logger.Warning("failed to get vgs info for handle: %v", err)
 		return nil
