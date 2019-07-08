@@ -34,6 +34,10 @@ IN_PVS = 'pvs'
 IS_BLOCK = 'BV'
 
 
+class CliError(ValueError):
+    pass
+
+
 def main():
     parser = argparse.ArgumentParser(description=DESC, epilog=EXAMPLE)
     parser.add_argument(
@@ -68,9 +72,12 @@ def main():
         help='Compare bricks rather than volumes')
 
     cli = parser.parse_args()
-    if cli.bricks:
-        return examine_bricks(cli)
-    return examine_volumes(cli)
+    try:
+        if cli.bricks:
+            return examine_bricks(cli)
+        return examine_volumes(cli)
+    except CliError as err:
+        parser.error(str(err))
 
 
 def examine_volumes(cli):
@@ -87,7 +94,7 @@ def examine_volumes(cli):
         pvdata = parse_oshift(cli.pv_yaml)
 
     if not check:
-        parser.error(
+        raise CliError(
             "Must provide: --gluster-info OR --heketi-json OR --pv-yaml")
 
     summary = compile_summary(cli, gvinfo, heketi, pvdata)
@@ -112,7 +119,7 @@ def examine_bricks(cli):
         heketi = parse_heketi(cli.heketi_json)
 
     if not check:
-        parser.error(
+        raise CliError(
             "Must provide: --gluster-info and --heketi-json")
 
     summary = compile_brick_summary(cli, gvinfo, heketi)
