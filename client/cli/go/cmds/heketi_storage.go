@@ -47,6 +47,7 @@ var (
 	heketiStorageDurability   string
 	heketiStorageReplicaCount int
 	heketiStorageOptions      string
+	HeketiStorageJobSelector  string
 )
 
 func init() {
@@ -75,6 +76,12 @@ func init() {
 		"",
 		"\n\tOptional: Comma separated list of volume options."+
 			"\n\tSee volume create --help for details.")
+	setupHeketiStorageCommand.Flags().StringVar(&HeketiStorageJobSelector,
+		"node-selector",
+		"",
+		"\n\tOptional: nodeSelector for heketi-storage-copy-job."+
+			"\n\tExample: --node-selector 'beta.kubernetes.io/os=linux'."+
+			"\n\tDefault is none")
 	setupHeketiStorageCommand.SilenceUsage = true
 }
 
@@ -246,8 +253,13 @@ func createHeketiCopyJob(volume *api.VolumeInfoResponse) *batch.Job {
 	job.Spec.Parallelism = &p
 	job.Spec.Completions = &c
 	job.Spec.Template.ObjectMeta.Name = HeketiStorageJobName
-	job.Spec.Template.Spec.NodeSelector = map[string]string{
-		"beta.kubernetes.io/os": "linux",
+	if HeketiStorageJobSelector != "" {
+		selectorKeyValue := strings.Split(HeketiStorageJobSelector, "=")
+		if len(selectorKeyValue) == 2 {
+			job.Spec.Template.Spec.NodeSelector = map[string]string{
+				selectorKeyValue[0]: selectorKeyValue[1],
+			}
+		}
 	}
 	job.Spec.Template.Spec.Volumes = []kubeapi.Volume{
 		{
