@@ -9,7 +9,10 @@
 
 package executors
 
-import "encoding/xml"
+import (
+	"encoding/xml"
+	"fmt"
+)
 
 type Executor interface {
 	GlusterdCheck(host string) error
@@ -347,4 +350,28 @@ func SimpleDeviceVgHandle(device, vgid string) *DeviceVgHandle {
 		},
 		VgId: vgid,
 	}
+}
+
+type DeviceNotAvailableErr struct {
+	OriginalError error
+	Path          string
+	ConnectionOk  bool
+	CurrentMeta   *DeviceHandle
+}
+
+func (e *DeviceNotAvailableErr) Error() string {
+	head := fmt.Sprintf("Initializing device %v failed", e.Path)
+	if !e.ConnectionOk {
+		return fmt.Sprintf(
+			"%s (failed to check device contents): %v",
+			head, e.OriginalError)
+	}
+	if e.CurrentMeta != nil {
+		return fmt.Sprintf(
+			"%s (aleady contains Physical Volume %v): %v",
+			head, e.CurrentMeta.UUID, e.OriginalError)
+	}
+	return fmt.Sprintf(
+		"%s (already initialized or contains data?): %v",
+		head, e.OriginalError)
 }

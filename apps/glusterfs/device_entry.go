@@ -85,51 +85,6 @@ func (d *DeviceEntry) registerKey() string {
 	return "DEVICE" + d.NodeId + d.Info.Name
 }
 
-func (d *DeviceEntry) Register(tx *bolt.Tx) error {
-	godbc.Require(tx != nil)
-
-	val, err := EntryRegister(tx,
-		d,
-		d.registerKey(),
-		[]byte(d.Id()))
-	if err == ErrKeyExists {
-
-		// Now check if the node actually exists.  This only happens
-		// when the application crashes and it doesn't clean up stale
-		// registrations.
-		conflictId := string(val)
-		_, err := NewDeviceEntryFromId(tx, conflictId)
-		if err == ErrNotFound {
-			// (stale) There is actually no conflict, we can allow
-			// the registration
-			return nil
-		} else if err != nil {
-			return logger.Err(err)
-		}
-
-		return fmt.Errorf("Device %v is already used on node %v by device %v",
-			d.Info.Name,
-			d.NodeId,
-			conflictId)
-
-	} else if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (d *DeviceEntry) Deregister(tx *bolt.Tx) error {
-	godbc.Require(tx != nil)
-
-	err := EntryDelete(tx, d, d.registerKey())
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (d *DeviceEntry) SetId(id string) {
 	d.Info.Id = id
 }
@@ -708,4 +663,27 @@ func (d *DeviceEntry) ToHandle() *executors.DeviceVgHandle {
 		dh.Paths = []string{d.Info.Name}
 	}
 	return dh
+}
+
+func allDevicePvUUID(db wdb.RODB) (map[string]string, int, error) {
+	pvmap := map[string]string{}
+	deviceCount := 0
+	err := db.View(func(tx *bolt.Tx) error {
+		dl, err := DeviceList(tx)
+		if err != nil {
+			return err
+		}
+		deviceCount = len(dl)
+		for _, id := range dl {
+			device, err := NewDeviceEntryFromId(tx, id)
+			if err != nil {
+				return err
+			}
+			if device.Info.PvUUID != "" {
+				pvmap[device.Info.PvUUID] = device.Info.Id
+			}
+		}
+		return nil
+	})
+	return pvmap, deviceCount, err
 }
