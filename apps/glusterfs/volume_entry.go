@@ -237,7 +237,9 @@ func (v *VolumeEntry) NewInfoResponse(tx *bolt.Tx) (*api.VolumeInfoResponse, err
 	info := api.NewVolumeInfoResponse()
 	info.Id = v.Info.Id
 	info.Cluster = v.Info.Cluster
-	info.Mount = v.Info.Mount
+	if err := v.updateMountInfo(wdb.WrapTx(tx), &info.VolumeInfo); err != nil {
+		return nil, err
+	}
 	info.Snapshot = v.Info.Snapshot
 	info.Size = v.Info.Size
 	info.Durability = v.Info.Durability
