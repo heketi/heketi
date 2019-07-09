@@ -197,8 +197,7 @@ func createHeketiEndpointService() *kubeapi.Service {
 	return service
 }
 
-func createHeketiStorageEndpoints(c *client.Client,
-	volume *api.VolumeInfoResponse) *kubeapi.Endpoints {
+func createHeketiStorageEndpoints(volume *api.VolumeInfoResponse) *kubeapi.Endpoints {
 
 	endpoint := &kubeapi.Endpoints{}
 	endpoint.Kind = "Endpoints"
@@ -345,7 +344,7 @@ var setupHeketiStorageCommand = &cobra.Command{
 		list.Items = append(list.Items, secret)
 
 		// Create endpoints
-		endpoints := createHeketiStorageEndpoints(c, volume)
+		endpoints := createHeketiStorageEndpoints(volume)
 		list.Items = append(list.Items, endpoints)
 
 		// Create service for the endpoints
