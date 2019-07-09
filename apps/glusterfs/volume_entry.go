@@ -628,7 +628,7 @@ func (v *VolumeEntry) saveCreateVolume(db wdb.DB,
 			return ErrNoSpace
 		}
 
-		err = v.updateMountInfo(txdb)
+		err = v.updateMountInfo(txdb, &v.Info)
 		if err != nil {
 			return err
 		}
