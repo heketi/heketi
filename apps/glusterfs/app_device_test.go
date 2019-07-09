@@ -151,11 +151,6 @@ func TestDeviceAddDelete(t *testing.T) {
 		}
 	}
 
-	// Add the same device.  It should conflict
-	r, err = http.Post(ts.URL+"/devices", "application/json", bytes.NewBuffer(request))
-	tests.Assert(t, err == nil)
-	tests.Assert(t, r.StatusCode == http.StatusConflict)
-
 	// Add a second device
 	request = []byte(`{
         "node" : "` + node.Info.Id + `",
