@@ -117,6 +117,7 @@ def delete_block_volume(data, vid):
     if vol:
         try:
             vol['Info']['blockinfo']['blockvolume'].remove(vid)
+            vol['Info']['blockinfo']['freesize'] += item['Info']['size']
         except ValueError:
             log.warning('block volume %s not listed in hosting volume %s',
                         vid, vol['Info']['id'])
