@@ -45,10 +45,10 @@ done
 if [[ "${#TESTS[@]}" -eq 0 ]]; then
 	TESTS+=("TestSelfTest")
 	TESTS+=("TestSmokeTest")
+	TESTS+=("TestErrorHandling")
 	TESTS+=("TestVolumeNotDeletedWhenNodeIsDown")
 	TESTS+=("TestUpgrade")
 	TESTS+=("TestEnabledTLS")
-	TESTS+=("TestErrorHandling")
 fi
 
 # install glide
