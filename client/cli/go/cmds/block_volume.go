@@ -57,8 +57,8 @@ func init() {
 
 var blockVolumeCommand = &cobra.Command{
 	Use:   "blockvolume",
-	Short: "Heketi Volume Management",
-	Long:  "Heketi Volume Management",
+	Short: "Heketi Block Volume Management",
+	Long:  "Heketi Block Volume Management",
 }
 
 var blockVolumeCreateCommand = &cobra.Command{
