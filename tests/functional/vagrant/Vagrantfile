@@ -5,6 +5,10 @@
 NODES = 4
 DISKS = 8
 
+DRIVE_SIZE = "500G"
+VM_MEM_MB = 1024
+VM_CPU_COUNT = 2
+
 Vagrant.configure("2") do |config|
     config.ssh.insert_key = false
 
@@ -20,28 +24,21 @@ Vagrant.configure("2") do |config|
 
     # Make the glusterfs cluster, each with DISKS number of drives
     (0..NODES-1).each do |i|
-        config.vm.define "storage#{i}" do |storage|
-            storage.vm.hostname = "storage#{i}"
-            storage.vm.network :private_network, ip: "192.168.10.10#{i}"
-            (0..DISKS-1).each do |d|
-                storage.vm.provider :virtualbox do |vb|
-                    vb.customize [ "createhd", "--filename", "disk-#{i}-#{d}.vdi", "--size", 500*1024 ]
-                    vb.customize [ "storageattach", :id, "--storagectl", "SATA Controller", "--port", 3+d, "--device", 0, "--type", "hdd", "--medium", "disk-#{i}-#{d}.vdi" ]
-                    vb.memory = 1024
-                    vb.cpus = 2
-                end
-                driverletters = ('b'..'z').to_a
-                storage.vm.provider :libvirt do  |lv|
-                    lv.storage :file, :device => "vd#{driverletters[d]}", :path => "test_smoke_disk-#{i}-#{d}.disk", :size => '500G'
-                    lv.memory = 1024
-                    lv.cpus =2
+        config.vm.define "storage#{i}" do |testvm|
+            testvm.vm.hostname = "storage#{i}"
+            localoctet = 100+i
+            testvm.vm.network :private_network, ip: "192.168.10.#{localoctet}"
+            driverletters = ('b'..'z').to_a
+            testvm.vm.provider :libvirt do  |lv|
+                lv.memory = VM_MEM_MB
+                lv.cpus = VM_CPU_COUNT
+                (0..DISKS-1).each do |d|
+                    lv.storage :file, :device => "vd#{driverletters[d]}", :path => "heketi_testvm_disk-#{i}-#{d}.disk", :size => "#{DRIVE_SIZE}"
                 end
             end
 
             if i == (NODES-1)
-                # View the documentation for the provider you're using for more
-                # information on available options.
-                storage.vm.provision :ansible do |ansible|
+                testvm.vm.provision :ansible do |ansible|
                     ansible.limit = "all"
                     ansible.playbook = "site.yml"
                     ansible.groups = {
@@ -49,10 +46,8 @@ Vagrant.configure("2") do |config|
                         "heketi" => ["storage0"],
                         "gluster" => (0..NODES-1).map {|j| "storage#{j}"},
                     }
-
                 end
             end
         end
     end
 end
-

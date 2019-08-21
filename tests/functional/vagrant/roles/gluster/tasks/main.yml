@@ -1,4 +1,4 @@
-- name: install glusterfs, gluster-block
+- name: install gluster packages
   yum:
     name:
       - glusterfs-server
@@ -6,7 +6,7 @@
       - gluster-block
     state: present
 
-- name: start glusterd, gluster-blockd
+- name: start gluster services
   service: name={{ item }} state=started enabled=yes
   with_items:
     - glusterd
@@ -17,3 +17,4 @@
 
 - name: copy script to kill sleep pid
   copy: src=kill-pid.sh dest=/var/tmp/kill-pid.sh mode=755
+
