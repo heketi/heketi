@@ -13,7 +13,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	//	"os"
 	"strings"
 
 	"github.com/heketi/heketi/pkg/glusterfs/api"
