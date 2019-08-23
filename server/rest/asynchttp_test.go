@@ -12,8 +12,6 @@ package rest
 import (
 	"errors"
 	"fmt"
-	"github.com/gorilla/mux"
-	"github.com/heketi/tests"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -21,6 +19,9 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/gorilla/mux"
+	"github.com/heketi/tests"
 )
 
 func TestNewManager(t *testing.T) {
