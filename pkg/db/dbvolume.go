@@ -12,3 +12,13 @@ package db
 const (
 	HeketiStorageVolumeName = "heketidbstorage"
 )
+
+var HeketiStorageVolumeDefaultOptions = []string{"performance.stat-prefetch off",
+	"performance.write-behind off",
+	"performance.open-behind off",
+	"performance.quick-read off",
+	"performance.strict-o-direct on",
+	"performance.read-ahead off",
+	"performance.io-cache off",
+	"performance.readdir-ahead off",
+	"user.heketi.dbstoragelevel 1"}
