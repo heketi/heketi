@@ -435,3 +435,28 @@ func (s *CmdExecutor) HealInfo(host string, volume string) (*executors.HealInfo,
 	logger.Debug("%+v\n", healInfo)
 	return &healInfo.HealInfo, nil
 }
+
+// VolumeModify is used to alter the configuration of an existing volume.
+func (s *CmdExecutor) VolumeModify(host string, mod *executors.VolumeModifyRequest) error {
+
+	commands := rex.Cmds{}
+	if mod.Stopped {
+		c := fmt.Sprintf("%v volume stop %v", s.glusterCommand(), mod.Name)
+		commands = append(commands, rex.ToCmd(c))
+	}
+	for _, volOption := range mod.GlusterVolumeOptions {
+		if volOption == "" {
+			continue
+		}
+		c := fmt.Sprintf("%v volume set %v %v", s.glusterCommand(), mod.Name, volOption)
+		commands = append(commands, rex.ToCmd(c))
+	}
+	if mod.Stopped {
+		c := fmt.Sprintf("%v volume start %v", s.glusterCommand(), mod.Name)
+		commands = append(commands, rex.ToCmd(c))
+	}
+
+	err := rex.AnyError(s.RemoteExecutor.ExecCommands(
+		host, commands, s.GlusterCliExecTimeout()))
+	return err
+}
