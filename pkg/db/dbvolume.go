@@ -13,7 +13,8 @@ const (
 	HeketiStorageVolumeName = "heketidbstorage"
 )
 
-var HeketiStorageVolumeDefaultOptions = []string{"performance.stat-prefetch off",
+var DbVolumeGlusterOptions = []string{
+	"performance.stat-prefetch off",
 	"performance.write-behind off",
 	"performance.open-behind off",
 	"performance.quick-read off",
@@ -21,4 +22,5 @@ var HeketiStorageVolumeDefaultOptions = []string{"performance.stat-prefetch off"
 	"performance.read-ahead off",
 	"performance.io-cache off",
 	"performance.readdir-ahead off",
-	"user.heketi.dbstoragelevel 1"}
+	"user.heketi.dbstoragelevel 1",
+}
