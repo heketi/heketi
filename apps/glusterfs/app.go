@@ -203,9 +203,14 @@ func (app *App) setup(conf *GlusterFSConfig) error {
 func (app *App) initDB() error {
 	// Setup database
 	var err error
-	app.db, err = OpenDB(dbfilename, false)
+	if app.conf.DBReadOnly {
+		err = fmt.Errorf("Read Only DB Required")
+	} else {
+		app.db, err = OpenDB(dbfilename, false)
+		logger.LogError("Unable to open database read-write: %v", err)
+	}
 	if err != nil {
-		logger.LogError("Unable to open database: %v. Retrying using read only mode", err)
+		logger.Info("Trying to open db in read only mode")
 
 		// Try opening as read-only
 		app.db, err = OpenDB(dbfilename, true)
@@ -735,6 +740,9 @@ func (a *App) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 func (a *App) ServerReset() error {
 	// currently this code just resets the operations in the db
 	// to stale
+	if a.dbReadOnly {
+		return nil
+	}
 	return a.db.Update(func(tx *bolt.Tx) error {
 		if err := MarkPendingOperationsStale(tx); err != nil {
 			logger.LogError("failed to mark operations stale: %v", err)
