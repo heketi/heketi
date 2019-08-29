@@ -341,3 +341,13 @@ func (es *ExecutorStack) ListBlockVolumes(host string, blockhostingvolume string
 	}
 	return nil, NotSupportedError
 }
+
+func (es *ExecutorStack) VolumeModify(host string, mod *executors.VolumeModifyRequest) error {
+	for _, e := range es.executors {
+		err := e.VolumeModify(host, mod)
+		if err != NotSupportedError {
+			return err
+		}
+	}
+	return NotSupportedError
+}
