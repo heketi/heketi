@@ -145,7 +145,7 @@ func createHeketiStorageVolume(c *client.Client, dt api.DurabilityType, replicaC
 	req.Durability.Type = dt
 
 	if heketiStorageOptions == "" {
-		req.GlusterVolumeOptions = db.HeketiStorageVolumeDefaultOptions
+		req.GlusterVolumeOptions = db.DbVolumeGlusterOptions
 	} else {
 		req.GlusterVolumeOptions = strings.Split(heketiStorageOptions, ",")
 		req.GlusterVolumeOptions = append(
