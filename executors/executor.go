@@ -375,3 +375,14 @@ func (e *DeviceNotAvailableErr) Error() string {
 		"%s (already initialized or contains data?): %v",
 		head, e.OriginalError)
 }
+
+type VolumeModifyRequest struct {
+	Name string
+
+	// Stopped should be set if the changes may only be applied
+	// while the volume is stopped
+	Stopped bool
+
+	// A new set of gluster volume options
+	GlusterVolumeOptions []string
+}
