@@ -47,6 +47,7 @@ var (
 	heketiStorageDurability   string
 	heketiStorageReplicaCount int
 	heketiStorageOptions      string
+	appendStorageOptions      string
 	HeketiStorageJobSelector  string
 )
 
@@ -75,6 +76,12 @@ func init() {
 		"gluster-volume-options",
 		"",
 		"\n\tOptional: Comma separated list of volume options."+
+			"\n\tSee volume create --help for details.")
+	setupHeketiStorageCommand.Flags().StringVar(&appendStorageOptions,
+		"append-volume-options",
+		"",
+		"\n\tOptional: Comma separated list of volume options to be added"+
+			"\n\tto the existing/default set of options."+
 			"\n\tSee volume create --help for details.")
 	setupHeketiStorageCommand.Flags().StringVar(&HeketiStorageJobSelector,
 		"node-selector",
@@ -150,6 +157,12 @@ func createHeketiStorageVolume(c *client.Client, dt api.DurabilityType, replicaC
 		req.GlusterVolumeOptions = strings.Split(heketiStorageOptions, ",")
 		req.GlusterVolumeOptions = append(
 			req.GlusterVolumeOptions, "user.heketi.dbstoragelevel custom")
+	}
+
+	if appendStorageOptions != "" {
+		req.GlusterVolumeOptions = append(
+			req.GlusterVolumeOptions,
+			strings.Split(appendStorageOptions, ",")...)
 	}
 
 	switch dt {
