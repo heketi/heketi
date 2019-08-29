@@ -35,6 +35,7 @@ type MockExecutor struct {
 	MockVolumesInfo              func(host string) (*executors.VolInfo, error)
 	MockVolumeClone              func(host string, volume *executors.VolumeCloneRequest) (*executors.Volume, error)
 	MockVolumeSnapshot           func(host string, volume *executors.VolumeSnapshotRequest) (*executors.Snapshot, error)
+	MockVolumeModify             func(host string, mod *executors.VolumeModifyRequest) error
 	MockSnapshotCloneVolume      func(host string, volume *executors.SnapshotCloneRequest) (*executors.Volume, error)
 	MockSnapshotCloneBlockVolume func(host string, volume *executors.SnapshotCloneRequest) (*executors.BlockVolumeInfo, error)
 	MockSnapshotDestroy          func(host string, snapshot string) error
@@ -252,6 +253,10 @@ func NewMockExecutor() (*MockExecutor, error) {
 		return []string{}, nil
 	}
 
+	m.MockVolumeModify = func(host string, mod *executors.VolumeModifyRequest) error {
+		return nil
+	}
+
 	m.DeviceSizeGb = func() uint64 {
 		env := os.Getenv("HEKETI_MOCK_DEVICE_SIZE_GB")
 		if env != "" {
@@ -384,4 +389,8 @@ func (m *MockExecutor) GetBrickMountStatus(host string) (*executors.BricksMountS
 
 func (m *MockExecutor) ListBlockVolumes(host string, blockhostingvolume string) ([]string, error) {
 	return m.MockListBlockVolumes(host, blockhostingvolume)
+}
+
+func (m *MockExecutor) VolumeModify(host string, mod *executors.VolumeModifyRequest) error {
+	return m.MockVolumeModify(host, mod)
 }

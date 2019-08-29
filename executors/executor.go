@@ -33,6 +33,7 @@ type Executor interface {
 	VolumesInfo(host string) (*VolInfo, error)
 	VolumeClone(host string, vsr *VolumeCloneRequest) (*Volume, error)
 	VolumeSnapshot(host string, vsr *VolumeSnapshotRequest) (*Snapshot, error)
+	VolumeModify(host string, mod *VolumeModifyRequest) error
 	SnapshotCloneVolume(host string, scr *SnapshotCloneRequest) (*Volume, error)
 	SnapshotCloneBlockVolume(host string, scr *SnapshotCloneRequest) (*BlockVolumeInfo, error)
 	SnapshotDestroy(host string, snapshot string) error
