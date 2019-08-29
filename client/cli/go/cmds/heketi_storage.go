@@ -147,11 +147,9 @@ func createHeketiStorageVolume(c *client.Client, dt api.DurabilityType, replicaC
 	if heketiStorageOptions == "" {
 		req.GlusterVolumeOptions = db.HeketiStorageVolumeDefaultOptions
 	} else {
-		// When user provided options exist, append them and change dbstoragelevel
-		req.GlusterVolumeOptions = db.HeketiStorageVolumeDefaultOptions[:len(db.HeketiStorageVolumeDefaultOptions)-1]
-		userOptions := strings.Split(heketiStorageOptions, ",")
-		req.GlusterVolumeOptions = append(req.GlusterVolumeOptions, userOptions...)
-		req.GlusterVolumeOptions = append(req.GlusterVolumeOptions, "user.heketi.dbstoragelevel custom")
+		req.GlusterVolumeOptions = strings.Split(heketiStorageOptions, ",")
+		req.GlusterVolumeOptions = append(
+			req.GlusterVolumeOptions, "user.heketi.dbstoragelevel custom")
 	}
 
 	switch dt {
