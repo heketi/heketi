@@ -23,8 +23,10 @@ matrix:
     name: Test using Go 1.10
   - go: "1.11"
     name: Test using Go 1.11
-  - go: "1.11"
+  - go: "1.13"
+    name: Test using Go 1.13
+  - go: "1.13"
     script: make release
-    name: make release on Go 1.11
+    name: make release on Go 1.13
 script:
 - make all test COVERAGE=true TESTOPTIONS="-vcstdout" && bash .travis-coverage
