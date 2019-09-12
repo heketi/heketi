@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
-	kubeletcmd "k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
-	"k8s.io/kubernetes/pkg/util/exec"
+	api "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/remotecommand"
+	"k8s.io/client-go/util/exec"
 
 	rex "github.com/heketi/heketi/pkg/remoteexec"
 	rexlog "github.com/heketi/heketi/pkg/remoteexec/log"
@@ -125,7 +125,7 @@ func execOnKube(
 	k.counter.increment()
 	defer k.counter.decrement()
 
-	req := k.rest.Post().
+	req := k.kube.CoreV1().RESTClient().Post().
 		Resource(t.resourceName()).
 		Name(t.PodName).
 		Namespace(t.Namespace).
@@ -136,10 +136,10 @@ func execOnKube(
 		Command:   cmdv,
 		Stdout:    true,
 		Stderr:    true,
-	}, api.ParameterCodec)
+	}, scheme.ParameterCodec)
 
 	// Create SPDY connection
-	exec, err := remotecommand.NewExecutor(k.kubeConfig, "POST", req.URL())
+	exec, err := remotecommand.NewSPDYExecutor(k.kubeConfig, "POST", req.URL())
 	if err != nil {
 		k.logger.Err(err)
 		return fmt.Errorf("Unable to setup a session with %v", t.PodName)
@@ -147,9 +147,8 @@ func execOnKube(
 
 	// Execute command
 	err = exec.Stream(remotecommand.StreamOptions{
-		SupportedProtocols: kubeletcmd.SupportedStreamingProtocols,
-		Stdout:             b,
-		Stderr:             berr,
+		Stdout: b,
+		Stderr: berr,
 	})
 	return err
 }
