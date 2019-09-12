@@ -22,9 +22,9 @@ import (
 
 	"github.com/heketi/tests"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clientset "k8s.io/client-go/kubernetes"
+	fakeclientset "k8s.io/client-go/kubernetes/fake"
 	restclient "k8s.io/client-go/rest"
-	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
-	fakeclientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset/fake"
 )
 
 func TestBackupToKubeSecretFailedClusterConfig(t *testing.T) {
