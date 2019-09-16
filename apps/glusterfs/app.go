@@ -207,7 +207,9 @@ func (app *App) initDB() error {
 		err = fmt.Errorf("Read Only DB Required")
 	} else {
 		app.db, err = OpenDB(dbfilename, false)
-		logger.LogError("Unable to open database read-write: %v", err)
+		if err != nil {
+			logger.LogError("Unable to open database read-write: %v", err)
+		}
 	}
 	if err != nil {
 		logger.Info("Trying to open db in read only mode")
