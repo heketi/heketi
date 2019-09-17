@@ -16,11 +16,13 @@ import (
 	"log"
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
+	"golang.org/x/crypto/ssh/knownhosts"
 
 	"github.com/heketi/heketi/pkg/logging"
 	rex "github.com/heketi/heketi/pkg/remoteexec"
@@ -69,8 +71,9 @@ func NewSshExecWithAuth(logger *logging.Logger, user string) *SshExec {
 	}
 
 	sshexec.clientConfig = &ssh.ClientConfig{
-		User: user,
-		Auth: []ssh.AuthMethod{ssh.PublicKeys(signers...)},
+		User:            user,
+		Auth:            []ssh.AuthMethod{ssh.PublicKeys(signers...)},
+		HostKeyCallback: getHostKeyCallback(),
 	}
 
 	return sshexec
@@ -95,9 +98,24 @@ func NewSshExecWithKeyFile(logger *logging.Logger, user string, file string) *Ss
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(key),
 		},
+		HostKeyCallback: getHostKeyCallback(),
 	}
 
 	return sshexec
+}
+
+func getHostKeyCallback() ssh.HostKeyCallback {
+	hostKeysFiles := os.Getenv("SSH_KNOWN_HOSTS")
+	if len(hostKeysFiles) == 0 {
+		log.Println("no SSH_KNOWN_HOSTS specified, skipping ssh host verification")
+		return ssh.InsecureIgnoreHostKey()
+	}
+
+	knownHostsCallback, err := knownhosts.New(filepath.SplitList(hostKeysFiles)...)
+	if err != nil {
+		log.Fatalf("error parsing SSH_KNOWN_HOSTS %q: %v", hostKeysFiles, err)
+	}
+	return knownHostsCallback
 }
 
 // This function was based from https://github.com/coreos/etcd-manager/blob/master/main.go

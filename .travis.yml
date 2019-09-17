@@ -17,8 +17,6 @@ git:
   depth: 9999999
 matrix:
   include:
-  - go: 1.9.4
-    name: Test using Go 1.9
   - go: "1.10"
     name: Test using Go 1.10
   - go: "1.11"
