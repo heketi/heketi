@@ -76,7 +76,11 @@ func (r *VolumeReplicaDurability) BricksInSet() int {
 }
 
 func (r *VolumeReplicaDurability) QuorumBrickCount() int {
-	return r.BricksInSet()/2 + 1
+	if r.BricksInSet() < 3 {
+		return 1
+	} else {
+		return r.BricksInSet()/2 + 1
+	}
 }
 
 func (r *VolumeReplicaDurability) SetExecutorVolumeRequest(v *executors.VolumeRequest) {
