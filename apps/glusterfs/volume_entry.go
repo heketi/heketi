@@ -340,6 +340,14 @@ func (v *VolumeEntry) GetZoneCheckingStrategy() ZoneCheckingStrategy {
 	return ZONE_CHECKING_UNSET
 }
 
+func (v *VolumeEntry) GetTagMatchingRule() (*TagMatchingRule, error) {
+	value := v.volOptsMap()[HEKETI_TAG_MATCH_KEY]
+	if value == "" {
+		return nil, nil
+	}
+	return ParseTagMatchingRule(value)
+}
+
 func (v *VolumeEntry) BrickAdd(id string) {
 	godbc.Require(!sortedstrings.Has(v.Bricks, id))
 
