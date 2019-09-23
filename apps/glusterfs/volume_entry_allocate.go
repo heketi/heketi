@@ -285,6 +285,15 @@ func (v *VolumeEntry) generateDeviceFilter(db wdb.RODB) (DeviceFilter, error) {
 				"treating as 'none'", ZoneChecking)
 	}
 
+	tagMatchingRule, err := v.GetTagMatchingRule()
+	if err != nil {
+		return nil, logger.LogError(
+			"Invalid tag matching rule: %v", err)
+	} else if tagMatchingRule != nil {
+		logger.Debug("Configuring a tag matching device filter")
+		filter = appendDeviceFilter(filter, tagMatchingRule.Filter)
+	}
+
 	return filter, nil
 }
 
@@ -545,4 +554,16 @@ func (v *VolumeEntry) allocBricks(
 	}
 
 	return brick_entries, nil
+}
+
+func appendDeviceFilter(f1, f2 DeviceFilter) DeviceFilter {
+	if f1 == nil {
+		return f2
+	}
+	if f2 == nil {
+		return f1
+	}
+	return func(bs *BrickSet, d *DeviceEntry) bool {
+		return f1(bs, d) && f2(bs, d)
+	}
 }
