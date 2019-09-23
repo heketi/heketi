@@ -46,6 +46,7 @@ const (
 	HEKETI_ARBITER_KEY           = "user.heketi.arbiter"
 	HEKETI_AVERAGE_FILE_SIZE_KEY = "user.heketi.average-file-size"
 	HEKETI_ZONE_CHECKING_KEY     = "user.heketi.zone-checking"
+	HEKETI_TAG_MATCH_KEY         = "user.heketi.device-tag-match"
 )
 
 var (
