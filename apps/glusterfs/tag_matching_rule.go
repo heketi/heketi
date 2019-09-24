@@ -40,6 +40,15 @@ func (tmr *TagMatchingRule) Test(v string) bool {
 	}
 }
 
-func (tmr *TagMatchingRule) Filter(bs *BrickSet, d *DeviceEntry) bool {
-	return tmr.Test(d.AllTags()[tmr.Key])
+func (tmr *TagMatchingRule) GetFilter(dsrc DeviceSource) DeviceFilter {
+	return func(bs *BrickSet, d *DeviceEntry) bool {
+		n, err := dsrc.Node(d.NodeId)
+		if err != nil {
+			logger.LogError("failed to fetch node (%v) in tag matching filter: %v",
+				d.NodeId, err)
+			return false
+		}
+		tags := MergeTags(n, d)
+		return tmr.Test(tags[tmr.Key])
+	}
 }
