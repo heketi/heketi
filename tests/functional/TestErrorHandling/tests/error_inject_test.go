@@ -156,7 +156,7 @@ func TestErrorInjection(t *testing.T) {
 			c.GlusterFS.Executor = "inject/ssh"
 			c.GlusterFS.InjectConfig.CmdInjection.CmdHooks = inj.CmdHooks{
 				inj.CmdHook{
-					Cmd:      "^lvcreate.*",
+					Cmd:      "(^| )lvcreate.*",
 					Reaction: inj.Reaction{Err: "fooey"},
 				},
 			}
@@ -213,7 +213,7 @@ func TestErrorInjection(t *testing.T) {
 			c.GlusterFS.Executor = "inject/ssh"
 			c.GlusterFS.InjectConfig.CmdInjection.CmdHooks = inj.CmdHooks{
 				inj.CmdHook{
-					Cmd: "^lvcreate.*",
+					Cmd: "(^| )lvcreate.*",
 					Reaction: inj.Reaction{
 						Panic: "KaBoom",
 					},
