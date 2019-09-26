@@ -680,3 +680,7 @@ func ValidateIds(v interface{}) error {
 	}
 	return nil
 }
+
+// reserving a type for future options for brick evict
+type BrickEvictOptions struct {
+}
