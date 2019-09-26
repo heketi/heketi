@@ -62,7 +62,8 @@
       "backup_lvm_metadata": false,
       "gluster_cli_timeout": "Optional: Timeout, in seconds, passed to the gluster cli invocations",
       "_debug_umount_failures": "Optional: boolean to capture more details in case brick unmounting fails",
-      "debug_umount_failures": true
+      "debug_umount_failures": true,
+      "lvm_wrapper": ""
     },
 
     "_kubeexec_comment": "Kubernetes configuration",
@@ -82,7 +83,8 @@
       "backup_lvm_metadata": false,
       "gluster_cli_timeout": "Optional: Timeout, in seconds, passed to the gluster cli invocations",
       "_debug_umount_failures": "Optional: boolean to capture more details in case brick unmounting fails",
-      "debug_umount_failures": true
+      "debug_umount_failures": true,
+      "lvm_wrapper": ""
     },
 
     "_db_comment": "Database file name",

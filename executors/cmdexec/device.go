@@ -46,8 +46,9 @@ func (s *CmdExecutor) DeviceSetup(host, device, vgid string, destroy bool) (d *e
 		logger.Info("Data on device %v (host %v) will be destroyed", device, host)
 		commands = append(commands, fmt.Sprintf("wipefs --all %v", device))
 	}
-	commands = append(commands, fmt.Sprintf("pvcreate -qq --metadatasize=128M --dataalignment=%v '%v'", s.PVDataAlignment(), device))
-	commands = append(commands, fmt.Sprintf("vgcreate -qq --physicalextentsize=%v --autobackup=%v %v %v",
+	commands = append(commands, fmt.Sprintf("%s pvcreate -qq --metadatasize=128M --dataalignment=%v '%v'", s.lvmCommand(), s.PVDataAlignment(), device))
+	commands = append(commands, fmt.Sprintf("%s vgcreate -qq --physicalextentsize=%v --autobackup=%v %v %v",
+		s.lvmCommand(),
 
 		// Physical extent size
 		s.VGPhysicalExtentSize(),
@@ -91,7 +92,8 @@ func (s *CmdExecutor) PVS(host string) (d *executors.PVSCommandOutput, e error) 
 	// Setup commands
 	commands := []string{}
 
-	commands = append(commands, fmt.Sprintf("pvs --reportformat json --units k"))
+	commands = append(commands, fmt.Sprintf("%s pvs --reportformat json --units k",
+		s.lvmCommand()))
 
 	results, err := s.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands),
 		s.GlusterCliExecTimeout())
@@ -111,7 +113,8 @@ func (s *CmdExecutor) VGS(host string) (d *executors.VGSCommandOutput, e error) 
 	// Setup commands
 	commands := []string{}
 
-	commands = append(commands, fmt.Sprintf("vgs --reportformat json --units k"))
+	commands = append(commands, fmt.Sprintf("%s vgs --reportformat json --units k",
+		s.lvmCommand()))
 
 	results, err := s.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands),
 		s.GlusterCliExecTimeout())
@@ -131,7 +134,8 @@ func (s *CmdExecutor) LVS(host string) (d *executors.LVSCommandOutput, e error) 
 	// Setup commands
 	commands := []string{}
 
-	commands = append(commands, fmt.Sprintf("lvs --reportformat json --units k"))
+	commands = append(commands, fmt.Sprintf("%s lvs --reportformat json --units k",
+		s.lvmCommand()))
 
 	results, err := s.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands),
 		s.GlusterCliExecTimeout())
@@ -191,8 +195,8 @@ func (s *CmdExecutor) DeviceForget(host string, dh *executors.DeviceVgHandle) er
 
 func (s *CmdExecutor) removeDevice(host, device, vgid string) error {
 	commands := []string{
-		fmt.Sprintf("vgremove -qq %v", paths.VgIdToName(vgid)),
-		fmt.Sprintf("pvremove -qq '%v'", device),
+		fmt.Sprintf("%s vgremove -qq %v", s.lvmCommand(), paths.VgIdToName(vgid)),
+		fmt.Sprintf("%s pvremove -qq '%v'", s.lvmCommand(), device),
 	}
 
 	// Execute command
@@ -224,7 +228,7 @@ func (s *CmdExecutor) getVgSizeFromNode(
 
 	// Setup command
 	commands := []string{
-		fmt.Sprintf("vgdisplay -c %v", paths.VgIdToName(vgid)),
+		fmt.Sprintf("%s vgdisplay -c %v", s.lvmCommand(), paths.VgIdToName(vgid)),
 	}
 
 	// Execute command
@@ -279,7 +283,7 @@ func (s *CmdExecutor) getDeviceHandle(host, device string) (
 
 	commands := []string{}
 	commands = append(commands,
-		fmt.Sprintf("pvs -o pv_name,pv_uuid,vg_name --reportformat=json %v", device))
+		fmt.Sprintf("%s pvs -o pv_name,pv_uuid,vg_name --reportformat=json %v", s.lvmCommand(), device))
 	commands = append(commands,
 		fmt.Sprintf("udevadm info --query=symlink --name=%v", device))
 
@@ -321,8 +325,8 @@ func (s *CmdExecutor) upgradeHandle(host string, dh *executors.DeviceVgHandle) e
 	// path in /dev. Try to get one based on the vg id
 	commands := []string{}
 	commands = append(commands,
-		fmt.Sprintf("vgs -o pv_name,pv_uuid,vg_name --reportformat=json %v",
-			paths.VgIdToName(dh.VgId)))
+		fmt.Sprintf("%s vgs -o pv_name,pv_uuid,vg_name --reportformat=json %v",
+			s.lvmCommand(), paths.VgIdToName(dh.VgId)))
 	results, err := s.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands), 5)
 	if e := rex.AnyError(results, err); e != nil {
 		logger.Warning("failed to get vgs info for handle: %v", err)

@@ -51,7 +51,7 @@ func doTestSshExecBrickCreate(t *testing.T, f *CommandFaker, s *FakeExecutor) {
 
 			case 1:
 				tests.Assert(t,
-					cmd == "lvcreate -qq --autobackup="+conv.BoolToYN(s.BackupLVM)+" --poolmetadatasize 5K "+
+					cmd == "/usr/sbin/lvm lvcreate -qq --autobackup="+conv.BoolToYN(s.BackupLVM)+" --poolmetadatasize 5K "+
 						"--chunksize 256K --size 100K --thin vg_xvgid/tp_id --virtualsize 10K --name brick_id", cmd)
 
 			case 2:
@@ -136,7 +136,7 @@ func TestSshExecBrickCreateWithGid(t *testing.T) {
 
 			case 1:
 				tests.Assert(t,
-					cmd == "lvcreate -qq --autobackup="+conv.BoolToYN(s.BackupLVM)+" --poolmetadatasize 5K "+
+					cmd == "/usr/sbin/lvm lvcreate -qq --autobackup="+conv.BoolToYN(s.BackupLVM)+" --poolmetadatasize 5K "+
 						"--chunksize 256K --size 100K --thin vg_xvgid/tp_id --virtualsize 10K --name brick_id", cmd)
 
 			case 2:
@@ -222,7 +222,7 @@ func TestSshExecBrickCreateSudo(t *testing.T) {
 
 			case 1:
 				tests.Assert(t,
-					cmd == "lvcreate -qq --autobackup="+conv.BoolToYN(s.BackupLVM)+" --poolmetadatasize 5K "+
+					cmd == "/usr/sbin/lvm lvcreate -qq --autobackup="+conv.BoolToYN(s.BackupLVM)+" --poolmetadatasize 5K "+
 						"--chunksize 256K --size 100K --thin vg_xvgid/tp_id --virtualsize 10K --name brick_id", cmd)
 
 			case 2:
@@ -309,7 +309,7 @@ func TestSshExecBrickDestroy(t *testing.T) {
 
 			case strings.Contains(cmd, "lvs") && strings.Contains(cmd, "vg_name"):
 				tests.Assert(t,
-					cmd == "lvs --noheadings --separator=/ "+
+					cmd == "/usr/sbin/lvm lvs --noheadings --separator=/ "+
 						"-ovg_name,pool_lv /dev/vg_xvgid/brick_id", cmd)
 				// return the device that was mounted
 				output := fakeResults("vg_xvgid/tp_id", "")
@@ -317,7 +317,7 @@ func TestSshExecBrickDestroy(t *testing.T) {
 
 			case strings.Contains(cmd, "lvs") && strings.Contains(cmd, "thin_count"):
 				tests.Assert(t,
-					cmd == "lvs --noheadings --options=thin_count vg_xvgid/tp_id", cmd)
+					cmd == "/usr/sbin/lvm lvs --noheadings --options=thin_count vg_xvgid/tp_id", cmd)
 				// return the number of thin-p users
 				output := fakeResults("0", "")
 				return output[0:1], nil
@@ -329,8 +329,8 @@ func TestSshExecBrickDestroy(t *testing.T) {
 
 			case strings.Contains(cmd, "lvremove"):
 				tests.Assert(t,
-					cmd == "lvremove --autobackup="+conv.BoolToYN(s.BackupLVM)+" -f vg_xvgid/tp_id" ||
-						cmd == "lvremove --autobackup="+conv.BoolToYN(s.BackupLVM)+" -f vg_xvgid/brick_id", cmd)
+					cmd == "/usr/sbin/lvm lvremove --autobackup="+conv.BoolToYN(s.BackupLVM)+" -f vg_xvgid/tp_id" ||
+						cmd == "/usr/sbin/lvm lvremove --autobackup="+conv.BoolToYN(s.BackupLVM)+" -f vg_xvgid/brick_id", cmd)
 
 			case strings.Contains(cmd, "rmdir"):
 				tests.Assert(t,

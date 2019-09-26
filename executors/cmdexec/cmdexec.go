@@ -51,6 +51,20 @@ func (c *CmdExecutor) glusterCommand() string {
 	return fmt.Sprintf("gluster --mode=script --timeout=%v", c.GlusterCliTimeout())
 }
 
+// When running Gluster inside a container, the LVM commands need to be
+// executed on the host. The Gluster Server containers provide a wrapper script
+// for `nsenter` and its arguments as `exec-on-host`.
+//
+// All LVM commands will get prefixed with `/usr/sbin/lvm` in order to make
+// things a little more secure (hopefully).
+func (c *CmdExecutor) lvmCommand() string {
+	if wrapper := c.LVMWrapper(); wrapper != "" {
+		return wrapper + " /usr/sbin/lvm"
+	}
+
+	return "/usr/sbin/lvm"
+}
+
 func setWithEnvVariables(config *CmdConfig) {
 	var env string
 
@@ -77,6 +91,11 @@ func setWithEnvVariables(config *CmdConfig) {
 	env = os.Getenv("HEKETI_BLOCK_VOLUME_DEFAULT_PREALLOC")
 	if env != "" {
 		config.BlockVolumePrealloc = env
+	}
+
+	env = os.Getenv("HEKETI_LVM_WRAPPER")
+	if env != "" {
+		config.LVMWrapper = env
 	}
 }
 
@@ -202,4 +221,8 @@ func (c *CmdExecutor) BlockVolumeDefaultPrealloc() string {
 		return defaultValue
 	}
 	return c.config.BlockVolumePrealloc
+}
+
+func (c *CmdExecutor) LVMWrapper() string {
+	return c.config.LVMWrapper
 }
