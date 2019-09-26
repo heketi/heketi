@@ -72,19 +72,16 @@ func (v *VolumeEntry) brickNameMap(db wdb.RODB) (
 	bmap := map[string]*BrickEntry{}
 
 	err := db.View(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
 		for _, brickid := range v.BricksIds() {
 			brickEntry, err := NewBrickEntryFromId(tx, brickid)
 			if err != nil {
 				return err
 			}
-			nodeEntry, err := NewNodeEntryFromId(tx, brickEntry.Info.NodeId)
+			bname, err := brickHostPath(txdb, brickEntry)
 			if err != nil {
 				return err
 			}
-
-			bname := fmt.Sprintf("%v:%v",
-				nodeEntry.Info.Hostnames.Storage[0],
-				brickEntry.Info.Path)
 			bmap[bname] = brickEntry
 		}
 		return nil
@@ -567,4 +564,20 @@ func appendDeviceFilter(f1, f2 DeviceFilter) DeviceFilter {
 	return func(bs *BrickSet, d *DeviceEntry) bool {
 		return f1(bs, d) && f2(bs, d)
 	}
+}
+
+func brickHostPath(db wdb.RODB, b *BrickEntry) (string, error) {
+	var bname string
+	err := db.View(func(tx *bolt.Tx) error {
+		nodeEntry, err := NewNodeEntryFromId(tx, b.Info.NodeId)
+		if err != nil {
+			return err
+		}
+
+		bname = fmt.Sprintf("%v:%v",
+			nodeEntry.Info.Hostnames.Storage[0],
+			b.Info.Path)
+		return nil
+	})
+	return bname, err
 }
