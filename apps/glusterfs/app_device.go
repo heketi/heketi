@@ -543,3 +543,42 @@ func allowDestroyDevice(db wdb.RODB, e error) error {
 	// not an expected error type. better safe than sorry, deny destroy
 	return e
 }
+
+func (a *App) BrickEvict(w http.ResponseWriter, r *http.Request) {
+	// Get the id from the URL
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	var opts api.BrickEvictOptions
+	if r.ContentLength > 0 {
+		err := utils.GetJsonFromRequest(r, &opts)
+		if err != nil {
+			http.Error(w, "request unable to be parsed", 422)
+			return
+		}
+	}
+
+	// sanity check the id
+	err := a.db.View(func(tx *bolt.Tx) error {
+		var err error
+		_, err = NewBrickEntryFromId(tx, id)
+		if err == ErrNotFound {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return err
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return
+	}
+
+	logger.Info("Requested to evict brick: %v", id)
+	beo := NewBrickEvictOperation(id, a.db)
+	if err := AsyncHttpOperation(a, w, r, beo); err != nil {
+		OperationHttpErrorf(w, err, "Failed to set up brick eviction: %v", err)
+		return
+	}
+}

@@ -621,6 +621,13 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Pattern:     "/blockvolumes",
 			HandlerFunc: a.BlockVolumeList},
 
+		// Brick (special)
+		rest.Route{
+			Name:        "BrickEvict",
+			Method:      "POST",
+			Pattern:     "/bricks/to-evict/{id:[A-Fa-f0-9]+}",
+			HandlerFunc: a.BrickEvict},
+
 		// Backup
 		rest.Route{
 			Name:        "Backup",
