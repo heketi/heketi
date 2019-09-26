@@ -285,7 +285,7 @@ func (s *CmdExecutor) getDeviceHandle(host, device string) (
 	commands = append(commands,
 		fmt.Sprintf("%s pvs -o pv_name,pv_uuid,vg_name --reportformat=json %v", s.lvmCommand(), device))
 	commands = append(commands,
-		fmt.Sprintf("udevadm info --query=symlink --name=%v", device))
+		fmt.Sprintf("%s info --query=symlink --name=%v", s.udevCommand(), device))
 
 	results, err := s.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands), 5)
 	if err != nil {
