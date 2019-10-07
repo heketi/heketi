@@ -124,9 +124,8 @@ if [[ ! -f "${HEKETI_PATH}/heketi.db" ]]; then
         while [[ ! -f "${HEKETI_PATH}/heketi.db" ]]; do
             sleep 5
             if [[ ${check} -eq 5 ]]; then
-               #Try to restore BD from secret
+               #Try to restore the database from a secret
                restore_backup
-               #fail "Database file did not appear, exiting."
             fi
             ((check+=1))
         done
