@@ -83,6 +83,23 @@ prune_archives() {
     fi
 }
 
+# this is used to restore secret based backups
+restore_backup() {
+    if [[ -d "${BACKUPDB_PATH}" ]]; then
+        if [[ -f "${BACKUPDB_PATH}/heketi.db.gz" ]] ; then
+            gunzip -c "${BACKUPDB_PATH}/heketi.db.gz" > "${TMP_PATH}/heketi.db"
+            if [[ $? -ne 0 ]]; then
+                fail "Unable to extract backup database"
+            fi
+            cp "${TMP_PATH}/heketi.db" "${HEKETI_PATH}/heketi.db"
+            if [[ $? -ne 0 ]]; then
+                fail "Unable to copy backup database"
+            fi
+            info "Copied backup db to ${HEKETI_PATH}/heketi.db"
+        fi
+    fi
+}
+
 info "Setting up heketi database"
 
 # Ensure the data dir exists
@@ -107,7 +124,9 @@ if [[ ! -f "${HEKETI_PATH}/heketi.db" ]]; then
         while [[ ! -f "${HEKETI_PATH}/heketi.db" ]]; do
             sleep 5
             if [[ ${check} -eq 5 ]]; then
-               fail "Database file did not appear, exiting."
+               #Try to restore BD from secret
+               restore_backup
+               #fail "Database file did not appear, exiting."
             fi
             ((check+=1))
         done
@@ -136,21 +155,6 @@ fi
 # recovery purposes
 if [[ "${HEKETI_DB_ARCHIVE_PATH}" && -f "${HEKETI_PATH}/heketi.db" ]]; then
     archive_db && prune_archives
-fi
-
-# this is used to restore secret based backups
-if [[ -d "${BACKUPDB_PATH}" ]]; then
-    if [[ -f "${BACKUPDB_PATH}/heketi.db.gz" ]] ; then
-        gunzip -c "${BACKUPDB_PATH}/heketi.db.gz" > "${TMP_PATH}/heketi.db"
-        if [[ $? -ne 0 ]]; then
-            fail "Unable to extract backup database"
-        fi
-        cp "${TMP_PATH}/heketi.db" "${HEKETI_PATH}/heketi.db"
-        if [[ $? -ne 0 ]]; then
-            fail "Unable to copy backup database"
-        fi
-        info "Copied backup db to ${HEKETI_PATH}/heketi.db"
-    fi
 fi
 
 # if the heketi.db does not exist and HEKETI_TOPOLOGY_FILE is set, start the
