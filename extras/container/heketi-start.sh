@@ -129,7 +129,7 @@ if [[ ! -f "${HEKETI_PATH}/heketi.db" ]]; then
     done
 else
     #Added for compatibility with the old approach    
-    out=$(mount | grep "${HEKETI_PATH}" | grep heketidbstorage | wc -l)
+    out=$(mount | grep "${HEKETI_PATH}" | grep -c heketidbstorage)
     if [[ $out -eq 0 ]]; then
         info "Database volume not found"
         restore_backup
