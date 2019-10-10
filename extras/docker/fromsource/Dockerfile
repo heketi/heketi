@@ -15,7 +15,7 @@ ENV HEKETI_BRANCH="master"
 
 # install dependencies, build and cleanup
 RUN mkdir $BUILD_HOME $GOPATH && \
-    dnf -y install glide golang git make mercurial && \
+    dnf -y install glide golang git make mercurial findutils && \
     dnf -y clean all && \
     mkdir -p $GOPATH/src/github.com/heketi && \
     cd $GOPATH/src/github.com/heketi && \
