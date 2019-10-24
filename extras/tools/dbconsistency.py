@@ -85,6 +85,9 @@ def check_volume(data, vid, volume):
                 rf.format(bvsize, vol_size, free_size, rsvd_size, used_size))
     elif bvsize != 0:
         report('Volume', vid, 'has block volumes but not block flag')
+    cid = volume[INFO]['cluster']
+    if vid not in data['clusterentries'][cid][INFO]['volumes']:
+        report('Volume', vid, 'not linked to by cluster', cid)
     _check_pending('Volume', vid, volume, data)
 
 
@@ -99,6 +102,9 @@ def check_block_volume(data, bvid, bvol):
         report("Block Volume", bvid, "hosting volume not found", bhv_id)
     elif bvid not in vol_bv_list(data["volumeentries"][bhv_id]):
         report("Block Volume", bvid, "not tracked in hosting volume", bhv_id)
+    cid = bvol[INFO]['cluster']
+    if bvid not in data['clusterentries'][cid][INFO]['blockvolumes']:
+        report('Block Volume', bvid, 'not linked to by cluster', cid)
     _check_pending('Block Volume', bvid, bvol, data)
 
 
