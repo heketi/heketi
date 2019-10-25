@@ -46,6 +46,7 @@ const (
 	HEKETI_ARBITER_KEY           = "user.heketi.arbiter"
 	HEKETI_AVERAGE_FILE_SIZE_KEY = "user.heketi.average-file-size"
 	HEKETI_ZONE_CHECKING_KEY     = "user.heketi.zone-checking"
+	HEKETI_TAG_MATCH_KEY         = "user.heketi.device-tag-match"
 )
 
 var (
@@ -337,6 +338,14 @@ func (v *VolumeEntry) GetZoneCheckingStrategy() ZoneCheckingStrategy {
 		return ZoneCheckingStrategy(value)
 	}
 	return ZONE_CHECKING_UNSET
+}
+
+func (v *VolumeEntry) GetTagMatchingRule() (*TagMatchingRule, error) {
+	value := v.volOptsMap()[HEKETI_TAG_MATCH_KEY]
+	if value == "" {
+		return nil, nil
+	}
+	return ParseTagMatchingRule(value)
 }
 
 func (v *VolumeEntry) BrickAdd(id string) {
