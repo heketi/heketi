@@ -227,7 +227,7 @@ func TestReplicaDurabilityGenerator(t *testing.T) {
 	tests.Assert(t, sets == 1)
 	tests.Assert(t, brick_size == 100*GB)
 	tests.Assert(t, 2 == r.BricksInSet())
-	tests.Assert(t, 2 == r.QuorumBrickCount())
+	tests.Assert(t, 1 == r.QuorumBrickCount())
 
 	// Gen 2
 	sets, brick_size, err = gen()
@@ -235,7 +235,7 @@ func TestReplicaDurabilityGenerator(t *testing.T) {
 	tests.Assert(t, sets == 2, "sets we got:", sets)
 	tests.Assert(t, brick_size == 50*GB)
 	tests.Assert(t, 2 == r.BricksInSet())
-	tests.Assert(t, 2 == r.QuorumBrickCount())
+	tests.Assert(t, 1 == r.QuorumBrickCount())
 
 	// Gen 3
 	sets, brick_size, err = gen()
@@ -243,7 +243,7 @@ func TestReplicaDurabilityGenerator(t *testing.T) {
 	tests.Assert(t, sets == 4)
 	tests.Assert(t, brick_size == 25*GB)
 	tests.Assert(t, 2 == r.BricksInSet())
-	tests.Assert(t, 2 == r.QuorumBrickCount())
+	tests.Assert(t, 1 == r.QuorumBrickCount())
 
 	// Gen 4
 	sets, brick_size, err = gen()
@@ -251,7 +251,7 @@ func TestReplicaDurabilityGenerator(t *testing.T) {
 	tests.Assert(t, sets == 8)
 	tests.Assert(t, brick_size == 12800*1024)
 	tests.Assert(t, 2 == r.BricksInSet())
-	tests.Assert(t, 2 == r.QuorumBrickCount())
+	tests.Assert(t, 1 == r.QuorumBrickCount())
 
 	// Gen 5
 	sets, brick_size, err = gen()
@@ -259,7 +259,7 @@ func TestReplicaDurabilityGenerator(t *testing.T) {
 	tests.Assert(t, sets == 16)
 	tests.Assert(t, brick_size == 6400*1024)
 	tests.Assert(t, 2 == r.BricksInSet())
-	tests.Assert(t, 2 == r.QuorumBrickCount())
+	tests.Assert(t, 1 == r.QuorumBrickCount())
 
 	// Gen 6
 	sets, brick_size, err = gen()
@@ -267,7 +267,7 @@ func TestReplicaDurabilityGenerator(t *testing.T) {
 	tests.Assert(t, sets == 32, sets)
 	tests.Assert(t, brick_size == 3200*1024)
 	tests.Assert(t, 2 == r.BricksInSet())
-	tests.Assert(t, 2 == r.QuorumBrickCount())
+	tests.Assert(t, 1 == r.QuorumBrickCount())
 
 	// Gen 7
 	sets, brick_size, err = gen()
@@ -275,7 +275,7 @@ func TestReplicaDurabilityGenerator(t *testing.T) {
 	tests.Assert(t, sets == 64, sets)
 	tests.Assert(t, brick_size == 1600*1024)
 	tests.Assert(t, 2 == r.BricksInSet())
-	tests.Assert(t, 2 == r.QuorumBrickCount())
+	tests.Assert(t, 1 == r.QuorumBrickCount())
 
 	// Gen 8
 	sets, brick_size, err = gen()
@@ -283,7 +283,7 @@ func TestReplicaDurabilityGenerator(t *testing.T) {
 	tests.Assert(t, sets == 0)
 	tests.Assert(t, brick_size == 0)
 	tests.Assert(t, 2 == r.BricksInSet())
-	tests.Assert(t, 2 == r.QuorumBrickCount())
+	tests.Assert(t, 1 == r.QuorumBrickCount())
 }
 
 func TestReplicaDurabilityLargeBrickGenerator(t *testing.T) {
@@ -298,7 +298,7 @@ func TestReplicaDurabilityLargeBrickGenerator(t *testing.T) {
 	tests.Assert(t, sets == 32)
 	tests.Assert(t, brick_size == 3200*GB)
 	tests.Assert(t, 2 == r.BricksInSet())
-	tests.Assert(t, 2 == r.QuorumBrickCount())
+	tests.Assert(t, 1 == r.QuorumBrickCount())
 }
 
 func TestReplicaDurabilityQuorumBrickCount3(t *testing.T) {
