@@ -10,6 +10,7 @@
 package glusterfs
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -606,4 +607,72 @@ func TestBrickEvictOperationOneAtATime(t *testing.T) {
 	tests.Assert(t, err != nil, "expected err != nil, got:", err)
 	tests.Assert(t, strings.Contains(err.Error(), "pending"),
 		"expected 'pedning' in error, got:", err)
+}
+
+func TestBrickEvictOperationError(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		3,    // devices_per_node,
+		8*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	vreq := &api.VolumeCreateRequest{}
+	vreq.Size = 100
+	vreq.Durability.Type = api.DurabilityReplicate
+	vreq.Durability.Replicate.Replica = 3
+	v := NewVolumeEntryFromRequest(vreq)
+	err = v.Create(app.db, app.executor)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	var b *BrickEntry
+	app.db.View(func(tx *bolt.Tx) error {
+		bl, err := BrickList(tx)
+		tests.Assert(t, err == nil)
+		tests.Assert(t, len(bl) == 3)
+		b, err = NewBrickEntryFromId(tx, bl[0])
+		tests.Assert(t, err == nil)
+		return nil
+	})
+
+	app.xo.MockVolumeInfo = func(host string, volume string) (*executors.Volume, error) {
+		return nil, fmt.Errorf("blarf")
+	}
+	app.xo.MockHealInfo = func(host string, volume string) (*executors.HealInfo, error) {
+		return mockHealStatusFromDb(app.db, volume)
+	}
+
+	beo := NewBrickEvictOperation(b.Info.Id, app.db)
+	err = RunOperation(beo, app.executor)
+	tests.Assert(t, err != nil, "expected err != nil, got:", err)
+
+	// operation is over. we should _not_ have a pending op now
+	err = app.db.View(func(tx *bolt.Tx) error {
+		l, err := PendingOperationList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(l) == 0, "expected len(l) == 0, got:", len(l))
+
+		bl, err := BrickList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(bl) == 3, "expected len(l) == 1, got:", len(l))
+		pc := 0
+		for _, brickId := range bl {
+			b, err := NewBrickEntryFromId(tx, brickId)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			if b.Pending.Id != "" {
+				logger.Info("Pending Brick: %v", b.Id())
+				pc += 1
+			}
+		}
+		tests.Assert(t, pc == 0, "expected 0 pending bricks, got:", pc)
+		return nil
+	})
 }
