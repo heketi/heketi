@@ -554,3 +554,56 @@ func TestBrickEvictOperation(t *testing.T) {
 
 	// TODO : assert: old brick is gone, new brick in place
 }
+
+func TestBrickEvictOperationOneAtATime(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		3,    // devices_per_node,
+		8*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	vreq := &api.VolumeCreateRequest{}
+	vreq.Size = 100
+	vreq.Durability.Type = api.DurabilityReplicate
+	vreq.Durability.Replicate.Replica = 3
+	v := NewVolumeEntryFromRequest(vreq)
+	err = v.Create(app.db, app.executor)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	var b1, b2 *BrickEntry
+	app.db.View(func(tx *bolt.Tx) error {
+		bl, err := BrickList(tx)
+		tests.Assert(t, err == nil)
+		tests.Assert(t, len(bl) == 3)
+		b1, err = NewBrickEntryFromId(tx, bl[0])
+		tests.Assert(t, err == nil)
+		b2, err = NewBrickEntryFromId(tx, bl[1])
+		tests.Assert(t, err == nil)
+		return nil
+	})
+
+	beo1 := NewBrickEvictOperation(b1.Info.Id, app.db)
+	err = beo1.Build()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	beo2 := NewBrickEvictOperation(b2.Info.Id, app.db)
+	err = beo2.Build()
+	tests.Assert(t, err != nil, "expected err != nil, got:", err)
+	tests.Assert(t, strings.Contains(err.Error(), "pending"),
+		"expected 'pedning' in error, got:", err)
+
+	beo3 := NewBrickEvictOperation(b1.Info.Id, app.db)
+	err = beo3.Build()
+	tests.Assert(t, err != nil, "expected err != nil, got:", err)
+	tests.Assert(t, strings.Contains(err.Error(), "pending"),
+		"expected 'pedning' in error, got:", err)
+}
