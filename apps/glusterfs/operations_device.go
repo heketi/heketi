@@ -183,6 +183,31 @@ func NewBrickEvictOperation(
 	}
 }
 
+// loadBrickEvictOperation returns a BrickEvictOperation populated
+// from an existing pending operation entry in the db.
+func loadBrickEvictOperation(
+	db wdb.DB, p *PendingOperationEntry) (*BrickEvictOperation, error) {
+
+	var brickId string
+	for _, action := range p.Actions {
+		if action.Change == OpDeleteBrick {
+			brickId = action.Id
+		}
+	}
+	if brickId == "" {
+		return nil, fmt.Errorf(
+			"Missing brick to evict in operation")
+	}
+
+	return &BrickEvictOperation{
+		OperationManager: OperationManager{
+			db: db,
+			op: p,
+		},
+		BrickId: brickId,
+	}, nil
+}
+
 func (beo *BrickEvictOperation) Label() string {
 	return "Evict Brick"
 }
