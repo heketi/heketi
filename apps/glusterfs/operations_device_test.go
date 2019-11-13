@@ -824,3 +824,94 @@ func TestBrickEvictOperationInvalidExec(t *testing.T) {
 	err = beo.Exec(app.executor)
 	tests.Assert(t, err != nil, "expected err != nil, got:", err)
 }
+
+func TestBrickEvictOperationErrorNotReplaced(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		3,    // devices_per_node,
+		8*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	vreq := &api.VolumeCreateRequest{}
+	vreq.Size = 100
+	vreq.Durability.Type = api.DurabilityReplicate
+	vreq.Durability.Replicate.Replica = 3
+	v := NewVolumeEntryFromRequest(vreq)
+	err = v.Create(app.db, app.executor)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	var (
+		bl []string
+		b  *BrickEntry
+	)
+	app.db.View(func(tx *bolt.Tx) error {
+		var err error
+		bl, err = BrickList(tx)
+		tests.Assert(t, err == nil)
+		tests.Assert(t, len(bl) == 3)
+		b, err = NewBrickEntryFromId(tx, bl[0])
+		tests.Assert(t, err == nil)
+		return nil
+	})
+
+	app.xo.MockVolumeInfo = func(host string, volume string) (*executors.Volume, error) {
+		// this volume info must never return the "new" brick in
+		// order to convince the mock to act like a volume info that
+		// didn't have its brick replaced in gluster
+		m, err := mockVolumeInfoFromDb(app.db, volume)
+		if err != nil {
+			return m, err
+		}
+		bx := []executors.Brick{}
+		for _, bi := range m.Bricks.BrickList {
+			for _, brickId := range bl {
+				if strings.Contains(bi.Name, brickId) {
+					bx = append(bx, bi)
+				}
+			}
+		}
+		m.Bricks.BrickList = bx
+		return m, nil
+	}
+	app.xo.MockHealInfo = func(host string, volume string) (*executors.HealInfo, error) {
+		return mockHealStatusFromDb(app.db, volume)
+	}
+	app.xo.MockVolumeReplaceBrick = func(host string, volume string, oldBrick *executors.BrickInfo, newBrick *executors.BrickInfo) error {
+		return fmt.Errorf("Whoopsie")
+	}
+
+	beo := NewBrickEvictOperation(b.Info.Id, app.db)
+	err = RunOperation(beo, app.executor)
+	tests.Assert(t, err != nil, "expected err != nil, got:", err)
+
+	// operation is over. we should _not_ have a pending op now
+	err = app.db.View(func(tx *bolt.Tx) error {
+		l, err := PendingOperationList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(l) == 0, "expected len(l) == 0, got:", len(l))
+
+		bl, err := BrickList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(bl) == 3, "expected len(l) == 1, got:", len(l))
+		pc := 0
+		for _, brickId := range bl {
+			b, err := NewBrickEntryFromId(tx, brickId)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			if b.Pending.Id != "" {
+				logger.Info("Pending Brick: %v", b.Id())
+				pc += 1
+			}
+		}
+		tests.Assert(t, pc == 0, "expected 0 pending bricks, got:", pc)
+		return nil
+	})
+}
