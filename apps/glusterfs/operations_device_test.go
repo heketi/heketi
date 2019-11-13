@@ -747,3 +747,80 @@ func TestBrickEvictOperationErrorAfterBrick(t *testing.T) {
 		return nil
 	})
 }
+
+func TestBrickEvictOperationInvalidExec(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		3,    // devices_per_node,
+		8*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	vreq := &api.VolumeCreateRequest{}
+	vreq.Size = 100
+	vreq.Durability.Type = api.DurabilityReplicate
+	vreq.Durability.Replicate.Replica = 3
+	v := NewVolumeEntryFromRequest(vreq)
+	err = v.Create(app.db, app.executor)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	var b *BrickEntry
+	app.db.View(func(tx *bolt.Tx) error {
+		bl, err := BrickList(tx)
+		tests.Assert(t, err == nil)
+		tests.Assert(t, len(bl) == 3)
+		b, err = NewBrickEntryFromId(tx, bl[0])
+		tests.Assert(t, err == nil)
+		return nil
+	})
+
+	beo := NewBrickEvictOperation(b.Info.Id, app.db)
+	err = beo.Build()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	var pop *PendingOperationEntry
+	err = app.db.Update(func(tx *bolt.Tx) error {
+		l, err := PendingOperationList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(l) == 1, "expected len(l) == 1, got:", len(l))
+		bl, err := BrickList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		// because gluster is gluster, we can't allocate a brick until
+		// the exec step. we will only see 3 bricks after build
+		tests.Assert(t, len(bl) == 3, "expected len(l) == 1, got:", len(l))
+
+		// going to intentionally muddle the operation in order to
+		// trigger an error check
+		pop, err = NewPendingOperationEntryFromId(tx, l[0])
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, pop.Type == OperationBrickEvict)
+		tests.Assert(t, len(pop.Actions) == 1)
+		tests.Assert(t, pop.Actions[0].Change == OpDeleteBrick)
+		pop.Actions = append(pop.Actions,
+			PendingOperationAction{Change: OpAddBrick, Id: "FOOBAR"})
+		err = pop.Save(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+		return nil
+	})
+	o, err := LoadOperation(app.db, pop)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	beo = o.(*BrickEvictOperation)
+
+	app.xo.MockVolumeInfo = func(host string, volume string) (*executors.Volume, error) {
+		return mockVolumeInfoFromDb(app.db, volume)
+	}
+	app.xo.MockHealInfo = func(host string, volume string) (*executors.HealInfo, error) {
+		return mockHealStatusFromDb(app.db, volume)
+	}
+
+	err = beo.Exec(app.executor)
+	tests.Assert(t, err != nil, "expected err != nil, got:", err)
+}
