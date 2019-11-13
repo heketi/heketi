@@ -36,6 +36,7 @@ const (
 	OperationDeleteBlockVolume
 	OperationRemoveDevice
 	OperationCloneVolume
+	OperationBrickEvict
 )
 
 // PendingChangeType identifies what kind of lower-level new item or change
@@ -113,6 +114,8 @@ func (v PendingOperationType) Name() string {
 		return "remove-device"
 	case OperationCloneVolume:
 		return "clone-volume"
+	case OperationBrickEvict:
+		return "evict-brick"
 	}
 	return "unknown"
 }
