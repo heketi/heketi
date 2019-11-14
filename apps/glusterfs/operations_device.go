@@ -26,6 +26,11 @@ type DeviceRemoveOperation struct {
 	OperationManager
 	noRetriesOperation
 	DeviceId string
+
+	// we need state gathered by clean in clean-done in the child operation
+	// we can't always pull the op from the db or we lose this state.
+	// This field is used to retain that state between calls.
+	currentChild *BrickEvictOperation
 }
 
 func NewDeviceRemoveOperation(
@@ -115,11 +120,149 @@ func (dro *DeviceRemoveOperation) Exec(executor executors.Executor) error {
 		return e
 	}
 
-	return d.removeBricksFromDevice(dro.db, executor)
+	return dro.migrateBricks(executor, d)
+}
+
+func (dro *DeviceRemoveOperation) migrateBricks(
+	executor executors.Executor, d *DeviceEntry) error {
+
+	toEvict, err := d.removeableBricks(dro.db)
+	if err != nil {
+		return err
+	}
+	for _, brickId := range toEvict {
+		nestedOp := newRemoveBrickComboOperation(
+			dro,
+			NewBrickEvictOperation(brickId, dro.db))
+		err = RunOperation(nestedOp, executor)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (dro *DeviceRemoveOperation) updateChildOperation(
+	db wdb.DB, childOp *PendingOperationEntry) error {
+
+	return db.Update(func(tx *bolt.Tx) error {
+		var err error
+		dro.op, err = NewPendingOperationEntryFromId(tx, dro.op.Id)
+		if err != nil {
+			return err
+		}
+		dro.op.RecordChild(childOp)
+		// RecordChild alters both parent and child so save them both
+		if err := childOp.Save(tx); err != nil {
+			return err
+		}
+		if err := dro.op.Save(tx); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+func (dro *DeviceRemoveOperation) clearChildOperation(db wdb.DB) error {
+	return db.Update(func(tx *bolt.Tx) error {
+		var err error
+		dro.op, err = NewPendingOperationEntryFromId(tx, dro.op.Id)
+		if err != nil {
+			return err
+		}
+		dro.op.ClearChild()
+		return dro.op.Save(tx)
+	})
 }
 
 func (dro *DeviceRemoveOperation) Rollback(executor executors.Executor) error {
+	return rollbackViaClean(dro, executor)
+}
+
+func (dro *DeviceRemoveOperation) loadOpAndChild(
+	tx *bolt.Tx) (*BrickEvictOperation, error) {
+
+	var err error
+	dro.op, err = NewPendingOperationEntryFromId(tx, dro.op.Id)
+	if err != nil {
+		return nil, err
+	}
+	childId := dro.op.ChildId()
+	if childId == "" {
+		// no child op present in db. either the system was stopped
+		// between child-op updates or this is an old device-remove
+		// from a previous version. Either way there's nothing to do.
+		return nil, nil
+	}
+	childOp, err := NewPendingOperationEntryFromId(tx, childId)
+	if err != nil {
+		return nil, err
+	}
+	op, err := LoadOperation(wdb.WrapTx(tx), childOp)
+	if err != nil {
+		return nil, err
+	}
+	if bop, ok := op.(*BrickEvictOperation); ok {
+		return bop, nil
+	}
+	return nil, fmt.Errorf("unexpected child operation %v", childOp.Id)
+}
+
+func (dro *DeviceRemoveOperation) Clean(executor executors.Executor) error {
+	var brickEvictOp *BrickEvictOperation
+	err := dro.db.View(func(tx *bolt.Tx) error {
+		bop, err := dro.loadOpAndChild(tx)
+		brickEvictOp = bop
+		return err
+	})
+	if err != nil {
+		return err
+	}
+	if brickEvictOp != nil {
+		logger.Info("need to clean child [%s] of %s [%s]",
+			brickEvictOp.Id(), dro.Label(), dro.Id())
+		// annoyingly, we need to change the brick evict operations db
+		// to our db because it was created in the View txn above.
+		// only to need to swap it around later :-(
+		brickEvictOp.db = dro.db
+		dro.currentChild = brickEvictOp
+		nestedOp := newRemoveBrickComboOperation(dro, dro.currentChild)
+		return nestedOp.Clean(executor)
+	}
+	return nil
+}
+
+func (dro *DeviceRemoveOperation) CleanDone() error {
+	err := dro.db.View(func(tx *bolt.Tx) error {
+		bop, err := dro.loadOpAndChild(tx)
+		if bop == nil && dro.currentChild != nil {
+			return fmt.Errorf("db has no child op. operation has child!")
+		} else if bop != nil && dro.currentChild == nil {
+			return fmt.Errorf("db has child op. operation has no child!")
+		}
+		return err
+	})
+	if err != nil {
+		return err
+	}
+	if dro.currentChild != nil {
+		logger.Info("need to finish clean child [%s] of %s [%s]",
+			dro.currentChild.Id(), dro.Label(), dro.Id())
+		nestedOp := newRemoveBrickComboOperation(dro, dro.currentChild)
+		if err := nestedOp.CleanDone(); err != nil {
+			return err
+		}
+	}
 	return dro.db.Update(func(tx *bolt.Tx) error {
+		var err error
+		dro.op, err = NewPendingOperationEntryFromId(tx, dro.op.Id)
+		if err != nil {
+			return err
+		}
+		if dro.op.IsParent() {
+			// child should have already been cleaned
+			return fmt.Errorf("device remove is still parent in clean done")
+		}
 		dro.op.Delete(tx)
 		return nil
 	})
@@ -681,6 +824,8 @@ func evictStatus(op *PendingOperationEntry) (brickEvictStatus, error) {
 		case OpAddBrick:
 			logger.Info("found replacement brick: %v", action.Id)
 			bes.newBrickId = action.Id
+		case OpParentOperation:
+			logger.Info("this is a child op of: %v", action.Id)
 		default:
 			logger.Info("found invalid action: %v, %v",
 				action.Change, action.Id)
@@ -689,4 +834,128 @@ func evictStatus(op *PendingOperationEntry) (brickEvictStatus, error) {
 		}
 	}
 	return bes, nil
+}
+
+// removeBrickComboOperation are ephemeral operations that combine
+// db changes for the parent operation (device remove) and child
+// (brick evict) such that certain changes to both are made within
+// a single db transaction but we can still re-use as much of the
+// existing functions from the child.
+type removeBrickComboOperation struct {
+	noRetriesOperation
+
+	deviceRemoveOp *DeviceRemoveOperation
+	brickEvictOp   *BrickEvictOperation
+}
+
+func newRemoveBrickComboOperation(dro *DeviceRemoveOperation, beo *BrickEvictOperation) *removeBrickComboOperation {
+
+	return &removeBrickComboOperation{
+		deviceRemoveOp: dro,
+		brickEvictOp:   beo,
+	}
+}
+
+func (bco *removeBrickComboOperation) Id() string {
+	return bco.deviceRemoveOp.Id()
+}
+
+func (bco *removeBrickComboOperation) Label() string {
+	return "Remove Brick from Device"
+}
+
+func (bco *removeBrickComboOperation) ResourceUrl() string {
+	return ""
+}
+
+func (bco *removeBrickComboOperation) childPushDB(db wdb.DB) {
+	// tad bit hacky
+	bco.brickEvictOp.db = db
+}
+
+func (bco *removeBrickComboOperation) childPopDB() {
+	bco.brickEvictOp.db = bco.deviceRemoveOp.db
+}
+
+func (bco *removeBrickComboOperation) Build() error {
+	beo := bco.brickEvictOp
+	dro := bco.deviceRemoveOp
+	return dro.db.Update(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
+		bco.childPushDB(txdb)
+		defer bco.childPopDB()
+		if err := beo.Build(); err != nil {
+			return fmt.Errorf(
+				"failed to construct brick-evict for device remove (%v): %v",
+				dro.op.Id,
+				err)
+		}
+		if err := dro.updateChildOperation(txdb, beo.op); err != nil {
+			return fmt.Errorf(
+				"failed to add brick-evict as child op for device remove (%v): %v",
+				dro.op.Id,
+				err)
+		}
+		return nil
+	})
+}
+
+func (bco *removeBrickComboOperation) Exec(executor executors.Executor) error {
+	return bco.brickEvictOp.Exec(executor)
+}
+
+func (bco *removeBrickComboOperation) Clean(executor executors.Executor) error {
+	return bco.brickEvictOp.Clean(executor)
+}
+
+func (bco *removeBrickComboOperation) Rollback(executor executors.Executor) error {
+	return rollbackViaClean(bco, executor)
+}
+
+func (bco *removeBrickComboOperation) CleanDone() error {
+	beo := bco.brickEvictOp
+	dro := bco.deviceRemoveOp
+	return dro.db.Update(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
+		bco.childPushDB(txdb)
+		defer bco.childPopDB()
+		if err := beo.CleanDone(); err != nil {
+			return fmt.Errorf(
+				"failed to complete clean of child op (%v): %v",
+				beo.op.Id,
+				err)
+		}
+		if err := dro.clearChildOperation(txdb); err != nil {
+			return fmt.Errorf(
+				"failed to clear child op [%v] from pending op [%v]: %v",
+				beo.op.Id,
+				dro.op.Id,
+				err)
+		}
+		return nil
+	})
+}
+
+func (bco *removeBrickComboOperation) Finalize() error {
+	beo := bco.brickEvictOp
+	dro := bco.deviceRemoveOp
+	return dro.db.Update(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
+		bco.childPushDB(txdb)
+		defer bco.childPopDB()
+		if err := beo.Finalize(); err != nil {
+			return fmt.Errorf(
+				"failed to finalize child op (%v): %v",
+				beo.op.Id,
+				err)
+		}
+		if err := dro.clearChildOperation(txdb); err != nil {
+			return fmt.Errorf(
+				"failed to clear child op [%v] from pending op [%v]: %v",
+				beo.op.Id,
+				dro.op.Id,
+				err)
+		}
+		return nil
+	})
 }
