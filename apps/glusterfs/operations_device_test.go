@@ -915,3 +915,126 @@ func TestBrickEvictOperationErrorNotReplaced(t *testing.T) {
 		return nil
 	})
 }
+
+func TestDeviceRemoveOperationChildOpError(t *testing.T) {
+	tmpfile := tests.Tempfile()
+	defer os.Remove(tmpfile)
+
+	// Create the app
+	app := NewTestApp(tmpfile)
+	defer app.Close()
+
+	err := setupSampleDbWithTopology(app,
+		1,    // clusters
+		3,    // nodes_per_cluster
+		3,    // devices_per_node,
+		8*TB, // disksize)
+	)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	vreq := &api.VolumeCreateRequest{}
+	vreq.Size = 100
+	vreq.Durability.Type = api.DurabilityReplicate
+	vreq.Durability.Replicate.Replica = 3
+	// create two volumes
+	for i := 0; i < 5; i++ {
+		v := NewVolumeEntryFromRequest(vreq)
+		err = v.Create(app.db, app.executor)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	}
+
+	// grab a devices that has bricks
+	var d *DeviceEntry
+	err = app.db.View(func(tx *bolt.Tx) error {
+		dl, err := DeviceList(tx)
+		if err != nil {
+			return err
+		}
+		for _, id := range dl {
+			d, err = NewDeviceEntryFromId(tx, id)
+			if err != nil {
+				return err
+			}
+			if len(d.Bricks) > 0 {
+				return nil
+			}
+		}
+		t.Fatalf("should have at least one device with bricks")
+		return nil
+	})
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	err = d.SetState(app.db, app.executor, api.EntryStateOffline)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	dro := NewDeviceRemoveOperation(d.Info.Id, app.db)
+	err = dro.Build()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+	// because there were bricks on this device it needs to perform
+	// a full "operation cycle"
+	err = app.db.View(func(tx *bolt.Tx) error {
+		l, err := PendingOperationList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(l) == 1, "expected len(l) == 1, got:", len(l))
+		return nil
+	})
+
+	app.xo.MockVolumeInfo = func(host string, volume string) (*executors.Volume, error) {
+		return mockVolumeInfoFromDb(app.db, volume)
+	}
+	app.xo.MockHealInfo = func(host string, volume string) (*executors.HealInfo, error) {
+		return mockHealStatusFromDb(app.db, volume)
+	}
+	app.xo.MockVolumeReplaceBrick = func(host string, volume string, oldBrick *executors.BrickInfo, newBrick *executors.BrickInfo) error {
+		panic("ARGLE")
+	}
+
+	err = func() (x error) {
+		defer func() {
+			if r := recover(); r != nil {
+				x = fmt.Errorf("panicked")
+			}
+		}()
+		x = dro.Exec(app.executor)
+		t.Fatalf("Test should not reach this line")
+		return x
+	}()
+	tests.Assert(t, err != nil, "expected err != nil, got:", err)
+
+	// exec failed. check pending ops status
+	err = app.db.View(func(tx *bolt.Tx) error {
+		l, err := PendingOperationList(tx)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		// because we panicked within the child operation we
+		// should have two pending ops
+		tests.Assert(t, len(l) == 2, "expected len(l) == 2, got:", len(l))
+
+		var popRemove, popEvict *PendingOperationEntry
+		for _, id := range l {
+			p, err := NewPendingOperationEntryFromId(tx, id)
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			switch p.Type {
+			case OperationRemoveDevice:
+				popRemove = p
+			case OperationBrickEvict:
+				popEvict = p
+			default:
+				t.Fatalf("Invalid pending operation type for this test")
+			}
+		}
+
+		var chAction PendingOperationAction
+		for _, a := range popRemove.Actions {
+			if a.Change == OpChildOperation {
+				chAction = a
+			}
+		}
+		tests.Assert(t, chAction.Id != "")
+		tests.Assert(t, chAction.Id == popEvict.Id,
+			"expected chAction.Id == popEvict.Id, got:",
+			chAction.Id, popEvict.Id)
+
+		return nil
+	})
+}
