@@ -56,6 +56,8 @@ const (
 	OpCloneVolume
 	OpSnapshotVolume
 	OpAddVolumeClone
+	OpChildOperation
+	OpParentOperation
 )
 
 // PendingOperationAction tracks individual changes to entries within the
@@ -145,6 +147,10 @@ func (c PendingChangeType) Name() string {
 		return "Snapshot volume"
 	case OpAddVolumeClone:
 		return "Expand volume to"
+	case OpChildOperation:
+		return "Performing child operation"
+	case OpParentOperation:
+		return "Belongs to parent operation"
 	}
 	return "Unknown"
 }
