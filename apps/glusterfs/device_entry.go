@@ -414,6 +414,31 @@ func (d *DeviceEntry) Remove(db wdb.DB,
 
 }
 
+func (d *DeviceEntry) removeableBricks(db wdb.DB) ([]string, error) {
+
+	// gather the list of bricks on the device that can be evicted
+	toEvict := []string{}
+	for _, brickId := range d.Bricks {
+		err := db.View(func(tx *bolt.Tx) error {
+			var err error
+			brick, err := NewBrickEntryFromId(tx, brickId)
+			if err != nil {
+				return err
+			}
+			if brick.Info.Path == "" {
+				logger.Warning("Brick %v has no path, skipping", brickId)
+				return nil
+			}
+			toEvict = append(toEvict, brickId)
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	return toEvict, nil
+}
+
 func (d *DeviceEntry) removeBricksFromDevice(db wdb.DB,
 	executor executors.Executor) (e error) {
 
