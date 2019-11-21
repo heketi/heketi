@@ -15,6 +15,7 @@
 package tests
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -55,34 +56,42 @@ func TestOfflineCleanup(t *testing.T) {
 	t.Run("NoOp", func(t *testing.T) {
 		defer partialTeardown()
 		testOfflineCleanupNoOp(t, heketiServer, origConf)
+		checkConsistent(t, heketiServer)
 	})
 	t.Run("ThreeVolumesFailed", func(t *testing.T) {
 		defer partialTeardown()
 		testOfflineCleanupThreeVolumesFailed(t, heketiServer, origConf)
+		checkConsistent(t, heketiServer)
 	})
 	t.Run("RetryThreeVolumes", func(t *testing.T) {
 		defer partialTeardown()
 		testOfflineCleanupRetryThreeVolumes(t, heketiServer, origConf)
+		checkConsistent(t, heketiServer)
 	})
 	t.Run("VolumeExpand", func(t *testing.T) {
 		defer partialTeardown()
 		testOfflineCleanupVolumeExpand(t, heketiServer, origConf)
+		checkConsistent(t, heketiServer)
 	})
 	t.Run("VolumeDelete", func(t *testing.T) {
 		defer partialTeardown()
 		testOfflineCleanupVolumeDelete(t, heketiServer, origConf)
+		checkConsistent(t, heketiServer)
 	})
 	t.Run("BlockVolumeCreates", func(t *testing.T) {
 		defer partialTeardown()
 		testOfflineCleanupBlockVolumeCreates(t, heketiServer, origConf)
+		checkConsistent(t, heketiServer)
 	})
 	t.Run("BlockVolumeCreateOldBHV", func(t *testing.T) {
 		defer partialTeardown()
 		testOfflineCleanupBlockVolumeCreateOldBHV(t, heketiServer, origConf)
+		checkConsistent(t, heketiServer)
 	})
 	t.Run("BlockVolumeDelete", func(t *testing.T) {
 		defer partialTeardown()
 		testOfflineCleanupBlockVolumeDelete(t, heketiServer, origConf)
+		checkConsistent(t, heketiServer)
 	})
 }
 
@@ -511,4 +520,15 @@ func testOfflineCleanupBlockVolumeDelete(
 		"expected len(ci.Volumes) == 1, got:", ci.Volumes)
 	tests.Assert(t, len(ci.BlockVolumes) == bvCount-1,
 		"expected len(ci.BlockVolumes) == bvCount - 1, got:", ci.BlockVolumes, bvCount-1)
+}
+
+func checkConsistent(t *testing.T, heketiServer *testutils.ServerCtl) {
+	testutils.ServerStarted(t, heketiServer)
+	chk, err := heketi.DbCheck()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	k := map[string]interface{}{}
+	err = json.Unmarshal([]byte(chk), &k)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	ti := int(k["totalinconsistencies"].(float64))
+	tests.Assert(t, ti == 0, "expected ti == 0, got:", ti, ":", chk)
 }
