@@ -259,3 +259,64 @@ func TestServerAuthConfig(t *testing.T) {
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	})
 }
+
+func TestLVMWrapper(t *testing.T) {
+	heketiServer := testutils.NewServerCtlFromEnv("..")
+	origConf := path.Join(heketiServer.ServerDir, heketiServer.ConfPath)
+
+	heketiServer.ConfPath = tests.Tempfile()
+	defer os.Remove(heketiServer.ConfPath)
+	CopyFile(origConf, heketiServer.ConfPath)
+
+	defer func() {
+		CopyFile(origConf, heketiServer.ConfPath)
+		testutils.ServerRestarted(t, heketiServer)
+		testCluster.Teardown(t)
+		testutils.ServerStopped(t, heketiServer)
+	}()
+
+	testutils.ServerStarted(t, heketiServer)
+	heketiServer.KeepDB = true
+	testCluster.Setup(t, 3, 3)
+
+	req := &api.VolumeCreateRequest{}
+	req.Size = 1
+
+	t.Run("NoLVMWrapper", func(t *testing.T) {
+		// explicitly set the wrapper to ""
+		UpdateConfig(origConf, heketiServer.ConfPath, func(c *config.Config) {
+			c.GlusterFS.SshConfig.LVMWrapper = ""
+		})
+		testutils.ServerRestarted(t, heketiServer)
+
+		_, err := heketi.VolumeCreate(req)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	})
+	t.Run("NSEnterLVMWrapper", func(t *testing.T) {
+		// explicitly set the wrapper to "nsenter" withou arguments,
+		// stays in the same namespace, should work like no wrapper is set
+		UpdateConfig(origConf, heketiServer.ConfPath, func(c *config.Config) {
+			c.GlusterFS.SshConfig.LVMWrapper = "nsenter"
+		})
+		testutils.ServerRestarted(t, heketiServer)
+
+		_, err := heketi.VolumeCreate(req)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	})
+	t.Run("BrokenLVMWrapper", func(t *testing.T) {
+		// explicitly set the wrapper to some non-existing executable, should fail
+		UpdateConfig(origConf, heketiServer.ConfPath, func(c *config.Config) {
+			c.GlusterFS.SshConfig.LVMWrapper = "/no/such/script"
+		})
+		testutils.ServerRestarted(t, heketiServer)
+
+		_, err := heketi.VolumeCreate(req)
+		tests.Assert(t, err != nil, "expected err != nil, got:", err)
+
+		// assert that no pending ops remain
+		l, err := heketi.PendingOperationList()
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(l.PendingOperations) == 0,
+			"expected len(l.PendingOperations) == 0, got:", len(l.PendingOperations))
+	})
+}
