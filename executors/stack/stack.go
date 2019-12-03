@@ -76,9 +76,9 @@ func (es *ExecutorStack) DeviceSetup(host, device, vgid string, destroy bool) (*
 	return nil, NotSupportedError
 }
 
-func (es *ExecutorStack) GetDeviceInfo(host string, dh *executors.DeviceVgHandle) (*executors.DeviceInfo, error) {
+func (es *ExecutorStack) GetDeviceInfo(host, device, vgid string) (*executors.DeviceInfo, error) {
 	for _, e := range es.executors {
-		di, err := e.GetDeviceInfo(host, dh)
+		di, err := e.GetDeviceInfo(host, device, vgid)
 		if err != NotSupportedError {
 			return di, err
 		}
@@ -86,9 +86,9 @@ func (es *ExecutorStack) GetDeviceInfo(host string, dh *executors.DeviceVgHandle
 	return nil, NotSupportedError
 }
 
-func (es *ExecutorStack) DeviceTeardown(host string, dh *executors.DeviceVgHandle) error {
+func (es *ExecutorStack) DeviceTeardown(host, device, vgid string) error {
 	for _, e := range es.executors {
-		err := e.DeviceTeardown(host, dh)
+		err := e.DeviceTeardown(host, device, vgid)
 		if err != NotSupportedError {
 			return err
 		}
@@ -96,9 +96,9 @@ func (es *ExecutorStack) DeviceTeardown(host string, dh *executors.DeviceVgHandl
 	return NotSupportedError
 }
 
-func (es *ExecutorStack) DeviceForget(host string, dh *executors.DeviceVgHandle) error {
+func (es *ExecutorStack) DeviceForget(host, device, vgid string) error {
 	for _, e := range es.executors {
-		err := e.DeviceForget(host, dh)
+		err := e.DeviceForget(host, device, vgid)
 		if err != NotSupportedError {
 			return err
 		}
@@ -340,14 +340,4 @@ func (es *ExecutorStack) ListBlockVolumes(host string, blockhostingvolume string
 		}
 	}
 	return nil, NotSupportedError
-}
-
-func (es *ExecutorStack) VolumeModify(host string, mod *executors.VolumeModifyRequest) error {
-	for _, e := range es.executors {
-		err := e.VolumeModify(host, mod)
-		if err != NotSupportedError {
-			return err
-		}
-	}
-	return NotSupportedError
 }

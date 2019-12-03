@@ -24,7 +24,7 @@ import (
 )
 
 type Ssher interface {
-	ExecCommands(host string, commands rex.Cmds, timeoutMinutes int, useSudo bool) (rex.Results, error)
+	ExecCommands(host string, commands []string, timeoutMinutes int, useSudo bool) (rex.Results, error)
 }
 
 type SshExecutor struct {
@@ -71,6 +71,10 @@ func setWithEnvVariables(config *SshConfig) {
 	if "" != env {
 		config.Fstab = env
 	}
+        env = os.Getenv("HEKETI_MOUNT_OPTS")
+        if "" != env {
+                config.MountOpts = env
+        }
 
 	env = os.Getenv("HEKETI_SNAPSHOT_LIMIT")
 	if "" != env {
@@ -114,6 +118,12 @@ func NewSshExecutor(config *SshConfig) (*SshExecutor, error) {
 		s.Fstab = config.Fstab
 	}
 
+        if config.MountOpts == "" {
+                 s.MountOpts = "rw,inode64,noatime,nouuid"
+        } else {
+                 s.MountOpts = config.MountOpts
+        }
+
 	s.BackupLVM = config.BackupLVM
 
 	// Save the configuration
@@ -133,12 +143,13 @@ func NewSshExecutor(config *SshConfig) (*SshExecutor, error) {
 	godbc.Ensure(s.private_keyfile != "")
 	godbc.Ensure(s.port != "")
 	godbc.Ensure(s.Fstab != "")
+        godbc.Ensure(s.MountOpts != "")
 
 	return s, nil
 }
 
 func (s *SshExecutor) ExecCommands(
-	host string, commands rex.Cmds, timeoutMinutes int) (rex.Results, error) {
+	host string, commands []string, timeoutMinutes int) (rex.Results, error) {
 
 	// Throttle
 	s.AccessConnection(host)

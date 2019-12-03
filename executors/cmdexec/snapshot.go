@@ -30,7 +30,9 @@ func (s *CmdExecutor) snapshotActivate(host string, snapshot string) error {
 		SnapActivate executors.SnapActivate `xml:"snapActivate"`
 	}
 
-	command := rex.OneCmd(fmt.Sprintf("%v --xml snapshot activate %v", s.glusterCommand(), snapshot))
+	command := []string{
+		fmt.Sprintf("%v --xml snapshot activate %v", s.glusterCommand(), snapshot),
+	}
 
 	results, err := s.RemoteExecutor.ExecCommands(host, command,
 		s.GlusterCliExecTimeout())
@@ -62,7 +64,9 @@ func (s *CmdExecutor) snapshotDeactivate(host string, snapshot string) error {
 		SnapDeactivate executors.SnapDeactivate `xml:"snapDeactivate"`
 	}
 
-	command := rex.OneCmd(fmt.Sprintf("%v --xml snapshot deactivate %v", s.glusterCommand(), snapshot))
+	command := []string{
+		fmt.Sprintf("%v --xml snapshot deactivate %v", s.glusterCommand(), snapshot),
+	}
 
 	results, err := s.RemoteExecutor.ExecCommands(host, command,
 		s.GlusterCliExecTimeout())
@@ -103,9 +107,9 @@ func (s *CmdExecutor) SnapshotCloneVolume(host string, vcr *executors.SnapshotCl
 		SnapClone executors.SnapClone `xml:"CloneCreate"`
 	}
 
-	command := rex.OneCmd(
+	command := []string{
 		fmt.Sprintf("%v --xml snapshot clone %v %v", s.glusterCommand(), vcr.Volume, vcr.Snapshot),
-	)
+	}
 
 	results, err := s.RemoteExecutor.ExecCommands(host, command,
 		s.GlusterCliExecTimeout())
@@ -124,9 +128,9 @@ func (s *CmdExecutor) SnapshotCloneVolume(host string, vcr *executors.SnapshotCl
 	}
 
 	// start the newly cloned volume
-	command = rex.OneCmd(
+	command = []string{
 		fmt.Sprintf("%v --xml volume start %v", s.glusterCommand(), vcr.Volume),
-	)
+	}
 
 	err = rex.AnyError(s.RemoteExecutor.ExecCommands(host, command,
 		s.GlusterCliExecTimeout()))
@@ -154,9 +158,9 @@ func (s *CmdExecutor) SnapshotDestroy(host string, snapshot string) error {
 		SnapDelete executors.SnapDelete `xml:"snapDelete"`
 	}
 
-	command := rex.OneCmd(
+	command := []string{
 		fmt.Sprintf("%v --xml snapshot delete %v", s.glusterCommand(), snapshot),
-	)
+	}
 
 	results, err := s.RemoteExecutor.ExecCommands(host, command,
 		s.GlusterCliExecTimeout())

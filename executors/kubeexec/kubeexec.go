@@ -39,9 +39,6 @@ type KubeExecutor struct {
 
 var (
 	logger = logging.NewLogger("[kubeexec]", logging.LEVEL_DEBUG)
-
-	// if not specifified in the config json
-	DefaultMaxConnThreshold uint64 = 64
 )
 
 func setWithEnvVariables(config *KubeConfig) {
@@ -123,13 +120,6 @@ func NewKubeExecutor(config *KubeConfig) (*KubeExecutor, error) {
 	if err != nil {
 		return nil, err
 	}
-	if config.MaxConnections == 0 {
-		k.kconn.MaxConnThreshold = DefaultMaxConnThreshold
-	} else if config.MaxConnections > 0 {
-		k.kconn.MaxConnThreshold = uint64(config.MaxConnections)
-	} else {
-		k.kconn.MaxConnThreshold = 0
-	}
 
 	godbc.Ensure(k != nil)
 	godbc.Ensure(k.Fstab != "")
@@ -138,7 +128,7 @@ func NewKubeExecutor(config *KubeConfig) (*KubeExecutor, error) {
 }
 
 func (k *KubeExecutor) ExecCommands(
-	host string, commands rex.Cmds,
+	host string, commands []string,
 	timeoutMinutes int) (rex.Results, error) {
 
 	// Throttle
@@ -176,10 +166,7 @@ func (k *KubeExecutor) ExecCommands(
 		return nil, err
 	}
 
-	return kube.ExecCommands(k.kconn, tc, commands, kube.TimeoutOptions{
-		TimeoutMinutes:   timeoutMinutes,
-		UseTimeoutPrefix: !k.config.DisableTimeoutPrefix,
-	})
+	return kube.ExecCommands(k.kconn, tc, commands, timeoutMinutes)
 }
 
 func (k *KubeExecutor) RebalanceOnExpansion() bool {
