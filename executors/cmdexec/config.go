@@ -23,4 +23,5 @@ type CmdConfig struct {
 	XfsSu                int    `json:"xfs_su"`
 	DebugUmountFailures  bool   `json:"debug_umount_failures"`
 	BlockVolumePrealloc  string `json:"block_prealloc"`
+	LVMWrapper           string `json:"lvm_wrapper"`
 }
