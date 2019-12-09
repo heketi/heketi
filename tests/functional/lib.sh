@@ -118,9 +118,14 @@ teardown_environment() {
     esac
 }
 
-teardown() {
+_teardown() {
     teardown_environment
     rm -f heketi.db > /dev/null 2>&1
+}
+
+teardown() {
+    init_testenv
+    _teardown
 }
 
 setup_test_paths() {
@@ -139,9 +144,12 @@ pause_test() {
     fi
 }
 
-functional_tests() {
+init_testenv() {
     DEFAULT_TESTENV="${SCRIPT_DIR}/../vagrant"
+}
+functional_tests() {
 
+    init_testenv
     setup_test_paths
     setup_test_environment
     if [[ "$HEKETI_TEST_SERVER" == "no" ]]; then
@@ -159,7 +167,7 @@ functional_tests() {
     stop_heketi
     if [[ "$HEKETI_TEST_CLEANUP" != "no" ]]
     then
-        teardown
+        _teardown
     fi
 
     exit $gotest_result
