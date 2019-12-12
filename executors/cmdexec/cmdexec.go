@@ -21,8 +21,9 @@ import (
 )
 
 var (
-	logger     = logging.NewLogger("[cmdexec]", logging.LEVEL_DEBUG)
-	preallocRe = regexp.MustCompile("^[a-zA-Z0-9-_]+$")
+	logger           = logging.NewLogger("[cmdexec]", logging.LEVEL_DEBUG)
+	preallocRe       = regexp.MustCompile("^[a-zA-Z0-9-_]+$")
+	DefaultMountOpts = "rw,inode64,noatime,nouuid"
 )
 
 type RemoteCommandTransport interface {
@@ -44,6 +45,7 @@ type CmdExecutor struct {
 
 	RemoteExecutor RemoteCommandTransport
 	Fstab          string
+	MountOpts      string
 	BackupLVM      bool
 }
 

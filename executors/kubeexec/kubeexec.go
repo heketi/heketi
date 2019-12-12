@@ -59,6 +59,11 @@ func setWithEnvVariables(config *KubeConfig) {
 		config.Fstab = env
 	}
 
+	env = os.Getenv("HEKETI_MOUNT_OPTS")
+	if "" != env {
+		config.MountOpts = env
+	}
+
 	// Snapshot Limit
 	env = os.Getenv("HEKETI_SNAPSHOT_LIMIT")
 	if "" != env {
@@ -106,6 +111,12 @@ func NewKubeExecutor(config *KubeConfig) (*KubeExecutor, error) {
 		k.Fstab = "/etc/fstab"
 	} else {
 		k.Fstab = config.Fstab
+	}
+
+	if config.MountOpts == "" {
+		k.MountOpts = cmdexec.DefaultMountOpts
+	} else {
+		k.MountOpts = config.MountOpts
 	}
 
 	var err error
