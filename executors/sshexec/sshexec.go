@@ -72,6 +72,11 @@ func setWithEnvVariables(config *SshConfig) {
 		config.Fstab = env
 	}
 
+	env = os.Getenv("HEKETI_MOUNT_OPTS")
+	if "" != env {
+		config.MountOpts = env
+	}
+
 	env = os.Getenv("HEKETI_SNAPSHOT_LIMIT")
 	if "" != env {
 		i, err := strconv.Atoi(env)
@@ -114,6 +119,12 @@ func NewSshExecutor(config *SshConfig) (*SshExecutor, error) {
 		s.Fstab = config.Fstab
 	}
 
+	if config.MountOpts == "" {
+		s.MountOpts = MNTOPTS//"rw,inode64,noatime,nouuid"
+	} else {
+		s.MountOpts = config.MountOpts
+	}
+
 	s.BackupLVM = config.BackupLVM
 
 	// Save the configuration
@@ -133,6 +144,7 @@ func NewSshExecutor(config *SshConfig) (*SshExecutor, error) {
 	godbc.Ensure(s.private_keyfile != "")
 	godbc.Ensure(s.port != "")
 	godbc.Ensure(s.Fstab != "")
+	godbc.Ensure(s.MountOpts != "")
 
 	return s, nil
 }

@@ -98,13 +98,14 @@ func (s *CmdExecutor) BrickCreate(host string,
 		mkfsXfs,
 
 		// Fstab
-		fmt.Sprintf("awk \"BEGIN {print \\\"%v %v xfs rw,inode64,noatime,nouuid 1 2\\\" >> \\\"%v\\\"}\"",
+		fmt.Sprintf("awk \"BEGIN {print \\\"%v %v xfs %v 1 2\\\" >> \\\"%v\\\"}\"",
 			devnode,
 			mountPath,
+			s.MountOpts,
 			s.Fstab),
 
 		// Mount
-		fmt.Sprintf("mount -o rw,inode64,noatime,nouuid %v %v", devnode, mountPath),
+		fmt.Sprintf("mount -o %v %v %v", s.MountOpts, devnode, mountPath),
 
 		// Create a directory inside the formated volume for GlusterFS
 		fmt.Sprintf("mkdir %v", brickPath),
