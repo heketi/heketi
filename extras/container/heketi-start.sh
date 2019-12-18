@@ -8,6 +8,7 @@
 : "${BACKUPDB_PATH:=/backupdb}"
 : "${TMP_PATH:=/tmp}"
 : "${HEKETI_DB_ARCHIVE_PATH:=${HEKETI_PATH}/archive}"
+: "${HEKETI_TRY_UPDATE_DB_VOL:=no}"
 HEKETI_BIN="/usr/bin/heketi"
 LOG="${HEKETI_PATH}/container.log"
 
@@ -83,6 +84,16 @@ prune_archives() {
     fi
 }
 
+update_dbvol() {
+    mount | grep "${HEKETI_PATH}" | grep -q heketidbstorage
+    if [ $? -ne 0 ]; then
+        # heketidb storage not in use, skip attempt to update settings
+        return 16
+    fi
+    "$HEKETI_BIN" offline update-dbvol --config=/etc/heketi/heketi.json
+}
+
+
 info "Setting up heketi database"
 
 # Ensure the data dir exists
@@ -151,6 +162,12 @@ if [[ -d "${BACKUPDB_PATH}" ]]; then
         fi
         info "Copied backup db to ${HEKETI_PATH}/heketi.db"
     fi
+fi
+
+if [[ "${HEKETI_TRY_UPDATE_DB_VOL}" = "yes" ]]; then
+    # the update is best effort so even if the update fails the
+    # script will continue anyway
+    update_dbvol
 fi
 
 # if the heketi.db does not exist and HEKETI_TOPOLOGY_FILE is set, start the
