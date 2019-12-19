@@ -28,6 +28,7 @@ The config file has information required to run the Heketi server.  The config f
         * backup_lvm_metadata: _bool_, Create archives of the LVM metadata when running vgcreate/lvcreate
         * sudo: _bool_, set to true when SSHing as a non root user
 	* debug_umount_failures: _bool_, Enable to capture more details in case brick unmounting fails. Can be overridden by the HEKETI_DEBUG_UMOUNT_FAILURES environment variable.
+	* lvm_wrapper: _string_, Use a wrapper for calling LVM related operations. Can be overridden by the HEKETI_LVM_WRAPPER environment variable.
     * kubexec: _map_, Kubernetes configuration
         * host: _string_, Kubernetes API host.  Example `https://myhost:8443`.  Can also be use using environment variable HEKETI_KUBE_APIHOST
         * cert: _string_, Certificate file to for HTTPS connection. Can also be use using environment variable HEKETI_KUBE_CERTFILE
@@ -38,6 +39,7 @@ The config file has information required to run the Heketi server.  The config f
         * fstab: _string_, Fstab file where to store mount points
         * backup_lvm_metadata: _bool_, Create archives of the LVM metadata when running vgcreate/lvcreate
 	* debug_umount_failures: _bool_, Enable to capture more details in case brick unmounting fails. Can be overridden by the HEKETI_DEBUG_UMOUNT_FAILURES environment variable.
+	* lvm_wrapper: _string_, Use a wrapper for calling LVM related operations. Can be overridden by the HEKETI_LVM_WRAPPER environment variable.
 
 ## Advanced Options
 The following configuration options should only be set on advanced configurations under `glusterfs` section:

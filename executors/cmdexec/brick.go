@@ -67,7 +67,9 @@ func (s *CmdExecutor) BrickCreate(host string,
 		fmt.Sprintf("mkdir -p %v", mountPath),
 
 		// Setup the LV
-		fmt.Sprintf("lvcreate -qq --autobackup=%v --poolmetadatasize %vK --chunksize %v --size %vK --thin %v/%v --virtualsize %vK --name %v",
+		fmt.Sprintf("%s lvcreate -qq --autobackup=%v --poolmetadatasize %vK --chunksize %v --size %vK --thin %v/%v --virtualsize %vK --name %v",
+			s.lvmCommand(),
+
 			// backup LVM metadata
 			conv.BoolToYN(s.BackupLVM),
 
@@ -138,8 +140,8 @@ func (s *CmdExecutor) BrickCreate(host string,
 func (s *CmdExecutor) deleteBrickLV(host, lv string) error {
 	// Remove the LV (by device name)
 	commands := []string{
-		fmt.Sprintf("lvremove --autobackup=%v -f %v",
-			conv.BoolToYN(s.BackupLVM), lv),
+		fmt.Sprintf("%s lvremove --autobackup=%v -f %v",
+			s.lvmCommand(), conv.BoolToYN(s.BackupLVM), lv),
 	}
 	err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands), 5))
 	return err
@@ -148,7 +150,8 @@ func (s *CmdExecutor) deleteBrickLV(host, lv string) error {
 func (s *CmdExecutor) countThinLVsInPool(host, tp string) (int, error) {
 	// Detect the number of bricks using the thin-pool
 	commands := []string{
-		fmt.Sprintf("lvs --noheadings --options=thin_count %v", tp),
+		fmt.Sprintf("%s lvs --noheadings --options=thin_count %v",
+			s.lvmCommand(), tp),
 	}
 	results, err := s.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands), 5)
 	if err := rex.AnyError(results, err); err != nil {
@@ -253,7 +256,8 @@ func (s *CmdExecutor) BrickDestroy(host string,
 	// If there is no brick left in the thin-pool, it can be removed
 	if thin_count == 0 {
 		commands = []string{
-			fmt.Sprintf("lvremove --autobackup=%v -f %v", conv.BoolToYN(s.BackupLVM), tp),
+			fmt.Sprintf("%s lvremove --autobackup=%v -f %v",
+				s.lvmCommand(), conv.BoolToYN(s.BackupLVM), tp),
 		}
 		err := rex.AnyError(s.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands), 5))
 		if errIsLvNotFound(err) {
