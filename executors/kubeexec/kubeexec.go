@@ -114,7 +114,7 @@ func NewKubeExecutor(config *KubeConfig) (*KubeExecutor, error) {
 	}
 
 	if config.MountOpts == "" {
-		k.MountOpts = MNTOPTS//"rw,inode64,noatime,nouuid"
+		k.MountOpts = cmdexec.MNTOPTS
 	} else {
 		k.MountOpts = config.MountOpts
 	}

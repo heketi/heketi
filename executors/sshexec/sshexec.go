@@ -120,7 +120,7 @@ func NewSshExecutor(config *SshConfig) (*SshExecutor, error) {
 	}
 
 	if config.MountOpts == "" {
-		s.MountOpts = MNTOPTS//"rw,inode64,noatime,nouuid"
+		s.MountOpts = cmdexec.MNTOPTS
 	} else {
 		s.MountOpts = config.MountOpts
 	}
