@@ -197,12 +197,7 @@ func (s *CmdExecutor) BrickDestroy(host string,
 			umountErr = nil
 		} else {
 			if s.DebugUmountFailures() {
-				// in case unmounting failed, grab the output of 'lsof /path/to/brick'
-				commands = []string{
-					fmt.Sprintf("lsof %s", brick.Path),
-				}
-				res, _ = s.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands), 5)
-				logger.Warning("brick path [%s] kept open by:\n%s", brick.Path, res[0].Output)
+				checkUnmountStatus(s, host, brick)
 			}
 		}
 	}
@@ -353,4 +348,19 @@ func (s *CmdExecutor) GetBrickMountStatus(host string) (*executors.BricksMountSt
 	}
 
 	return &brickMounts, nil
+}
+
+func checkUnmountStatus(s *CmdExecutor,
+	host string, brick *executors.BrickRequest) {
+
+	// in case unmounting failed, grab the output of 'lsof /path/to/brick'
+	commands := []string{
+		fmt.Sprintf("lsof %s", brick.Path),
+	}
+	res, err := s.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands), 5)
+	if err == nil {
+		logger.Warning("brick path [%s] kept open by:\n%s", brick.Path, res[0].Output)
+	} else {
+		logger.Warning("brick status could not be checked with lsof: %v", err)
+	}
 }
