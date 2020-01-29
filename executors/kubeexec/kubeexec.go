@@ -114,7 +114,7 @@ func NewKubeExecutor(config *KubeConfig) (*KubeExecutor, error) {
 	}
 
 	if config.MountOpts == "" {
-		k.MountOpts = cmdexec.MNTOPTS
+		k.MountOpts = cmdexec.DefaultMountOpts
 	} else {
 		k.MountOpts = config.MountOpts
 	}

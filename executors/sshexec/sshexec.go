@@ -120,7 +120,7 @@ func NewSshExecutor(config *SshConfig) (*SshExecutor, error) {
 	}
 
 	if config.MountOpts == "" {
-		s.MountOpts = cmdexec.MNTOPTS
+		s.MountOpts = cmdexec.DefaultMountOpts
 	} else {
 		s.MountOpts = config.MountOpts
 	}

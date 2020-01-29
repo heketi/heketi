@@ -21,9 +21,9 @@ import (
 )
 
 var (
-	logger            = logging.NewLogger("[cmdexec]", logging.LEVEL_DEBUG)
-	preallocRe        = regexp.MustCompile("^[a-zA-Z0-9-_]+$")
-	MNTOPTS    string = "rw,inode64,noatime,nouuid"
+	logger                  = logging.NewLogger("[cmdexec]", logging.LEVEL_DEBUG)
+	preallocRe              = regexp.MustCompile("^[a-zA-Z0-9-_]+$")
+	DefaultMountOpts string = "rw,inode64,noatime,nouuid"
 )
 
 type RemoteCommandTransport interface {
