@@ -11,6 +11,7 @@ package glusterfs
 
 import (
 	"fmt"
+	"math/rand"
 
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
@@ -86,8 +87,9 @@ func (bvc *BlockVolumeCreateOperation) Build() error {
 		}
 		reducedSize := ReduceRawSize(BlockHostingVolumeSize)
 		if len(volumes) > 0 {
-			bvc.bvol.Info.BlockHostingVolume = volumes[0].Info.Id
-			bvc.bvol.Info.Cluster = volumes[0].Info.Cluster
+			randIndex := rand.Intn(len(volumes))
+			bvc.bvol.Info.BlockHostingVolume = volumes[randIndex].Info.Id
+			bvc.bvol.Info.Cluster = volumes[randIndex].Info.Cluster
 		} else if bvc.bvol.Info.Size > reducedSize {
 			return fmt.Errorf("The size configured for "+
 				"automatic creation of block hosting volumes "+
