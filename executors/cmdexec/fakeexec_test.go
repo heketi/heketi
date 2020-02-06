@@ -51,7 +51,7 @@ func NewFakeExecutor(f *CommandFaker) (*FakeExecutor, error) {
 	t.fake = f
 	t.Fstab = "/my/fstab"
 	t.portStr = "22"
-	t.MountOpts = cmdexec.DefaultMountOpts
+	t.MountOpts = DefaultMountOpts
 	return t, nil
 }
 
