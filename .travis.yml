@@ -5,6 +5,7 @@ before_install:
     - sudo apt-get update -qq
     - sudo apt-get install -qq python python-pip
     - sudo pip install tox nose
+    - sudo chown -R travis:travis /home/travis/.cache/pip
 install:
 - bash .travis-fork-fix
 - go get github.com/mattn/goveralls
