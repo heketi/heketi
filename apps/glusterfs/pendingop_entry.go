@@ -291,6 +291,61 @@ func (p *PendingOperationEntry) RecordRemoveDevice(d *DeviceEntry) {
 	p.Type = OperationRemoveDevice
 }
 
+// RecordChild adds or replaces a child operation for the current
+// pending operation entry. Both child and parent can only have
+// one parent/child relationship. Both are updated.
+func (p *PendingOperationEntry) RecordChild(child *PendingOperationEntry) {
+	// track childs id on parent
+	parentsChild := findChange(p.Actions, OpChildOperation)
+	if parentsChild < 0 {
+		a := PendingOperationAction{Change: OpChildOperation, Id: child.Id}
+		p.Actions = append(p.Actions, a)
+	} else {
+		p.Actions[parentsChild].Id = child.Id
+	}
+	// track parent's id on child
+	childsParent := findChange(child.Actions, OpParentOperation)
+	if childsParent < 0 {
+		a := PendingOperationAction{Change: OpParentOperation, Id: p.Id}
+		child.Actions = append(child.Actions, a)
+	} else {
+		child.Actions[childsParent].Id = p.Id
+	}
+}
+
+// ClearChild removes any child operations from the parent.
+func (p *PendingOperationEntry) ClearChild() {
+	newActions := []PendingOperationAction{}
+	for _, action := range p.Actions {
+		if action.Change != OpChildOperation {
+			newActions = append(newActions, action)
+		}
+	}
+	p.Actions = newActions
+}
+
+// IsParent returns true if this pending operation entry is the parent
+// of another operation.
+func (p *PendingOperationEntry) IsParent() bool {
+	return findChange(p.Actions, OpChildOperation) > 0
+}
+
+// ChildId returns the id of a child operation connected to this parent
+// if one exists. Returns empty string otherwise.
+func (p *PendingOperationEntry) ChildId() string {
+	i := findChange(p.Actions, OpChildOperation)
+	if i < 0 {
+		return ""
+	}
+	return p.Actions[i].Id
+}
+
+// IsChild returns true if this pending operation entry is the child
+// of another operation.
+func (p *PendingOperationEntry) IsChild() bool {
+	return findChange(p.Actions, OpParentOperation) > 0
+}
+
 func (p *PendingOperationEntry) ToInfo() api.PendingOperationInfo {
 	return api.PendingOperationInfo{
 		Id:       p.Id,
@@ -410,4 +465,13 @@ func (p *PendingOperationEntry) consistencyCheck(db Db) (response DbEntryCheckRe
 		}
 	}
 	return
+}
+
+func findChange(actions []PendingOperationAction, c PendingChangeType) int {
+	for i, action := range actions {
+		if action.Change == c {
+			return i
+		}
+	}
+	return -1
 }
