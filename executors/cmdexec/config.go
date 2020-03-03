@@ -11,6 +11,7 @@ package cmdexec
 
 type CmdConfig struct {
 	Fstab                string `json:"fstab"`
+	MountOpts            string `json:"mountopts"`
 	Sudo                 bool   `json:"sudo"`
 	SnapShotLimit        int    `json:"snapshot_limit"`
 	RebalanceOnExpansion bool   `json:"rebalance_on_expansion"`
