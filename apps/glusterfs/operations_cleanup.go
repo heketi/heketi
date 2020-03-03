@@ -56,6 +56,12 @@ func (oc OperationCleaner) Clean() error {
 		} else if err != nil {
 			return err
 		}
+		if pop.IsChild() {
+			logger.Warning(
+				"%v operation %v is a child. skipping direct clean",
+				op.Label(), pop.Id)
+			continue
+		}
 		cop, ok := op.(CleanableOperation)
 		if !ok {
 			logger.Warning("%v operation %v not cleanable", op.Label(), pop.Id)
