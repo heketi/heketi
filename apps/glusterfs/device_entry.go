@@ -174,7 +174,7 @@ func (d *DeviceEntry) SetState(db wdb.DB,
 	case api.EntryStateFailed:
 		if err := d.Remove(db, e); err != nil {
 			if err == ErrNoReplacement {
-				return logger.LogError("Unable to delete device [%v] as no device was found to replace it", d.Id())
+				return logger.LogError("Unable to delete device [%v] as no device was found to replace it: %v", d.Id(), err)
 			}
 			return err
 		}
