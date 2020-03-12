@@ -53,6 +53,8 @@ func LoadOperation(
 		op, err = loadBlockVolumeDeleteOperation(db, p)
 	case OperationBrickEvict:
 		op, err = loadBrickEvictOperation(db, p)
+	case OperationRemoveDevice:
+		op, err = loadDeviceRemoveOperation(db, p)
 	default:
 		err = NewErrNotLoadable(p.Id, p.Type)
 	}
