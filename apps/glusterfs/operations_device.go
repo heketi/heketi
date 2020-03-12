@@ -45,6 +45,31 @@ func NewDeviceRemoveOperation(
 	}
 }
 
+// loadDeviceRemoveOperation returns a DeviceRemoveOperation populated
+// from an existing pending operation entry in the db.
+func loadDeviceRemoveOperation(
+	db wdb.DB, p *PendingOperationEntry) (*DeviceRemoveOperation, error) {
+
+	var deviceId string
+	for _, action := range p.Actions {
+		if action.Change == OpRemoveDevice {
+			deviceId = action.Id
+		}
+	}
+	if deviceId == "" {
+		return nil, fmt.Errorf(
+			"Missing device to remove in device-remove operation")
+	}
+
+	return &DeviceRemoveOperation{
+		OperationManager: OperationManager{
+			db: db,
+			op: p,
+		},
+		DeviceId: deviceId,
+	}, nil
+}
+
 func (dro *DeviceRemoveOperation) Label() string {
 	return "Remove Device"
 }
