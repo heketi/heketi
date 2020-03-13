@@ -656,7 +656,7 @@ func evictStatus(op *PendingOperationEntry) (brickEvictStatus, error) {
 			logger.Info("found replacement brick: %v", action.Id)
 			bes.newBrickId = action.Id
 		default:
-			logger.Info("found invalied action: %v, %v",
+			logger.Info("found invalid action: %v, %v",
 				action.Change, action.Id)
 			return bes, fmt.Errorf(
 				"Malformed pending operation entry for brick evict operation")
