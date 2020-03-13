@@ -278,6 +278,10 @@ func (beo *BrickEvictOperation) buildNewBrick(bs *BrickSet, index int) error {
 		if err != nil {
 			return err
 		}
+		logger.Debug(
+			"brick evict wants to replace [%s] on [%s] with [%s] on [%s]",
+			old.brick.Id(), old.device.Id(),
+			newBrickEntry.Id(), newDeviceEntry.Id())
 		// update pending op with new brick info
 		for _, action := range beo.op.Actions {
 			if action.Change == OpAddBrick {
@@ -573,6 +577,7 @@ func (beo *BrickEvictOperation) CleanDone() error {
 }
 
 func (beo *BrickEvictOperation) finishNeverStarted(db wdb.DB, bes brickEvictStatus) error {
+	logger.Debug("finishing operation: no changes")
 	return db.Update(func(tx *bolt.Tx) error {
 		b, err := NewBrickEntryFromId(tx, bes.oldBrickId)
 		if err != nil {
@@ -587,6 +592,9 @@ func (beo *BrickEvictOperation) finishNeverStarted(db wdb.DB, bes brickEvictStat
 }
 
 func (beo *BrickEvictOperation) finishAccept(tx *bolt.Tx) error {
+	logger.Debug(
+		"finishing operation: accepting new brick [%v]",
+		beo.newBrickEntryId)
 	old, err := beo.current(beo.db)
 	if err != nil {
 		return err
@@ -628,6 +636,9 @@ func (beo *BrickEvictOperation) finishAccept(tx *bolt.Tx) error {
 }
 
 func (beo *BrickEvictOperation) finishRevert(tx *bolt.Tx) error {
+	logger.Debug(
+		"finishing operation: reverting new brick [%s]",
+		beo.newBrickEntryId)
 	old, err := beo.current(beo.db)
 	if err != nil {
 		return err
