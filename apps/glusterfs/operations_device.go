@@ -553,7 +553,7 @@ func (beo *BrickEvictOperation) Clean(executor executors.Executor) error {
 func (beo *BrickEvictOperation) CleanDone() error {
 	logger.Info("Clean is done for %v op:%v", beo.Label(), beo.op.Id)
 	return beo.db.Update(func(tx *bolt.Tx) error {
-		if e := beo.refreshOp(beo.db); e != nil {
+		if e := beo.refreshOp(wdb.WrapTx(tx)); e != nil {
 			return e
 		}
 		bes, err := evictStatus(beo.op)
