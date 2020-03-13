@@ -142,6 +142,14 @@ func (dro *DeviceRemoveOperation) Finalize() error {
 	})
 }
 
+type replaceStatus int
+
+const (
+	replaceStatusUnknown replaceStatus = iota
+	replaceIncomplete
+	replaceComplete
+)
+
 // BrickEvictOperation removes exactly one brick from a volume
 // automatically replacing it to maintain any other volume restrictions.
 type BrickEvictOperation struct {
@@ -154,7 +162,7 @@ type BrickEvictOperation struct {
 	replaceIndex    int
 	newBrickEntryId string
 	reclaimed       ReclaimMap
-	wasReplaced     bool
+	replaceResult   replaceStatus
 }
 
 type brickContext struct {
@@ -497,12 +505,14 @@ func (beo *BrickEvictOperation) Clean(executor executors.Executor) error {
 		if err != nil {
 			return err
 		}
+		// default to assuming old brick is still in use by gluster
+		beo.replaceResult = replaceIncomplete
 		for _, gbrick := range vinfo.Bricks.BrickList {
 			if _, found := bmap[gbrick.Name]; found {
 				logger.Info(
 					"Found existing gluster brick in volume: %v", gbrick.Name)
 			} else if newBrickHostPath == gbrick.Name {
-				beo.wasReplaced = true
+				beo.replaceResult = replaceComplete
 				logger.Info(
 					"Found new brick in gluster volume: %v", newBrickHostPath)
 			} else {
@@ -517,18 +527,21 @@ func (beo *BrickEvictOperation) Clean(executor executors.Executor) error {
 		return err
 	}
 
-	if beo.wasReplaced {
+	switch beo.replaceResult {
+	case replaceComplete:
 		logger.Info("Destroying old brick contents")
 		beo.reclaimed, err = old.bhmap().destroy(executor)
 		if err != nil {
 			return logger.LogError("Error destroying old brick: %v", err)
 		}
-	} else {
+	case replaceIncomplete:
 		logger.Info("Destroying unused new brick contents")
 		beo.reclaimed, err = newBHMap.destroy(executor)
 		if err != nil {
 			return logger.LogError("Error destroying new brick: %v", err)
 		}
+	default:
+		return logger.LogError("Replace state unknown")
 	}
 	return nil
 }
@@ -548,10 +561,14 @@ func (beo *BrickEvictOperation) CleanDone() error {
 			logger.Debug("no new brick: operation never started")
 			return beo.finishNeverStarted(wdb.WrapTx(tx), bes)
 		}
-		if beo.wasReplaced {
+		switch beo.replaceResult {
+		case replaceComplete:
 			return beo.finishAccept(tx)
+		case replaceIncomplete:
+			return beo.finishRevert(tx)
+		default:
+			return logger.LogError("Replace state unknown (was clean not executed)")
 		}
-		return beo.finishRevert(tx)
 	})
 }
 
