@@ -150,12 +150,11 @@ type BrickEvictOperation struct {
 	BrickId string
 
 	// internal caching params
-	replaceBrickSet  *BrickSet
-	replaceIndex     int
-	newBrickEntryId  string
-	newDeviceEntryId string
-	reclaimed        ReclaimMap
-	wasReplaced      bool
+	replaceBrickSet *BrickSet
+	replaceIndex    int
+	newBrickEntryId string
+	reclaimed       ReclaimMap
+	wasReplaced     bool
 }
 
 type brickContext struct {
@@ -285,9 +284,8 @@ func (beo *BrickEvictOperation) buildNewBrick(bs *BrickSet, index int) error {
 		if e := newBrickEntry.Save(tx); e != nil {
 			return e
 		}
-		// update operation cached entries for new brick and device entries
+		// update operation cached entries for new brick
 		beo.newBrickEntryId = newBrickEntry.Id()
-		beo.newDeviceEntryId = newDeviceEntry.Id()
 		return nil
 	})
 }
@@ -588,7 +586,7 @@ func (beo *BrickEvictOperation) finishAccept(tx *bolt.Tx) error {
 	}
 	// update (new) device with new brick
 	// reminder: New brick function takes space from device (!!!)
-	newDevice, err := NewDeviceEntryFromId(tx, beo.newDeviceEntryId)
+	newDevice, err := NewDeviceEntryFromId(tx, newBrick.Info.DeviceId)
 	if err != nil {
 		return err
 	}
