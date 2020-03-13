@@ -19,6 +19,7 @@ import (
 	"path"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/heketi/tests"
 
@@ -248,6 +249,85 @@ func TestBrickEvict(t *testing.T) {
 		// of the system after the operation should be similar to
 		// the state of a successful op.
 
+		vinfo2, err := heketi.VolumeInfo(vinfo1.Id)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+		oldIds := map[string]bool{}
+		for _, b := range vinfo1.Bricks {
+			oldIds[b.Id] = true
+		}
+		tests.Assert(t, len(oldIds) == 3,
+			"expected len(oldIds) == 3, got:", len(oldIds))
+		found := 0
+		for _, b := range vinfo2.Bricks {
+			if oldIds[b.Id] {
+				found++
+			} else {
+				tests.Assert(t, b.Id != toEvict,
+					"expected b.Id != toEvict, got", b.Id, toEvict)
+			}
+		}
+		tests.Assert(t, found == 2)
+		newAggUsed := deviceAggregateUsedSize(t)
+		tests.Assert(t, newAggUsed == aggUsed,
+			"expected device used aggregate sizes to match", newAggUsed, aggUsed)
+		checkConsistent(t, heketiServer)
+	})
+
+	t.Run("lvremoveErrorRecover", func(t *testing.T) {
+		resetConf()
+
+		vinfo1, err := heketi.VolumeCreate(volReq)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		aggUsed := deviceAggregateUsedSize(t)
+
+		UpdateConfig(origConf, heketiServer.ConfPath, func(c *config.Config) {
+			c.GlusterFS.Executor = "inject/ssh"
+			c.GlusterFS.InjectConfig.CmdInjection.CmdHooks = inj.CmdHooks{
+				inj.CmdHook{
+					Cmd: ".*lvremove.*",
+					Reaction: inj.Reaction{
+						Err: "thwack!",
+					},
+				},
+			}
+		})
+		testutils.ServerRestarted(t, heketiServer)
+
+		toEvict := vinfo1.Bricks[0].Id
+		err = heketi.BrickEvict(toEvict, nil)
+		tests.Assert(t, err != nil, "expected err == nil, got:", err)
+
+		// the pending op should remain because lvremove is in the
+		// clean/rollback path.
+		l, err := heketi.PendingOperationList()
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(l.PendingOperations) == 1,
+			"expected len(l.PendingOperations)t == 1, got:",
+			len(l.PendingOperations))
+
+		// reset server behavior
+		resetConf()
+
+		// request a clean
+		err = heketi.PendingOperationCleanUp(
+			&api.PendingOperationsCleanRequest{})
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+		for i := 0; i < 15; i++ {
+			l, err = heketi.PendingOperationList()
+			tests.Assert(t, err == nil, "expected err == nil, got:", err)
+			if len(l.PendingOperations) == 0 {
+				break
+			}
+			time.Sleep(time.Second)
+		}
+		tests.Assert(t, len(l.PendingOperations) == 0,
+			"expected len(l.PendingOperations)t == 0, got:",
+			len(l.PendingOperations))
+
+		// The state of the system after the clean up should be similar to the
+		// state of a successful run
 		vinfo2, err := heketi.VolumeInfo(vinfo1.Id)
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
