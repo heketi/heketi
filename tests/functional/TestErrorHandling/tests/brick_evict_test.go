@@ -204,7 +204,7 @@ func TestBrickEvict(t *testing.T) {
 
 		toEvict := vinfo1.Bricks[0].Id
 		err = heketi.BrickEvict(toEvict, nil)
-		tests.Assert(t, err != nil, "expected err == nil, got:", err)
+		tests.Assert(t, err != nil, "expected err != nil, got:", err)
 
 		vinfo2, err := heketi.VolumeInfo(vinfo1.Id)
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
@@ -242,7 +242,7 @@ func TestBrickEvict(t *testing.T) {
 
 		toEvict := vinfo1.Bricks[0].Id
 		err = heketi.BrickEvict(toEvict, nil)
-		tests.Assert(t, err != nil, "expected err == nil, got:", err)
+		tests.Assert(t, err != nil, "expected err != nil, got:", err)
 
 		// in this case even tho the operation "failed" the state of
 		// the gluster system is as if the replace succeeded. The state
@@ -296,7 +296,7 @@ func TestBrickEvict(t *testing.T) {
 
 		toEvict := vinfo1.Bricks[0].Id
 		err = heketi.BrickEvict(toEvict, nil)
-		tests.Assert(t, err != nil, "expected err == nil, got:", err)
+		tests.Assert(t, err != nil, "expected err != nil, got:", err)
 
 		// the pending op should remain because lvremove is in the
 		// clean/rollback path.
