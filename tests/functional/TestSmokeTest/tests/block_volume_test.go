@@ -256,3 +256,90 @@ func TestBlockVolumeDeleteFailureConditions(t *testing.T) {
 	err = heketi.BlockVolumeDelete(bvol.Id)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 }
+
+func TestBlockVolumeExpand(t *testing.T) {
+
+	// Setup the VM storage topology
+	setupCluster(t, 3, 4)
+	defer teardownCluster(t)
+
+	defer teardownBlock(t)
+
+	// Block volume create Request
+	bvolReq := &api.BlockVolumeCreateRequest{}
+	bvolReq.Hacount = 3
+
+	//Create a ha 3 block volume of size 50G
+	bvolReq.Size = 50
+	bvol, err := heketi.BlockVolumeCreate(bvolReq)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	//Check if block volume size matches 50G
+	bvolInfo, err := heketi.BlockVolumeInfo(bvol.Id)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, bvolInfo.Size == 50, "expected bvolInfo.Size == 50 got:", bvolInfo.Size)
+	// Check if the FreeSize on block hosting volume is [196G - 50G] = 146G
+	volInfo, err := heketi.VolumeInfo(bvol.BlockHostingVolume)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, volInfo.BlockInfo.FreeSize == 146, "expected volInfo.BlockInfo.FreeSize == 146 got:", volInfo.BlockInfo.FreeSize)
+
+	// Clean up later
+	defer func() {
+		err = heketi.BlockVolumeDelete(bvol.Id)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	}()
+
+	// Block volume Expand request
+	bvolExpReq := &api.BlockVolumeExpandRequest{}
+
+	//Expand the block volume to 100G size
+	bvolExpReq.Size = 100
+	_, err = heketi.BlockVolumeExpand(bvol.Id, bvolExpReq)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	//Check if block volume size matches 100G
+	bvolInfo, err = heketi.BlockVolumeInfo(bvol.Id)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, bvolInfo.Size == 100, "expected bvolInfo.Size == 100 got:", bvolInfo.Size)
+	// Check if the FreeSize on block hosting volume is [196G - 100G] = 96G
+	volInfo, err = heketi.VolumeInfo(bvol.BlockHostingVolume)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, volInfo.BlockInfo.FreeSize == 96, "expected volInfo.BlockInfo.FreeSize == 96 got:", volInfo.BlockInfo.FreeSize)
+
+	//Check if it is possible to run expand block volume to same size
+	bvolExpReq.Size = 100
+	_, err = heketi.BlockVolumeExpand(bvol.Id, bvolExpReq)
+	tests.Assert(t, err != nil, "expected err != nil, got:", err)
+	//Check if block volume size changed
+	bvolInfo, err = heketi.BlockVolumeInfo(bvol.Id)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, bvolInfo.Size == 100, "expected bvolInfo.Size == 100 got:", bvolInfo.Size)
+	// Check if the FreeSize on block hosting volume is changed
+	volInfo, err = heketi.VolumeInfo(bvol.BlockHostingVolume)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, volInfo.BlockInfo.FreeSize == 96, "expected volInfo.BlockInfo.FreeSize == 96 got:", volInfo.BlockInfo.FreeSize)
+
+	//Check if it is possible to expand block volume with size greater than BHV size
+	bvolExpReq.Size = 201
+	_, err = heketi.BlockVolumeExpand(bvol.Id, bvolExpReq)
+	tests.Assert(t, err != nil, "expected err != nil, got:", err)
+	//Check if block volume size changed
+	bvolInfo, err = heketi.BlockVolumeInfo(bvol.Id)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, bvolInfo.Size == 100, "expected bvolInfo.Size == 100 got:", bvolInfo.Size)
+	// Check if the FreeSize on block hosting volume is changed
+	volInfo, err = heketi.VolumeInfo(bvol.BlockHostingVolume)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, volInfo.BlockInfo.FreeSize == 96, "expected volInfo.BlockInfo.FreeSize == 96 got:", volInfo.BlockInfo.FreeSize)
+
+	//Check if it is possible to shrink block volume
+	bvolExpReq.Size = 50
+	_, err = heketi.BlockVolumeExpand(bvol.Id, bvolExpReq)
+	tests.Assert(t, err != nil, "expected err != nil, got:", err)
+	//Check if block volume size changed
+	bvolInfo, err = heketi.BlockVolumeInfo(bvol.Id)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, bvolInfo.Size == 100, "expected bvolInfo.Size == 100 got:", bvolInfo.Size)
+	// Check if the FreeSize on block hosting volume is changed
+	volInfo, err = heketi.VolumeInfo(bvol.BlockHostingVolume)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, volInfo.BlockInfo.FreeSize == 96, "expected volInfo.BlockInfo.FreeSize == 96 got:", volInfo.BlockInfo.FreeSize)
+}
