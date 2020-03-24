@@ -51,6 +51,8 @@ func LoadOperation(
 		op, err = loadBlockVolumeCreateOperation(db, p)
 	case OperationDeleteBlockVolume:
 		op, err = loadBlockVolumeDeleteOperation(db, p)
+	case OperationExpandBlockVolume:
+		op, err = loadBlockVolumeExpandOperation(db, p)
 	case OperationBrickEvict:
 		op, err = loadBrickEvictOperation(db, p)
 	case OperationRemoveDevice:

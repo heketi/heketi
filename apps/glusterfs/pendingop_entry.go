@@ -284,6 +284,13 @@ func (p *PendingOperationEntry) RecordDeleteBlockVolume(bv *BlockVolumeEntry) {
 	bv.Pending.Id = p.Id
 }
 
+// RecordExpandBlockVolume adds tracking metadata for a block volume that is being
+// expanded to the PendingOperationEntry and BlockVolumeEntry.
+func (p *PendingOperationEntry) RecordExpandBlockVolume(bv *BlockVolumeEntry, newSizeGB int) {
+	p.recordSizeChange(OpExpandBlockVolume, bv.Info.Id, newSizeGB)
+	p.Type = OperationExpandBlockVolume
+}
+
 // RecordRemoveDevice adds tracking metadata for a long-running device
 // removal operation.
 func (p *PendingOperationEntry) RecordRemoveDevice(d *DeviceEntry) {
@@ -457,6 +464,11 @@ func (p *PendingOperationEntry) consistencyCheck(db Db) (response DbEntryCheckRe
 			if _, found := db.Volumes[action.Id]; !found {
 				response.Inconsistencies = append(response.Inconsistencies,
 					fmt.Sprintf("pending op %v: change id missing %v not found in volumes", p.Id, action.Id))
+			}
+		case OpExpandBlockVolume:
+			if _, found := db.BlockVolumes[action.Id]; !found {
+				response.Inconsistencies = append(response.Inconsistencies,
+					fmt.Sprintf("pending op %v: change id missing %v not found in blockvolumes", p.Id, action.Id))
 			}
 		case OpRemoveDevice:
 			// This is a noop

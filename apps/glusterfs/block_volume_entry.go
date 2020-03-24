@@ -320,6 +320,24 @@ func (v *BlockVolumeEntry) destroyFromHost(
 	return nil
 }
 
+func (v *BlockVolumeEntry) BlockVolumeInfoFromHost(executor executors.Executor,
+	hvname string, h string) (*executors.BlockVolumeInfo, error) {
+
+	godbc.Require(hvname != "")
+	godbc.Require(h != "")
+
+	blockVolumeInfo, err := executor.BlockVolumeInfo(h, hvname, v.Info.Name)
+	if _, ok := err.(*executors.VolumeDoesNotExistErr); ok {
+		logger.Warning("Block volume %v (%v) does not exist",
+			v.Info.Id, v.Info.Name)
+		return nil, err
+	} else if err != nil {
+		logger.LogError("Unable to get block volume info: %v", err)
+		return nil, err
+	}
+	return blockVolumeInfo, nil
+}
+
 func (v *BlockVolumeEntry) removeComponents(db wdb.DB, keepSize bool) error {
 	return db.Update(func(tx *bolt.Tx) error {
 		// Remove volume from cluster

@@ -34,6 +34,7 @@ const (
 	OperationExpandVolume
 	OperationCreateBlockVolume
 	OperationDeleteBlockVolume
+	OperationExpandBlockVolume
 	OperationRemoveDevice
 	OperationCloneVolume
 	OperationBrickEvict
@@ -52,6 +53,7 @@ const (
 	OpExpandVolume
 	OpAddBlockVolume
 	OpDeleteBlockVolume
+	OpExpandBlockVolume
 	OpRemoveDevice
 	OpCloneVolume
 	OpSnapshotVolume
@@ -112,6 +114,8 @@ func (v PendingOperationType) Name() string {
 		return "create-block-volume"
 	case OperationDeleteBlockVolume:
 		return "delete-block-volume"
+	case OperationExpandBlockVolume:
+		return "expand-block-volume"
 	case OperationRemoveDevice:
 		return "remove-device"
 	case OperationCloneVolume:
@@ -139,6 +143,8 @@ func (c PendingChangeType) Name() string {
 		return "Add block volume"
 	case OpDeleteBlockVolume:
 		return "Delete block volume"
+	case OpExpandBlockVolume:
+		return "Expand block volume"
 	case OpRemoveDevice:
 		return "Remove device"
 	case OpCloneVolume:
