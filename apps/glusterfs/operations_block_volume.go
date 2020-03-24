@@ -376,6 +376,287 @@ func (bvc *BlockVolumeCreateOperation) CleanDone() error {
 	})
 }
 
+// BlockVolumeExpandOperation implements the operation functions used to
+// expand an existing blockvolume.
+type blockVolExpandReclaim struct {
+	actualSize int
+}
+
+type BlockVolumeExpandOperation struct {
+	OperationManager
+	noRetriesOperation
+	bvolId string
+
+	// modification values
+	newSize int
+	reclaim blockVolExpandReclaim // gets set by Clean() call
+}
+
+// NewBlockVolumeExpandOperation creates a new BlockVolumeExpandOperation populated
+// with the given blockvolume id, db connection and newsize (in GB) that the
+// blockvolume is to be expanded by.
+func NewBlockVolumeExpandOperation(
+	bvolId string, db wdb.DB, newSize int) *BlockVolumeExpandOperation {
+
+	return &BlockVolumeExpandOperation{
+		OperationManager: OperationManager{
+			db: db,
+			op: NewPendingOperationEntry(NEW_ID),
+		},
+		bvolId:  bvolId,
+		newSize: newSize,
+	}
+}
+
+// loadBlockVolumeExpandOperation returns a BlockVolumeExpandOperation populated
+// from an existing pending operation entry in the db.
+func loadBlockVolumeExpandOperation(
+	db wdb.DB, p *PendingOperationEntry) (*BlockVolumeExpandOperation, error) {
+
+	bvolIds := []string{}
+	err := db.View(func(tx *bolt.Tx) error {
+		for _, a := range p.Actions {
+			switch a.Change {
+			case OpExpandBlockVolume:
+				bvolIds = append(bvolIds, a.Id)
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(bvolIds) != 1 {
+		return nil, fmt.Errorf(
+			"Incorrect number of block volume Ids (%v) for expand operation: %v",
+			len(bvolIds), p.Id)
+	}
+
+	return &BlockVolumeExpandOperation{
+		OperationManager: OperationManager{
+			db: db,
+			op: p,
+		},
+		bvolId: bvolIds[0],
+	}, nil
+}
+
+func (bve *BlockVolumeExpandOperation) Label() string {
+	return "Expand Block Volume"
+}
+
+func (bve *BlockVolumeExpandOperation) ResourceUrl() string {
+	return fmt.Sprintf("/blockvolumes/%v", bve.bvolId)
+}
+
+func (bve *BlockVolumeExpandOperation) Build() error {
+	var bv *BlockVolumeEntry
+	return bve.db.Update(func(tx *bolt.Tx) error {
+		var err error
+		bv, err = NewBlockVolumeEntryFromId(tx, bve.bvolId)
+		if err != nil {
+			return err
+		}
+		if bv.Pending.Id != "" {
+			logger.LogError("Pending block volume %v can not be Expanded",
+				bve.bvolId)
+			return ErrConflict
+		}
+
+		bhv, err := NewVolumeEntryFromId(tx, bv.Info.BlockHostingVolume)
+		if err != nil {
+			return err
+		}
+		if bhv.Pending.Id != "" {
+			logger.LogError("Can not expand block volume %v when hosting volume %v is pending",
+				bve.bvolId, bhv.Info.Id)
+			return ErrConflict
+		}
+
+		if bve.newSize == bv.Info.Size {
+			err := logger.LogError("Requested new-size %v is same as current "+
+				"block volume size %v, nothing to be done.", bve.newSize, bv.Info.Size)
+			return err
+		} else if bve.newSize < bv.Info.Size {
+			err := logger.LogError("Requested new-size %v is less than current "+
+				"block volume size %v, shrinking is not allowed.", bve.newSize, bv.Info.Size)
+			return err
+		}
+
+		requiredFreeSize := bve.newSize - bv.Info.Size
+		if bhv.Info.BlockInfo.FreeSize < requiredFreeSize {
+			logger.LogError("Free size %v on block hosting volume is less than requested delta size %v.",
+				bhv.Info.BlockInfo.FreeSize, requiredFreeSize)
+			return ErrNoSpace
+		}
+
+		if err := bhv.ModifyFreeSize(-requiredFreeSize); err != nil {
+			return err
+		}
+		logger.Info("Reduced free size on Block Hosting volume %v by %v",
+			bhv.Info.Id, requiredFreeSize)
+
+		if err = bhv.Save(tx); err != nil {
+			return err
+		}
+
+		bve.op.RecordExpandBlockVolume(bv, bve.newSize)
+		if err = bve.op.Save(tx); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+func (bve *BlockVolumeExpandOperation) Exec(executor executors.Executor) error {
+	var (
+		err     error
+		bv      *BlockVolumeEntry
+		hvname  string
+		bvHosts nodeHosts
+	)
+	err = bve.db.View(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
+		bv, err = NewBlockVolumeEntryFromId(tx, bve.bvolId)
+		if err != nil {
+			return err
+		}
+		hvname, err = bv.blockHostingVolumeName(txdb)
+		if err != nil {
+			return err
+		}
+		bvHosts, err = bv.hosts(txdb)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		logger.LogError(
+			"failed to get state needed to expand block volume: %v", err)
+		return err
+	}
+	// nothing past this point needs a db reference
+	logger.Info("executing expand of block volume %v in op:%v",
+		bve.bvolId, bve.op.Id)
+	return newTryOnHosts(bvHosts).once().run(func(h string) error {
+		err := executor.BlockVolumeExpand(h, hvname, bv.Info.Name, bve.newSize)
+		if err != nil {
+			logger.LogError("Unable to Expand volume: %v", err)
+			return err
+		}
+		return nil
+	})
+}
+
+func (bve *BlockVolumeExpandOperation) Rollback(executor executors.Executor) error {
+	logger.Info("Starting Rollback for %v op:%v", bve.Label(), bve.op.Id)
+	return rollbackViaClean(bve, executor)
+}
+
+func (bve *BlockVolumeExpandOperation) Finalize() error {
+	return bve.db.Update(func(tx *bolt.Tx) error {
+		bv, e := NewBlockVolumeEntryFromId(tx, bve.bvolId)
+		if e != nil {
+			return e
+		}
+
+		bv.Info.Size = bve.newSize
+
+		bve.op.FinalizeBlockVolume(bv)
+		if e := bv.Save(tx); e != nil {
+			return e
+		}
+
+		bve.op.Delete(tx)
+		return nil
+	})
+}
+
+func (bve *BlockVolumeExpandOperation) Clean(executor executors.Executor) error {
+	logger.Info("Starting Clean for %v op:%v", bve.Label(), bve.op.Id)
+	var (
+		err error
+		bv  *BlockVolumeEntry
+		// hvname is the name of the hosting volume and is required
+		hvname string
+
+		// host mappings for exec-on-up-host try util
+		bvHosts nodeHosts
+	)
+	err = bve.db.View(func(tx *bolt.Tx) error {
+		txdb := wdb.WrapTx(tx)
+		bv, err = NewBlockVolumeEntryFromId(tx, bve.bvolId)
+		if err != nil {
+			return err
+		}
+		hvname, err = bv.blockHostingVolumeName(txdb)
+		if err != nil {
+			return err
+		}
+		bvHosts, err = bv.hosts(txdb)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		logger.LogError(
+			"failed to get state needed to get info of block volume: %v", err)
+		return err
+	}
+	// nothing past this point needs a db reference
+	logger.Info("executing get info of block volume %v in op:%v",
+		bve.bvolId, bve.op.Id)
+	err = newTryOnHosts(bvHosts).once().run(func(h string) error {
+		bvolInfo, err := bv.BlockVolumeInfoFromHost(executor, hvname, h)
+		if err != nil {
+			return err
+		}
+		bve.reclaim.actualSize = bvolInfo.Size
+		return nil
+	})
+
+	return err
+}
+
+func (bve *BlockVolumeExpandOperation) CleanDone() error {
+	logger.Info("Clean is done for %v op:%v", bve.Label(), bve.op.Id)
+	return bve.db.Update(func(tx *bolt.Tx) error {
+		bv, err := NewBlockVolumeEntryFromId(tx, bve.bvolId)
+		if err != nil {
+			return err
+		}
+		if bve.newSize != bve.reclaim.actualSize {
+			logger.Warning("Actual Size %v doesn't match newly requested Size %v",
+				bve.reclaim.actualSize, bve.newSize)
+			volume, err := NewVolumeEntryFromId(tx, bv.Info.BlockHostingVolume)
+			if err != nil {
+				return err
+			}
+			reclaimBhvSize := bve.newSize - bve.reclaim.actualSize
+			if err := volume.ModifyFreeSize(reclaimBhvSize); err != nil {
+				return err
+			}
+			err = volume.Save(tx)
+			if err != nil {
+				return err
+			}
+		} else {
+			logger.Info("Actual Size matches newly requested Size %v", bve.reclaim.actualSize)
+			bv.Info.Size = bve.newSize
+		}
+		bve.op.FinalizeBlockVolume(bv)
+		if err := bv.Save(tx); err != nil {
+			return err
+		}
+		bve.op.Delete(tx)
+		return nil
+	})
+}
+
 // BlockVolumeDeleteOperation implements the operation functions used to
 // delete an existing volume.
 type BlockVolumeDeleteOperation struct {
@@ -545,7 +826,7 @@ func blockVolumesFromOp(db wdb.RODB,
 	err := db.View(func(tx *bolt.Tx) error {
 		for _, a := range op.Actions {
 			switch a.Change {
-			case OpAddBlockVolume, OpDeleteBlockVolume:
+			case OpAddBlockVolume, OpDeleteBlockVolume, OpExpandBlockVolume:
 				v, err := NewBlockVolumeEntryFromId(tx, a.Id)
 				if err != nil {
 					return err

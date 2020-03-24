@@ -42,6 +42,8 @@ type MockExecutor struct {
 	MockHealInfo                 func(host string, volume string) (*executors.HealInfo, error)
 	MockBlockVolumeCreate        func(host string, blockVolume *executors.BlockVolumeRequest) (*executors.BlockVolumeInfo, error)
 	MockBlockVolumeDestroy       func(host string, blockHostingVolumeName string, blockVolumeName string) error
+	MockInfoBlockVolume          func(host string, blockHostingVolumeName string, blockVolumeName string) (*executors.BlockVolumeInfo, error)
+	MockBlockVolumeExpand        func(host string, blockHostingVolumeName string, blockVolumeName string, newSize int) error
 	MockPVS                      func(host string) (*executors.PVSCommandOutput, error)
 	MockVGS                      func(host string) (*executors.VGSCommandOutput, error)
 	MockLVS                      func(host string) (*executors.LVSCommandOutput, error)
@@ -233,6 +235,14 @@ func NewMockExecutor() (*MockExecutor, error) {
 		return nil
 	}
 
+	m.MockInfoBlockVolume = func(host string, blockHostingVolumeName string, blockVolumeName string) (*executors.BlockVolumeInfo, error) {
+		return nil, nil
+	}
+
+	m.MockBlockVolumeExpand = func(host string, blockHostingVolumeName string, blockVolumeName string, newSize int) error {
+		return nil
+	}
+
 	m.MockPVS = func(host string) (*executors.PVSCommandOutput, error) {
 		return &executors.PVSCommandOutput{}, nil
 	}
@@ -369,6 +379,14 @@ func (m *MockExecutor) BlockVolumeCreate(host string, blockVolume *executors.Blo
 
 func (m *MockExecutor) BlockVolumeDestroy(host string, blockHostingVolumeName string, blockVolumeName string) error {
 	return m.MockBlockVolumeDestroy(host, blockHostingVolumeName, blockVolumeName)
+}
+
+func (m *MockExecutor) BlockVolumeExpand(host string, blockHostingVolumeName string, blockVolumeName string, newSize int) error {
+	return m.MockBlockVolumeExpand(host, blockHostingVolumeName, blockVolumeName, newSize)
+}
+
+func (m *MockExecutor) BlockVolumeInfo(host string, blockHostingVolumeName string, blockVolumeName string) (*executors.BlockVolumeInfo, error) {
+	return m.MockInfoBlockVolume(host, blockHostingVolumeName, blockVolumeName)
 }
 
 func (m *MockExecutor) PVS(host string) (*executors.PVSCommandOutput, error) {

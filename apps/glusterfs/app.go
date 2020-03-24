@@ -620,6 +620,11 @@ func (a *App) SetRoutes(router *mux.Router) error {
 			Method:      "GET",
 			Pattern:     "/blockvolumes",
 			HandlerFunc: a.BlockVolumeList},
+		rest.Route{
+			Name:        "BlockVolumeExpand",
+			Method:      "POST",
+			Pattern:     "/blockvolumes/{id:[A-Fa-f0-9]+}/expand",
+			HandlerFunc: a.BlockVolumeExpand},
 
 		// Brick (special)
 		rest.Route{

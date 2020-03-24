@@ -12,7 +12,9 @@ package cmdexec
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/lpabon/godbc"
 
@@ -191,4 +193,164 @@ func (c *CmdExecutor) ListBlockVolumes(host string, blockhostingvolume string) (
 	}
 
 	return blockVolumeList.Blocks, nil
+}
+
+const (
+	GIGABYTE = 1 << (10 * iota)
+	TERABYTE
+	PETABYTE
+	EXABYTE
+)
+
+func toGigaBytes(s string) (int, error) {
+	s = strings.Replace(s, " ", "", -1)
+	s = strings.ToUpper(s)
+
+	i := strings.IndexFunc(s, unicode.IsLetter)
+	if i == -1 {
+		return 0, fmt.Errorf("Not a valid Size")
+	}
+
+	sizeNumber, unitsString := s[:i], s[i:]
+	bytes, err := strconv.ParseFloat(sizeNumber, 64)
+	if err != nil || bytes < 0 {
+		return 0, fmt.Errorf("Not a valid Size")
+	}
+
+	// heketi always requests size in integer and in GiB
+	switch unitsString {
+	case "E", "EB", "EIB":
+		return int(bytes * EXABYTE), nil
+	case "P", "PB", "PIB":
+		return int(bytes * PETABYTE), nil
+	case "T", "TB", "TIB":
+		return int(bytes * TERABYTE), nil
+	case "G", "GB", "GIB":
+		return int(bytes), nil
+	default:
+		return 0, fmt.Errorf("Not a valid Size")
+	}
+}
+
+func (c *CmdExecutor) BlockVolumeInfo(host string, blockhostingvolume string,
+	blockVolumeName string) (*executors.BlockVolumeInfo, error) {
+
+	godbc.Require(host != "")
+	godbc.Require(blockhostingvolume != "")
+	godbc.Require(blockVolumeName != "")
+
+	type CliOutput struct {
+		BlockName              string   `json:"NAME"`
+		BlockHostingVolumeName string   `json:"VOLUME"`
+		Gbid                   string   `json:"GBID"`
+		Size                   string   `json:"SIZE"`
+		Ha                     int      `json:"HA"`
+		Password               string   `json:"PASSWORD"`
+		Portal                 []string `json:"EXPORTED ON"`
+	}
+	commands := []string{fmt.Sprintf("gluster-block info %v/%v --json", blockhostingvolume, blockVolumeName)}
+
+	results, err := c.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands), 10)
+	if err := rex.AnyError(results, err); err != nil {
+		logger.Err(err)
+		return nil, fmt.Errorf("unable to get info of blockvolume %v on block hosting volume %v : %v",
+			blockVolumeName, blockhostingvolume, err)
+	}
+
+	output := results[0].Output
+	if output == "" {
+		output = results[0].ErrOutput
+	}
+
+	var blockVolumeInfoExec CliOutput
+	err = json.Unmarshal([]byte(output), &blockVolumeInfoExec)
+	if err != nil {
+		logger.Warning("Unable to parse gluster-block info output [%v]: %v",
+			output, err)
+		err = fmt.Errorf("Unparsable error during block volume info: %v",
+			output)
+	}
+
+	// if any of the cases above set err, log it and return
+	if err != nil {
+		logger.LogError("Failed BlockVolumeInfo: %v", err)
+		return nil, err
+	}
+
+	var blockVolumeInfo executors.BlockVolumeInfo
+
+	blockVolumeInfo.BlockHosts = blockVolumeInfoExec.Portal
+	blockVolumeInfo.GlusterNode = host
+	blockVolumeInfo.GlusterVolumeName = blockVolumeInfoExec.BlockHostingVolumeName
+	blockVolumeInfo.Hacount = blockVolumeInfoExec.Ha
+	blockVolumeInfo.Iqn = "iqn.2016-12.org.gluster-block:" + blockVolumeInfoExec.Gbid
+	blockVolumeInfo.Name = blockVolumeInfoExec.BlockName
+	blockVolumeInfo.Size, err = toGigaBytes(blockVolumeInfoExec.Size)
+	if err != nil {
+		logger.LogError("Error: %v : %v", err, blockVolumeInfoExec.Size)
+		return nil, err
+	}
+	blockVolumeInfo.Username = blockVolumeInfoExec.Gbid
+	blockVolumeInfo.Password = blockVolumeInfoExec.Password
+
+	return &blockVolumeInfo, nil
+}
+
+func (s *CmdExecutor) BlockVolumeExpand(host string, blockHostingVolumeName string, blockVolumeName string, newSize int) error {
+	godbc.Require(host != "")
+	godbc.Require(blockHostingVolumeName != "")
+	godbc.Require(blockVolumeName != "")
+	godbc.Require(newSize > 0)
+
+	commands := []string{
+		fmt.Sprintf("gluster-block modify %v/%v  size %vGiB --json",
+			blockHostingVolumeName, blockVolumeName, newSize),
+	}
+	results, err := s.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands), 10)
+	if err != nil {
+		// non-command error conditions
+		return err
+	}
+
+	output := results[0].Output
+	if output == "" {
+		output = results[0].ErrOutput
+	}
+
+	type CliOutput struct {
+		Iqn       string   `json:"IQN"`
+		Size      string   `json:"SIZE"`
+		SuccessOn []string `json:"SUCCESSFUL ON"`
+		FailedOn  []string `json:"FAILED ON"`
+		SkippedOn []string `json:"SKIPPED ON"`
+		Result    string   `json:"RESULT"`
+		ErrCod    int      `json:"errCode"`
+		ErrMsg    string   `json:"errMsg"`
+	}
+
+	var blockVolumeExpand CliOutput
+	err = json.Unmarshal([]byte(output), &blockVolumeExpand)
+	if err != nil {
+		logger.Warning("Unable to parse gluster-block output [%v]: %v",
+			output, err)
+		err = fmt.Errorf("Unparsable error during block volume expand: %v",
+			output)
+	} else if blockVolumeExpand.Result == "FAIL" {
+		// the fail flag was set in the output json
+		err = fmt.Errorf("Failed to expand block volume: %v",
+			blockVolumeExpand.ErrMsg)
+	} else if !results.Ok() {
+		// the fail flag is not set but the command still
+		// exited non-zero for some reason
+		err = fmt.Errorf("Failed to expand block volume: %v",
+			results[0].Error())
+	}
+
+	// if any of the cases above set err, log it and return
+	if err != nil {
+		logger.LogError("Failed BlockVolumeExpand: %v", err)
+		return err
+	}
+
+	return nil
 }
