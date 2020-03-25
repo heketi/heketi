@@ -69,7 +69,7 @@ var deviceAddCommand = &cobra.Command{
 	Short: "Add new device to node to be managed by Heketi",
 	Long:  "Add new device to node to be managed by Heketi",
 	Example: `  $ heketi-cli device add \
-      --name=/dev/sdb
+      --name=/dev/sdb \
       --node=3e098cb4407d7109806bb196d9e8f095 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Check arguments
