@@ -17,9 +17,6 @@ Additionally, we would like to note that the Heketi maintenance team does not ma
 Thank you for your understanding.
 
 
-# Workflow
-When a request is received to create a volume, Heketi will first allocate the appropriate storage in a cluster, making sure to place brick replicas across failure domains.  It will then format, then mount the storage to create bricks for the volume requested.  Once all bricks have been automatically created, Heketi will finally satisfy the request by creating, then starting the newly created GlusterFS volume.
-
 # Downloads
 
 Heketi source code can be obtained via the
