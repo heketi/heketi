@@ -32,7 +32,7 @@ Using the Heketi cli, a single device can be added to a node:
 
 ```
 $ heketi-cli device add \
-      --name=/dev/sdb
+      --name=/dev/sdb \
       --node=3e098cb4407d7109806bb196d9e8f095
 ```
 
