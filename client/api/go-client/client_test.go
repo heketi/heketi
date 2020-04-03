@@ -13,7 +13,9 @@
 package client
 
 import (
+	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -1268,4 +1270,60 @@ func TestVolumeSetBlockRestriction(t *testing.T) {
 		})
 	tests.Assert(t, err == nil)
 	tests.Assert(t, v2.BlockInfo.Restriction == api.Unrestricted)
+}
+
+func TestClientOptions_DialContext(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+
+	// Setup the server
+	ts := setupHeketiServer(app)
+	defer ts.Close()
+
+	// Setup the client
+	customDialerCalled := false
+	opts := DefaultClientOptions()
+	opts.PollDelay = 10 // all server functions are faked
+	opts.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		customDialerCalled = true
+		return net.Dial(network, addr)
+	}
+	c := NewClientWithOptions(ts.URL, "admin", TEST_ADMIN_KEY, opts)
+
+	as, err := c.AdminStatusGet()
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, as.State == api.AdminStateNormal,
+		"expected as.State == api.AdminStateNormal, got:", as.State)
+	tests.Assert(t, customDialerCalled, "custom dialer was not invoked")
+}
+
+func TestClientOptions_DialContext_Negative(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+
+	// Setup the server
+	ts := setupHeketiServer(app)
+	defer ts.Close()
+
+	// Setup the client
+	customDialerCalled := false
+	opts := DefaultClientOptions()
+	opts.PollDelay = 10 // all server functions are faked
+	opts.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		customDialerCalled = true
+		return nil, fmt.Errorf("unimplemented")
+	}
+	c := NewClientWithOptions(ts.URL, "admin", TEST_ADMIN_KEY, opts)
+
+	_, err := c.AdminStatusGet()
+	tests.Assert(t, err != nil, "expected an error from AdminStatusGet()")
+	tests.Assert(t, customDialerCalled, "custom dialer was not invoked")
 }
