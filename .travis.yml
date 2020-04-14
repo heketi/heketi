@@ -38,13 +38,13 @@ matrix:
     name: make release on Go 1.13
     arch: amd64
   - go: "1.10"
-    name: Test using Go 1.10
+    name: Test using Go 1.10 on s390
     arch: s390x
   - go: "1.11"
-    name: Test using Go 1.11
+    name: Test using Go 1.11 on s390
     arch: s390x
-  - go: "1.13"
-    name: Test using Go 1.13
-    arch: s390x
+#  - go: "1.13"
+#    name: Test using Go 1.13 on s390
+#    arch: s390x
 script:
 - make all test COVERAGE=true TESTOPTIONS="-vcstdout" && bash .travis-coverage
