@@ -19,38 +19,38 @@ USAGE
   heketi-cli volume create [options]
 
 OPTIONS
-  -clusters string
+  --clusters string
     	
 	Optional: Comma separated list of cluster ids where this volume
 	must be allocated. If ommitted, Heketi will allocate the volume
 	on any of the configured clusters which have the available space.
 	Providing a set of clusters will ensure Heketi allocates storage
 	for this volume only in the clusters specified.
-  -disperse-data int
+  --disperse-data int
     	
 	Optional: Dispersion value for durability type 'disperse'.
 	Default is 4 (default 4)
-  -durability string
+  --durability string
     	
 	Optional: Durability type.  Values are:
 		none: No durability.  Distributed volume only.
 		replicate: (Default) Distributed-Replica volume.
 		disperse: Distributed-Erasure Coded volume. (default "replicate")
-  -name string
+  --name string
     	
 	Optional: Name of volume. Only set if really necessary
-  -redundancy int
+  --redundancy int
     	
 	Optional: Redundancy value for durability type 'disperse'.
 	Default is 2 (default 2)
-  -replica int
+  --replica int
     	
 	Replica value for durability type 'replicate'.
 	Default is 3 (default 3)
-  -size int
+  --size int
     	
 	Size of volume in GiB (default -1)
-  -snapshot-factor float
+  --snapshot-factor float
     	
 	Optional: Amount of storage to allocate for snapshot support.
 	Must be greater 1.0.  For example if a 10TiB volume requires 5TiB of
@@ -66,22 +66,25 @@ So, it is not possible create a volume of size less than 1GiB.
 
 EXAMPLES
   * Create a 100GiB replica 3 volume:
-      $ heketi-cli volume create -size=100
+      $ heketi-cli volume create --size=100
 
   * Create a 100GiB replica 3 volume specifying two specific clusters:
-      $ heketi-cli volume create -size=100 \
-          -clusters=0995098e1284ddccb46c7752d142c832,60d46d518074b13a04ce1022c8c7193c
+      $ heketi-cli volume create --size=100 \
+          --clusters=0995098e1284ddccb46c7752d142c832,60d46d518074b13a04ce1022c8c7193c
 
   * Create a 100GiB replica 2 volume with 50GiB of snapshot storage:
-      $ heketi-cli volume create -size=100 -snapshot-factor=1.5 -replica=2 
+      $ heketi-cli volume create --size=100 --snapshot-factor=1.5 --replica=2
 
   * Create a 100GiB distributed volume
-      $ heketi-cli volume create -size=100 -durabilty=none
+      $ heketi-cli volume create --size=100 --durability=none
 
   * Create a 100GiB erasure coded 4+2 volume with 25GiB snapshot storage:
-      $ heketi-cli volume create -size=100 -durability=disperse -snapshot-factor=1.25
+      $ heketi-cli volume create --size=100 --durability=disperse --snapshot-factor=1.25
 
   * Create a 100GiB erasure coded 8+3 volume with 25GiB snapshot storage:
-      $ heketi-cli volume create -size=100 -durability=disperse -snapshot-factor=1.25 \
-          -disperse-data=8 -redundancy=3
+      $ heketi-cli volume create --size=100 --durability=disperse --snapshot-factor=1.25 \
+          --disperse-data=8 --redundancy=3
+
+  * Create a 100GiB distributed volume which supports performance related volume options.
+      $ heketi-cli volume create --size=100 --durability=none --gluster-volume-options="performance.rda-cache-limit 10MB","performance.nl-cache-positive-entry no"
 ```
