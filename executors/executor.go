@@ -41,6 +41,8 @@ type Executor interface {
 	SetLogLevel(level string)
 	BlockVolumeCreate(host string, blockVolume *BlockVolumeRequest) (*BlockVolumeInfo, error)
 	BlockVolumeDestroy(host string, blockHostingVolumeName string, blockVolumeName string) error
+	BlockVolumeExpand(host string, blockHostingVolumeName string, blockVolumeName string, newSize int) error
+	BlockVolumeInfo(host string, blockhostingvolume string, blockVolumeName string) (*BlockVolumeInfo, error)
 	PVS(host string) (*PVSCommandOutput, error)
 	VGS(host string) (*VGSCommandOutput, error)
 	LVS(host string) (*LVSCommandOutput, error)

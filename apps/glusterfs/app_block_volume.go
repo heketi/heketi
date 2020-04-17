@@ -176,3 +176,50 @@ func (a *App) BlockVolumeDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+func (a *App) BlockVolumeExpand(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	var msg api.BlockVolumeExpandRequest
+	err := utils.GetJsonFromRequest(r, &msg)
+	if err != nil {
+		http.Error(w, "request unable to be parsed", 422)
+		return
+	}
+	err = msg.Validate()
+	if err != nil {
+		http.Error(w, "validation failed: "+err.Error(), http.StatusBadRequest)
+		logger.LogError("validation failed: " + err.Error())
+		return
+	}
+
+	if msg.Size < 1 {
+		http.Error(w, "Invalid block volume size", http.StatusBadRequest)
+		logger.LogError("Invalid block volume size")
+		return
+	}
+
+	err = a.db.View(func(tx *bolt.Tx) error {
+		var err error
+		_, err = NewBlockVolumeEntryFromId(tx, id)
+		if err == ErrNotFound {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return err
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return
+	}
+
+	bve := NewBlockVolumeExpandOperation(id, a.db, msg.Size)
+	if err := AsyncHttpOperation(a, w, r, bve); err != nil {
+		OperationHttpErrorf(w, err, "Failed to allocate block volume expansion: %v", err)
+		return
+	}
+}

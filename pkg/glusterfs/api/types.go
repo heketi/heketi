@@ -432,6 +432,16 @@ type BlockVolumeListResponse struct {
 	BlockVolumes []string `json:"blockvolumes"`
 }
 
+type BlockVolumeExpandRequest struct {
+	Size int `json:"new_size"`
+}
+
+func (blockVolExpandReq BlockVolumeExpandRequest) Validate() error {
+	return validation.ValidateStruct(&blockVolExpandReq,
+		validation.Field(&blockVolExpandReq.Size, validation.Required, validation.Min(1)),
+	)
+}
+
 type LogLevelInfo struct {
 	// should contain one or more logger to log-level-name mapping
 	LogLevel map[string]string `json:"loglevel"`

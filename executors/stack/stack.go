@@ -232,6 +232,26 @@ func (es *ExecutorStack) BlockVolumeDestroy(host string, blockHostingVolumeName 
 	return NotSupportedError
 }
 
+func (es *ExecutorStack) BlockVolumeInfo(host string, blockHostingVolumeName string, blockVolumeName string) (*executors.BlockVolumeInfo, error) {
+	for _, e := range es.executors {
+		bvi, err := e.BlockVolumeInfo(host, blockHostingVolumeName, blockVolumeName)
+		if err != NotSupportedError {
+			return bvi, err
+		}
+	}
+	return nil, NotSupportedError
+}
+
+func (es *ExecutorStack) BlockVolumeExpand(host string, blockHostingVolumeName string, blockVolumeName string, newSize int) error {
+	for _, e := range es.executors {
+		err := e.BlockVolumeExpand(host, blockHostingVolumeName, blockVolumeName, newSize)
+		if err != NotSupportedError {
+			return err
+		}
+	}
+	return NotSupportedError
+}
+
 func (es *ExecutorStack) VolumeClone(
 	host string, vsr *executors.VolumeCloneRequest) (*executors.Volume, error) {
 
