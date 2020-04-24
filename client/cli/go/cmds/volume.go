@@ -283,6 +283,8 @@ var volumeExpandCommand = &cobra.Command{
 	Short: "Expand a volume",
 	Long:  "Expand a volume",
 	Example: `  * Add 10GiB to a volume
+    $ heketi-cli volume expand 60d46d518074b13a04ce1022c8c7193c --expand-size=10
+                   [or, you can also use]
     $ heketi-cli volume expand --volume=60d46d518074b13a04ce1022c8c7193c --expand-size=10
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -292,7 +294,13 @@ var volumeExpandCommand = &cobra.Command{
 		}
 
 		if id == "" {
-			return errors.New("Missing volume id")
+			s := cmd.Flags().Args()
+			if len(s) < 1 {
+				return errors.New("Missing volume id")
+			}
+
+			// Set block volume id
+			id = cmd.Flags().Arg(0)
 		}
 
 		// Create request
