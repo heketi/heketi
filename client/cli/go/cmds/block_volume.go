@@ -54,7 +54,7 @@ func init() {
 			"\n\tfor this volume only in the clusters specified.")
 	blockVolumeExpandCommand.Flags().IntVar(&bvNewSize, "new-size", 0,
 		"\n\tNet new size of block volume in GiB")
-	blockVolumeExpandCommand.Flags().StringVar(&bvId, "block-volume", "",
+	blockVolumeExpandCommand.Flags().StringVar(&bvId, "blockvolume", "",
 		"\n\tId of block volume to expand")
 	blockVolumeCreateCommand.SilenceUsage = true
 	blockVolumeDeleteCommand.SilenceUsage = true
@@ -250,17 +250,28 @@ var blockVolumeListCommand = &cobra.Command{
 }
 
 var blockVolumeExpandCommand = &cobra.Command{
-	Use:     "expand",
-	Short:   "Expand an existing block volume",
-	Long:    "Expand an existing block volume",
-	Example: "  $ heketi-cli blockvolume expand --block-volume=60d46d518074b13a04ce1022c8c7193c --new-size=10",
+	Use:   "expand",
+	Short: "Expand an existing block volume",
+	Long:  "Expand an existing block volume",
+	Example: `  * Expand a block volume to net new size 100GiB
+      $ heketi-cli blockvolume expand 60d46d518074b13a04ce1022c8c7193c --new-size=100
+                     [or, you can also use]
+      $ heketi-cli blockvolume expand --blockvolume=60d46d518074b13a04ce1022c8c7193c --new-size=100
+`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+
 		if bvId == "" {
-			return errors.New("Missing --block-volume=$id")
+			s := cmd.Flags().Args()
+			if len(s) < 1 {
+				return errors.New("Missing block volume id")
+			}
+
+			// Set block volume id
+			bvId = cmd.Flags().Arg(0)
 		}
 
 		if bvNewSize == 0 {
-			return errors.New("Missing --new-size=$GiB")
+			return errors.New("Missing block volume net new size")
 		}
 
 		// Create request
