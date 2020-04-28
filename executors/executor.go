@@ -314,6 +314,7 @@ type BlockVolumeRequest struct {
 type BlockVolumeInfo struct {
 	Name              string
 	Size              int
+	UsableSize        int
 	GlusterVolumeName string
 	GlusterNode       string
 	Hacount           int
