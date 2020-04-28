@@ -422,6 +422,7 @@ type BlockVolumeInfo struct {
 	} `json:"blockvolume"`
 	Cluster            string `json:"cluster,omitempty"`
 	BlockHostingVolume string `json:"blockhostingvolume,omitempty"`
+	UsableSize         int    `json:"usablesize,omitempty"`
 }
 
 type BlockVolumeInfoResponse struct {
@@ -564,6 +565,7 @@ func NewBlockVolumeInfoResponse() *BlockVolumeInfoResponse {
 func (v *BlockVolumeInfoResponse) String() string {
 	s := fmt.Sprintf("Name: %v\n"+
 		"Size: %v\n"+
+		"UsableSize: %v\n"+
 		"Volume Id: %v\n"+
 		"Cluster Id: %v\n"+
 		"Hosts: %v\n"+
@@ -575,6 +577,7 @@ func (v *BlockVolumeInfoResponse) String() string {
 		"Block Hosting Volume: %v\n",
 		v.Name,
 		v.Size,
+		v.UsableSize,
 		v.Id,
 		v.Cluster,
 		v.BlockVolume.Hosts,

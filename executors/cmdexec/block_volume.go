@@ -240,13 +240,14 @@ func (c *CmdExecutor) BlockVolumeInfo(host string, blockhostingvolume string,
 	godbc.Require(blockVolumeName != "")
 
 	type CliOutput struct {
-		BlockName              string   `json:"NAME"`
-		BlockHostingVolumeName string   `json:"VOLUME"`
-		Gbid                   string   `json:"GBID"`
-		Size                   string   `json:"SIZE"`
-		Ha                     int      `json:"HA"`
-		Password               string   `json:"PASSWORD"`
-		Portal                 []string `json:"EXPORTED ON"`
+		BlockName              string            `json:"NAME"`
+		BlockHostingVolumeName string            `json:"VOLUME"`
+		Gbid                   string            `json:"GBID"`
+		Size                   string            `json:"SIZE"`
+		Ha                     int               `json:"HA"`
+		Password               string            `json:"PASSWORD"`
+		Portal                 []string          `json:"EXPORTED ON"`
+		ResizeFailed           map[string]string `json:"RESIZE FAILED ON,omitempty"`
 	}
 	commands := []string{fmt.Sprintf("gluster-block info %v/%v --json", blockhostingvolume, blockVolumeName)}
 
@@ -292,6 +293,23 @@ func (c *CmdExecutor) BlockVolumeInfo(host string, blockhostingvolume string,
 	}
 	blockVolumeInfo.Username = blockVolumeInfoExec.Gbid
 	blockVolumeInfo.Password = blockVolumeInfoExec.Password
+
+	// From gluster-block output,
+	// get the Minimum Size from the list of Resize failed nodes
+	minSize := -1
+	for _, size := range blockVolumeInfoExec.ResizeFailed {
+		value, err := toGigaBytes(size)
+		if err != nil {
+			logger.LogError("Error calculating usable size: %v : %v", err, size)
+			return nil, err
+		}
+		if minSize == -1 || value < minSize {
+			minSize = value
+		}
+	}
+	if minSize != -1 {
+		blockVolumeInfo.UsableSize = minSize
+	}
 
 	return &blockVolumeInfo, nil
 }

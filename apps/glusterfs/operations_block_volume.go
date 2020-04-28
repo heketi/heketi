@@ -240,6 +240,7 @@ func (bvc *BlockVolumeCreateOperation) Finalize() error {
 			}
 		}
 
+		bvc.bvol.Info.UsableSize = bvc.bvol.Info.Size
 		// block volume properties are mutated by the results coming
 		// back during exec. These properties need to be saved back
 		// to the db.
@@ -380,6 +381,7 @@ func (bvc *BlockVolumeCreateOperation) CleanDone() error {
 // expand an existing blockvolume.
 type blockVolExpandReclaim struct {
 	actualSize int
+	usableSize int
 }
 
 type BlockVolumeExpandOperation struct {
@@ -475,7 +477,7 @@ func (bve *BlockVolumeExpandOperation) Build() error {
 			return ErrConflict
 		}
 
-		if bve.newSize == bv.Info.Size {
+		if bve.newSize == bv.Info.Size && bv.Info.UsableSize == bv.Info.Size {
 			err := logger.LogError("Requested new-size %v is same as current "+
 				"block volume size %v, nothing to be done.", bve.newSize, bv.Info.Size)
 			return err
@@ -486,7 +488,10 @@ func (bve *BlockVolumeExpandOperation) Build() error {
 		}
 
 		requiredFreeSize := bve.newSize - bv.Info.Size
-		if bhv.Info.BlockInfo.FreeSize < requiredFreeSize {
+		if requiredFreeSize == 0 {
+			logger.Info("Re-executing block volume expansion on [%v]: usable size is not same as the size", bve.bvolId)
+			return nil
+		} else if bhv.Info.BlockInfo.FreeSize < requiredFreeSize {
 			logger.LogError("Free size %v on block hosting volume is less than requested delta size %v.",
 				bhv.Info.BlockInfo.FreeSize, requiredFreeSize)
 			return ErrNoSpace
@@ -564,6 +569,8 @@ func (bve *BlockVolumeExpandOperation) Finalize() error {
 		}
 
 		bv.Info.Size = bve.newSize
+		bv.Info.UsableSize = bve.newSize
+		logger.Info("Usable Size is same as new Size: %v", bv.Info.UsableSize)
 
 		bve.op.FinalizeBlockVolume(bv)
 		if e := bv.Save(tx); e != nil {
@@ -616,6 +623,7 @@ func (bve *BlockVolumeExpandOperation) Clean(executor executors.Executor) error 
 			return err
 		}
 		bve.reclaim.actualSize = bvolInfo.Size
+		bve.reclaim.usableSize = bvolInfo.UsableSize
 		return nil
 	})
 
@@ -647,6 +655,14 @@ func (bve *BlockVolumeExpandOperation) CleanDone() error {
 		} else {
 			logger.Info("Actual Size matches newly requested Size %v", bve.reclaim.actualSize)
 			bv.Info.Size = bve.newSize
+
+			// Older versions of gluster-block might not have a field in the
+			// `# gluster-block info ...` output from which we calculate usableSize.
+			// In such cases reclaim.usableSize will be set to zero.
+			if bve.reclaim.usableSize > 0 {
+				bv.Info.UsableSize = bve.reclaim.usableSize
+				logger.Info("Usable Size is: %v", bv.Info.UsableSize)
+			}
 		}
 		bve.op.FinalizeBlockVolume(bv)
 		if err := bv.Save(tx); err != nil {
