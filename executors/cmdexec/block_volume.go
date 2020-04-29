@@ -337,8 +337,11 @@ func (s *CmdExecutor) BlockVolumeExpand(host string, blockHostingVolumeName stri
 			output)
 	} else if blockVolumeExpand.Result == "FAIL" {
 		// the fail flag was set in the output json
-		err = fmt.Errorf("Failed to expand block volume: %v",
-			blockVolumeExpand.ErrMsg)
+		if blockVolumeExpand.ErrMsg != "" {
+			err = fmt.Errorf("Failed to expand block volume: %v (see logs for details, and retry the operation)", blockVolumeExpand.ErrMsg)
+		} else {
+			err = fmt.Errorf("Failed to expand block volume (see logs for details, and retry the operation)")
+		}
 	} else if !results.Ok() {
 		// the fail flag is not set but the command still
 		// exited non-zero for some reason
