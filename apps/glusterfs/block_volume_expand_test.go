@@ -68,7 +68,7 @@ func TestBlockVolumeExpandOperationFinalize(t *testing.T) {
 	// verify,
 	// the block volume, block hosting volume and bricks exist
 	// there are no pending ops
-	// the size of block volume and FreeSize on block hosting volume
+	// the size, usable size of block volume and FreeSize on block hosting volume
 	app.db.View(func(tx *bolt.Tx) error {
 		bvols, e := BlockVolumeList(tx)
 		tests.Assert(t, e == nil, "expected e == nil, got", e)
@@ -94,6 +94,7 @@ func TestBlockVolumeExpandOperationFinalize(t *testing.T) {
 			bv, e := NewBlockVolumeEntryFromId(tx, id)
 			tests.Assert(t, e == nil, "expected e == nil, got", e)
 			tests.Assert(t, bv.Info.Size == 100, "expected block volume size == 100, got:", bv.Info.Size)
+			tests.Assert(t, bv.Info.UsableSize == 100, "expected block volume usable size == 100, got:", bv.Info.UsableSize)
 		}
 		return nil
 	})
@@ -131,6 +132,7 @@ func TestBlockVolumeExpandOperationFinalize(t *testing.T) {
 			bv, e := NewBlockVolumeEntryFromId(tx, id)
 			tests.Assert(t, e == nil, "expected e == nil, got", e)
 			tests.Assert(t, bv.Info.Size == 100, "expected block volume size == 100, got:", bv.Info.Size)
+			tests.Assert(t, bv.Info.UsableSize == 100, "expected block volume usable size == 100, got:", bv.Info.UsableSize)
 		}
 		return nil
 	})
@@ -143,7 +145,7 @@ func TestBlockVolumeExpandOperationFinalize(t *testing.T) {
 
 	// verify,
 	// the pending op is gone
-	// new block volume size is effective
+	// new block volume size and usable size is effective
 	app.db.View(func(tx *bolt.Tx) error {
 		bvols, e := BlockVolumeList(tx)
 		tests.Assert(t, e == nil, "expected e == nil, got", e)
@@ -169,6 +171,7 @@ func TestBlockVolumeExpandOperationFinalize(t *testing.T) {
 			bv, e := NewBlockVolumeEntryFromId(tx, id)
 			tests.Assert(t, e == nil, "expected e == nil, got", e)
 			tests.Assert(t, bv.Info.Size == 150, "expected block volume size == 150, got:", bv.Info.Size)
+			tests.Assert(t, bv.Info.UsableSize == 150, "expected block volume usable size == 150, got:", bv.Info.UsableSize)
 		}
 		return nil
 	})
@@ -324,7 +327,7 @@ func TestBlockVolumeExpandOperationRollbackGbCliFailedCompletely(t *testing.T) {
 	// verify,
 	// the block volume, block hosting volume and bricks exist
 	// there are no pending ops
-	// the size of block volume and FreeSize on block hosting volume
+	// the size, usable size of block volume and FreeSize on block hosting volume
 	app.db.View(func(tx *bolt.Tx) error {
 		bvols, e := BlockVolumeList(tx)
 		tests.Assert(t, e == nil, "expected e == nil, got", e)
@@ -350,6 +353,7 @@ func TestBlockVolumeExpandOperationRollbackGbCliFailedCompletely(t *testing.T) {
 			bv, e := NewBlockVolumeEntryFromId(tx, id)
 			tests.Assert(t, e == nil, "expected e == nil, got", e)
 			tests.Assert(t, bv.Info.Size == 100, "expected block volume size == 100, got:", bv.Info.Size)
+			tests.Assert(t, bv.Info.UsableSize == 100, "expected block volume usable size == 100, got:", bv.Info.UsableSize)
 		}
 		return nil
 	})
@@ -389,6 +393,7 @@ func TestBlockVolumeExpandOperationRollbackGbCliFailedCompletely(t *testing.T) {
 			blockvolume, e = NewBlockVolumeEntryFromId(tx, id)
 			tests.Assert(t, e == nil, "expected e == nil, got", e)
 			tests.Assert(t, blockvolume.Info.Size == 100, "expected block volume size == 100, got:", blockvolume.Info.Size)
+			tests.Assert(t, blockvolume.Info.UsableSize == 100, "expected block volume usable size == 100, got:", blockvolume.Info.UsableSize)
 		}
 		return nil
 	})
@@ -414,7 +419,8 @@ func TestBlockVolumeExpandOperationRollbackGbCliFailedCompletely(t *testing.T) {
 		blockVolumeInfo.Hacount = blockvolume.Info.Hacount
 		blockVolumeInfo.Iqn = "Fake Iqn"
 		blockVolumeInfo.Name = blockvolume.Info.Name
-		blockVolumeInfo.Size = 100 // original/old size
+		blockVolumeInfo.Size = 100       // original/old size
+		blockVolumeInfo.UsableSize = 100 // original/old size
 		blockVolumeInfo.Username = "Fake Username"
 		blockVolumeInfo.Password = "Fake Password"
 
@@ -427,7 +433,7 @@ func TestBlockVolumeExpandOperationRollbackGbCliFailedCompletely(t *testing.T) {
 	// verify,
 	// there are no pending ops
 	// block hosting volume free size is reset
-	// block volume size is same as Initial
+	// block volume size, usable size is same as Initial
 	app.db.View(func(tx *bolt.Tx) error {
 		bvols, e := BlockVolumeList(tx)
 		tests.Assert(t, e == nil, "expected e == nil, got", e)
@@ -453,6 +459,7 @@ func TestBlockVolumeExpandOperationRollbackGbCliFailedCompletely(t *testing.T) {
 			bv, e := NewBlockVolumeEntryFromId(tx, id)
 			tests.Assert(t, e == nil, "expected e == nil, got", e)
 			tests.Assert(t, bv.Info.Size == 100, "expected block volume size == 100, got:", bv.Info.Size)
+			tests.Assert(t, bv.Info.UsableSize == 100, "expected block volume usable size == 100, got:", bv.Info.UsableSize)
 		}
 		return nil
 	})
@@ -505,7 +512,7 @@ func TestBlockVolumeExpandOperationRollbackGbCliFailedPartially(t *testing.T) {
 	// verify,
 	// the block volume, block hosting volume and bricks exist
 	// there are no pending ops
-	// the size of block volume and FreeSize on block hosting volume
+	// the size, usable size of block volume and FreeSize on block hosting volume
 	app.db.View(func(tx *bolt.Tx) error {
 		bvols, e := BlockVolumeList(tx)
 		tests.Assert(t, e == nil, "expected e == nil, got", e)
@@ -531,6 +538,7 @@ func TestBlockVolumeExpandOperationRollbackGbCliFailedPartially(t *testing.T) {
 			bv, e := NewBlockVolumeEntryFromId(tx, id)
 			tests.Assert(t, e == nil, "expected e == nil, got", e)
 			tests.Assert(t, bv.Info.Size == 100, "expected block volume size == 100, got:", bv.Info.Size)
+			tests.Assert(t, bv.Info.UsableSize == 100, "expected block volume usable size == 100, got:", bv.Info.UsableSize)
 		}
 		return nil
 	})
@@ -570,6 +578,7 @@ func TestBlockVolumeExpandOperationRollbackGbCliFailedPartially(t *testing.T) {
 			blockvolume, e = NewBlockVolumeEntryFromId(tx, id)
 			tests.Assert(t, e == nil, "expected e == nil, got", e)
 			tests.Assert(t, blockvolume.Info.Size == 100, "expected block volume size == 100, got:", blockvolume.Info.Size)
+			tests.Assert(t, blockvolume.Info.UsableSize == 100, "expected block volume usable size == 100, got:", blockvolume.Info.UsableSize)
 		}
 		return nil
 	})
@@ -595,7 +604,8 @@ func TestBlockVolumeExpandOperationRollbackGbCliFailedPartially(t *testing.T) {
 		blockVolumeInfo.Hacount = blockvolume.Info.Hacount
 		blockVolumeInfo.Iqn = "Fake Iqn"
 		blockVolumeInfo.Name = blockvolume.Info.Name
-		blockVolumeInfo.Size = 150 // new size
+		blockVolumeInfo.Size = 150       // new size
+		blockVolumeInfo.UsableSize = 100 // old size, as there is a partial failure
 		blockVolumeInfo.Username = "Fake Username"
 		blockVolumeInfo.Password = "Fake Password"
 
@@ -634,6 +644,7 @@ func TestBlockVolumeExpandOperationRollbackGbCliFailedPartially(t *testing.T) {
 			bv, e := NewBlockVolumeEntryFromId(tx, id)
 			tests.Assert(t, e == nil, "expected e == nil, got", e)
 			tests.Assert(t, bv.Info.Size == 150, "expected block volume size == 150, got:", bv.Info.Size)
+			tests.Assert(t, bv.Info.UsableSize == 100, "expected block volume usable size == 100, got:", bv.Info.UsableSize)
 		}
 		return nil
 	})
@@ -701,7 +712,7 @@ func TestBlockVolumeExpandOperationBuildParallel(t *testing.T) {
 	// verify,
 	// the two block volumes, block hosting volume and bricks exist
 	// there are no pending ops
-	// the size of two block volumes and FreeSize on block hosting volume
+	// the size, usable size of two block volumes and FreeSize on block hosting volume
 	app.db.View(func(tx *bolt.Tx) error {
 		bvols, e := BlockVolumeList(tx)
 		tests.Assert(t, e == nil, "expected e == nil, got", e)
@@ -727,6 +738,7 @@ func TestBlockVolumeExpandOperationBuildParallel(t *testing.T) {
 			bv, e := NewBlockVolumeEntryFromId(tx, id)
 			tests.Assert(t, e == nil, "expected e == nil, got", e)
 			tests.Assert(t, bv.Info.Size == 100, "expected block volume size == 100, got:", bv.Info.Size)
+			tests.Assert(t, bv.Info.UsableSize == 100, "expected block volume usable size == 100, got:", bv.Info.UsableSize)
 		}
 		return nil
 	})
@@ -743,7 +755,7 @@ func TestBlockVolumeExpandOperationBuildParallel(t *testing.T) {
 	// verify,
 	// we have a pending op for the block volume 1 expand
 	// as the Build for block volume 1 is done, block hosting volume FreeSize should be 0
-	// block volumes size is same as Initial
+	// block volumes size, usable size is same as Initial
 	var volume *VolumeEntry
 	var blockvolume1 *BlockVolumeEntry
 	var blockvolume2 *BlockVolumeEntry
@@ -769,10 +781,12 @@ func TestBlockVolumeExpandOperationBuildParallel(t *testing.T) {
 		blockvolume1, e = NewBlockVolumeEntryFromId(tx, bve1.bvolId)
 		tests.Assert(t, e == nil, "expected e == nil, got", e)
 		tests.Assert(t, blockvolume1.Info.Size == 100, "expected block volume size == 100, got:", blockvolume1.Info.Size)
+		tests.Assert(t, blockvolume1.Info.UsableSize == 100, "expected block volume usable size == 100, got:", blockvolume1.Info.UsableSize)
 
 		blockvolume2, e = NewBlockVolumeEntryFromId(tx, bve2.bvolId)
 		tests.Assert(t, e == nil, "expected e == nil, got", e)
 		tests.Assert(t, blockvolume2.Info.Size == 100, "expected block volume size == 100, got:", blockvolume2.Info.Size)
+		tests.Assert(t, blockvolume2.Info.UsableSize == 100, "expected block volume usable size == 100, got:", blockvolume2.Info.UsableSize)
 		return nil
 	})
 
@@ -788,7 +802,8 @@ func TestBlockVolumeExpandOperationBuildParallel(t *testing.T) {
 		blockVolumeInfo.Hacount = blockvolume1.Info.Hacount
 		blockVolumeInfo.Iqn = "Fake Iqn"
 		blockVolumeInfo.Name = blockvolume1.Info.Name
-		blockVolumeInfo.Size = 100 // original/old size
+		blockVolumeInfo.Size = 100       // original/old size
+		blockVolumeInfo.UsableSize = 100 // old size
 		blockVolumeInfo.Username = "Fake Username"
 		blockVolumeInfo.Password = "Fake Password"
 
@@ -801,7 +816,7 @@ func TestBlockVolumeExpandOperationBuildParallel(t *testing.T) {
 	// verify,
 	// there are no pending ops
 	// block hosting volume free size is reset
-	// block volumes size is same as Initial
+	// block volumes size, usable size is same as Initial
 	app.db.View(func(tx *bolt.Tx) error {
 		bvols, e := BlockVolumeList(tx)
 		tests.Assert(t, e == nil, "expected e == nil, got", e)
@@ -827,6 +842,7 @@ func TestBlockVolumeExpandOperationBuildParallel(t *testing.T) {
 			bv, e := NewBlockVolumeEntryFromId(tx, id)
 			tests.Assert(t, e == nil, "expected e == nil, got", e)
 			tests.Assert(t, bv.Info.Size == 100, "expected block volume size == 100, got:", bv.Info.Size)
+			tests.Assert(t, bv.Info.UsableSize == 100, "expected block volume usable size == 100, got:", bv.Info.UsableSize)
 		}
 		return nil
 	})
@@ -839,7 +855,7 @@ func TestBlockVolumeExpandOperationBuildParallel(t *testing.T) {
 	// verify,
 	// we have a pending op for the block volume 2 expand
 	// as the Build for block volume 2 is done, block hosting volume FreeSize should be 0
-	// block volumes size is same as Initial
+	// block volumes size, usable size is same as Initial
 	app.db.View(func(tx *bolt.Tx) error {
 		bvols, e := BlockVolumeList(tx)
 		tests.Assert(t, e == nil, "expected e == nil, got", e)
@@ -863,6 +879,7 @@ func TestBlockVolumeExpandOperationBuildParallel(t *testing.T) {
 			bv, e := NewBlockVolumeEntryFromId(tx, id)
 			tests.Assert(t, e == nil, "expected e == nil, got", e)
 			tests.Assert(t, bv.Info.Size == 100, "expected block volume size == 100, got:", bv.Info.Size)
+			tests.Assert(t, bv.Info.UsableSize == 100, "expected block volume usable size == 100, got:", bv.Info.UsableSize)
 		}
 		return nil
 	})
@@ -875,7 +892,7 @@ func TestBlockVolumeExpandOperationBuildParallel(t *testing.T) {
 
 	// verify,
 	// the pending op is gone
-	// block volume 2 new size is effective
+	// block volume 2 new size, usable size is effective
 	app.db.View(func(tx *bolt.Tx) error {
 		bvols, e := BlockVolumeList(tx)
 		tests.Assert(t, e == nil, "expected e == nil, got", e)
@@ -898,10 +915,12 @@ func TestBlockVolumeExpandOperationBuildParallel(t *testing.T) {
 		bv1, e := NewBlockVolumeEntryFromId(tx, bve1.bvolId)
 		tests.Assert(t, e == nil, "expected e == nil, got", e)
 		tests.Assert(t, bv1.Info.Size == 100, "expected block volume size == 100, got:", bv1.Info.Size)
+		tests.Assert(t, bv1.Info.UsableSize == 100, "expected block volume usable size == 100, got:", bv1.Info.UsableSize)
 
 		bv2, e := NewBlockVolumeEntryFromId(tx, bve2.bvolId)
 		tests.Assert(t, e == nil, "expected e == nil, got", e)
 		tests.Assert(t, bv2.Info.Size == 978, "expected block volume size == 978, got:", bv2.Info.Size)
+		tests.Assert(t, bv2.Info.UsableSize == 978, "expected block volume usable size == 978, got:", bv2.Info.UsableSize)
 		return nil
 	})
 }

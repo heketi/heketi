@@ -342,4 +342,18 @@ func TestBlockVolumeExpand(t *testing.T) {
 	volInfo, err = heketi.VolumeInfo(bvol.BlockHostingVolume)
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, volInfo.BlockInfo.FreeSize == 96, "expected volInfo.BlockInfo.FreeSize == 96 got:", volInfo.BlockInfo.FreeSize)
+
+	// Expand the block volume to 150G size and check usable size
+	bvolExpReq.Size = 150
+	_, err = heketi.BlockVolumeExpand(bvol.Id, bvolExpReq)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	// Check if block volume size and usable size matches 150G
+	bvolInfo, err = heketi.BlockVolumeInfo(bvol.Id)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, bvolInfo.Size == 150, "expected bvolInfo.Size == 150 got:", bvolInfo.Size)
+	tests.Assert(t, bvolInfo.UsableSize == 150, "expected bvolInfo.UsableSize == 150 got:", bvolInfo.UsableSize)
+	// Check if the FreeSize on block hosting volume is [196G - 150G] = 46G
+	volInfo, err = heketi.VolumeInfo(bvol.BlockHostingVolume)
+	tests.Assert(t, err == nil, "expected err == nil, got:", err)
+	tests.Assert(t, volInfo.BlockInfo.FreeSize == 46, "expected volInfo.BlockInfo.FreeSize == 46 got:", volInfo.BlockInfo.FreeSize)
 }
