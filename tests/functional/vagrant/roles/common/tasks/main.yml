@@ -14,7 +14,7 @@
   yum:
     name:
       - epel-release
-      - centos-release-gluster41
+      - centos-release-gluster6
     state: present
 
 - name: copy private key
