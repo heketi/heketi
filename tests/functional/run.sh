@@ -5,8 +5,9 @@ SCRIPT_DIR="$(cd "$(dirname "${0}")" && pwd)"
 show_help() {
 	echo "$0 [options]"
 	echo "  Options:"
-	echo "    --test T  Run test suite T (can be specified multiple times)"
-	echo "    --help    Display this help text"
+	echo "    -d|--tests-dir    Specify the directory name"
+	echo "    --test T          Run test suite T (can be specified multiple times)"
+	echo "    --help            Display this help text"
 	echo ""
 }
 
