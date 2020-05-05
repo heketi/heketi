@@ -17,6 +17,9 @@ import (
 )
 
 type MockExecutor struct {
+	// default error returned for all non-overridden functions
+	DefaultMockFuncError error
+
 	// These functions can be overwritten for testing
 	MockGlusterdCheck            func(host string) error
 	MockPeerProbe                func(exec_host, newnode string) error
@@ -58,15 +61,15 @@ func NewMockExecutor() (*MockExecutor, error) {
 	m := &MockExecutor{}
 
 	m.MockGlusterdCheck = func(host string) error {
-		return nil
+		return m.DefaultMockFuncError
 	}
 
 	m.MockPeerProbe = func(exec_host, newnode string) error {
-		return nil
+		return m.DefaultMockFuncError
 	}
 
 	m.MockPeerDetach = func(exec_host, newnode string) error {
-		return nil
+		return m.DefaultMockFuncError
 	}
 
 	m.MockDeviceSetup = func(host, device, vgid string, destroy bool) (*executors.DeviceInfo, error) {
@@ -76,11 +79,11 @@ func NewMockExecutor() (*MockExecutor, error) {
 		d.FreeSize = dsize
 		d.UsedSize = 0
 		d.ExtentSize = 4096
-		return d, nil
+		return d, m.DefaultMockFuncError
 	}
 
 	m.MockDeviceTeardown = func(host string, dh *executors.DeviceVgHandle) error {
-		return nil
+		return m.DefaultMockFuncError
 	}
 
 	m.MockGetDeviceInfo = func(host string, dh *executors.DeviceVgHandle) (*executors.DeviceInfo, error) {
@@ -90,39 +93,39 @@ func NewMockExecutor() (*MockExecutor, error) {
 		d.FreeSize = dsize
 		d.UsedSize = 0
 		d.ExtentSize = 4096
-		return d, nil
+		return d, m.DefaultMockFuncError
 	}
 
 	m.MockBrickCreate = func(host string, brick *executors.BrickRequest) (*executors.BrickInfo, error) {
 		b := &executors.BrickInfo{
 			Path: "/mockpath",
 		}
-		return b, nil
+		return b, m.DefaultMockFuncError
 	}
 
 	m.MockBrickDestroy = func(host string, brick *executors.BrickRequest) (bool, error) {
 		// We'll assume that the space of the brick has been reclaimed
-		return true, nil
+		return true, m.DefaultMockFuncError
 	}
 
 	m.MockVolumeCreate = func(host string, volume *executors.VolumeRequest) (*executors.Volume, error) {
-		return &executors.Volume{}, nil
+		return &executors.Volume{}, m.DefaultMockFuncError
 	}
 
 	m.MockVolumeExpand = func(host string, volume *executors.VolumeRequest) (*executors.Volume, error) {
-		return &executors.Volume{}, nil
+		return &executors.Volume{}, m.DefaultMockFuncError
 	}
 
 	m.MockVolumeDestroy = func(host string, volume string) error {
-		return nil
+		return m.DefaultMockFuncError
 	}
 
 	m.MockVolumeDestroyCheck = func(host, volume string) error {
-		return nil
+		return m.DefaultMockFuncError
 	}
 
 	m.MockVolumeReplaceBrick = func(host string, volume string, oldBrick *executors.BrickInfo, newBrick *executors.BrickInfo) error {
-		return nil
+		return m.DefaultMockFuncError
 	}
 
 	m.MockVolumeInfo = func(host string, volume string) (*executors.Volume, error) {
@@ -139,7 +142,7 @@ func NewMockExecutor() (*MockExecutor, error) {
 		vinfo := &executors.Volume{
 			Bricks: Bricks,
 		}
-		return vinfo, nil
+		return vinfo, m.DefaultMockFuncError
 	}
 
 	m.MockVolumesInfo = func(host string) (*executors.VolInfo, error) {
@@ -167,7 +170,7 @@ func NewMockExecutor() (*MockExecutor, error) {
 		volinfo := &executors.VolInfo{
 			Volumes: volumes,
 		}
-		return volinfo, nil
+		return volinfo, m.DefaultMockFuncError
 	}
 
 	m.MockVolumeSnapshot = func(host string, vsr *executors.VolumeSnapshotRequest) (*executors.Snapshot, error) {
@@ -176,7 +179,7 @@ func NewMockExecutor() (*MockExecutor, error) {
 			// TODO: fill more properties
 		}
 
-		return snapshot, nil
+		return snapshot, m.DefaultMockFuncError
 	}
 
 	m.MockVolumeClone = func(host string, vcr *executors.VolumeCloneRequest) (*executors.Volume, error) {
@@ -185,7 +188,7 @@ func NewMockExecutor() (*MockExecutor, error) {
 			// TODO: fill more properties
 		}
 
-		return vinfo, nil
+		return vinfo, m.DefaultMockFuncError
 	}
 
 	m.MockSnapshotCloneVolume = func(host string, scr *executors.SnapshotCloneRequest) (*executors.Volume, error) {
@@ -194,7 +197,7 @@ func NewMockExecutor() (*MockExecutor, error) {
 			// TODO: fill more properties
 		}
 
-		return vinfo, nil
+		return vinfo, m.DefaultMockFuncError
 	}
 
 	m.MockSnapshotCloneBlockVolume = func(host string, scr *executors.SnapshotCloneRequest) (*executors.BlockVolumeInfo, error) {
@@ -203,15 +206,15 @@ func NewMockExecutor() (*MockExecutor, error) {
 			// TODO: fill more properties
 		}
 
-		return bvi, nil
+		return bvi, m.DefaultMockFuncError
 	}
 
 	m.MockSnapshotDestroy = func(host string, snapshot string) error {
-		return nil
+		return m.DefaultMockFuncError
 	}
 
 	m.MockHealInfo = func(host string, volume string) (*executors.HealInfo, error) {
-		return &executors.HealInfo{}, nil
+		return &executors.HealInfo{}, m.DefaultMockFuncError
 	}
 
 	m.MockBlockVolumeCreate = func(host string, blockVolume *executors.BlockVolumeRequest) (*executors.BlockVolumeInfo, error) {
@@ -228,43 +231,43 @@ func NewMockExecutor() (*MockExecutor, error) {
 		blockVolumeInfo.Name = blockVolume.Name
 		blockVolumeInfo.Size = blockVolume.Size
 
-		return &blockVolumeInfo, nil
+		return &blockVolumeInfo, m.DefaultMockFuncError
 	}
 
 	m.MockBlockVolumeDestroy = func(host string, blockHostingVolumeName string, blockVolumeName string) error {
-		return nil
+		return m.DefaultMockFuncError
 	}
 
 	m.MockBlockVolumeInfo = func(host string, blockHostingVolumeName string, blockVolumeName string) (*executors.BlockVolumeInfo, error) {
-		return nil, nil
+		return nil, m.DefaultMockFuncError
 	}
 
 	m.MockBlockVolumeExpand = func(host string, blockHostingVolumeName string, blockVolumeName string, newSize int) error {
-		return nil
+		return m.DefaultMockFuncError
 	}
 
 	m.MockPVS = func(host string) (*executors.PVSCommandOutput, error) {
-		return &executors.PVSCommandOutput{}, nil
+		return &executors.PVSCommandOutput{}, m.DefaultMockFuncError
 	}
 
 	m.MockVGS = func(host string) (*executors.VGSCommandOutput, error) {
-		return &executors.VGSCommandOutput{}, nil
+		return &executors.VGSCommandOutput{}, m.DefaultMockFuncError
 	}
 
 	m.MockLVS = func(host string) (*executors.LVSCommandOutput, error) {
-		return &executors.LVSCommandOutput{}, nil
+		return &executors.LVSCommandOutput{}, m.DefaultMockFuncError
 	}
 
 	m.MockGetBrickMountStatus = func(host string) (*executors.BricksMountStatus, error) {
-		return &executors.BricksMountStatus{}, nil
+		return &executors.BricksMountStatus{}, m.DefaultMockFuncError
 	}
 
 	m.MockListBlockVolumes = func(host string, blockhostingvolume string) ([]string, error) {
-		return []string{}, nil
+		return []string{}, m.DefaultMockFuncError
 	}
 
 	m.MockVolumeModify = func(host string, mod *executors.VolumeModifyRequest) error {
-		return nil
+		return m.DefaultMockFuncError
 	}
 
 	m.DeviceSizeGb = func() uint64 {
