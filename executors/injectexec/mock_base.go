@@ -107,5 +107,11 @@ func newMockBase() *mockexec.MockExecutor {
 	m.MockVolumeModify = func(host string, mod *executors.VolumeModifyRequest) error {
 		return NotSupportedError
 	}
+	m.MockBlockVolumeExpand = func(host string, blockHostingVolumeName string, blockVolumeName string, newSize int) error {
+		return NotSupportedError
+	}
+	m.MockBlockVolumeInfo = func(host string, blockHostingVolumeName string, blockVolumeName string) (*executors.BlockVolumeInfo, error) {
+		return nil, NotSupportedError
+	}
 	return m
 }
