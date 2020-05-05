@@ -404,7 +404,7 @@ func TestBlockVolumeExpandOperationRollbackGbCliFailedCompletely(t *testing.T) {
 
 	// pretend that we have called gluster-block cli and got some info
 	// assumption, gluster-block failed way before expanding the backend file
-	app.xo.MockInfoBlockVolume = func(host string, blockhostingvolume string,
+	app.xo.MockBlockVolumeInfo = func(host string, blockhostingvolume string,
 		blockVolumeName string) (*executors.BlockVolumeInfo, error) {
 		var blockVolumeInfo executors.BlockVolumeInfo
 
@@ -585,7 +585,7 @@ func TestBlockVolumeExpandOperationRollbackGbCliFailedPartially(t *testing.T) {
 
 	// pretend that we have called gluster-block cli and got some info
 	// assumption, gluster-block failed after expanding the backend file
-	app.xo.MockInfoBlockVolume = func(host string, blockhostingvolume string,
+	app.xo.MockBlockVolumeInfo = func(host string, blockhostingvolume string,
 		blockVolumeName string) (*executors.BlockVolumeInfo, error) {
 		var blockVolumeInfo executors.BlockVolumeInfo
 
@@ -778,7 +778,7 @@ func TestBlockVolumeExpandOperationBuildParallel(t *testing.T) {
 
 	// pretend that we have called gluster-block cli and got some info
 	// assumption, gluster-block failed way before expanding the backend file
-	app.xo.MockInfoBlockVolume = func(host string, blockhostingvolume string,
+	app.xo.MockBlockVolumeInfo = func(host string, blockhostingvolume string,
 		blockVolumeName string) (*executors.BlockVolumeInfo, error) {
 		var blockVolumeInfo executors.BlockVolumeInfo
 
