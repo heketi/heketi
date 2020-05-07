@@ -1,5 +1,8 @@
 #!/bin/bash
 
+set -x
+DEFAULT_TESTENV="${SCRIPT_DIR}/../vagrant"
+
 fail() {
     echo "==> ERROR: $*"
     exit 1
@@ -99,7 +102,7 @@ setup_test_environment() {
         *)
             _sudo "${envup}" || fail "unable to start test environment"
         ;;
-    esac    
+    esac
 }
 
 teardown_environment() {
@@ -140,8 +143,6 @@ pause_test() {
 }
 
 functional_tests() {
-    DEFAULT_TESTENV="${SCRIPT_DIR}/../vagrant"
-
     setup_test_paths
     setup_test_environment
     if [[ "$HEKETI_TEST_SERVER" == "no" ]]; then
