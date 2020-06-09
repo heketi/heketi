@@ -32,16 +32,7 @@
 
   "_glusterfs_comment": "GlusterFS Configuration",
   "glusterfs": {
-    "_executor_comment": [
-      "Execute plugin. Possible choices: mock, ssh",
-      "mock: This setting is used for testing and development.",
-      "      It will not send commands to any node.",
-      "ssh:  This setting will notify Heketi to ssh to the nodes.",
-      "      It will need the values in sshexec to be configured.",
-      "kubernetes: Communicate with GlusterFS containers over",
-      "            Kubernetes exec api."
-    ],
-    "executor": "mock",
+    "executor": "testing-only-mock",
 
     "_sshexec_comment": "SSH username and private key file information",
     "sshexec": {

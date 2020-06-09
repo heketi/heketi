@@ -18,7 +18,7 @@ func NewTestApp(dbfile string) *App {
 	// Create simple configuration for unit tests
 	appConfig := &GlusterFSConfig{
 		DBfile:                    dbfile,
-		Executor:                  "mock",
+		Executor:                  "testing-only-mock",
 		CreateBlockHostingVolumes: true,
 		BlockHostingVolumeSize:    1100,
 		MaxInflightOperations:     64, // avoid throttling test code

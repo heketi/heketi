@@ -167,7 +167,7 @@ func TestVolumeCreateSmallSize(t *testing.T) {
 	defer os.Remove(tmpfile)
 
 	conf := &GlusterFSConfig{
-		Executor:     "mock",
+		Executor:     mockExec,
 		DBfile:       tmpfile,
 		BrickMinSize: 4,
 	}

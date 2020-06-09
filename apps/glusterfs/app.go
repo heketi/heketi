@@ -136,7 +136,7 @@ func (app *App) setup(conf *GlusterFSConfig) error {
 
 	// Setup executor
 	switch app.conf.Executor {
-	case "mock":
+	case "testing-only-mock":
 		app.xo, err = mockexec.NewMockExecutor()
 		app.executor = app.xo
 	case "kube", "kubernetes":
@@ -152,7 +152,11 @@ func (app *App) setup(conf *GlusterFSConfig) error {
 		app.executor = injectexec.NewInjectExecutor(
 			app.executor, &app.conf.InjectConfig)
 	default:
-		return fmt.Errorf("invalid executor: %v", app.conf.Executor)
+		return fmt.Errorf(
+			"unknown executor %q"+
+				" (valid executors include \"ssh\" and \"kubernetes\"."+
+				" \"mock\" has been removed, it was for testing heketi only)",
+			app.conf.Executor)
 	}
 	if err != nil {
 		logger.Err(err)

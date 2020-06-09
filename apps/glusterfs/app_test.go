@@ -22,11 +22,13 @@ import (
 	"github.com/heketi/tests"
 )
 
+const mockExec = "testing-only-mock"
+
 func TestAppAdvsettings(t *testing.T) {
 
 	dbfile := tests.Tempfile()
 	defer os.Remove(dbfile)
-	os.Setenv("HEKETI_EXECUTOR", "mock")
+	os.Setenv("HEKETI_EXECUTOR", mockExec)
 	defer os.Unsetenv("HEKETI_EXECUTOR")
 	os.Setenv("HEKETI_DB_PATH", dbfile)
 	defer os.Unsetenv("HEKETI_DB_PATH")
@@ -48,7 +50,7 @@ func TestAppAdvsettings(t *testing.T) {
 	app, _ := NewApp(conf)
 	defer app.Close()
 	tests.Assert(t, app != nil)
-	tests.Assert(t, app.conf.Executor == "mock")
+	tests.Assert(t, app.conf.Executor == mockExec)
 	tests.Assert(t, app.conf.DBfile == dbfile)
 	tests.Assert(t, BrickMaxNum == 33)
 	tests.Assert(t, BrickMaxSize == 1*TB)
@@ -71,7 +73,7 @@ func TestAppLogLevel(t *testing.T) {
 	logger.SetLevel(logging.LEVEL_DEBUG)
 	for _, level := range levels {
 		conf := &GlusterFSConfig{
-			Executor:  "mock",
+			Executor:  mockExec,
 			Allocator: "simple",
 			DBfile:    dbfile,
 			Loglevel:  level,
@@ -100,7 +102,7 @@ func TestAppLogLevel(t *testing.T) {
 	// Test that an unknown value does not change the loglevel
 	logger.SetLevel(logging.LEVEL_NOLOG)
 	conf := &GlusterFSConfig{
-		Executor:  "mock",
+		Executor:  mockExec,
 		Allocator: "simple",
 		DBfile:    dbfile,
 		Loglevel:  "blah",
@@ -119,7 +121,7 @@ func TestAppReadOnlyDb(t *testing.T) {
 
 	// First, create a db
 	conf := &GlusterFSConfig{
-		Executor: "mock",
+		Executor: mockExec,
 		DBfile:   dbfile,
 	}
 	app, _ := NewApp(conf)
@@ -174,7 +176,7 @@ func TestAppBlockSettings(t *testing.T) {
 
 	dbfile := tests.Tempfile()
 	defer os.Remove(dbfile)
-	os.Setenv("HEKETI_EXECUTOR", "mock")
+	os.Setenv("HEKETI_EXECUTOR", mockExec)
 	defer os.Unsetenv("HEKETI_EXECUTOR")
 	os.Setenv("HEKETI_DB_PATH", dbfile)
 	defer os.Unsetenv("HEKETI_DB_PATH")
@@ -196,7 +198,7 @@ func TestAppBlockSettings(t *testing.T) {
 	app, _ := NewApp(conf)
 	defer app.Close()
 	tests.Assert(t, app != nil)
-	tests.Assert(t, app.conf.Executor == "mock")
+	tests.Assert(t, app.conf.Executor == mockExec)
 	tests.Assert(t, app.conf.DBfile == dbfile)
 	tests.Assert(t, CreateBlockHostingVolumes == true)
 	tests.Assert(t, BlockHostingVolumeSize == 500)

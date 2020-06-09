@@ -79,7 +79,7 @@ func NewHeketiMockTestServer(
 
 	// Create simple configuration for unit tests
 	appConfig := &glusterfs.GlusterFSConfig{
-		Executor: "mock",
+		Executor: mockExec,
 		Loglevel: loglevel,
 		DBfile:   h.DbFile,
 	}

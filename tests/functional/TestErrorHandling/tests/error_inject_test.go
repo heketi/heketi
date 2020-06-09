@@ -61,7 +61,7 @@ func TestConfigChange(t *testing.T) {
 
 	// verify that we can enable the mock executor and use it
 	UpdateConfig(origConf, heketiServer.ConfPath, func(c *config.Config) {
-		c.GlusterFS.Executor = "mock"
+		c.GlusterFS.Executor = "testing-only-mock"
 	})
 	heketiServer.HelloPort = "8080"
 	testutils.ServerRestarted(t, heketiServer)
