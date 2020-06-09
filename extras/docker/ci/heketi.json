@@ -21,7 +21,7 @@
 	"glusterfs" : {
 
 		"_executor_comment": "Execute plugin. Possible choices: mock, ssh",
-		"executor" : "mock",
+		"executor" : "CONFIGURE ME",
 
 		"_db_comment": "Database file name",
 		"db" : "/var/lib/heketi/heketi.db"
