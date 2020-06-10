@@ -46,7 +46,7 @@ func (s *CmdExecutor) BlockVolumeCreate(host string,
 		auth_set = "disable"
 	}
 
-	cmd := fmt.Sprintf(
+	cmd := rex.ToCmd(fmt.Sprintf(
 		"gluster-block create %v/%v ha %v auth %v prealloc %v %v %vGiB --json",
 		volume.GlusterVolumeName,
 		volume.Name,
@@ -54,13 +54,15 @@ func (s *CmdExecutor) BlockVolumeCreate(host string,
 		auth_set,
 		s.BlockVolumeDefaultPrealloc(),
 		strings.Join(volume.BlockHosts, ","),
-		volume.Size)
+		volume.Size))
 
-	// Initialize the commands with the create command
-	commands := []string{cmd}
+	if volume.Auth {
+		// Do not write the stdout and stderr to logfile, this might contain sensitive data
+		cmd.Options.Quiet = true
+	}
 
 	// Execute command
-	results, err := s.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands), 10)
+	results, err := s.RemoteExecutor.ExecCommands(host, rex.Cmds{cmd}, 10)
 	if err != nil {
 		return nil, err
 	}
@@ -249,9 +251,12 @@ func (c *CmdExecutor) BlockVolumeInfo(host string, blockhostingvolume string,
 		Portal                 []string          `json:"EXPORTED ON"`
 		ResizeFailed           map[string]string `json:"RESIZE FAILED ON,omitempty"`
 	}
-	commands := []string{fmt.Sprintf("gluster-block info %v/%v --json", blockhostingvolume, blockVolumeName)}
 
-	results, err := c.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands), 10)
+	cmd := rex.ToCmd(fmt.Sprintf("gluster-block info %v/%v --json", blockhostingvolume, blockVolumeName))
+	// Do not write the stdout and stderr to logfile, this might contain sensitive data
+	cmd.Options.Quiet = true
+
+	results, err := c.RemoteExecutor.ExecCommands(host, rex.Cmds{cmd}, 10)
 	if err := rex.AnyError(results, err); err != nil {
 		logger.Err(err)
 		return nil, fmt.Errorf("unable to get info of blockvolume %v on block hosting volume %v : %v",
