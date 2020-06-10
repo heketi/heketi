@@ -109,6 +109,11 @@ func (s *CmdExecutor) BlockVolumeCreate(host string,
 	blockVolumeInfo.Username = blockVolumeCreate.Username
 	blockVolumeInfo.Password = blockVolumeCreate.Password
 
+	logger.Info("{'IQN': '%v', 'USERNAME': '%v', 'AUTH': '%v', 'PORTAL(S)': [ '%v' ], 'RESULT': '%v', 'errCode': %v, 'errMsg': '%v' }",
+		blockVolumeCreate.Iqn, blockVolumeCreate.Username, auth_set,
+		blockVolumeCreate.Portal, blockVolumeCreate.Result,
+		blockVolumeCreate.ErrCode, blockVolumeCreate.ErrMsg)
+
 	return &blockVolumeInfo, nil
 }
 
@@ -298,6 +303,23 @@ func (c *CmdExecutor) BlockVolumeInfo(host string, blockhostingvolume string,
 	}
 	blockVolumeInfo.Username = blockVolumeInfoExec.Gbid
 	blockVolumeInfo.Password = blockVolumeInfoExec.Password
+
+	auth_set := "enable"
+	if blockVolumeInfoExec.Password == "" {
+		auth_set = "disable"
+	}
+
+	var resizeFailed string
+	if len(blockVolumeInfoExec.ResizeFailed) != 0 {
+		for key, value := range blockVolumeInfoExec.ResizeFailed {
+			resizeFailed += fmt.Sprintf("'%v' : '%v', ", key, value)
+		}
+	}
+
+	logger.Info("{ 'NAME': '%v', 'VOLUME': '%v', 'GBID': '%v', 'SIZE': '%v', 'HA': %v, 'AUTH': '%v', 'EXPORTED ON': [ '%v' ], 'RESIZE FAILED ON': { %v } }",
+		blockVolumeInfoExec.BlockName, blockVolumeInfoExec.BlockHostingVolumeName,
+		blockVolumeInfoExec.Gbid, blockVolumeInfoExec.Size, blockVolumeInfoExec.Ha,
+		auth_set, blockVolumeInfoExec.Portal, resizeFailed)
 
 	// From gluster-block output,
 	// get the Minimum Size from the list of Resize failed nodes
