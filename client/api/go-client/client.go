@@ -193,7 +193,13 @@ func (c *Client) doBasic(req *http.Request) (*http.Response, error) {
 		<-c.throttle
 	}()
 
-	t := defaultTransportClone()
+	t := &http.Transport{}
+	// Previous logic was to use http.DefaultTransport only when tlsClientConfig
+	// is nil. That logic is preserved here to keep tests passing.
+	if c.tlsClientConfig == nil {
+		t = defaultTransportClone()
+	}
+
 	if c.opts.DialContext != nil {
 		t.DialContext = c.opts.DialContext
 	}
