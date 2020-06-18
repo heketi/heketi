@@ -285,7 +285,7 @@ func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Show that the key has been deleted
-		logger.Info("Deleted node [%s]", id)
+		logger.Info("Deleted device [%s]", id)
 
 		return "", nil
 	})
