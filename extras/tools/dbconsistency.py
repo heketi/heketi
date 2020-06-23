@@ -36,6 +36,12 @@ def check_cluster(data, cid, cluster):
             report('Cluster', cid, 'unknown block volume', vid)
     if not unique_elements(cluster[INFO]['blockvolumes']):
         report('Cluster', cid, 'duplicate ids in block volume list')
+    if not unique_elements(cluster[INFO]['nodes']):
+        report('Cluster', cid, 'duplicate ids in nodes list')
+    for nid in cluster[INFO]['nodes']:
+        if nid not in data['nodeentries']:
+            report('Cluster', cid, 'unknown node', nid)
+
 
 
 def check_brick(data, bid, brick):
@@ -134,6 +140,11 @@ def check_device(data, did, device):
             bsum += b["TpSize"] + b["PoolMetadataSize"]
     if not unique_elements(device['Bricks']):
         report('Device', did, 'duplicate ids in brick list')
+    nid = device['NodeId']
+    if nid not in data['nodeentries']:
+        report('Device', did, 'node entry not found', nid)
+    elif did not in data['nodeentries'][nid]['Devices']:
+        report('Device', did, 'not linked by node', nid)
     s = device[INFO]["storage"]
     if s["total"] != s["free"] + s["used"]:
         report("Device", did, "size values differ",
@@ -142,6 +153,23 @@ def check_device(data, did, device):
         report("Device", did, "size values differ",
                "used={} brick-sum={}".format(s["used"], bsum))
     _check_pending('Device', did, device, data)
+
+
+def check_node(data, nid, node):
+    if nid != node[INFO]['id']:
+        report('Node', nid, 'id mismatch', device[INFO]['id'])
+    cid = node[INFO]['cluster']
+    if cid not in data['clusterentries']:
+        report('Node', nid, 'invalid cluster id', cid)
+    elif nid not in data['clusterentries'][cid][INFO]['nodes']:
+        report('Node', nid, 'not linked by cluster', cid)
+    if not unique_elements(node['Devices']):
+        report('Node', nid, 'duplicate ids in device list')
+    for did in node['Devices']:
+        if did not in data['deviceentries']:
+            report('Node', nid, 'unknown device', did)
+        elif nid != data['deviceentries'][did]['NodeId']:
+            report('Node', nid, 'points to mismatched device', nid)
 
 
 def check_pending(data, pid, pop):
@@ -198,6 +226,9 @@ def check_db(data):
 
     for pid, p in data['pendingoperations'].items():
         check_pending(data, pid, p)
+
+    for nid, n in data['nodeentries'].items():
+        check_node(data, nid, n)
 
 
 def summarize_db(data):
