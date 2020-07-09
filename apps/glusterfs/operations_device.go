@@ -505,7 +505,15 @@ func (beo *BrickEvictOperation) execGetReplacmentInfo(
 	if err != nil {
 		return err
 	}
+
 	node := old.node.ManageHostName()
+	err = executor.GlusterdCheck(node)
+	if err != nil {
+		node, err = GetVerifiedManageHostname(beo.db, executor, old.node.Info.NodeAddRequest.ClusterId)
+		if err != nil {
+			return err
+		}
+	}
 
 	bs, index, err := old.volume.getBrickSetForBrickId(
 		beo.db, executor, old.brick.Info.Id, node)
