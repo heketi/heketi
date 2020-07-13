@@ -43,6 +43,8 @@ func init() {
 		"Id of the node which has this device")
 	deviceAddCommand.Flags().Bool("destroy-existing-data", false,
 		"[DANGEROUS] Destroy any existing data on the device.")
+	deviceRemoveCommand.Flags().Bool("skip-heal", false,
+		"[DANGEROUS] Skip the heal check while device remove.")
 	deviceSetTagsCommand.Flags().BoolP("exact", "e", false,
 		"Set the object to this exact set of tags. Overwrites existing tags.")
 	deviceRmTagsCommand.Flags().Bool("all", false,
@@ -163,6 +165,20 @@ var deviceRemoveCommand = &cobra.Command{
 		//set clusterId
 		deviceId := cmd.Flags().Arg(0)
 
+		skipHeal, err := cmd.Flags().GetBool("skip-heal")
+		if err != nil {
+			return err
+		}
+
+		if skipHeal {
+			var option string
+			fmt.Println("Skip heal is dangerous and can lead to data loss of volume. Enter 'YES' to continue")
+			fmt.Scanln(&option)
+			if option != "YES" {
+				return fmt.Errorf("%v is an unknown option", option)
+			}
+		}
+
 		// Create a client
 		heketi, err := newHeketiClient()
 		if err != nil {
@@ -173,6 +189,11 @@ var deviceRemoveCommand = &cobra.Command{
 		req := &api.StateRequest{
 			State: "failed",
 		}
+
+		if skipHeal {
+			req.HealCheck = api.HealCheckDisable
+		}
+
 		err = heketi.DeviceState(deviceId, req)
 		if err == nil {
 			fmt.Fprintf(stdout, "Device %v is now removed\n", deviceId)
