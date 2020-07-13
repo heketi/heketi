@@ -528,9 +528,13 @@ func (beo *BrickEvictOperation) execGetReplacmentInfo(
 		return err
 	}
 
-	err = old.volume.canReplaceBrickInBrickSet(beo.db, executor, node, bs, index)
-	if err != nil {
-		return err
+	if beo.healCheck != api.HealCheckDisable {
+		err = old.volume.canReplaceBrickInBrickSet(beo.db, executor, node, bs, index)
+		if err != nil {
+			return err
+		}
+	} else {
+		logger.Info("skip heal info check for volume %+v", old.volume)
 	}
 	beo.replaceBrickSet = bs
 	beo.replaceIndex = index
