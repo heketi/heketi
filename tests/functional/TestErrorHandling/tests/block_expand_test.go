@@ -46,7 +46,7 @@ func TestBlockExpandInject(t *testing.T) {
 	CopyFile(baseConf, heketiServer.ConfPath)
 
 	defer func() {
-		CopyFile(baseConf, heketiServer.ConfPath)
+		CopyFile(origConf, heketiServer.ConfPath)
 		testutils.ServerRestarted(t, heketiServer)
 		testCluster.Teardown(t)
 		testutils.ServerStopped(t, heketiServer)
