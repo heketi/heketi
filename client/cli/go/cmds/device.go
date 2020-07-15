@@ -330,12 +330,12 @@ func syncDevicesWithClusterId(heketi *client.Client, clusterId string) error {
 	}
 
 	// Iterate over Clusters
-	for cluster, _ := range topoinfo.ClusterList {
+	for cluster := range topoinfo.ClusterList {
 		thisCluster := topoinfo.ClusterList[cluster]
 		// check cluster id.
 		if thisCluster.Id == clusterId {
 			// iterate over Nodes
-			for node, _ := range thisCluster.Nodes {
+			for node := range thisCluster.Nodes {
 				thisNode := thisCluster.Nodes[node]
 				// resync every Device in this Node
 				for _, device := range thisNode.DevicesInfo {
