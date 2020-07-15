@@ -51,7 +51,7 @@ if [[ "${#TESTS[@]}" -eq 0 ]]; then
 #	TESTS+=("TestUpgrade")
 #	TESTS+=("TestEnabledTLS")
 fi
-export HEKETI_TEST_GO_TEST_RUN=TestBlockExpandInject
+#export HEKETI_TEST_GO_TEST_RUN=TestBlockExpandInject
 
 # install glide
 if ! command -v glide ; then
