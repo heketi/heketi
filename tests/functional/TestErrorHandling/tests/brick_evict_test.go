@@ -113,7 +113,7 @@ func TestBrickEvict(t *testing.T) {
 		for _, b := range vinfo1.Bricks {
 			evictBricks[b.Id] = true
 		}
-		for toEvict, _ := range evictBricks {
+		for toEvict := range evictBricks {
 			err = heketi.BrickEvict(toEvict, nil)
 			tests.Assert(t, err == nil, "expected err == nil, got:", err)
 		}
@@ -144,7 +144,7 @@ func TestBrickEvict(t *testing.T) {
 		evictResults := map[string]error{}
 		wg := sync.WaitGroup{}
 		l := sync.Mutex{}
-		for toEvict, _ := range evictBricks {
+		for toEvict := range evictBricks {
 			wg.Add(1)
 			go func(toEvict string) {
 				defer wg.Done()
