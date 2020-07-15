@@ -44,13 +44,14 @@ while true ; do
 done
 
 if [[ "${#TESTS[@]}" -eq 0 ]]; then
-	TESTS+=("TestSelfTest")
-	TESTS+=("TestSmokeTest")
+#	TESTS+=("TestSelfTest")
+#	TESTS+=("TestSmokeTest")
 	TESTS+=("TestErrorHandling")
-	TESTS+=("TestVolumeNotDeletedWhenNodeIsDown")
-	TESTS+=("TestUpgrade")
-	TESTS+=("TestEnabledTLS")
+#	TESTS+=("TestVolumeNotDeletedWhenNodeIsDown")
+#	TESTS+=("TestUpgrade")
+#	TESTS+=("TestEnabledTLS")
 fi
+export HEKETI_TEST_GO_TEST_RUN=TestBlockExpandInject
 
 # install glide
 if ! command -v glide ; then
