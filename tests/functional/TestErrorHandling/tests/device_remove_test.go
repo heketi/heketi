@@ -17,6 +17,7 @@ package tests
 import (
 	"os"
 	"path"
+	"strings"
 	"testing"
 	"time"
 
@@ -70,6 +71,117 @@ func TestDeviceRemoveOperation(t *testing.T) {
 		_, err := heketi.VolumeCreate(volReq)
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	}
+
+	t.Run("verifyHealCheckEnable", func(t *testing.T) {
+		var err error
+		deviceToRemove := getDeviceToRemove(t)
+		defer enableAllDevices(t)
+
+		UpdateConfig(origConf, heketiServer.ConfPath, func(c *config.Config) {
+			c.GlusterFS.Executor = "inject/ssh"
+			c.GlusterFS.InjectConfig.CmdInjection.CmdHooks = inj.CmdHooks{
+				inj.CmdHook{
+					Cmd: ".* volume heal .* info --xml",
+					Reaction: inj.Reaction{
+						Result: `i like to run heal info and give fake result`,
+					},
+				},
+			}
+		})
+
+		testutils.ServerRestarted(t, heketiServer)
+
+		err = heketi.DeviceState(deviceToRemove, &api.StateRequest{
+			api.EntryStateOffline,
+			api.HealCheckEnable,
+		})
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+		err = heketi.DeviceState(deviceToRemove, &api.StateRequest{
+			api.EntryStateFailed,
+			api.HealCheckEnable,
+		})
+		tests.Assert(t,
+			strings.HasPrefix(err.Error(), "Unable to determine heal info of volume"),
+			"expected to ran gluster volume heal info")
+
+		// there should not be any pending ops in the db
+		l, err := heketi.PendingOperationList()
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(l.PendingOperations) == 0,
+			"expected len(l.PendingOperations) == 0, got:",
+			len(l.PendingOperations))
+	})
+
+	t.Run("verifyHealCheckDisable", func(t *testing.T) {
+		var err error
+		deviceToRemove := getDeviceToRemove(t)
+		defer enableAllDevices(t)
+
+		UpdateConfig(origConf, heketiServer.ConfPath, func(c *config.Config) {
+			c.GlusterFS.Executor = "inject/ssh"
+			c.GlusterFS.InjectConfig.CmdInjection.CmdHooks = inj.CmdHooks{
+				inj.CmdHook{
+					Cmd: ".* volume heal .* info --xml",
+					Reaction: inj.Reaction{
+						Result: `i like to run heal info and give fake result`,
+						Err:    `i like to show fake error`,
+					},
+				},
+			}
+		})
+
+		testutils.ServerRestarted(t, heketiServer)
+
+		err = heketi.DeviceState(deviceToRemove, &api.StateRequest{
+			api.EntryStateOffline,
+			api.HealCheckEnable,
+		})
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+		err = heketi.DeviceState(deviceToRemove, &api.StateRequest{
+			api.EntryStateFailed,
+			api.HealCheckDisable,
+		})
+		tests.Assert(t, err == nil, "expected to not ran gluster volume info")
+
+		// there should not be any pending ops in the db
+		l, err := heketi.PendingOperationList()
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(l.PendingOperations) == 0,
+			"expected len(l.PendingOperations) == 0, got:",
+			len(l.PendingOperations))
+	})
+
+	t.Run("happyPathHealCheckDisabled", func(t *testing.T) {
+		var err error
+		deviceToRemove := getDeviceToRemove(t)
+		defer enableAllDevices(t)
+
+		err = heketi.DeviceState(deviceToRemove, &api.StateRequest{
+			api.EntryStateOffline,
+			api.HealCheckEnable,
+		})
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+		err = heketi.DeviceState(deviceToRemove, &api.StateRequest{
+			api.EntryStateFailed,
+			api.HealCheckDisable,
+		})
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+		// there should not be any pending ops in the db
+		l, err := heketi.PendingOperationList()
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+		tests.Assert(t, len(l.PendingOperations) == 0,
+			"expected len(l.PendingOperations) == 0, got:",
+			len(l.PendingOperations))
+
+		dused := perDeviceUsedSize(t)
+		tests.Assert(t, dused[deviceToRemove] == 0,
+			"expected dused[deviceToRemove] == 0, got:",
+			dused[deviceToRemove])
+	})
 
 	t.Run("happyPath", func(t *testing.T) {
 		var err error
