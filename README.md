@@ -53,3 +53,4 @@ Please visit [Vagrant-Heketi](https://github.com/heketi/vagrant-heketi) to try o
 
 [![image](https://img.youtube.com/vi/jpkG4wciy4U/3.jpg)](https://www.youtube.com/watch?v=jpkG4wciy4U) [Slides](https://github.com/lpabon/go-slides)
 
+
