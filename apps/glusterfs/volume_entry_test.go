@@ -3170,7 +3170,7 @@ func TestVolumeExpandStrictZones(t *testing.T) {
 			err = node.SetState(
 				wdb.WrapTx(tx),
 				app.executor,
-				api.EntryStateOffline)
+				api.StateRequest{State: api.EntryStateOffline})
 			tests.Assert(t, err == nil, "expected err == nil, got:", err)
 			return nil
 		})
@@ -3190,7 +3190,7 @@ func TestVolumeExpandStrictZones(t *testing.T) {
 			err = node.SetState(
 				wdb.WrapTx(tx),
 				app.executor,
-				api.EntryStateOnline)
+				api.StateRequest{State: api.EntryStateOnline})
 			tests.Assert(t, err == nil, "expected err == nil, got:", err)
 			return nil
 		})
@@ -3306,12 +3306,12 @@ func testVolumeReplaceBrickZoneChecking(
 		err = node.SetState(
 			wdb.WrapTx(tx),
 			app.executor,
-			api.EntryStateOffline)
+			api.StateRequest{State: api.EntryStateOffline})
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 		err = node.SetState(
 			wdb.WrapTx(tx),
 			app.executor,
-			api.EntryStateFailed)
+			api.StateRequest{State: api.EntryStateFailed})
 		if expectFail {
 			tests.Assert(t, err != nil, "expected err != nil, got:", err)
 		} else {
