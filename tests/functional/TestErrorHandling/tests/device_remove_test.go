@@ -78,11 +78,13 @@ func TestDeviceRemoveOperation(t *testing.T) {
 
 		err = heketi.DeviceState(deviceToRemove, &api.StateRequest{
 			api.EntryStateOffline,
+			api.HealCheckEnable,
 		})
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 		err = heketi.DeviceState(deviceToRemove, &api.StateRequest{
 			api.EntryStateFailed,
+			api.HealCheckEnable,
 		})
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
@@ -119,11 +121,13 @@ func TestDeviceRemoveOperation(t *testing.T) {
 
 		err = heketi.DeviceState(deviceToRemove, &api.StateRequest{
 			api.EntryStateOffline,
+			api.HealCheckEnable,
 		})
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 		err = heketi.DeviceState(deviceToRemove, &api.StateRequest{
 			api.EntryStateFailed,
+			api.HealCheckEnable,
 		})
 		tests.Assert(t, err != nil, "expected err != nil, got:", err)
 
@@ -155,11 +159,13 @@ func TestDeviceRemoveOperation(t *testing.T) {
 
 		err = heketi.DeviceState(deviceToRemove, &api.StateRequest{
 			api.EntryStateOffline,
+			api.HealCheckEnable,
 		})
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 		err = heketi.DeviceState(deviceToRemove, &api.StateRequest{
 			api.EntryStateFailed,
+			api.HealCheckEnable,
 		})
 		tests.Assert(t, err != nil, "expected err != nil, got:", err)
 
@@ -215,11 +221,13 @@ func TestDeviceRemoveOperation(t *testing.T) {
 
 		err = heketi.DeviceState(deviceToRemove, &api.StateRequest{
 			api.EntryStateOffline,
+			api.HealCheckEnable,
 		})
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 		err = heketi.DeviceState(deviceToRemove, &api.StateRequest{
 			api.EntryStateFailed,
+			api.HealCheckEnable,
 		})
 		tests.Assert(t, err != nil, "expected err != nil, got:", err)
 
@@ -258,6 +266,7 @@ func TestDeviceRemoveOperation(t *testing.T) {
 		// to try removing this device once again
 		err = heketi.DeviceState(deviceToRemove, &api.StateRequest{
 			api.EntryStateFailed,
+			api.HealCheckEnable,
 		})
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
@@ -293,11 +302,13 @@ func TestDeviceRemoveOperation(t *testing.T) {
 
 		err = heketi.DeviceState(deviceToRemove, &api.StateRequest{
 			api.EntryStateOffline,
+			api.HealCheckEnable,
 		})
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 		err = heketi.DeviceState(deviceToRemove, &api.StateRequest{
 			api.EntryStateFailed,
+			api.HealCheckEnable,
 		})
 		tests.Assert(t, err != nil, "expected err != nil, got:", err)
 
@@ -345,11 +356,13 @@ func TestDeviceRemoveOperation(t *testing.T) {
 
 		err = heketi.DeviceState(deviceToRemove, &api.StateRequest{
 			api.EntryStateOffline,
+			api.HealCheckEnable,
 		})
 		tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 		err = heketi.DeviceState(deviceToRemove, &api.StateRequest{
 			api.EntryStateFailed,
+			api.HealCheckEnable,
 		})
 		tests.Assert(t, err != nil, "expected err != nil, got:", err)
 
@@ -383,12 +396,14 @@ func enableAllDevices(t *testing.T) {
 				case api.EntryStateFailed:
 					err = heketi.DeviceState(d.Id, &api.StateRequest{
 						api.EntryStateOffline,
+						api.HealCheckEnable,
 					})
 					tests.Assert(t, err == nil, "expected err == nil, got:", err)
 					fallthrough
 				case api.EntryStateOffline:
 					err = heketi.DeviceState(d.Id, &api.StateRequest{
 						api.EntryStateOnline,
+						api.HealCheckEnable,
 					})
 					tests.Assert(t, err == nil, "expected err == nil, got:", err)
 				}
