@@ -286,12 +286,12 @@ func TestNewDeviceEntrySaveDelete(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Set offline
-	err = device.SetState(app.db, app.executor, api.EntryStateOffline)
+	err = device.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOffline})
 	tests.Assert(t, device.State == api.EntryStateOffline)
 	tests.Assert(t, err == nil, err)
 
 	// Set failed
-	err = device.SetState(app.db, app.executor, api.EntryStateFailed)
+	err = device.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateFailed})
 	tests.Assert(t, device.State == api.EntryStateFailed, device.State)
 	tests.Assert(t, err == nil, err)
 
@@ -522,32 +522,32 @@ func TestDeviceSetStateFailed(t *testing.T) {
 	})
 
 	// Set offline
-	err := d.SetState(app.db, app.executor, api.EntryStateOffline)
+	err := d.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOffline})
 	tests.Assert(t, d.State == api.EntryStateOffline)
 	tests.Assert(t, err == nil, err)
 
 	// Set failed, Note: this requires the current state to be offline
-	err = d.SetState(app.db, app.executor, api.EntryStateFailed)
+	err = d.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateFailed})
 	tests.Assert(t, d.State == api.EntryStateFailed)
 	tests.Assert(t, err == nil)
 
 	// Set failed again
-	err = d.SetState(app.db, app.executor, api.EntryStateFailed)
+	err = d.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateFailed})
 	tests.Assert(t, d.State == api.EntryStateFailed)
 	tests.Assert(t, err == nil)
 
 	// Set online from failed, this should fail
-	err = d.SetState(app.db, app.executor, api.EntryStateOnline)
+	err = d.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOnline})
 	tests.Assert(t, d.State == api.EntryStateFailed)
 	tests.Assert(t, err != nil)
 
 	// Set offline
-	err = d.SetState(app.db, app.executor, api.EntryStateOffline)
+	err = d.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOffline})
 	tests.Assert(t, d.State == api.EntryStateOffline)
 	tests.Assert(t, err == nil)
 
 	// Set online from offline, this should pass
-	err = d.SetState(app.db, app.executor, api.EntryStateOnline)
+	err = d.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOnline})
 	tests.Assert(t, d.State == api.EntryStateOnline)
 	tests.Assert(t, err == nil)
 }
@@ -598,17 +598,17 @@ func TestDeviceSetStateOfflineOnline(t *testing.T) {
 	})
 
 	// Set offline
-	err := d.SetState(app.db, app.executor, api.EntryStateOffline)
+	err := d.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOffline})
 	tests.Assert(t, d.State == api.EntryStateOffline)
 	tests.Assert(t, err == nil)
 
 	// Set offline again
-	err = d.SetState(app.db, app.executor, api.EntryStateOffline)
+	err = d.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOffline})
 	tests.Assert(t, d.State == api.EntryStateOffline)
 	tests.Assert(t, err == nil)
 
 	// Set online
-	err = d.SetState(app.db, app.executor, api.EntryStateOnline)
+	err = d.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOnline})
 	tests.Assert(t, d.State == api.EntryStateOnline)
 	tests.Assert(t, err == nil)
 }
@@ -660,7 +660,7 @@ func TestDeviceSetStateFailedWithBricks(t *testing.T) {
 	})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	err = d.SetState(app.db, app.executor, api.EntryStateOffline)
+	err = d.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOffline})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, d.State == api.EntryStateOffline)
 
@@ -681,7 +681,7 @@ func TestDeviceSetStateFailedWithBricks(t *testing.T) {
 		return mockHealStatusFromDb(app.db, volume)
 	}
 
-	err = d.SetState(app.db, app.executor, api.EntryStateFailed)
+	err = d.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateFailed})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	// update d from db
@@ -742,7 +742,7 @@ func TestDeviceSetStateFailedTooFewDevices(t *testing.T) {
 	})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	err = d.SetState(app.db, app.executor, api.EntryStateOffline)
+	err = d.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOffline})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, d.State == api.EntryStateOffline)
 
@@ -763,7 +763,7 @@ func TestDeviceSetStateFailedTooFewDevices(t *testing.T) {
 		return mockHealStatusFromDb(app.db, volume)
 	}
 
-	err = d.SetState(app.db, app.executor, api.EntryStateFailed)
+	err = d.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateFailed})
 	tests.Assert(t, strings.Contains(err.Error(), ErrNoReplacement.Error()),
 		"expected strings.Contains(err.Error(), ErrNoReplacement.Error()), got:",
 		err.Error())
@@ -883,7 +883,7 @@ func TestDeviceSetStateFailedWithEmptyPathBricks(t *testing.T) {
 	})
 	tests.Assert(t, err == nil)
 
-	err = d.SetState(app.db, app.executor, api.EntryStateOffline)
+	err = d.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOffline})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, d.State == api.EntryStateOffline)
 
@@ -906,7 +906,7 @@ func TestDeviceSetStateFailedWithEmptyPathBricks(t *testing.T) {
 
 	// Fail the device, it should go through
 	// however, we would skipped on brick and that should remain in the device
-	err = d.SetState(app.db, app.executor, api.EntryStateFailed)
+	err = d.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateFailed})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	// update d from db
@@ -983,7 +983,7 @@ func testDeviceRemoveSizeAccounting(t *testing.T, useArbiter bool) {
 	})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	err = d.SetState(app.db, app.executor, api.EntryStateOffline)
+	err = d.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOffline})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	tests.Assert(t, d.State == api.EntryStateOffline)
 
@@ -1004,7 +1004,7 @@ func testDeviceRemoveSizeAccounting(t *testing.T, useArbiter bool) {
 		return mockHealStatusFromDb(app.db, volume)
 	}
 
-	err = d.SetState(app.db, app.executor, api.EntryStateFailed)
+	err = d.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateFailed})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	// update d from db
@@ -1017,10 +1017,10 @@ func testDeviceRemoveSizeAccounting(t *testing.T, useArbiter bool) {
 	tests.Assert(t, len(d.Bricks) == 0,
 		"expected len(d.Bricks) == 0, got:", len(d.Bricks))
 
-	err = d.SetState(app.db, app.executor, api.EntryStateOffline)
+	err = d.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOffline})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	err = d.SetState(app.db, app.executor, api.EntryStateOnline)
+	err = d.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOnline})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	// update d from db
