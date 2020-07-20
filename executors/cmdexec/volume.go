@@ -425,12 +425,14 @@ func (s *CmdExecutor) HealInfo(host string, volume string) (*executors.HealInfo,
 	results, err := s.RemoteExecutor.ExecCommands(host, command,
 		s.GlusterCliExecTimeout())
 	if err := rex.AnyError(results, err); err != nil {
-		return nil, fmt.Errorf("Unable to get heal info of volume : %v", volume)
+		return nil, fmt.Errorf(
+			"Unable to get heal info of volume : %v : %v", volume, err)
 	}
 	var healInfo CliOutput
 	err = xml.Unmarshal([]byte(results[0].Output), &healInfo)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to determine heal info of volume : %v", volume)
+		return nil, fmt.Errorf(
+			"Unable to determine heal info of volume : %v : %v", volume, err)
 	}
 	logger.Debug("%+v\n", healInfo)
 	return &healInfo.HealInfo, nil
