@@ -350,7 +350,7 @@ func (a *App) DeviceSetState(w http.ResponseWriter, r *http.Request) {
 				a.optracker.Remove(token)
 			}
 		}()
-		err = device.SetState(a.db, a.executor, msg.State)
+		err = device.SetState(a.db, a.executor, msg)
 		if err != nil {
 			return "", err
 		}
