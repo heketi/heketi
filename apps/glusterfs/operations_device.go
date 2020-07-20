@@ -162,7 +162,7 @@ func (dro *DeviceRemoveOperation) migrateBricks(
 	for _, brickId := range toEvict {
 		nestedOp := newRemoveBrickComboOperation(
 			dro,
-			NewBrickEvictOperation(brickId, dro.db))
+			NewBrickEvictOperation(brickId, dro.db, dro.healCheck))
 		err = RunOperation(nestedOp, executor)
 		if err != nil {
 			return err
@@ -329,6 +329,8 @@ type BrickEvictOperation struct {
 	noRetriesOperation
 	BrickId string
 
+	healCheck api.HealInfoCheck
+
 	// internal caching params
 	replaceBrickSet *BrickSet
 	replaceIndex    int
@@ -351,14 +353,15 @@ func (bc brickContext) bhmap() brickHostMap {
 }
 
 func NewBrickEvictOperation(
-	brickId string, db wdb.DB) *BrickEvictOperation {
+	brickId string, db wdb.DB, h api.HealInfoCheck) *BrickEvictOperation {
 
 	return &BrickEvictOperation{
 		OperationManager: OperationManager{
 			db: db,
 			op: NewPendingOperationEntry(NEW_ID),
 		},
-		BrickId: brickId,
+		BrickId:   brickId,
+		healCheck: h,
 	}
 }
 

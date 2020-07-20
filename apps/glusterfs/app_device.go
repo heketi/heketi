@@ -558,8 +558,15 @@ func (a *App) BrickEvict(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	err := opts.Validate()
+	if err != nil {
+		http.Error(w, "validation failed: "+err.Error(), http.StatusBadRequest)
+		logger.LogError("validation failed: " + err.Error())
+		return
+	}
+
 	// sanity check the id
-	err := a.db.View(func(tx *bolt.Tx) error {
+	err = a.db.View(func(tx *bolt.Tx) error {
 		var err error
 		_, err = NewBrickEntryFromId(tx, id)
 		if err == ErrNotFound {
@@ -576,7 +583,7 @@ func (a *App) BrickEvict(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logger.Info("Requested to evict brick: %v", id)
-	beo := NewBrickEvictOperation(id, a.db)
+	beo := NewBrickEvictOperation(id, a.db, opts.HealCheck)
 	if err := AsyncHttpOperation(a, w, r, beo); err != nil {
 		OperationHttpErrorf(w, err, "Failed to set up brick eviction: %v", err)
 		return
