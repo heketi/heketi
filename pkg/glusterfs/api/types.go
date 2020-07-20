@@ -105,10 +105,16 @@ func ValidateHealCheck(value interface{}) error {
 
 // Common
 type StateRequest struct {
-	State EntryState `json:"state"`
+	State     EntryState    `json:"state"`
+	HealCheck HealInfoCheck `json:"healcheck"`
 }
 
 func (statereq StateRequest) Validate() error {
+	if err := validation.ValidateStruct(&statereq,
+		validation.Field(&statereq.HealCheck, validation.By(ValidateHealCheck))); err != nil {
+		return err
+	}
+
 	return validation.ValidateStruct(&statereq,
 		validation.Field(&statereq.State, validation.Required, validation.By(ValidateEntryState)),
 	)
