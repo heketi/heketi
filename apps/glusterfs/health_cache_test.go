@@ -238,7 +238,7 @@ func TestNodeHeathCacheSkipOffline(t *testing.T) {
 			}
 			n, err := NewNodeEntryFromId(tx, nodeId)
 			tests.Assert(t, err == nil, "expected err == nil, got:", err)
-			err = n.SetState(wdb.WrapTx(tx), app.executor, api.EntryStateOffline)
+			err = n.SetState(wdb.WrapTx(tx), app.executor, api.StateRequest{State: api.EntryStateOffline})
 			tests.Assert(t, err == nil, "expected err == nil, got:", err)
 		}
 		return nil
@@ -311,7 +311,7 @@ func TestNodeHeathCacheExpireNodes(t *testing.T) {
 			}
 			n, err := NewNodeEntryFromId(tx, nodeId)
 			tests.Assert(t, err == nil, "expected err == nil, got:", err)
-			err = n.SetState(wdb.WrapTx(tx), app.executor, api.EntryStateOffline)
+			err = n.SetState(wdb.WrapTx(tx), app.executor, api.StateRequest{State: api.EntryStateOffline})
 			tests.Assert(t, err == nil, "expected err == nil, got:", err)
 		}
 		return nil
