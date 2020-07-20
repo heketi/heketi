@@ -14,6 +14,7 @@ import (
 
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 
 	"github.com/boltdb/bolt"
 )
@@ -27,6 +28,8 @@ type DeviceRemoveOperation struct {
 	noRetriesOperation
 	DeviceId string
 
+	healCheck api.HealInfoCheck
+
 	// we need state gathered by clean in clean-done in the child operation
 	// we can't always pull the op from the db or we lose this state.
 	// This field is used to retain that state between calls.
@@ -34,14 +37,15 @@ type DeviceRemoveOperation struct {
 }
 
 func NewDeviceRemoveOperation(
-	deviceId string, db wdb.DB) *DeviceRemoveOperation {
+	deviceId string, db wdb.DB, h api.HealInfoCheck) *DeviceRemoveOperation {
 
 	return &DeviceRemoveOperation{
 		OperationManager: OperationManager{
 			db: db,
 			op: NewPendingOperationEntry(NEW_ID),
 		},
-		DeviceId: deviceId,
+		DeviceId:  deviceId,
+		healCheck: h,
 	}
 }
 
