@@ -448,7 +448,7 @@ func (a *App) NodeSetState(w http.ResponseWriter, r *http.Request) {
 				a.optracker.Remove(token)
 			}
 		}()
-		err = node.SetState(a.db, a.executor, msg.State)
+		err = node.SetState(a.db, a.executor, msg)
 		if err != nil {
 			return "", err
 		}
