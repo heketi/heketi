@@ -11,13 +11,17 @@ package cmds
 
 import (
 	"fmt"
+	"time"
 
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 	"github.com/spf13/cobra"
 )
 
 func init() {
 	RootCmd.AddCommand(brickCommand)
 	brickCommand.AddCommand(brickEvictCommand)
+	brickEvictCommand.Flags().Bool("expert-option-disable-heal-check", false,
+		"[DANGEROUS] Skip the heal check while brick replace.")
 	brickCommand.SilenceUsage = true
 }
 
@@ -42,12 +46,29 @@ var brickEvictCommand = &cobra.Command{
 		}
 		brickId := args[0]
 
+		skipHeal, err := cmd.Flags().GetBool("expert-option-disable-heal-check")
+		if err != nil {
+			return err
+		}
+
+		if skipHeal {
+			fmt.Println(
+				"Skipping the heal check may be dangerous and increase the risk of data loss.\n",
+				"Press CTRL-C within 10 seconds to cancel this action.")
+			time.Sleep(10 * time.Second)
+		}
+
 		heketi, err := newHeketiClient()
 		if err != nil {
 			return err
 		}
 
-		err = heketi.BrickEvict(brickId, nil)
+		req := &api.BrickEvictOptions{}
+		if skipHeal {
+			req.HealCheck = api.HealCheckDisable
+		}
+
+		err = heketi.BrickEvict(brickId, req)
 		if err == nil {
 			fmt.Fprintf(stdout, "Brick %v evicted\n", brickId)
 		}
