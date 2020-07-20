@@ -86,6 +86,23 @@ func ValidateDurabilityType(value interface{}) error {
 	return nil
 }
 
+type HealInfoCheck string
+
+const (
+	HealCheckUnknown HealInfoCheck = ""
+	HealCheckEnable  HealInfoCheck = "enable"
+	HealCheckDisable HealInfoCheck = "disable"
+)
+
+func ValidateHealCheck(value interface{}) error {
+	h, _ := value.(HealInfoCheck)
+	err := validation.Validate(h, validation.In(HealCheckUnknown, HealCheckEnable, HealCheckDisable))
+	if err != nil {
+		return fmt.Errorf("%v is not valid heal info check", h)
+	}
+	return nil
+}
+
 // Common
 type StateRequest struct {
 	State EntryState `json:"state"`
