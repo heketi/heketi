@@ -156,19 +156,19 @@ func (d *DeviceEntry) modifyState(db wdb.DB, s api.EntryState) error {
 
 func (d *DeviceEntry) SetState(db wdb.DB,
 	e executors.Executor,
-	s api.EntryState) error {
+	s api.StateRequest) error {
 
-	if e := d.stateCheck(s); e != nil {
+	if e := d.stateCheck(s.State); e != nil {
 		return e
 	}
-	if d.State == s {
+	if d.State == s.State {
 		return nil
 	}
 
-	switch s {
+	switch s.State {
 	case api.EntryStateOffline, api.EntryStateOnline:
 		// simply update the state and move on
-		if err := d.modifyState(db, s); err != nil {
+		if err := d.modifyState(db, s.State); err != nil {
 			return err
 		}
 	case api.EntryStateFailed:
