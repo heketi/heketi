@@ -713,4 +713,10 @@ func ValidateIds(v interface{}) error {
 
 // reserving a type for future options for brick evict
 type BrickEvictOptions struct {
+	HealCheck HealInfoCheck `json:"healcheck"`
+}
+
+func (brickops BrickEvictOptions) Validate() error {
+	return validation.ValidateStruct(&brickops,
+		validation.Field(&brickops.HealCheck, validation.By(ValidateHealCheck)))
 }
