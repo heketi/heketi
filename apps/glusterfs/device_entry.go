@@ -172,7 +172,7 @@ func (d *DeviceEntry) SetState(db wdb.DB,
 			return err
 		}
 	case api.EntryStateFailed:
-		if err := d.Remove(db, e); err != nil {
+		if err := d.Remove(db, e, s); err != nil {
 			if err == ErrNoReplacement {
 				return logger.LogError("Unable to delete device [%v] as no device was found to replace it: %v", d.Id(), err)
 			}
@@ -394,10 +394,10 @@ func (d *DeviceEntry) poolMetadataSize(tpsize uint64) uint64 {
 
 // Moves all the bricks from the device to one or more other devices
 func (d *DeviceEntry) Remove(db wdb.DB,
-	executor executors.Executor) (e error) {
+	executor executors.Executor, s api.StateRequest) (e error) {
 
 	if e = RunOperation(
-		NewDeviceRemoveOperation(d.Info.Id, db),
+		NewDeviceRemoveOperation(d.Info.Id, db, s.HealCheck),
 		executor); e != nil {
 		return e
 	}
