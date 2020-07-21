@@ -6,8 +6,8 @@ APP_NAME := heketi
 CLIENT_PKG_NAME := heketi-client
 SHA := $(shell git rev-parse --short HEAD)
 BRANCH := $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
-VER := $(shell git describe --match='v[0-9].[0-9].[0-9]')
-TAG := $(shell git tag --points-at HEAD 'v[0-9].[0-9].[0-9]' | tail -n1)
+VER := $(shell git describe --match='v[0-9]*.[0-9].[0-9]')
+TAG := $(shell git tag --points-at HEAD 'v[0-9]*.[0-9].[0-9]' | tail -n1)
 GO:=go
 GLIDE:=glide --debug
 TESTBIN:=./test.sh
