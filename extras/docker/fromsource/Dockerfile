@@ -11,7 +11,7 @@ ENV GOPATH=$BUILD_HOME/golang
 ENV PATH=$GOPATH/bin:$PATH
 # where to clone from
 ENV HEKETI_REPO="https://github.com/heketi/heketi.git"
-ENV HEKETI_BRANCH="master"
+ENV HEKETI_BRANCH="release/10"
 
 # install dependencies, build and cleanup
 RUN mkdir $BUILD_HOME $GOPATH && \
