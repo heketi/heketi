@@ -592,7 +592,21 @@ func (beo *BrickEvictOperation) execReplaceBrick(
 
 	beo.reclaimed, err = old.bhmap().destroy(executor)
 	if err != nil {
-		return logger.LogError("Error destroying old brick: %v", err)
+		// If the destroy failed because the node is not running (ideally,
+		// permanently down) we want to continue with the operation . But if
+		// the node works we failed for a "real" reason we don't want to
+		// blindly ignore errors. So we do a probe to see if the host is
+		// responsive. If the destroy has failed we will use the node's
+		// responsiveness to decide if // this should be treated as a failure
+		// or not.  It is bit hacky but should work around the lack of proper
+		// error handling in most common cases.
+		destroyErr := logger.LogError("Error destroying old brick: %v", err)
+		err := executor.GlusterdCheck(old.node.ManageHostName())
+		if err == nil {
+			logger.Warning("node responds to probe: failing operation")
+			return destroyErr
+		}
+		logger.Warning("node does not respond to probe: ignoring error destroying bricks")
 	}
 	return nil
 }
