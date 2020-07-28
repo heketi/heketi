@@ -590,25 +590,8 @@ func (beo *BrickEvictOperation) execReplaceBrick(
 		return err
 	}
 
-	beo.reclaimed, err = old.bhmap().destroy(executor)
-	if err != nil {
-		// If the destroy failed because the node is not running (ideally,
-		// permanently down) we want to continue with the operation . But if
-		// the node works we failed for a "real" reason we don't want to
-		// blindly ignore errors. So we do a probe to see if the host is
-		// responsive. If the destroy has failed we will use the node's
-		// responsiveness to decide if // this should be treated as a failure
-		// or not.  It is bit hacky but should work around the lack of proper
-		// error handling in most common cases.
-		destroyErr := logger.LogError("Error destroying old brick: %v", err)
-		err := executor.GlusterdCheck(old.node.ManageHostName())
-		if err == nil {
-			logger.Warning("node responds to probe: failing operation")
-			return destroyErr
-		}
-		logger.Warning("node does not respond to probe: ignoring error destroying bricks")
-	}
-	return nil
+	beo.reclaimed, err = tryDestroyBrickMap(old.bhmap(), executor)
+	return err
 }
 
 func (beo *BrickEvictOperation) Exec(executor executors.Executor) error {
@@ -739,13 +722,13 @@ func (beo *BrickEvictOperation) Clean(executor executors.Executor) error {
 	switch beo.replaceResult {
 	case replaceComplete:
 		logger.Info("Destroying old brick contents")
-		beo.reclaimed, err = old.bhmap().destroy(executor)
+		beo.reclaimed, err = tryDestroyBrickMap(old.bhmap(), executor)
 		if err != nil {
 			return logger.LogError("Error destroying old brick: %v", err)
 		}
 	case replaceIncomplete:
 		logger.Info("Destroying unused new brick contents")
-		beo.reclaimed, err = newBHMap.destroy(executor)
+		beo.reclaimed, err = tryDestroyBrickMap(newBHMap, executor)
 		if err != nil {
 			return logger.LogError("Error destroying new brick: %v", err)
 		}
@@ -1032,4 +1015,29 @@ func getWorkingNode(n *NodeEntry, db wdb.RODB, executor executors.Executor) (str
 		}
 	}
 	return node, err
+}
+
+func tryDestroyBrickMap(bhmap brickHostMap, executor executors.Executor) (ReclaimMap, error) {
+	reclaimed, err := bhmap.destroy(executor)
+	if err == nil {
+		return reclaimed, nil
+	}
+
+	// If the destroy failed because the node is not running (ideally,
+	// permanently down) we want to continue with the operation . But if the
+	// node works we failed for a "real" reason we don't want to blindly ignore
+	// errors. So we do a probe to see if the host is responsive. If the
+	// destroy has failed we will use the node's responsiveness to decide if
+	// this should be treated as a failure or not.  It is bit hacky but should
+	// work around the lack of proper error handling in most common cases.
+	for b, node := range bhmap {
+		destroyErr := logger.LogError("Error destroying brick [%v]: %v", b, err)
+		err := executor.GlusterdCheck(node)
+		if err == nil {
+			logger.Warning("node [%v] responds to probe: failing operation", node)
+			return reclaimed, destroyErr
+		}
+		logger.Warning("node [%v] does not respond to probe: ignoring error destroying bricks", node)
+	}
+	return reclaimed, nil
 }
