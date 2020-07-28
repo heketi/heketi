@@ -513,13 +513,9 @@ func (beo *BrickEvictOperation) execGetReplacmentInfo(
 		return err
 	}
 
-	node := old.node.ManageHostName()
-	err = executor.GlusterdCheck(node)
+	node, err := getWorkingNode(old.node, beo.db, executor)
 	if err != nil {
-		node, err = GetVerifiedManageHostname(beo.db, executor, old.node.Info.NodeAddRequest.ClusterId)
-		if err != nil {
-			return err
-		}
+		return err
 	}
 
 	bs, index, err := old.volume.getBrickSetForBrickId(
@@ -583,7 +579,11 @@ func (beo *BrickEvictOperation) execReplaceBrick(
 	newBrick.Path = newBrickEntry.Info.Path
 	newBrick.Host = newBrickNodeEntry.StorageHostName()
 
-	node := newBrickNodeEntry.ManageHostName()
+	node, err := getWorkingNode(newBrickNodeEntry, beo.db, executor)
+	if err != nil {
+		return err
+	}
+
 	err = executor.VolumeReplaceBrick(
 		node, old.volume.Info.Name, &oldBrick, &newBrick)
 	if err != nil {
@@ -680,7 +680,11 @@ func (beo *BrickEvictOperation) Clean(executor executors.Executor) error {
 	if err != nil {
 		return err
 	}
-	node := old.node.ManageHostName() // TODO: try on multiple nodes?
+	node, err := getWorkingNode(old.node, beo.db, executor)
+	if err != nil {
+		return nil
+	}
+
 	vinfo, err := executor.VolumeInfo(node, old.volume.Info.Name)
 	if err != nil {
 		logger.LogError("Unable to get volume info from gluster node %v for volume %v: %v", node, old.volume.Info.Name, err)
@@ -1016,4 +1020,16 @@ func (bco *removeBrickComboOperation) Finalize() error {
 		}
 		return nil
 	})
+}
+
+func getWorkingNode(n *NodeEntry, db wdb.RODB, executor executors.Executor) (string, error) {
+	node := n.ManageHostName()
+	err := executor.GlusterdCheck(node)
+	if err != nil {
+		node, err = GetVerifiedManageHostname(db, executor, n.Info.NodeAddRequest.ClusterId)
+		if err != nil {
+			return "", err
+		}
+	}
+	return node, err
 }
