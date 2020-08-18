@@ -282,14 +282,14 @@ func (n *NodeEntry) Delete(tx *bolt.Tx) error {
 }
 
 func (n *NodeEntry) SetState(db wdb.DB, e executors.Executor,
-	s api.EntryState) error {
+	s api.StateRequest) error {
 
 	// Check current state
 	switch n.State {
 
 	// Node is in removed/failed state
 	case api.EntryStateFailed:
-		switch s {
+		switch s.State {
 		case api.EntryStateFailed:
 			return nil
 		case api.EntryStateOnline:
@@ -302,13 +302,13 @@ func (n *NodeEntry) SetState(db wdb.DB, e executors.Executor,
 
 	// Node is in enabled/online state
 	case api.EntryStateOnline:
-		switch s {
+		switch s.State {
 		case api.EntryStateOnline:
 			return nil
 		case api.EntryStateOffline:
 			err := db.Update(func(tx *bolt.Tx) error {
 				// Save state
-				n.State = s
+				n.State = s.State
 				// Save new state
 				err := n.Save(tx)
 				if err != nil {
@@ -327,12 +327,12 @@ func (n *NodeEntry) SetState(db wdb.DB, e executors.Executor,
 
 	// Node is in disabled/offline state
 	case api.EntryStateOffline:
-		switch s {
+		switch s.State {
 		case api.EntryStateOffline:
 			return nil
 		case api.EntryStateOnline:
 			err := db.Update(func(tx *bolt.Tx) error {
-				n.State = s
+				n.State = s.State
 				err := n.Save(tx)
 				if err != nil {
 					return err
@@ -353,7 +353,7 @@ func (n *NodeEntry) SetState(db wdb.DB, e executors.Executor,
 					}
 					return nil
 				})
-				err = d.Remove(db, e)
+				err = d.Remove(db, e, s)
 				if err != nil {
 					if err == ErrNoReplacement {
 						return logger.LogError("Unable to remove node [%v] as no device was found to replace device [%v]", n.Info.Id, d.Id())
@@ -364,7 +364,7 @@ func (n *NodeEntry) SetState(db wdb.DB, e executors.Executor,
 
 			// Make the state change to failed
 			err := db.Update(func(tx *bolt.Tx) error {
-				n.State = s
+				n.State = s.State
 				err := n.Save(tx)
 				if err != nil {
 					return err

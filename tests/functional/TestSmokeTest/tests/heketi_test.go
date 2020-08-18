@@ -494,11 +494,11 @@ func TestDeviceRemoveErrorHandling(t *testing.T) {
 
 	// put device in failed state so that we can remove it
 	err = heketi.DeviceState(deviceInfo.Id,
-		&api.StateRequest{State: api.EntryStateOffline})
+		&api.StateRequest{State: api.EntryStateOffline, HealCheck: api.HealCheckEnable})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	err = heketi.DeviceState(deviceInfo.Id,
-		&api.StateRequest{State: api.EntryStateFailed})
+		&api.StateRequest{State: api.EntryStateFailed, HealCheck: api.HealCheckEnable})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	// place a dummy pv on the vg so that a clean vg remove is not possible
@@ -543,11 +543,11 @@ func TestDeviceRemoveForceForget(t *testing.T) {
 
 	// put device in failed state so that we can remove it
 	err = heketi.DeviceState(deviceInfo.Id,
-		&api.StateRequest{State: api.EntryStateOffline})
+		&api.StateRequest{State: api.EntryStateOffline, HealCheck: api.HealCheckEnable})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	err = heketi.DeviceState(deviceInfo.Id,
-		&api.StateRequest{State: api.EntryStateFailed})
+		&api.StateRequest{State: api.EntryStateFailed, HealCheck: api.HealCheckEnable})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	// place a dummy pv on the vg so that a clean vg remove is not possible

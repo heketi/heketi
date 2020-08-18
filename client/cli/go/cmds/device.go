@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
@@ -43,6 +44,8 @@ func init() {
 		"Id of the node which has this device")
 	deviceAddCommand.Flags().Bool("destroy-existing-data", false,
 		"[DANGEROUS] Destroy any existing data on the device.")
+	deviceRemoveCommand.Flags().Bool("expert-option-disable-heal-check", false,
+		"[DANGEROUS] Skip the heal check while device remove.")
 	deviceSetTagsCommand.Flags().BoolP("exact", "e", false,
 		"Set the object to this exact set of tags. Overwrites existing tags.")
 	deviceRmTagsCommand.Flags().Bool("all", false,
@@ -163,6 +166,18 @@ var deviceRemoveCommand = &cobra.Command{
 		//set clusterId
 		deviceId := cmd.Flags().Arg(0)
 
+		skipHeal, err := cmd.Flags().GetBool("expert-option-disable-heal-check")
+		if err != nil {
+			return err
+		}
+
+		if skipHeal {
+			fmt.Println(
+				"Skipping the heal check may be dangerous and increase the risk of data loss.\n",
+				"Press CTRL-C within 10 seconds to cancel this action.")
+			time.Sleep(10 * time.Second)
+		}
+
 		// Create a client
 		heketi, err := newHeketiClient()
 		if err != nil {
@@ -173,6 +188,11 @@ var deviceRemoveCommand = &cobra.Command{
 		req := &api.StateRequest{
 			State: "failed",
 		}
+
+		if skipHeal {
+			req.HealCheck = api.HealCheckDisable
+		}
+
 		err = heketi.DeviceState(deviceId, req)
 		if err == nil {
 			fmt.Fprintf(stdout, "Device %v is now removed\n", deviceId)
@@ -330,12 +350,12 @@ func syncDevicesWithClusterId(heketi *client.Client, clusterId string) error {
 	}
 
 	// Iterate over Clusters
-	for cluster, _ := range topoinfo.ClusterList {
+	for cluster := range topoinfo.ClusterList {
 		thisCluster := topoinfo.ClusterList[cluster]
 		// check cluster id.
 		if thisCluster.Id == clusterId {
 			// iterate over Nodes
-			for node, _ := range thisCluster.Nodes {
+			for node := range thisCluster.Nodes {
 				thisNode := thisCluster.Nodes[node]
 				// resync every Device in this Node
 				for _, device := range thisNode.DevicesInfo {
