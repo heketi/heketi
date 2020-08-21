@@ -1,6 +1,7 @@
 #!/bin/bash
 
 SCRIPT_DIR="$(cd "$(dirname "${0}")" && pwd)"
+HEKETI_TEST_GO_TEST_RUN="TestAdminModes"
 
 show_help() {
 	echo "$0 [options]"
