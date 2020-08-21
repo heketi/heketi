@@ -189,13 +189,7 @@ func (c *Client) doBasic(req *http.Request) (*http.Response, error) {
 		<-c.throttle
 	}()
 
-	httpClient := &http.Client{}
-	if c.tlsClientConfig != nil {
-		httpClient.Transport = &http.Transport{
-			TLSClientConfig: c.tlsClientConfig,
-		}
-	}
-	httpClient.CheckRedirect = c.checkRedirect
+	httpClient := HeketiHttpClient(c.tlsClientConfig, c.checkRedirect)
 	return httpClient.Do(req)
 }
 
@@ -354,4 +348,21 @@ func (c *ClientOptions) retryDelay(r *http.Response) time.Duration {
 	}
 	s := rand.Intn(max-min) + min
 	return time.Second * time.Duration(s)
+}
+
+// CheckRedirectFunc is an alias for the somewhat complex function signature
+// of the CheckRedirect function of the http.Client.
+type CheckRedirectFunc func(*http.Request, []*http.Request) error
+
+// HeketiHttpClient constructs a new http client for use by the heketi
+// api client, using the traditional heketi approach.
+func HeketiHttpClient(tlsConfig *tls.Config, checkRedirect CheckRedirectFunc) *http.Client {
+	httpClient := &http.Client{}
+	if tlsConfig != nil {
+		httpClient.Transport = &http.Transport{
+			TLSClientConfig: tlsConfig,
+		}
+	}
+	httpClient.CheckRedirect = checkRedirect
+	return httpClient
 }
