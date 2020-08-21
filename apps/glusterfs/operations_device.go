@@ -14,6 +14,7 @@ import (
 
 	"github.com/heketi/heketi/executors"
 	wdb "github.com/heketi/heketi/pkg/db"
+	"github.com/heketi/heketi/pkg/glusterfs/api"
 
 	"github.com/boltdb/bolt"
 )
@@ -27,6 +28,8 @@ type DeviceRemoveOperation struct {
 	noRetriesOperation
 	DeviceId string
 
+	healCheck api.HealInfoCheck
+
 	// we need state gathered by clean in clean-done in the child operation
 	// we can't always pull the op from the db or we lose this state.
 	// This field is used to retain that state between calls.
@@ -34,14 +37,15 @@ type DeviceRemoveOperation struct {
 }
 
 func NewDeviceRemoveOperation(
-	deviceId string, db wdb.DB) *DeviceRemoveOperation {
+	deviceId string, db wdb.DB, h api.HealInfoCheck) *DeviceRemoveOperation {
 
 	return &DeviceRemoveOperation{
 		OperationManager: OperationManager{
 			db: db,
 			op: NewPendingOperationEntry(NEW_ID),
 		},
-		DeviceId: deviceId,
+		DeviceId:  deviceId,
+		healCheck: h,
 	}
 }
 
@@ -158,7 +162,7 @@ func (dro *DeviceRemoveOperation) migrateBricks(
 	for _, brickId := range toEvict {
 		nestedOp := newRemoveBrickComboOperation(
 			dro,
-			NewBrickEvictOperation(brickId, dro.db))
+			NewBrickEvictOperation(brickId, dro.db, dro.healCheck))
 		err = RunOperation(nestedOp, executor)
 		if err != nil {
 			return err
@@ -325,6 +329,8 @@ type BrickEvictOperation struct {
 	noRetriesOperation
 	BrickId string
 
+	healCheck api.HealInfoCheck
+
 	// internal caching params
 	replaceBrickSet *BrickSet
 	replaceIndex    int
@@ -347,14 +353,15 @@ func (bc brickContext) bhmap() brickHostMap {
 }
 
 func NewBrickEvictOperation(
-	brickId string, db wdb.DB) *BrickEvictOperation {
+	brickId string, db wdb.DB, h api.HealInfoCheck) *BrickEvictOperation {
 
 	return &BrickEvictOperation{
 		OperationManager: OperationManager{
 			db: db,
 			op: NewPendingOperationEntry(NEW_ID),
 		},
-		BrickId: brickId,
+		BrickId:   brickId,
+		healCheck: h,
 	}
 }
 
@@ -506,13 +513,9 @@ func (beo *BrickEvictOperation) execGetReplacmentInfo(
 		return err
 	}
 
-	node := old.node.ManageHostName()
-	err = executor.GlusterdCheck(node)
+	node, err := getWorkingNode(old.node, beo.db, executor)
 	if err != nil {
-		node, err = GetVerifiedManageHostname(beo.db, executor, old.node.Info.NodeAddRequest.ClusterId)
-		if err != nil {
-			return err
-		}
+		return err
 	}
 
 	bs, index, err := old.volume.getBrickSetForBrickId(
@@ -521,9 +524,13 @@ func (beo *BrickEvictOperation) execGetReplacmentInfo(
 		return err
 	}
 
-	err = old.volume.canReplaceBrickInBrickSet(beo.db, executor, node, bs, index)
-	if err != nil {
-		return err
+	if beo.healCheck != api.HealCheckDisable {
+		err = old.volume.canReplaceBrickInBrickSet(beo.db, executor, node, bs, index)
+		if err != nil {
+			return err
+		}
+	} else {
+		logger.Info("Skipping heal info check for volume %+v", old.volume)
 	}
 	beo.replaceBrickSet = bs
 	beo.replaceIndex = index
@@ -572,18 +579,19 @@ func (beo *BrickEvictOperation) execReplaceBrick(
 	newBrick.Path = newBrickEntry.Info.Path
 	newBrick.Host = newBrickNodeEntry.StorageHostName()
 
-	node := newBrickNodeEntry.ManageHostName()
+	node, err := getWorkingNode(newBrickNodeEntry, beo.db, executor)
+	if err != nil {
+		return err
+	}
+
 	err = executor.VolumeReplaceBrick(
 		node, old.volume.Info.Name, &oldBrick, &newBrick)
 	if err != nil {
 		return err
 	}
 
-	beo.reclaimed, err = old.bhmap().destroy(executor)
-	if err != nil {
-		return logger.LogError("Error destroying old brick: %v", err)
-	}
-	return nil
+	beo.reclaimed, err = tryDestroyBrickMap(old.bhmap(), executor)
+	return err
 }
 
 func (beo *BrickEvictOperation) Exec(executor executors.Executor) error {
@@ -655,7 +663,11 @@ func (beo *BrickEvictOperation) Clean(executor executors.Executor) error {
 	if err != nil {
 		return err
 	}
-	node := old.node.ManageHostName() // TODO: try on multiple nodes?
+	node, err := getWorkingNode(old.node, beo.db, executor)
+	if err != nil {
+		return nil
+	}
+
 	vinfo, err := executor.VolumeInfo(node, old.volume.Info.Name)
 	if err != nil {
 		logger.LogError("Unable to get volume info from gluster node %v for volume %v: %v", node, old.volume.Info.Name, err)
@@ -710,13 +722,13 @@ func (beo *BrickEvictOperation) Clean(executor executors.Executor) error {
 	switch beo.replaceResult {
 	case replaceComplete:
 		logger.Info("Destroying old brick contents")
-		beo.reclaimed, err = old.bhmap().destroy(executor)
+		beo.reclaimed, err = tryDestroyBrickMap(old.bhmap(), executor)
 		if err != nil {
 			return logger.LogError("Error destroying old brick: %v", err)
 		}
 	case replaceIncomplete:
 		logger.Info("Destroying unused new brick contents")
-		beo.reclaimed, err = newBHMap.destroy(executor)
+		beo.reclaimed, err = tryDestroyBrickMap(newBHMap, executor)
 		if err != nil {
 			return logger.LogError("Error destroying new brick: %v", err)
 		}
@@ -991,4 +1003,41 @@ func (bco *removeBrickComboOperation) Finalize() error {
 		}
 		return nil
 	})
+}
+
+func getWorkingNode(n *NodeEntry, db wdb.RODB, executor executors.Executor) (string, error) {
+	node := n.ManageHostName()
+	err := executor.GlusterdCheck(node)
+	if err != nil {
+		node, err = GetVerifiedManageHostname(db, executor, n.Info.NodeAddRequest.ClusterId)
+		if err != nil {
+			return "", err
+		}
+	}
+	return node, err
+}
+
+func tryDestroyBrickMap(bhmap brickHostMap, executor executors.Executor) (ReclaimMap, error) {
+	reclaimed, err := bhmap.destroy(executor)
+	if err == nil {
+		return reclaimed, nil
+	}
+
+	// If the destroy failed because the node is not running (ideally,
+	// permanently down) we want to continue with the operation . But if the
+	// node works we failed for a "real" reason we don't want to blindly ignore
+	// errors. So we do a probe to see if the host is responsive. If the
+	// destroy has failed we will use the node's responsiveness to decide if
+	// this should be treated as a failure or not.  It is bit hacky but should
+	// work around the lack of proper error handling in most common cases.
+	for b, node := range bhmap {
+		destroyErr := logger.LogError("Error destroying brick [%v]: %v", b, err)
+		err := executor.GlusterdCheck(node)
+		if err == nil {
+			logger.Warning("node [%v] responds to probe: failing operation", node)
+			return reclaimed, destroyErr
+		}
+		logger.Warning("node [%v] does not respond to probe: ignoring error destroying bricks", node)
+	}
+	return reclaimed, nil
 }

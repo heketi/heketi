@@ -1,0 +1,48 @@
+name: Test the Pull request
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go: ["1.12", "1.13", "1.14"]
+    steps:
+    - uses: actions/setup-go@v2-beta
+      with:
+        go-version: ${{ matrix.go }}
+
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
+    # temp disable python tests as they are failing because of directory issue
+    #- name: install python deps
+      #run: |
+        #sudo apt-get install -qq python python-pip
+        #sudo pip install tox nose
+
+    - name: install go deps
+      run: go get golang.org/x/tools/cmd/goimports
+
+    - name: create softlink for heketi
+      run: |
+        mkdir -p /home/runner/go/src/github.com/heketi
+        ln -s /home/runner/work/heketi/heketi /home/runner/go/src/github.com/heketi
+
+    - name: install glide and run heketi tests
+      working-directory: "/home/runner/go"
+      env:
+        GOPATH: /home/runner/go
+      run: |
+        export PATH=$PATH:$GOPATH/bin
+        curl https://glide.sh/get | sh
+        cd /home/runner/go/src/github.com/heketi/heketi
+        make all test COVERAGE=true TESTOPTIONS="-vcstdout"

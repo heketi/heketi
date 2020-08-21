@@ -527,27 +527,27 @@ func TestNodeSetStateFailed(t *testing.T) {
 	})
 
 	// Set failed
-	err := n.SetState(app.db, app.executor, api.EntryStateFailed)
+	err := n.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateFailed})
 	tests.Assert(t, n.State == api.EntryStateOnline)
 	tests.Assert(t, err != nil)
 
 	// Set offline
-	err = n.SetState(app.db, app.executor, api.EntryStateOffline)
+	err = n.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOffline})
 	tests.Assert(t, n.State == api.EntryStateOffline)
 	tests.Assert(t, err == nil)
 
 	// Set failed
-	err = n.SetState(app.db, app.executor, api.EntryStateFailed)
+	err = n.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateFailed})
 	tests.Assert(t, n.State == api.EntryStateFailed)
 	tests.Assert(t, err == nil)
 
 	// Set offline
-	err = n.SetState(app.db, app.executor, api.EntryStateOffline)
+	err = n.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOffline})
 	tests.Assert(t, n.State == api.EntryStateFailed)
 	tests.Assert(t, err != nil)
 
 	// Set online
-	err = n.SetState(app.db, app.executor, api.EntryStateOnline)
+	err = n.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOnline})
 	tests.Assert(t, n.State == api.EntryStateFailed)
 	tests.Assert(t, err != nil)
 }
@@ -597,17 +597,17 @@ func TestNodeSetStateOfflineOnline(t *testing.T) {
 	})
 
 	// Set offline
-	err := n.SetState(app.db, app.executor, api.EntryStateOffline)
+	err := n.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOffline})
 	tests.Assert(t, n.State == api.EntryStateOffline)
 	tests.Assert(t, err == nil)
 
 	// Set offline again
-	err = n.SetState(app.db, app.executor, api.EntryStateOffline)
+	err = n.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOffline})
 	tests.Assert(t, n.State == api.EntryStateOffline)
 	tests.Assert(t, err == nil)
 
 	// Set online
-	err = n.SetState(app.db, app.executor, api.EntryStateOnline)
+	err = n.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOnline})
 	tests.Assert(t, n.State == api.EntryStateOnline)
 	tests.Assert(t, err == nil)
 }
