@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/heketi/heketi.svg?branch=master)](https://travis-ci.org/heketi/heketi)
+[![Test the Pull request](https://github.com/heketi/heketi/workflows/Test%20the%20Pull%20request/badge.svg)](https://github.com/heketi/heketi/actions?query=workflow%3A%22Test+the+Pull+request%22)
 [![Coverage Status](https://coveralls.io/repos/heketi/heketi/badge.svg)](https://coveralls.io/r/heketi/heketi)
 [![Go Report Card](https://goreportcard.com/badge/github.com/heketi/heketi)](https://goreportcard.com/report/github.com/heketi/heketi)
 
