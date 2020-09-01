@@ -2,9 +2,9 @@ name: Test the Pull request
 
 on:
   push:
-    branches: [ master ]
+    branches: [ '*' ]
   pull_request:
-    branches: [ master ]
+    branches: [ '*' ]
 
 jobs:
   test:
@@ -23,19 +23,18 @@ jobs:
       with:
         fetch-depth: 0
 
-    # temp disable python tests as they are failing because of directory issue
-    #- name: install python deps
-      #run: |
-        #sudo apt-get install -qq python python-pip
-        #sudo pip install tox nose
+    - name: install python deps
+      run: |
+        sudo apt-get install -qq python python-pip
+        sudo pip install tox nose
 
     - name: install go deps
       run: go get golang.org/x/tools/cmd/goimports
 
-    - name: create softlink for heketi
+    - name: copy heketi repo in go src
       run: |
         mkdir -p /home/runner/go/src/github.com/heketi
-        ln -s /home/runner/work/heketi/heketi /home/runner/go/src/github.com/heketi
+        cp -r /home/runner/work/heketi/heketi /home/runner/go/src/github.com/heketi
 
     - name: install glide and run heketi tests
       working-directory: "/home/runner/go"
