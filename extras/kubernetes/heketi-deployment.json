@@ -57,6 +57,7 @@
       "spec": {
         "selector": {
           "matchLabels": {
+            "glusterfs": "heketi-pod",
             "name": "heketi"
           }
         },
