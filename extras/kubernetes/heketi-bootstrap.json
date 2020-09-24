@@ -44,7 +44,9 @@
       "spec": {
         "selector": {
           "matchLabels": {
-            "name": "deploy-heketi"
+            "name": "deploy-heketi",
+            "glusterfs": "heketi-pod",
+            "deploy-heketi": "pod"
           }
         },
         "replicas": 1,
