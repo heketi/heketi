@@ -15,6 +15,7 @@
 package tests
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"sync"
@@ -25,6 +26,8 @@ import (
 
 	inj "github.com/heketi/heketi/executors/injectexec"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
+	rex "github.com/heketi/heketi/pkg/remoteexec"
+	"github.com/heketi/heketi/pkg/remoteexec/ssh"
 	"github.com/heketi/heketi/pkg/testutils"
 	"github.com/heketi/heketi/server/config"
 )
@@ -352,6 +355,25 @@ func TestBrickEvict(t *testing.T) {
 			"expected device used aggregate sizes to match", newAggUsed, aggUsed)
 		checkConsistent(t, heketiServer)
 	})
+
+	t.Run("handleVolumeMissingInGluster", func(t *testing.T) {
+		na := testutils.RequireNodeAccess(t)
+		exec := na.Use(logger)
+		resetConf()
+
+		vinfo1, err := heketi.VolumeCreate(volReq)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+		err = rmVolume(vinfo1.Id, testCluster.SshHost(0), exec)
+		tests.Assert(t, err == nil, "expected err == nil, got:", err)
+
+		toEvict := vinfo1.Bricks[0].Id
+		err = heketi.BrickEvict(toEvict, nil)
+		tests.Assert(t, err != nil, "expected err != nil, got:", err)
+		// before fix, heketi would panic. Assert heketi is alive (didn't panic)
+		tests.Assert(t, heketiServer.IsAlive(),
+			"server is not alive; expected server not to panic")
+	})
 }
 
 func deviceAggregateUsedSize(t *testing.T) uint64 {
@@ -366,4 +388,16 @@ func deviceAggregateUsedSize(t *testing.T) uint64 {
 		}
 	}
 	return agg
+}
+
+func rmVolume(v string, node string, exec *ssh.SshExec) error {
+	vname := fmt.Sprintf("vol_%s", v)
+	stopVol := fmt.Sprintf("gluster --mode=script volume stop %v", vname)
+	delVol := fmt.Sprintf("gluster --mode=script volume delete %v", vname)
+	cmds := rex.Cmds{
+		rex.ToCmd(stopVol),
+		rex.ToCmd(delVol),
+	}
+	err := rex.AnyError(exec.ExecCommands(node, cmds, 10, true))
+	return err
 }
