@@ -285,6 +285,11 @@ func (s *CmdExecutor) VolumeInfo(host string, volume string) (*executors.Volume,
 		return nil, fmt.Errorf("Unable to determine volume info of volume name: %v", volume)
 	}
 	logger.Debug("%+v\n", volumeInfo)
+	if volumeInfo.OpErrStr != "" {
+		// gluster failed but didn't set a non-zero exit code!
+		return nil, fmt.Errorf("Unable to get info for %v: %v",
+			volume, volumeInfo.OpErrStr)
+	}
 	return &volumeInfo.VolInfo.Volumes.VolumeList[0], nil
 }
 
