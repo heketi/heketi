@@ -13,6 +13,7 @@
 package client
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -1268,4 +1269,88 @@ func TestVolumeSetBlockRestriction(t *testing.T) {
 		})
 	tests.Assert(t, err == nil)
 	tests.Assert(t, v2.BlockInfo.Restriction == api.Unrestricted)
+}
+
+func TestCustomHttpClient(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+
+	// Setup the server
+	ts := setupHeketiServer(app)
+	defer ts.Close()
+
+	// Create cluster
+	c := newTestClient(ts.URL, "admin", TEST_ADMIN_KEY)
+	tests.Assert(t, c != nil)
+	counter := 0
+	c.SetClientFunc(func(tlsConfig *tls.Config, checkRedirect CheckRedirectFunc) (HttpPerformer, error) {
+		counter++
+		return HeketiHttpClient(tlsConfig, checkRedirect)
+	})
+
+	cluster_req := &api.ClusterCreateRequest{
+		ClusterFlags: api.ClusterFlags{
+			Block: true,
+			File:  true,
+		},
+	}
+	cluster, err := c.ClusterCreate(cluster_req)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, cluster.Id != "")
+	tests.Assert(t, len(cluster.Nodes) == 0)
+	tests.Assert(t, len(cluster.Volumes) == 0)
+
+	cluster, err = c.ClusterCreate(cluster_req)
+	tests.Assert(t, err == nil)
+	tests.Assert(t, cluster.Id != "")
+	tests.Assert(t, len(cluster.Nodes) == 0)
+	tests.Assert(t, len(cluster.Volumes) == 0)
+
+	tests.Assert(t, counter >= 2, "expected counter >= 2, got:", counter)
+}
+
+type failer struct{}
+
+func (failer) Do(r *http.Request) (*http.Response, error) {
+	return nil, fmt.Errorf("I always fail on %s", r.URL.String())
+}
+
+func TestCustomHttpClientFakeFailingPerformer(t *testing.T) {
+	db := tests.Tempfile()
+	defer os.Remove(db)
+
+	// Create the app
+	app := glusterfs.NewTestApp(db)
+	defer app.Close()
+
+	// Setup the server
+	ts := setupHeketiServer(app)
+	defer ts.Close()
+
+	// Create cluster
+	c := newTestClient(ts.URL, "admin", TEST_ADMIN_KEY)
+	tests.Assert(t, c != nil)
+	counter := 0
+	c.SetClientFunc(func(tlsConfig *tls.Config, checkRedirect CheckRedirectFunc) (HttpPerformer, error) {
+		counter++
+		return failer{}, nil
+	})
+
+	cluster_req := &api.ClusterCreateRequest{
+		ClusterFlags: api.ClusterFlags{
+			Block: true,
+			File:  true,
+		},
+	}
+	_, err := c.ClusterCreate(cluster_req)
+	tests.Assert(t, err != nil, "got", err)
+
+	_, err = c.ClusterCreate(cluster_req)
+	tests.Assert(t, err != nil, "got", err)
+
+	tests.Assert(t, counter >= 2, "expected counter >= 2, got:", counter)
 }

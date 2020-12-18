@@ -28,16 +28,22 @@ import (
 type PendingOperationType int
 
 const (
+	// These values are persisted and we should never change the mapping. Even
+	// if an operation type is deprecated, use a new one and retire the number
+	// associated with it.
+
 	OperationUnknown PendingOperationType = iota
 	OperationCreateVolume
 	OperationDeleteVolume
 	OperationExpandVolume
 	OperationCreateBlockVolume
 	OperationDeleteBlockVolume
-	OperationExpandBlockVolume
 	OperationRemoveDevice
 	OperationCloneVolume
 	OperationBrickEvict
+	OperationExpandBlockVolume
+	// If you have any edit except directly above this line it is probably a
+	// mistake. Read the top comment about renumbering the enums.
 )
 
 // PendingChangeType identifies what kind of lower-level new item or change
@@ -45,6 +51,10 @@ const (
 type PendingChangeType int
 
 const (
+	// These values are persisted and we should never change the mapping. Even
+	// if a change type is deprecated, use a new one and retire the number
+	// associated with it.
+
 	OpUnknown PendingChangeType = iota
 	OpAddBrick
 	OpAddVolume
@@ -53,13 +63,15 @@ const (
 	OpExpandVolume
 	OpAddBlockVolume
 	OpDeleteBlockVolume
-	OpExpandBlockVolume
 	OpRemoveDevice
 	OpCloneVolume
 	OpSnapshotVolume
 	OpAddVolumeClone
 	OpChildOperation
 	OpParentOperation
+	OpExpandBlockVolume
+	// If you have any edit except directly above this line it is probably a
+	// mistake. Read the top comment about renumbering the enums.
 )
 
 // PendingOperationAction tracks individual changes to entries within the
