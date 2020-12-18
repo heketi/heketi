@@ -86,12 +86,35 @@ func ValidateDurabilityType(value interface{}) error {
 	return nil
 }
 
+type HealInfoCheck string
+
+const (
+	HealCheckUnknown HealInfoCheck = ""
+	HealCheckEnable  HealInfoCheck = "enable"
+	HealCheckDisable HealInfoCheck = "disable"
+)
+
+func ValidateHealCheck(value interface{}) error {
+	h, _ := value.(HealInfoCheck)
+	err := validation.Validate(h, validation.In(HealCheckUnknown, HealCheckEnable, HealCheckDisable))
+	if err != nil {
+		return fmt.Errorf("%v is not valid heal info check", h)
+	}
+	return nil
+}
+
 // Common
 type StateRequest struct {
-	State EntryState `json:"state"`
+	State     EntryState    `json:"state"`
+	HealCheck HealInfoCheck `json:"healcheck"`
 }
 
 func (statereq StateRequest) Validate() error {
+	if err := validation.ValidateStruct(&statereq,
+		validation.Field(&statereq.HealCheck, validation.By(ValidateHealCheck))); err != nil {
+		return err
+	}
+
 	return validation.ValidateStruct(&statereq,
 		validation.Field(&statereq.State, validation.Required, validation.By(ValidateEntryState)),
 	)
@@ -696,4 +719,10 @@ func ValidateIds(v interface{}) error {
 
 // reserving a type for future options for brick evict
 type BrickEvictOptions struct {
+	HealCheck HealInfoCheck `json:"healcheck"`
+}
+
+func (brickops BrickEvictOptions) Validate() error {
+	return validation.ValidateStruct(&brickops,
+		validation.Field(&brickops.HealCheck, validation.By(ValidateHealCheck)))
 }

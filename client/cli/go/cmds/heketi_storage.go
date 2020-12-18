@@ -140,7 +140,7 @@ func createHeketiStorageVolume(c *client.Client, dt api.DurabilityType, replicaC
 
 			// Check volume name
 			if volume.Name == db.HeketiStorageVolumeName {
-				return nil, fmt.Errorf("Volume %v alreay exists", db.HeketiStorageVolumeName)
+				return nil, fmt.Errorf("Volume %v already exists", db.HeketiStorageVolumeName)
 			}
 		}
 	}

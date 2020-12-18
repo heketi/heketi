@@ -10,6 +10,7 @@
 package middleware
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -22,7 +23,6 @@ import (
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	jwt "github.com/dgrijalva/jwt-go"
-	"github.com/gorilla/context"
 	"github.com/heketi/heketi/pkg/logging"
 )
 
@@ -187,8 +187,10 @@ func (j *JwtAuth) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.Ha
 	}
 
 	// Store token in request for other middleware to access
-	context.Set(r, "jwt", token)
+	ctx := r.Context()
+	ctx = context.WithValue(ctx, "jwt", token)
+	newR := r.WithContext(ctx)
 
 	// Everything passes call next middleware
-	next(w, r)
+	next(w, newR)
 }

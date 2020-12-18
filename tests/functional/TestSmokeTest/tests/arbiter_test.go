@@ -329,24 +329,24 @@ func testArbiterReplaceDataBrick(t *testing.T) {
 	}
 
 	err = heketi.DeviceState(
-		deviceId, &api.StateRequest{api.EntryStateOffline})
+		deviceId, &api.StateRequest{api.EntryStateOffline, api.HealCheckEnable})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	defer func() {
 		if err = heketi.DeviceState(
-			deviceId, &api.StateRequest{api.EntryStateOnline}); err != nil {
+			deviceId, &api.StateRequest{api.EntryStateOnline, api.HealCheckEnable}); err != nil {
 			logger.Warning("Failed to return device %v to online state",
 				deviceId)
 		}
 	}()
 
 	err = heketi.DeviceState(
-		deviceId, &api.StateRequest{api.EntryStateFailed})
+		deviceId, &api.StateRequest{api.EntryStateFailed, api.HealCheckEnable})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	defer func() {
 		if err = heketi.DeviceState(
-			deviceId, &api.StateRequest{api.EntryStateOffline}); err != nil {
+			deviceId, &api.StateRequest{api.EntryStateOffline, api.HealCheckEnable}); err != nil {
 			logger.Warning("Failed to return device %v to online state",
 				deviceId)
 		}
@@ -395,24 +395,24 @@ func testArbiterReplaceArbiterBrick(t *testing.T) {
 		"output:", o, "path:", path)
 
 	err = heketi.DeviceState(
-		deviceId, &api.StateRequest{api.EntryStateOffline})
+		deviceId, &api.StateRequest{api.EntryStateOffline, api.HealCheckEnable})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	defer func() {
 		if err = heketi.DeviceState(
-			deviceId, &api.StateRequest{api.EntryStateOnline}); err != nil {
+			deviceId, &api.StateRequest{api.EntryStateOnline, api.HealCheckEnable}); err != nil {
 			logger.Warning("Failed to return device %v to online state",
 				deviceId)
 		}
 	}()
 
 	err = heketi.DeviceState(
-		deviceId, &api.StateRequest{api.EntryStateFailed})
+		deviceId, &api.StateRequest{api.EntryStateFailed, api.HealCheckEnable})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	defer func() {
 		if err = heketi.DeviceState(
-			deviceId, &api.StateRequest{api.EntryStateOffline}); err != nil {
+			deviceId, &api.StateRequest{api.EntryStateOffline, api.HealCheckEnable}); err != nil {
 			logger.Warning("Failed to return device %v to online state",
 				deviceId)
 		}

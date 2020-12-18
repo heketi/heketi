@@ -25,7 +25,6 @@ import (
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
-	"github.com/gorilla/context"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
 	"github.com/urfave/negroni"
@@ -343,7 +342,7 @@ func TestJwt(t *testing.T) {
 	// Create a simple middleware to check if it was called
 	called := false
 	mw := func(rw http.ResponseWriter, r *http.Request) {
-		data := context.Get(r, "jwt")
+		data := r.Context().Value("jwt")
 		tests.Assert(t, data != nil)
 
 		token := data.(*jwt.Token)
@@ -407,7 +406,7 @@ func TestJwtLeewayIAT(t *testing.T) {
 
 	called := false
 	mw := func(rw http.ResponseWriter, r *http.Request) {
-		data := context.Get(r, "jwt")
+		data := r.Context().Value("jwt")
 		tests.Assert(t, data != nil)
 
 		token := data.(*jwt.Token)
@@ -479,7 +478,7 @@ func TestJwtExceedLeewayIAT(t *testing.T) {
 
 	called := false
 	mw := func(rw http.ResponseWriter, r *http.Request) {
-		data := context.Get(r, "jwt")
+		data := r.Context().Value("jwt")
 		tests.Assert(t, data != nil)
 
 		token := data.(*jwt.Token)
@@ -553,7 +552,7 @@ func TestJwtModifiedLeewayIATSuccess(t *testing.T) {
 
 		called := false
 		mw := func(rw http.ResponseWriter, r *http.Request) {
-			data := context.Get(r, "jwt")
+			data := r.Context().Value("jwt")
 			tests.Assert(t, data != nil)
 
 			token := data.(*jwt.Token)
@@ -639,7 +638,7 @@ func TestJwtModifiedLeewayIATFailure(t *testing.T) {
 
 		called := false
 		mw := func(rw http.ResponseWriter, r *http.Request) {
-			data := context.Get(r, "jwt")
+			data := r.Context().Value("jwt")
 			tests.Assert(t, data != nil)
 
 			token := data.(*jwt.Token)
@@ -727,7 +726,7 @@ func TestJwtNegativeLeewayIATFailure(t *testing.T) {
 
 		called := false
 		mw := func(rw http.ResponseWriter, r *http.Request) {
-			data := context.Get(r, "jwt")
+			data := r.Context().Value("jwt")
 			tests.Assert(t, data != nil)
 
 			token := data.(*jwt.Token)
@@ -950,7 +949,7 @@ func TestJwtWrongSigningMethod(t *testing.T) {
 	tests.Assert(t, n != nil, "negroni.New failed")
 
 	mw := func(rw http.ResponseWriter, r *http.Request) {
-		data := context.Get(r, "jwt")
+		data := r.Context().Value("jwt")
 		tests.Assert(t, data != nil, "context.Get failed")
 
 		token := data.(*jwt.Token)

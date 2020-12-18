@@ -14,7 +14,6 @@ import (
 	"strings"
 
 	jwt "github.com/dgrijalva/jwt-go"
-	"github.com/gorilla/context"
 	"github.com/urfave/negroni"
 
 	"github.com/heketi/heketi/middleware"
@@ -29,7 +28,7 @@ var (
 func (a *App) Auth(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 
 	// Value saved by the JWT middleware.
-	data := context.Get(r, "jwt")
+	data := r.Context().Value("jwt")
 
 	// Need to change from interface{} to the jwt.Token type
 	token := data.(*jwt.Token)

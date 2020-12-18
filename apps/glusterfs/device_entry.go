@@ -156,23 +156,23 @@ func (d *DeviceEntry) modifyState(db wdb.DB, s api.EntryState) error {
 
 func (d *DeviceEntry) SetState(db wdb.DB,
 	e executors.Executor,
-	s api.EntryState) error {
+	s api.StateRequest) error {
 
-	if e := d.stateCheck(s); e != nil {
+	if e := d.stateCheck(s.State); e != nil {
 		return e
 	}
-	if d.State == s {
+	if d.State == s.State {
 		return nil
 	}
 
-	switch s {
+	switch s.State {
 	case api.EntryStateOffline, api.EntryStateOnline:
 		// simply update the state and move on
-		if err := d.modifyState(db, s); err != nil {
+		if err := d.modifyState(db, s.State); err != nil {
 			return err
 		}
 	case api.EntryStateFailed:
-		if err := d.Remove(db, e); err != nil {
+		if err := d.Remove(db, e, s); err != nil {
 			if err == ErrNoReplacement {
 				return logger.LogError("Unable to delete device [%v] as no device was found to replace it: %v", d.Id(), err)
 			}
@@ -394,10 +394,10 @@ func (d *DeviceEntry) poolMetadataSize(tpsize uint64) uint64 {
 
 // Moves all the bricks from the device to one or more other devices
 func (d *DeviceEntry) Remove(db wdb.DB,
-	executor executors.Executor) (e error) {
+	executor executors.Executor, s api.StateRequest) (e error) {
 
 	if e = RunOperation(
-		NewDeviceRemoveOperation(d.Info.Id, db),
+		NewDeviceRemoveOperation(d.Info.Id, db, s.HealCheck),
 		executor); e != nil {
 		return e
 	}
