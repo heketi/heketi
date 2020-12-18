@@ -285,7 +285,7 @@ func (a *App) DeviceDelete(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Show that the key has been deleted
-		logger.Info("Deleted node [%s]", id)
+		logger.Info("Deleted device [%s]", id)
 
 		return "", nil
 	})
@@ -350,7 +350,7 @@ func (a *App) DeviceSetState(w http.ResponseWriter, r *http.Request) {
 				a.optracker.Remove(token)
 			}
 		}()
-		err = device.SetState(a.db, a.executor, msg.State)
+		err = device.SetState(a.db, a.executor, msg)
 		if err != nil {
 			return "", err
 		}
@@ -558,8 +558,15 @@ func (a *App) BrickEvict(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	err := opts.Validate()
+	if err != nil {
+		http.Error(w, "validation failed: "+err.Error(), http.StatusBadRequest)
+		logger.LogError("validation failed: " + err.Error())
+		return
+	}
+
 	// sanity check the id
-	err := a.db.View(func(tx *bolt.Tx) error {
+	err = a.db.View(func(tx *bolt.Tx) error {
 		var err error
 		_, err = NewBrickEntryFromId(tx, id)
 		if err == ErrNotFound {
@@ -576,7 +583,7 @@ func (a *App) BrickEvict(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logger.Info("Requested to evict brick: %v", id)
-	beo := NewBrickEvictOperation(id, a.db)
+	beo := NewBrickEvictOperation(id, a.db, opts.HealCheck)
 	if err := AsyncHttpOperation(a, w, r, beo); err != nil {
 		OperationHttpErrorf(w, err, "Failed to set up brick eviction: %v", err)
 		return

@@ -56,10 +56,10 @@ func TestDeviceRemoveOperationEmpty(t *testing.T) {
 	})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	err = d.SetState(app.db, app.executor, api.EntryStateOffline)
+	err = d.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOffline})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	dro := NewDeviceRemoveOperation(d.Info.Id, app.db)
+	dro := NewDeviceRemoveOperation(d.Info.Id, app.db, api.HealCheckEnable)
 	err = dro.Build()
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
@@ -127,10 +127,10 @@ func TestDeviceRemoveOperationWithBricks(t *testing.T) {
 	})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	err = d.SetState(app.db, app.executor, api.EntryStateOffline)
+	err = d.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOffline})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	dro := NewDeviceRemoveOperation(d.Info.Id, app.db)
+	dro := NewDeviceRemoveOperation(d.Info.Id, app.db, api.HealCheckEnable)
 	err = dro.Build()
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
@@ -232,10 +232,10 @@ func TestDeviceRemoveOperationTooFewDevices(t *testing.T) {
 	})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	err = d.SetState(app.db, app.executor, api.EntryStateOffline)
+	err = d.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOffline})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	dro := NewDeviceRemoveOperation(d.Info.Id, app.db)
+	dro := NewDeviceRemoveOperation(d.Info.Id, app.db, api.HealCheckEnable)
 	err = dro.Build()
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
@@ -352,10 +352,10 @@ func TestDeviceRemoveOperationOtherPendingOps(t *testing.T) {
 		return nil
 	})
 
-	err = d.SetState(app.db, app.executor, api.EntryStateOffline)
+	err = d.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOffline})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	dro := NewDeviceRemoveOperation(d.Info.Id, app.db)
+	dro := NewDeviceRemoveOperation(d.Info.Id, app.db, api.HealCheckEnable)
 	err = dro.Build()
 	tests.Assert(t, err == ErrConflict, "expected err == ErrConflict, got:", err)
 
@@ -418,11 +418,11 @@ func TestDeviceRemoveOperationMultipleRequests(t *testing.T) {
 	})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	err = d.SetState(app.db, app.executor, api.EntryStateOffline)
+	err = d.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOffline})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
 	// perform the build step of one remove operation
-	dro := NewDeviceRemoveOperation(d.Info.Id, app.db)
+	dro := NewDeviceRemoveOperation(d.Info.Id, app.db, api.HealCheckEnable)
 	err = dro.Build()
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
@@ -430,7 +430,7 @@ func TestDeviceRemoveOperationMultipleRequests(t *testing.T) {
 	// we can "fake' it this way in a test because the transactions
 	// that cover the Build steps are effectively serializing
 	// these actions.
-	dro2 := NewDeviceRemoveOperation(d.Info.Id, app.db)
+	dro2 := NewDeviceRemoveOperation(d.Info.Id, app.db, api.HealCheckEnable)
 	err = dro2.Build()
 	tests.Assert(t, err == ErrConflict, "expected err == ErrConflict, got:", err)
 
@@ -478,7 +478,7 @@ func TestBrickEvictOperation(t *testing.T) {
 		return nil
 	})
 
-	beo := NewBrickEvictOperation(b.Info.Id, app.db)
+	beo := NewBrickEvictOperation(b.Info.Id, app.db, api.HealCheckEnable)
 	err = beo.Build()
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	err = app.db.View(func(tx *bolt.Tx) error {
@@ -592,17 +592,17 @@ func TestBrickEvictOperationOneAtATime(t *testing.T) {
 		return nil
 	})
 
-	beo1 := NewBrickEvictOperation(b1.Info.Id, app.db)
+	beo1 := NewBrickEvictOperation(b1.Info.Id, app.db, api.HealCheckEnable)
 	err = beo1.Build()
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	beo2 := NewBrickEvictOperation(b2.Info.Id, app.db)
+	beo2 := NewBrickEvictOperation(b2.Info.Id, app.db, api.HealCheckEnable)
 	err = beo2.Build()
 	tests.Assert(t, err != nil, "expected err != nil, got:", err)
 	tests.Assert(t, strings.Contains(err.Error(), "pending"),
 		"expected 'pedning' in error, got:", err)
 
-	beo3 := NewBrickEvictOperation(b1.Info.Id, app.db)
+	beo3 := NewBrickEvictOperation(b1.Info.Id, app.db, api.HealCheckEnable)
 	err = beo3.Build()
 	tests.Assert(t, err != nil, "expected err != nil, got:", err)
 	tests.Assert(t, strings.Contains(err.Error(), "pending"),
@@ -650,7 +650,7 @@ func TestBrickEvictOperationError(t *testing.T) {
 		return mockHealStatusFromDb(app.db, volume)
 	}
 
-	beo := NewBrickEvictOperation(b.Info.Id, app.db)
+	beo := NewBrickEvictOperation(b.Info.Id, app.db, api.HealCheckEnable)
 	err = RunOperation(beo, app.executor)
 	tests.Assert(t, err != nil, "expected err != nil, got:", err)
 
@@ -721,7 +721,7 @@ func TestBrickEvictOperationErrorAfterBrick(t *testing.T) {
 		return fmt.Errorf("Whoopsie")
 	}
 
-	beo := NewBrickEvictOperation(b.Info.Id, app.db)
+	beo := NewBrickEvictOperation(b.Info.Id, app.db, api.HealCheckEnable)
 	err = RunOperation(beo, app.executor)
 	tests.Assert(t, err != nil, "expected err != nil, got:", err)
 
@@ -782,7 +782,7 @@ func TestBrickEvictOperationInvalidExec(t *testing.T) {
 		return nil
 	})
 
-	beo := NewBrickEvictOperation(b.Info.Id, app.db)
+	beo := NewBrickEvictOperation(b.Info.Id, app.db, api.HealCheckEnable)
 	err = beo.Build()
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	var pop *PendingOperationEntry
@@ -889,7 +889,7 @@ func TestBrickEvictOperationErrorNotReplaced(t *testing.T) {
 		return fmt.Errorf("Whoopsie")
 	}
 
-	beo := NewBrickEvictOperation(b.Info.Id, app.db)
+	beo := NewBrickEvictOperation(b.Info.Id, app.db, api.HealCheckEnable)
 	err = RunOperation(beo, app.executor)
 	tests.Assert(t, err != nil, "expected err != nil, got:", err)
 
@@ -964,10 +964,10 @@ func TestDeviceRemoveOperationChildOpError(t *testing.T) {
 	})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	err = d.SetState(app.db, app.executor, api.EntryStateOffline)
+	err = d.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOffline})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	dro := NewDeviceRemoveOperation(d.Info.Id, app.db)
+	dro := NewDeviceRemoveOperation(d.Info.Id, app.db, api.HealCheckEnable)
 	err = dro.Build()
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
@@ -1087,10 +1087,10 @@ func TestDeviceRemoveOperationChildOpCleanup(t *testing.T) {
 	})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	err = d.SetState(app.db, app.executor, api.EntryStateOffline)
+	err = d.SetState(app.db, app.executor, api.StateRequest{State: api.EntryStateOffline})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 
-	dro := NewDeviceRemoveOperation(d.Info.Id, app.db)
+	dro := NewDeviceRemoveOperation(d.Info.Id, app.db, api.HealCheckEnable)
 	err = dro.Build()
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 

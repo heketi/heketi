@@ -126,10 +126,16 @@ func (v *BlockVolumeEntry) NewInfoResponse(tx *bolt.Tx) (*api.BlockVolumeInfoRes
 	info.Cluster = v.Info.Cluster
 	info.BlockVolume = v.Info.BlockVolume
 	info.Size = v.Info.Size
+	info.UsableSize = v.Info.UsableSize
 	info.Name = v.Info.Name
 	info.Hacount = v.Info.Hacount
 	info.BlockHostingVolume = v.Info.BlockHostingVolume
 
+	// Handle block volumes which where created
+	// before introducing UsableSize flag in the db
+	if info.UsableSize == 0 && info.Size > 0 {
+		info.UsableSize = info.Size
+	}
 	return info, nil
 }
 

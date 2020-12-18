@@ -46,7 +46,7 @@ func (s *CmdExecutor) BlockVolumeCreate(host string,
 		auth_set = "disable"
 	}
 
-	cmd := fmt.Sprintf(
+	cmd := rex.ToCmd(fmt.Sprintf(
 		"gluster-block create %v/%v ha %v auth %v prealloc %v %v %vGiB --json",
 		volume.GlusterVolumeName,
 		volume.Name,
@@ -54,13 +54,15 @@ func (s *CmdExecutor) BlockVolumeCreate(host string,
 		auth_set,
 		s.BlockVolumeDefaultPrealloc(),
 		strings.Join(volume.BlockHosts, ","),
-		volume.Size)
+		volume.Size))
 
-	// Initialize the commands with the create command
-	commands := []string{cmd}
+	if volume.Auth {
+		// Do not write the stdout and stderr to logfile, this might contain sensitive data
+		cmd.Options.Quiet = true
+	}
 
 	// Execute command
-	results, err := s.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands), 10)
+	results, err := s.RemoteExecutor.ExecCommands(host, rex.Cmds{cmd}, 10)
 	if err != nil {
 		return nil, err
 	}
@@ -106,6 +108,11 @@ func (s *CmdExecutor) BlockVolumeCreate(host string,
 	blockVolumeInfo.Size = volume.Size
 	blockVolumeInfo.Username = blockVolumeCreate.Username
 	blockVolumeInfo.Password = blockVolumeCreate.Password
+
+	logger.Info("{'IQN': '%v', 'USERNAME': '%v', 'AUTH': '%v', 'PORTAL(S)': [ '%v' ], 'RESULT': '%v', 'errCode': %v, 'errMsg': '%v' }",
+		blockVolumeCreate.Iqn, blockVolumeCreate.Username, auth_set,
+		blockVolumeCreate.Portal, blockVolumeCreate.Result,
+		blockVolumeCreate.ErrCode, blockVolumeCreate.ErrMsg)
 
 	return &blockVolumeInfo, nil
 }
@@ -240,17 +247,21 @@ func (c *CmdExecutor) BlockVolumeInfo(host string, blockhostingvolume string,
 	godbc.Require(blockVolumeName != "")
 
 	type CliOutput struct {
-		BlockName              string   `json:"NAME"`
-		BlockHostingVolumeName string   `json:"VOLUME"`
-		Gbid                   string   `json:"GBID"`
-		Size                   string   `json:"SIZE"`
-		Ha                     int      `json:"HA"`
-		Password               string   `json:"PASSWORD"`
-		Portal                 []string `json:"EXPORTED ON"`
+		BlockName              string            `json:"NAME"`
+		BlockHostingVolumeName string            `json:"VOLUME"`
+		Gbid                   string            `json:"GBID"`
+		Size                   string            `json:"SIZE"`
+		Ha                     int               `json:"HA"`
+		Password               string            `json:"PASSWORD"`
+		Portal                 []string          `json:"EXPORTED ON"`
+		ResizeFailed           map[string]string `json:"RESIZE FAILED ON,omitempty"`
 	}
-	commands := []string{fmt.Sprintf("gluster-block info %v/%v --json", blockhostingvolume, blockVolumeName)}
 
-	results, err := c.RemoteExecutor.ExecCommands(host, rex.ToCmds(commands), 10)
+	cmd := rex.ToCmd(fmt.Sprintf("gluster-block info %v/%v --json", blockhostingvolume, blockVolumeName))
+	// Do not write the stdout and stderr to logfile, this might contain sensitive data
+	cmd.Options.Quiet = true
+
+	results, err := c.RemoteExecutor.ExecCommands(host, rex.Cmds{cmd}, 10)
 	if err := rex.AnyError(results, err); err != nil {
 		logger.Err(err)
 		return nil, fmt.Errorf("unable to get info of blockvolume %v on block hosting volume %v : %v",
@@ -292,6 +303,40 @@ func (c *CmdExecutor) BlockVolumeInfo(host string, blockhostingvolume string,
 	}
 	blockVolumeInfo.Username = blockVolumeInfoExec.Gbid
 	blockVolumeInfo.Password = blockVolumeInfoExec.Password
+
+	auth_set := "enable"
+	if blockVolumeInfoExec.Password == "" {
+		auth_set = "disable"
+	}
+
+	var resizeFailed string
+	if len(blockVolumeInfoExec.ResizeFailed) != 0 {
+		for key, value := range blockVolumeInfoExec.ResizeFailed {
+			resizeFailed += fmt.Sprintf("'%v' : '%v', ", key, value)
+		}
+	}
+
+	logger.Info("{ 'NAME': '%v', 'VOLUME': '%v', 'GBID': '%v', 'SIZE': '%v', 'HA': %v, 'AUTH': '%v', 'EXPORTED ON': [ '%v' ], 'RESIZE FAILED ON': { %v } }",
+		blockVolumeInfoExec.BlockName, blockVolumeInfoExec.BlockHostingVolumeName,
+		blockVolumeInfoExec.Gbid, blockVolumeInfoExec.Size, blockVolumeInfoExec.Ha,
+		auth_set, blockVolumeInfoExec.Portal, resizeFailed)
+
+	// From gluster-block output,
+	// get the Minimum Size from the list of Resize failed nodes
+	minSize := -1
+	for _, size := range blockVolumeInfoExec.ResizeFailed {
+		value, err := toGigaBytes(size)
+		if err != nil {
+			logger.LogError("Error calculating usable size: %v : %v", err, size)
+			return nil, err
+		}
+		if minSize == -1 || value < minSize {
+			minSize = value
+		}
+	}
+	if minSize != -1 {
+		blockVolumeInfo.UsableSize = minSize
+	}
 
 	return &blockVolumeInfo, nil
 }
@@ -337,8 +382,11 @@ func (s *CmdExecutor) BlockVolumeExpand(host string, blockHostingVolumeName stri
 			output)
 	} else if blockVolumeExpand.Result == "FAIL" {
 		// the fail flag was set in the output json
-		err = fmt.Errorf("Failed to expand block volume: %v",
-			blockVolumeExpand.ErrMsg)
+		if blockVolumeExpand.ErrMsg != "" {
+			err = fmt.Errorf("Failed to expand block volume: %v (see logs for details, and retry the operation)", blockVolumeExpand.ErrMsg)
+		} else {
+			err = fmt.Errorf("Failed to expand block volume (see logs for details, and retry the operation)")
+		}
 	} else if !results.Ok() {
 		// the fail flag is not set but the command still
 		// exited non-zero for some reason
