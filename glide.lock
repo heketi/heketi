@@ -1,5 +1,5 @@
-hash: 6bd1a11a1f60b05b812c7e761c52889ad4177b55ebd9125ab7e9ba619a5c71e3
-updated: 2019-09-12T11:09:15.14308-04:00
+hash: 101a677198f95e8950ccdf32f82f219598d593b78574ecf33c638d4fb0d8ccfa
+updated: 2021-01-20T13:22:30.5695457Z
 imports:
 - name: github.com/asaskevich/govalidator
   version: f9ffefc3facfbe0caee3fea233cbb6e8208f4541
@@ -16,13 +16,15 @@ imports:
   subpackages:
   - spew
 - name: github.com/dgrijalva/jwt-go
-  version: 06ea1031745cb8b3dab3f6a236daf2b0aa468b7e
+  version: 01aeca54ebda6e0fbfafd0a524d234159c05ec20
 - name: github.com/docker/spdystream
   version: 449fdfce4d962303d702fec724ef0ad181c92528
   subpackages:
   - spdy
 - name: github.com/evanphx/json-patch
   version: 5858425f75500d40c52783dce87d085a483ce135
+- name: github.com/form3tech-oss/jwt-go
+  version: 9162a5abdbc046b7c8b03ee90052cee67e25caa7
 - name: github.com/go-ozzo/ozzo-validation
   version: 85dcd8368eba387e65a03488b003e233994e87e9
   subpackages:
@@ -107,6 +109,7 @@ imports:
   - poly1305
   - ssh
   - ssh/agent
+  - ssh/knownhosts
   - ssh/terminal
 - name: golang.org/x/net
   version: cdfb69ac37fc6fa907650654115ebebb3aae2087
