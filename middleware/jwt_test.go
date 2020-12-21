@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	jwt "github.com/form3tech-oss/jwt-go"
 	"github.com/heketi/heketi/pkg/utils"
 	"github.com/heketi/tests"
 	"github.com/urfave/negroni"
@@ -981,7 +981,7 @@ func TestJwtWrongSigningMethod(t *testing.T) {
 	// Setup pre-req bits needed to make our PS256 valid.
 	// Should we use a fake source of randomness instead of real
 	// rand.Reader here?
-	pk, err := rsa.GenerateKey(rand.Reader, 256*2)
+	pk, err := rsa.GenerateKey(rand.Reader, 512*2)
 	tests.Assert(t, err == nil, "rsa.GenerateKey failed:", err)
 	tokenString, err := token.SignedString(pk)
 	tests.Assert(t, err == nil, "token.SignedString failed:", err)
