@@ -88,7 +88,7 @@ endif
 glide.lock: glide.yaml
 	echo "Glide.yaml has changed, updating glide.lock"
 	if [ "$(GLIDE_HOME)" ]; then mkdir -p "$(GLIDE_HOME)"; fi
-	$(GLIDE) update -v
+	timeout -v 20m $(GLIDE) update -v || timeout -v 20m $(GLIDE) update -v
 
 client: vendor glide.lock
 	@$(MAKE) -C client/cli/go
