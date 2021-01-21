@@ -83,7 +83,7 @@ ifndef HGPATH
 endif
 	echo "Installing vendor directory"
 	if [ "$(GLIDE_HOME)" ]; then mkdir -p "$(GLIDE_HOME)"; fi
-	$(GLIDE) install -v
+	timeout 20m $(GLIDE) install -v || timeout 20m $(GLIDE) install -v
 
 glide.lock: glide.yaml
 	echo "Glide.yaml has changed, updating glide.lock"
@@ -155,7 +155,7 @@ linux_arm_dist:
 
 linux_arm64_dist:
 	GOOS=linux GOARCH=arm64 $(MAKE) dist
-	
+
 linux_s390x_dist:
 	GOOS=linux GOARCH=s390x $(MAKE) dist
 
