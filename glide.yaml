@@ -1,7 +1,7 @@
 package: github.com/heketi/heketi
 import:
 - package: github.com/auth0/go-jwt-middleware
-  version: 36081240882bbf356af6efb152969e4b0bcf4456
+  version: v1.0.0
 - package: github.com/boltdb/bolt
   version: ^1.3.0
 - package: github.com/form3tech-oss/jwt-go

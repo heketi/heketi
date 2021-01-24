@@ -1,10 +1,10 @@
-hash: 101a677198f95e8950ccdf32f82f219598d593b78574ecf33c638d4fb0d8ccfa
-updated: 2021-01-20T13:22:30.5695457Z
+hash: 02e8083c8690a2db4784253725de50585de6ebd0b0851ea8bba9993d134541c8
+updated: 2021-01-24T17:27:58.064758501-05:00
 imports:
 - name: github.com/asaskevich/govalidator
   version: f9ffefc3facfbe0caee3fea233cbb6e8208f4541
 - name: github.com/auth0/go-jwt-middleware
-  version: 36081240882bbf356af6efb152969e4b0bcf4456
+  version: 1c6db3ceac5f4d28b35ee4b9949a3f80030aa6a3
 - name: github.com/beorn7/perks
   version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
   subpackages:
@@ -15,8 +15,6 @@ imports:
   version: 8991bc29aa16c548c550c7ff78260e27b9ab7c73
   subpackages:
   - spew
-- name: github.com/dgrijalva/jwt-go
-  version: 01aeca54ebda6e0fbfafd0a524d234159c05ec20
 - name: github.com/docker/spdystream
   version: 449fdfce4d962303d702fec724ef0ad181c92528
   subpackages:
