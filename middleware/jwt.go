@@ -42,7 +42,7 @@ func init() {
 	}
 }
 
-// From https://github.com/form3tech-oss/jwt-go/pull/139 it is understood
+// From https://github.com/dgrijalva/jwt-go/pull/139 it is understood
 // that if the machine where jwt token is generated and/or the machine
 // where jwt token is verified have any clock skew then there is a
 // possibility of getting a "Token used before issued" error.
