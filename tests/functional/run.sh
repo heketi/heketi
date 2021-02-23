@@ -55,7 +55,6 @@ fi
 # install glide
 if ! command -v glide ; then
 	echo glide is not installed, please install it to continue
-	echo 'get it from your package manager, or unsafely via: "curl https://glide.sh/get | sh"'
 	exit 1
 fi
 
