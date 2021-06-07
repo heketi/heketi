@@ -35,7 +35,6 @@ Please visit [Vagrant-Heketi](https://github.com/heketi/vagrant-heketi) to try o
 # Community
 
 * Mailing list: [Join our mailing list](http://lists.gluster.org/mailman/listinfo/heketi-devel)
-* IRC: #heketi on Freenode
 
 # Talks
 
