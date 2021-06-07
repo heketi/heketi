@@ -10,10 +10,8 @@ This directory contains two files from creating images:
 2. `Dockerfile.testing` for building an image from packages in testing
 
 These images are maintained by the Heketi Developers, for questions or problem
-reports they can be reached on
-[heketi-devel@gluster.org](mailto:heketi-devel@gluster.org), on Freenode IRC in
-#heketi or by opening an [issue on
-Gitub](https://github.com/heketi/heketi/issues/new).
+reports they can be reached by opening an [issue on
+Github](https://github.com/heketi/heketi/issues/new).
 
 
 ## Build Process
