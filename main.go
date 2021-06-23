@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -54,7 +55,7 @@ var RootCmd = &cobra.Command{
 	Long:    "Heketi is a restful volume management server",
 	Example: "heketi --config=/config/file/path/",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("Heketi %v\n", HEKETI_VERSION)
+		fmt.Printf("Heketi %v (using go: %v)\n", HEKETI_VERSION, runtime.Version())
 		if !showVersion {
 			// Check configuration file was given
 			if configfile == "" {
