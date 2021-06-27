@@ -123,7 +123,9 @@ if [[ ! -f "${HEKETI_PATH}/heketi.db" ]]; then
             ((check+=1))
         done
     fi
+fi
 
+if [[ -f "${HEKETI_PATH}/heketi.db" ]]; then
     stat "${HEKETI_PATH}/heketi.db" 2>/dev/null | tee -a "${LOG}"
     # Workaround for scenario where a lock on the heketi.db has not been
     # released.
