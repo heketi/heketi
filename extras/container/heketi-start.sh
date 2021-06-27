@@ -123,24 +123,24 @@ if [[ ! -f "${HEKETI_PATH}/heketi.db" ]]; then
             ((check+=1))
         done
     fi
-fi
 
-stat "${HEKETI_PATH}/heketi.db" 2>/dev/null | tee -a "${LOG}"
-# Workaround for scenario where a lock on the heketi.db has not been
-# released.
-# This code uses a non-blocking flock in a loop rather than a blocking
-# lock with timeout due to issues with current gluster and flock
-# ( see rhbz#1613260 )
-for _ in $(seq 1 60); do
-    flock --nonblock "${HEKETI_PATH}/heketi.db" true
-    flock_status=$?
-    if [[ $flock_status -eq 0 ]]; then
-        break
+    stat "${HEKETI_PATH}/heketi.db" 2>/dev/null | tee -a "${LOG}"
+    # Workaround for scenario where a lock on the heketi.db has not been
+    # released.
+    # This code uses a non-blocking flock in a loop rather than a blocking
+    # lock with timeout due to issues with current gluster and flock
+    # ( see rhbz#1613260 )
+    for _ in $(seq 1 60); do
+        flock --nonblock "${HEKETI_PATH}/heketi.db" true
+        flock_status=$?
+        if [[ $flock_status -eq 0 ]]; then
+            break
+        fi
+        sleep 1
+    done
+    if [[ $flock_status -ne 0 ]]; then
+        fail "Database file is read-only"
     fi
-    sleep 1
-done
-if [[ $flock_status -ne 0 ]]; then
-    fail "Database file is read-only"
 fi
 
 # this creates archival copies of the db if needed for disaster
