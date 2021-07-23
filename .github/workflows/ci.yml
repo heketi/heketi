@@ -36,14 +36,11 @@ jobs:
         mkdir -p /home/runner/go/src/github.com/heketi
         cp -r /home/runner/work/heketi/heketi /home/runner/go/src/github.com/heketi
 
-    - name: install glide and run heketi tests
+    - name: run heketi tests
       working-directory: "/home/runner/go"
       env:
         GOPATH: /home/runner/go
       run: |
         export PATH=$PATH:$GOPATH/bin
-        curl -L -o /tmp/glide-v0.13.3-linux-amd64.tar.gz https://github.com/Masterminds/glide/releases/download/v0.13.3/glide-v0.13.3-linux-amd64.tar.gz
-        tar -xO -f /tmp/glide-v0.13.3-linux-amd64.tar.gz "linux-amd64/glide" > "$GOPATH/bin/glide"
-        chmod 0777 "$GOPATH/bin/glide"
         cd /home/runner/go/src/github.com/heketi/heketi
         make all test COVERAGE=true TESTOPTIONS="-vcstdout"
