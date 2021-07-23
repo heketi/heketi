@@ -52,12 +52,6 @@ if [[ "${#TESTS[@]}" -eq 0 ]]; then
 	TESTS+=("TestEnabledTLS")
 fi
 
-# install glide
-if ! command -v glide ; then
-	echo glide is not installed, please install it to continue
-	exit 1
-fi
-
 fetch_golang() {
 	# Download golang 1.8.3
 	curl -O https://storage.googleapis.com/golang/go1.8.3.linux-amd64.tar.gz
