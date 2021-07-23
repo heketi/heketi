@@ -12,9 +12,7 @@ import tempfile
 
 USE_SUDO = False
 
-# We build on fedora 27 because there are (were) issues
-# with glide on fedora 28.
-BUILD_IMAGE_BASE = 'fedora:27'
+BUILD_IMAGE_BASE = 'fedora:latest'
 
 DEPLOY_IMAGE_BASE = 'fedora:latest'
 
@@ -39,7 +37,7 @@ def buildah_from(src):
 
 
 def build_binaries(outdir, build_image_base):
-    pkgs = 'glide golang git make mercurial'
+    pkgs = 'golang git make mercurial'
     hdir = '/build/src/github.com/heketi/heketi'
     heketi_branch = 'master'
     heketi_url = 'https://github.com/heketi/heketi.git'
