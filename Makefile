@@ -64,7 +64,7 @@ heketi: vendor
 
 server: heketi
 
-vendor:
+vendor: go.mod go.sum
 ifndef HGPATH
 	$(info Please install mercurial/hg.)
 	$(info build needs to fetch pkgs from a mercurial repository.)
