@@ -22,7 +22,7 @@ import (
 	"time"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
-	jwt "github.com/form3tech-oss/jwt-go"
+	jwt "github.com/golang-jwt/jwt"
 	"github.com/heketi/heketi/pkg/logging"
 )
 

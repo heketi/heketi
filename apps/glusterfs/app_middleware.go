@@ -13,7 +13,7 @@ import (
 	"net/http"
 	"strings"
 
-	jwt "github.com/form3tech-oss/jwt-go"
+	jwt "github.com/golang-jwt/jwt"
 	"github.com/urfave/negroni"
 
 	"github.com/heketi/heketi/middleware"
