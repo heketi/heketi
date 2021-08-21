@@ -16,6 +16,7 @@ package client_tls_test
 
 import (
 	"testing"
+	"time"
 
 	client "github.com/heketi/heketi/client/api/go-client"
 	"github.com/heketi/heketi/pkg/glusterfs/api"
@@ -51,6 +52,7 @@ func TestCreateClusterTLSNoVerify(t *testing.T) {
 	err := heketiServer.Start()
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	defer heketiServer.Stop()
+	time.Sleep(200 * time.Millisecond)
 
 	heketi, err := client.NewClientTLS(URL, User, Key, &client.ClientTLSOptions{
 		InsecureSkipVerify: true,
@@ -69,6 +71,7 @@ func TestClientFailUnknownAuthority(t *testing.T) {
 	err := heketiServer.Start()
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
 	defer heketiServer.Stop()
+	time.Sleep(200 * time.Millisecond)
 
 	heketi, err := client.NewClientTLS(URL, User, Key, &client.ClientTLSOptions{})
 	tests.Assert(t, err == nil, "expected err == nil, got:", err)
