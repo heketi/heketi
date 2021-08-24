@@ -63,7 +63,7 @@ Showing top 10 nodes out of 93
     6.50MB  3.25% 77.23%     6.50MB  3.25%  context.WithValue
     6.50MB  3.25% 80.48%     6.50MB  3.25%  encoding/json.(*decodeState).literalStore
        6MB  3.00% 83.49%     6.50MB  3.25%  net/textproto.(*Reader).ReadLine
-    5.50MB  2.75% 86.24%    39.51MB 19.76%  github.com/heketi/heketi/vendor/github.com/form3tech-oss/jwt-go.(*Parser).ParseWithClaims
+    5.50MB  2.75% 86.24%    39.51MB 19.76%  github.com/heketi/heketi/vendor/github.com/golang-jwt/jwt.(*Parser).ParseWithClaims
 ```
 
 ```

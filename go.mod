@@ -5,8 +5,8 @@ go 1.14
 require (
 	github.com/auth0/go-jwt-middleware v1.0.1
 	github.com/boltdb/bolt v1.3.1
-	github.com/form3tech-oss/jwt-go v3.2.2+incompatible
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
+	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/gorilla/mux v1.8.0
 	github.com/heketi/tests v0.0.0-20151005000721-f3775cbcefd6
 	github.com/lpabon/godbc v0.1.1
