@@ -9,23 +9,19 @@ BRANCH := $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
 VER := $(shell git describe --match='v[0-9]*.[0-9].[0-9]')
 TAG := $(shell git tag --points-at HEAD 'v[0-9]*.[0-9].[0-9]' | tail -n1)
 GO:=go
-GLIDE:=glide --debug
 TESTBIN:=./test.sh
 GOARCH := $(shell $(GO) env GOARCH)
 GOOS := $(shell $(GO) env GOOS)
 GOHOSTARCH := $(shell $(GO) env GOHOSTARCH)
 GOHOSTOS := $(shell $(GO) env GOHOSTOS)
 GOBUILDFLAGS :=
-GLIDEPATH := $(shell command -v glide 2> /dev/null)
 HGPATH := $(shell command -v hg 2> /dev/null)
 DIR=.
 
 # Specify CI=openshift to use a custom HOME dir
-# that prevents unhelpful behavior from glide and tox
+# that prevents unhelpful behavior
 ifeq ($(CI),openshift)
 	HOME := /tmp/heketi_home/
-	GLIDE_HOME := /tmp/heketi_home/.glide
-	GLIDE := HOME=$(HOME) GLIDE_HOME=$(GLIDE_HOME) glide
 endif
 
 ifeq (master,$(BRANCH))
@@ -63,43 +59,30 @@ name:
 package:
 	@echo $(PACKAGE)
 
-heketi: vendor glide.lock
+heketi: vendor
 	$(GO) build $(GOBUILDFLAGS) $(LDFLAGS) -o $(APP_NAME)
 
 server: heketi
 
-vendor:
-ifndef GLIDEPATH
-	$(info Please install glide.)
-	$(info Install it using your package manager or)
-	$(info by running: curl https://glide.sh/get | sh.)
-	$(info )
-	$(error glide is required to continue)
-endif
+vendor: go.mod go.sum
 ifndef HGPATH
 	$(info Please install mercurial/hg.)
-	$(info glide needs to fetch pkgs from a mercurial repository.)
+	$(info build needs to fetch pkgs from a mercurial repository.)
 	$(error mercurial/hg is required to continue)
 endif
 	echo "Installing vendor directory"
-	if [ "$(GLIDE_HOME)" ]; then mkdir -p "$(GLIDE_HOME)"; fi
-	timeout 20m $(GLIDE) install -v || timeout 20m $(GLIDE) install -v
+	GO111MODULE=on $(GO) mod vendor -v
 
-glide.lock: glide.yaml
-	echo "Glide.yaml has changed, updating glide.lock"
-	if [ "$(GLIDE_HOME)" ]; then mkdir -p "$(GLIDE_HOME)"; fi
-	$(GLIDE) update -v
-
-client: vendor glide.lock
+client: vendor
 	@$(MAKE) -C client/cli/go
 
 run: server
 	./$(APP_NAME)
 
-test: vendor glide.lock
+test: vendor
 	$(TESTBIN) $(TESTOPTIONS)
 
-test-functional: vendor glide.lock
+test-functional: vendor
 	$(MAKE) -C tests/functional test
 
 clean:
@@ -140,7 +123,7 @@ $(CLIENT_PACKAGE): all
 
 deps_tarball: $(DEPS_TARBALL)
 
-$(DEPS_TARBALL): clean clean_vendor vendor glide.lock
+$(DEPS_TARBALL): clean clean_vendor vendor
 	@echo Creating dependency tarball...
 	@mkdir -p $(DIR)/dist/
 	tar -czf $@ -C vendor .

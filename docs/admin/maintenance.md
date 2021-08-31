@@ -5,6 +5,7 @@
     * [Increasing cluster size](#increasing-cluster-size)
     * [Adding a new cluster](#adding-a-new-cluster)
 * [Reducing Capacity](#reducing-capacity)
+* [Replacing Nodes or Devices](#replacing-nodes-or-devices)
 
 
 # Overview
@@ -158,3 +159,111 @@ Node e97d77d0191c26089376c78202ee2f20 deleted
 sh-4.2$ heketi-cli cluster delete $cluster
 Cluster 6fe4dcffb9e077007db17f737ed999fe deleted
 ```
+
+# Replacing Nodes or Devices
+
+A node or device can be replaced if it has failed or needs to be swapped out
+as part of proactive maintenance. All bricks located on the node or device will
+be replaced with new bricks on different devices. There must be enough free
+space on other devices to support these new bricks and the same constraints on
+volume replication count must be obeyed. For example, trying to remove a device
+from a node in a three node cluster, where each node has exactly one device
+will fail. This is due to the fact that a replica-3 volume requires the bricks
+(in each replica set) to be hosted by a different node. It may be necessary to
+increase overall cluster capacity before running through the replacement
+process.
+
+If you are going to be replacing multiple nodes or devices together or in
+quick succession it is typically better to mark all of the nodes and devices
+that you do not want to be used for new bricks as 'offline' prior to
+removing any one device or node. This is especially true if performing
+maintenance and the devices are functioning and could accept new bricks.
+Heketi will not place a new brick on a node or device in the 'offline' state.
+Putting all unwanted devices offline together prevents the scenario where
+Heketi moves a brick from device a to b, and then from b to c if both
+a and b are being removed.
+
+Removing a node is effectively the same as removing all the devices on
+the node in one pass. Setting a node offline or failed will make all the
+devices attached to that node offline or failed.
+
+## Remove a single device
+
+To remove a device, replacing all the bricks on that device with new ones
+on other devices, the device must first be put in the offline state:
+```
+heketi-cli device disable <device-id>
+```
+
+An offline device is not allowed to accept new bricks but Heketi makes
+no other changes to the device.
+
+To fully remove the bricks from the device, execute:
+```
+heketi-cli device remove <device-id>
+```
+
+When this command succeeds all bricks should have been removed from the
+device. This can be confirmed using `heketi-cli topology info`.
+If the command fails it may be that there was insufficient space on the
+cluster or that some of the constraints on brick placement
+(insufficient nodes, etc.) could not be met. Check the error message and/or
+the Heketi log for more details.
+
+## Remove a single node
+
+To remove a node, replacing all the bricks on all devices on that node with new
+ones on other devices, the node must first be put in the offline state:
+```
+heketi-cli node disable <node-id>
+```
+
+An offline node is not allowed to accept new bricks but Heketi makes
+no other changes to the node or it's devices.
+
+To fully remove the bricks from the node, execute:
+```
+heketi-cli node remove <node-id>
+```
+
+When this command succeeds all bricks should have been removed from the
+node. This can be confirmed using `heketi-cli topology info`.
+If the command fails it may be that there was insufficient space on the
+cluster or that some of the constraints on brick placement
+(insufficient nodes, etc.) could not be met. Check the error message and/or
+the Heketi log for more details.
+
+## Replace a single brick
+
+In some circumstances it may be useful to replace only a single specific brick.
+In this scenario the brick id can be acquired using `heketi-cli topology info`
+and then passed to the 'brick eviction' command. A brick may be evicted from
+a device that is online, but Heketi will always obey the same rules noted above
+and will not place the brick on an offline device or node and will conform
+to all placement constraints. Brick eviction is new in Heketi version 10.
+
+To evict a given brick, run:
+```
+heketi-cli brick evict <brick-id>
+```
+
+Please note that brick eviction only allows the user to directly control what
+brick to remove. The brick will automatically be replaced just like the device
+remove case.
+
+## Deleting nodes and devices
+
+When a device is free of bricks the device can be removed from the cluster
+topology in the Heketi database. When a node is free of devices it can be
+removed from the cluster topology in the Heketi database.
+
+To delete a device, run:
+```
+heketi-cli device delete <device-id>
+```
+
+To delete a node, run:
+```
+heketi-cli node delete <node-id>
+```
+

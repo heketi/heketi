@@ -1,0 +1,46 @@
+name: Test the Pull request
+
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-18.04
+    strategy:
+      fail-fast: false
+      matrix:
+        go: ["1.15", "1.16"]
+    steps:
+    - uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go }}
+
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
+    - name: install python deps
+      run: |
+        sudo apt-get install -qq python python-pip
+        sudo pip install tox nose
+
+    - name: install go deps
+      run: go get golang.org/x/tools/cmd/goimports
+
+    - name: copy heketi repo in go src
+      run: |
+        mkdir -p /home/runner/go/src/github.com/heketi
+        cp -r /home/runner/work/heketi/heketi /home/runner/go/src/github.com/heketi
+
+    - name: run heketi tests
+      working-directory: "/home/runner/go"
+      env:
+        GOPATH: /home/runner/go
+      run: |
+        export PATH=$PATH:$GOPATH/bin
+        cd /home/runner/go/src/github.com/heketi/heketi
+        make all test COVERAGE=true TESTOPTIONS="-vcstdout"

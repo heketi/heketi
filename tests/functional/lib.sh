@@ -118,6 +118,12 @@ teardown_environment() {
     esac
 }
 
+dump_logs() {
+    local envdump="${HEKETI_TEST_ENVIRONMENT_DUMP}"
+    [ "${envdump}" ] || envdump="${DEFAULT_TESTENV}/dump.sh"
+    _sudo "${envdump}"
+}
+
 teardown() {
     teardown_environment
     rm -f heketi.db > /dev/null 2>&1
@@ -155,6 +161,9 @@ functional_tests() {
     pause_test "$HEKETI_TEST_PAUSE_BEFORE"
     run_go_tests
     pause_test "$HEKETI_TEST_PAUSE_AFTER"
+    if [[ $gotest_result -ne 0 ]]; then
+        dump_logs
+    fi
 
     stop_heketi
     if [[ "$HEKETI_TEST_CLEANUP" != "no" ]]

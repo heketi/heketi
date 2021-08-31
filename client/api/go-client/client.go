@@ -25,7 +25,7 @@ import (
 	"strconv"
 	"time"
 
-	jwt "github.com/form3tech-oss/jwt-go"
+	jwt "github.com/golang-jwt/jwt"
 	"github.com/heketi/heketi/pkg/utils"
 )
 

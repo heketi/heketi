@@ -1,26 +1,21 @@
-[![Build Status](https://travis-ci.org/heketi/heketi.svg?branch=master)](https://travis-ci.org/heketi/heketi)
-[![Coverage Status](https://coveralls.io/repos/heketi/heketi/badge.svg)](https://coveralls.io/r/heketi/heketi)
-[![Go Report Card](https://goreportcard.com/badge/github.com/heketi/heketi)](https://goreportcard.com/report/github.com/heketi/heketi)
 
 # Heketi
 Heketi provides a RESTful management interface which can be used to manage the life cycle of GlusterFS volumes.  With Heketi, cloud services like OpenStack Manila, Kubernetes, and OpenShift can dynamically provision GlusterFS volumes with any of the supported durability types.  Heketi will automatically determine the location for bricks across the cluster, making sure to place bricks and its replicas across different failure domains.  Heketi also supports any number of GlusterFS clusters, allowing cloud services to provide network file storage without being limited to a single GlusterFS cluster.
 
-# Important Notice
 
-Due to resource limits on the current project maintainers and general lack of
-contributions we are considering placing Heketi into a near-maintenance mode.
-While we plan to continue to fix issues, communicate with users, review PRs, and
-possibly even make small Quality-of-Life enhancements it is unlikely that any
-major new development will occur. The truth is, this is largely already the
-state of the project and this is our way of letting a wider audience know.
 
-If you are a Heketi user who likes it and plans to continue using it please
-consider contributing to the project. Unless the activity level in Heketi
-increases it is likely we will need to put the project in full maintenance mode
-where only major bug fixes will be considered.
+# Maintenance Status
 
-# Workflow
-When a request is received to create a volume, Heketi will first allocate the appropriate storage in a cluster, making sure to place brick replicas across failure domains.  It will then format, then mount the storage to create bricks for the volume requested.  Once all bricks have been automatically created, Heketi will finally satisfy the request by creating, then starting the newly created GlusterFS volume.
+⚠️ IMPORTANT - Please read this section carefully if you are currently using or plan to use Heketi or want to contribute to the project. ⚠️
+
+As of Heketi release v10.2 the project is considered to be in maintenance only status. This means that only major bugs, performance regressions, or security defects are being considered for inclusion by the project team. Please also expect slow replies to issues.
+
+It has been over a year since we entered "soft" maintenance mode, plus a call to other interested parties to help with Heketi development. With little additional activity since then it no longer makes sense for us to spend as much time on this project, even at the level we had in 2020.
+
+Additionally, we would like to note that the Heketi maintenance team does not maintain the gluster volume integration found in Kubernetes that makes use of Heketi. Issues beyond the Heketi server, cli tool, and client API are best addressed elsewhere.
+
+Thank you for your understanding.
+
 
 # Downloads
 
@@ -40,7 +35,6 @@ Please visit [Vagrant-Heketi](https://github.com/heketi/vagrant-heketi) to try o
 # Community
 
 * Mailing list: [Join our mailing list](http://lists.gluster.org/mailman/listinfo/heketi-devel)
-* IRC: #heketi on Freenode
 
 # Talks
 
