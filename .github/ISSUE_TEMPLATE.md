@@ -1,12 +1,14 @@
 <!--
-This issue template is meant mainly for bug reports and feature requests.
+This issue template is meant mainly for bug reports.
 
-If you are looking for help, you can reach out to the IRC channel
-#heketi on freenode or use the mailing list heketi-devel@gluster.org.
+Please note that the heketi project is in maintenance only. Feature requests are
+highly unlikely to be accepted. Only major defects and security issues are likely
+to be considered.
 
-You can still use an issue to ask for help. In this case
-you should remove the template contents or use it as a guideline
-for providing information for debugging.
+If you are using an issue for general help please be aware that our ability to
+assist with heketi is severly limited, responses may be slow, and questions that
+lack sufficient detail may go unanswered.
+
 -->
 
 ### Kind of issue
