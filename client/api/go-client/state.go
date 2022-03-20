@@ -19,7 +19,7 @@ import (
 	"github.com/heketi/heketi/pkg/utils"
 )
 
-// StateExamineGluster provides a comparision of DB and Gluster
+// StateExamineGluster provides a comparison of DB and Gluster
 func (c *Client) StateExamineGluster() (string, error) {
 	req, err := http.NewRequest("GET", c.host+"/internal/state/examine/gluster", nil)
 	if err != nil {
