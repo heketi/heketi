@@ -20,8 +20,8 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/client-go/util/exec"
 
-	rex "github.com/heketi/heketi/pkg/remoteexec"
-	rexlog "github.com/heketi/heketi/pkg/remoteexec/log"
+	rex "github.com/heketi/heketi/v10/pkg/remoteexec"
+	rexlog "github.com/heketi/heketi/v10/pkg/remoteexec/log"
 )
 
 type TimeoutOptions struct {

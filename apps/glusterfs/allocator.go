@@ -10,7 +10,7 @@
 package glusterfs
 
 import (
-	wdb "github.com/heketi/heketi/pkg/db"
+	wdb "github.com/heketi/heketi/v10/pkg/db"
 )
 
 type Allocator interface {

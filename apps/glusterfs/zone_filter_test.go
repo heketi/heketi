@@ -16,7 +16,7 @@ import (
 	_ "github.com/boltdb/bolt"
 	"github.com/heketi/tests"
 
-	_ "github.com/heketi/heketi/pkg/db"
+	_ "github.com/heketi/heketi/v10/pkg/db"
 )
 
 func TestNewDeviceZoneMap(t *testing.T) {

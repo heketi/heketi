@@ -18,9 +18,9 @@ import (
 	"testing"
 	"time"
 
-	client "github.com/heketi/heketi/client/api/go-client"
-	"github.com/heketi/heketi/pkg/glusterfs/api"
-	tutils "github.com/heketi/heketi/pkg/testutils"
+	client "github.com/heketi/heketi/v10/client/api/go-client"
+	"github.com/heketi/heketi/v10/pkg/glusterfs/api"
+	tutils "github.com/heketi/heketi/v10/pkg/testutils"
 
 	"github.com/heketi/tests"
 )

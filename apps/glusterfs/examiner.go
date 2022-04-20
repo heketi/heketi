@@ -15,7 +15,7 @@ import (
 	"sort"
 
 	"github.com/boltdb/bolt"
-	"github.com/heketi/heketi/executors"
+	"github.com/heketi/heketi/v10/executors"
 )
 
 type ExaminerMode string

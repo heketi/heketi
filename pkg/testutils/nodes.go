@@ -1,3 +1,4 @@
+//go:build functional
 // +build functional
 
 //
@@ -18,8 +19,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/heketi/heketi/pkg/logging"
-	"github.com/heketi/heketi/pkg/remoteexec/ssh"
+	"github.com/heketi/heketi/v10/pkg/logging"
+	"github.com/heketi/heketi/v10/pkg/remoteexec/ssh"
 )
 
 var (

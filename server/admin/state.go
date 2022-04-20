@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/v10/pkg/glusterfs/api"
 )
 
 type ServerState struct {

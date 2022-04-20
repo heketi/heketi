@@ -16,7 +16,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/v10/pkg/utils"
 )
 
 // DbDump provides a JSON representation of current state of DB

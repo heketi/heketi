@@ -1,3 +1,4 @@
+//go:build functional
 // +build functional
 
 //
@@ -15,10 +16,10 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/heketi/pkg/logging"
-	"github.com/heketi/heketi/pkg/testutils"
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/v10/pkg/glusterfs/api"
+	"github.com/heketi/heketi/v10/pkg/logging"
+	"github.com/heketi/heketi/v10/pkg/testutils"
+	"github.com/heketi/heketi/v10/pkg/utils"
 	"github.com/heketi/tests"
 )
 

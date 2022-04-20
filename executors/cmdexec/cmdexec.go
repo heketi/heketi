@@ -16,8 +16,8 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/heketi/heketi/pkg/logging"
-	rex "github.com/heketi/heketi/pkg/remoteexec"
+	"github.com/heketi/heketi/v10/pkg/logging"
+	rex "github.com/heketi/heketi/v10/pkg/remoteexec"
 )
 
 var (

@@ -15,8 +15,8 @@ import (
 
 	"github.com/heketi/tests"
 
-	"github.com/heketi/heketi/executors/cmdexec"
-	"github.com/heketi/heketi/executors/mockexec"
+	"github.com/heketi/heketi/v10/executors/cmdexec"
+	"github.com/heketi/heketi/v10/executors/mockexec"
 )
 
 func TestBasicWrapping(t *testing.T) {

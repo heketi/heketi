@@ -14,8 +14,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/heketi/heketi/executors"
-	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/v10/executors"
+	"github.com/heketi/heketi/v10/pkg/glusterfs/api"
 
 	"github.com/boltdb/bolt"
 	"github.com/heketi/tests"

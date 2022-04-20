@@ -25,7 +25,7 @@ import (
 	"time"
 
 	jwt "github.com/golang-jwt/jwt"
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/v10/pkg/utils"
 	"github.com/heketi/tests"
 	"github.com/urfave/negroni"
 )

@@ -12,7 +12,7 @@ package kubernetes
 import (
 	"fmt"
 
-	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/v10/pkg/glusterfs/api"
 
 	kubeapi "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"

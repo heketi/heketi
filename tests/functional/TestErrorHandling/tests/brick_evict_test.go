@@ -1,3 +1,4 @@
+//go:build functional
 // +build functional
 
 //
@@ -24,12 +25,12 @@ import (
 
 	"github.com/heketi/tests"
 
-	inj "github.com/heketi/heketi/executors/injectexec"
-	"github.com/heketi/heketi/pkg/glusterfs/api"
-	rex "github.com/heketi/heketi/pkg/remoteexec"
-	"github.com/heketi/heketi/pkg/remoteexec/ssh"
-	"github.com/heketi/heketi/pkg/testutils"
-	"github.com/heketi/heketi/server/config"
+	inj "github.com/heketi/heketi/v10/executors/injectexec"
+	"github.com/heketi/heketi/v10/pkg/glusterfs/api"
+	rex "github.com/heketi/heketi/v10/pkg/remoteexec"
+	"github.com/heketi/heketi/v10/pkg/remoteexec/ssh"
+	"github.com/heketi/heketi/v10/pkg/testutils"
+	"github.com/heketi/heketi/v10/server/config"
 )
 
 func TestBrickEvict(t *testing.T) {

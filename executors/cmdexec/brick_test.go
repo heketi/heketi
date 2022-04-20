@@ -13,10 +13,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/heketi/heketi/executors"
-	conv "github.com/heketi/heketi/pkg/conversions"
-	"github.com/heketi/heketi/pkg/paths"
-	rex "github.com/heketi/heketi/pkg/remoteexec"
+	"github.com/heketi/heketi/v10/executors"
+	conv "github.com/heketi/heketi/v10/pkg/conversions"
+	"github.com/heketi/heketi/v10/pkg/paths"
+	rex "github.com/heketi/heketi/v10/pkg/remoteexec"
 	"github.com/heketi/tests"
 )
 

@@ -19,9 +19,9 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/heketi/pkg/logging"
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/v10/pkg/glusterfs/api"
+	"github.com/heketi/heketi/v10/pkg/logging"
+	"github.com/heketi/heketi/v10/pkg/utils"
 	"github.com/heketi/tests"
 )
 

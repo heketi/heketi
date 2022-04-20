@@ -1,4 +1,4 @@
-module github.com/heketi/heketi
+module github.com/heketi/heketi/v10
 
 go 1.14
 

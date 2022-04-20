@@ -12,8 +12,8 @@ package glusterfs
 import (
 	"fmt"
 
-	_ "github.com/heketi/heketi/executors"
-	wdb "github.com/heketi/heketi/pkg/db"
+	_ "github.com/heketi/heketi/v10/executors"
+	wdb "github.com/heketi/heketi/v10/pkg/db"
 )
 
 type ErrNotLoadable struct {

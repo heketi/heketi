@@ -16,8 +16,8 @@ import (
 	jwt "github.com/golang-jwt/jwt"
 	"github.com/urfave/negroni"
 
-	"github.com/heketi/heketi/middleware"
-	"github.com/heketi/heketi/pkg/kubernetes"
+	"github.com/heketi/heketi/v10/middleware"
+	"github.com/heketi/heketi/v10/pkg/kubernetes"
 )
 
 var (

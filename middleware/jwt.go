@@ -23,7 +23,7 @@ import (
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	jwt "github.com/golang-jwt/jwt"
-	"github.com/heketi/heketi/pkg/logging"
+	"github.com/heketi/heketi/v10/pkg/logging"
 )
 
 var (

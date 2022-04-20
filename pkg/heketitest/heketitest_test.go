@@ -12,8 +12,8 @@ package heketitest
 import (
 	"testing"
 
-	client "github.com/heketi/heketi/client/api/go-client"
-	glusterapi "github.com/heketi/heketi/pkg/glusterfs/api"
+	client "github.com/heketi/heketi/v10/client/api/go-client"
+	glusterapi "github.com/heketi/heketi/v10/pkg/glusterfs/api"
 	"github.com/heketi/tests"
 )
 

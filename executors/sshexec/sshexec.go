@@ -17,10 +17,10 @@ import (
 
 	"github.com/lpabon/godbc"
 
-	"github.com/heketi/heketi/executors/cmdexec"
-	"github.com/heketi/heketi/pkg/logging"
-	rex "github.com/heketi/heketi/pkg/remoteexec"
-	"github.com/heketi/heketi/pkg/remoteexec/ssh"
+	"github.com/heketi/heketi/v10/executors/cmdexec"
+	"github.com/heketi/heketi/v10/pkg/logging"
+	rex "github.com/heketi/heketi/v10/pkg/remoteexec"
+	"github.com/heketi/heketi/v10/pkg/remoteexec/ssh"
 )
 
 type Ssher interface {
