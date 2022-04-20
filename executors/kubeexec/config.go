@@ -10,7 +10,7 @@
 package kubeexec
 
 import (
-	"github.com/heketi/heketi/executors/cmdexec"
+	"github.com/heketi/heketi/v10/executors/cmdexec"
 )
 
 type KubeConfig struct {

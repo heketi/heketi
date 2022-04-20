@@ -22,7 +22,7 @@ import (
 
 	"github.com/heketi/tests"
 
-	"github.com/heketi/heketi/pkg/testutils"
+	"github.com/heketi/heketi/v10/pkg/testutils"
 )
 
 func TestServerStartUnknownDbAttrs(t *testing.T) {

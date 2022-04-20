@@ -10,9 +10,9 @@
 package glusterfs
 
 import (
-	"github.com/heketi/heketi/executors/injectexec"
-	"github.com/heketi/heketi/executors/kubeexec"
-	"github.com/heketi/heketi/executors/sshexec"
+	"github.com/heketi/heketi/v10/executors/injectexec"
+	"github.com/heketi/heketi/v10/executors/kubeexec"
+	"github.com/heketi/heketi/v10/executors/sshexec"
 )
 
 type RetryLimitConfig struct {

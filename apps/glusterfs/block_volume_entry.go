@@ -15,11 +15,11 @@ import (
 	"fmt"
 
 	"github.com/boltdb/bolt"
-	"github.com/heketi/heketi/executors"
-	wdb "github.com/heketi/heketi/pkg/db"
-	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/heketi/pkg/idgen"
-	"github.com/heketi/heketi/pkg/sortedstrings"
+	"github.com/heketi/heketi/v10/executors"
+	wdb "github.com/heketi/heketi/v10/pkg/db"
+	"github.com/heketi/heketi/v10/pkg/glusterfs/api"
+	"github.com/heketi/heketi/v10/pkg/idgen"
+	"github.com/heketi/heketi/v10/pkg/sortedstrings"
 	"github.com/lpabon/godbc"
 )
 

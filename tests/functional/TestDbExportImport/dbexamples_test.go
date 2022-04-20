@@ -1,3 +1,4 @@
+//go:build dbexamples
 // +build dbexamples
 
 //
@@ -16,8 +17,8 @@ import (
 	"testing"
 
 	//"github.com/boltdb/bolt"
-	g "github.com/heketi/heketi/apps/glusterfs"
-	//"github.com/heketi/heketi/pkg/glusterfs/api"
+	g "github.com/heketi/heketi/v10/apps/glusterfs"
+	//"github.com/heketi/heketi/v10/pkg/glusterfs/api"
 	//"github.com/heketi/tests"
 )
 

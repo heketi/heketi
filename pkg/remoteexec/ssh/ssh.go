@@ -24,9 +24,9 @@ import (
 	"golang.org/x/crypto/ssh/agent"
 	"golang.org/x/crypto/ssh/knownhosts"
 
-	"github.com/heketi/heketi/pkg/logging"
-	rex "github.com/heketi/heketi/pkg/remoteexec"
-	rexlog "github.com/heketi/heketi/pkg/remoteexec/log"
+	"github.com/heketi/heketi/v10/pkg/logging"
+	rex "github.com/heketi/heketi/v10/pkg/remoteexec"
+	rexlog "github.com/heketi/heketi/v10/pkg/remoteexec/log"
 )
 
 type SshExec struct {

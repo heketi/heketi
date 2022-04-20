@@ -11,7 +11,7 @@
 //
 
 //
-// Please see https://github.com/heketi/heketi/wiki/API
+// Please see https://github.com/heketi/heketi/v10/wiki/API
 // for documentation
 //
 package api

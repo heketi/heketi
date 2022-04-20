@@ -10,7 +10,7 @@
 package glusterfs
 
 import (
-	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/v10/pkg/glusterfs/api"
 )
 
 type Entry struct {

@@ -16,7 +16,7 @@ import (
 	"os"
 
 	"github.com/boltdb/bolt"
-	wdb "github.com/heketi/heketi/pkg/db"
+	wdb "github.com/heketi/heketi/v10/pkg/db"
 
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"

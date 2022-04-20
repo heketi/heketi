@@ -15,7 +15,7 @@ import (
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/heketi/heketi/pkg/kubernetes"
+	"github.com/heketi/heketi/v10/pkg/kubernetes"
 )
 
 type describable interface {

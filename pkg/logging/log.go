@@ -49,7 +49,7 @@ func logWithLongFile(l *log.Logger, format string, v ...interface{}) {
 
 	// Shorten the path.
 	// From
-	// /builddir/build/BUILD/heketi-3f4a5b1b6edff87232e8b24533c53b4151ebd9c7/src/github.com/heketi/heketi/apps/glusterfs/volume_entry.go
+	// /builddir/build/BUILD/heketi-3f4a5b1b6edff87232e8b24533c53b4151ebd9c7/src/github.com/heketi/heketi/v10/apps/glusterfs/volume_entry.go
 	// to
 	// apps/glusterfs/volume_entry.go
 	const basePath = "github.com/heketi/"

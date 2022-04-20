@@ -15,7 +15,7 @@ import (
 	"regexp"
 	"time"
 
-	rex "github.com/heketi/heketi/pkg/remoteexec"
+	rex "github.com/heketi/heketi/v10/pkg/remoteexec"
 )
 
 // Reaction represents the type of result or error to produce when

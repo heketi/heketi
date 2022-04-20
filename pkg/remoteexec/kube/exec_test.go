@@ -16,7 +16,7 @@ import (
 
 	"github.com/heketi/tests"
 
-	rex "github.com/heketi/heketi/pkg/remoteexec"
+	rex "github.com/heketi/heketi/v10/pkg/remoteexec"
 )
 
 // test timeout options

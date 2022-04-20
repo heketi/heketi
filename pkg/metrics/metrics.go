@@ -13,7 +13,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/heketi/heketi/apps"
+	"github.com/heketi/heketi/v10/apps"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )

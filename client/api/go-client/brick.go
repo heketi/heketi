@@ -18,8 +18,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/v10/pkg/glusterfs/api"
+	"github.com/heketi/heketi/v10/pkg/utils"
 )
 
 // BrickEvict requests that Heketi evict the given brick from the

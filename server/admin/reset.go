@@ -13,7 +13,7 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/v10/pkg/glusterfs/api"
 )
 
 func ResetStateOnSignal(s *ServerState, sig ...os.Signal) {

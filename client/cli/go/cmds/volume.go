@@ -17,8 +17,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/heketi/pkg/kubernetes"
+	"github.com/heketi/heketi/v10/pkg/glusterfs/api"
+	"github.com/heketi/heketi/v10/pkg/kubernetes"
 	"github.com/spf13/cobra"
 )
 

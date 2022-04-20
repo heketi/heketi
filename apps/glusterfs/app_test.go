@@ -17,8 +17,8 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
-	client "github.com/heketi/heketi/client/api/go-client"
-	"github.com/heketi/heketi/pkg/logging"
+	client "github.com/heketi/heketi/v10/client/api/go-client"
+	"github.com/heketi/heketi/v10/pkg/logging"
 	"github.com/heketi/tests"
 )
 

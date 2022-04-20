@@ -1,3 +1,4 @@
+//go:build functional
 // +build functional
 
 //
@@ -22,11 +23,11 @@ import (
 
 	"github.com/heketi/tests"
 
-	client "github.com/heketi/heketi/client/api/go-client"
-	"github.com/heketi/heketi/middleware"
-	"github.com/heketi/heketi/pkg/glusterfs/api"
-	"github.com/heketi/heketi/pkg/testutils"
-	"github.com/heketi/heketi/server/config"
+	client "github.com/heketi/heketi/v10/client/api/go-client"
+	"github.com/heketi/heketi/v10/middleware"
+	"github.com/heketi/heketi/v10/pkg/glusterfs/api"
+	"github.com/heketi/heketi/v10/pkg/testutils"
+	"github.com/heketi/heketi/v10/server/config"
 )
 
 func TestBlockVolumeAllocDefaults(t *testing.T) {

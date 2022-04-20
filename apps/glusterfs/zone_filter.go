@@ -14,7 +14,7 @@ import (
 
 	"github.com/boltdb/bolt"
 
-	wdb "github.com/heketi/heketi/pkg/db"
+	wdb "github.com/heketi/heketi/v10/pkg/db"
 )
 
 type DeviceZoneMap struct {

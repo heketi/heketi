@@ -16,8 +16,8 @@ import (
 
 	"github.com/lpabon/godbc"
 
-	"github.com/heketi/heketi/executors"
-	"github.com/heketi/heketi/pkg/idgen"
+	"github.com/heketi/heketi/v10/executors"
+	"github.com/heketi/heketi/v10/pkg/idgen"
 )
 
 type OpClass int

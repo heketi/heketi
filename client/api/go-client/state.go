@@ -16,7 +16,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/heketi/heketi/pkg/utils"
+	"github.com/heketi/heketi/v10/pkg/utils"
 )
 
 // StateExamineGluster provides a comparision of DB and Gluster

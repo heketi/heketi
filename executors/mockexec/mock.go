@@ -13,7 +13,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/heketi/heketi/executors"
+	"github.com/heketi/heketi/v10/executors"
 )
 
 type MockExecutor struct {

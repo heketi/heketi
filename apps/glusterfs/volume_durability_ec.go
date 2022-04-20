@@ -12,8 +12,8 @@ package glusterfs
 import (
 	"encoding/gob"
 
-	"github.com/heketi/heketi/executors"
-	"github.com/heketi/heketi/pkg/glusterfs/api"
+	"github.com/heketi/heketi/v10/executors"
+	"github.com/heketi/heketi/v10/pkg/glusterfs/api"
 )
 
 func init() {

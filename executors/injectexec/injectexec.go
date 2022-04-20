@@ -10,14 +10,14 @@
 package injectexec
 
 import (
-	"github.com/heketi/heketi/executors"
-	"github.com/heketi/heketi/executors/cmdexec"
-	"github.com/heketi/heketi/executors/kubeexec"
-	"github.com/heketi/heketi/executors/mockexec"
-	"github.com/heketi/heketi/executors/sshexec"
-	"github.com/heketi/heketi/executors/stack"
-	"github.com/heketi/heketi/pkg/logging"
-	rex "github.com/heketi/heketi/pkg/remoteexec"
+	"github.com/heketi/heketi/v10/executors"
+	"github.com/heketi/heketi/v10/executors/cmdexec"
+	"github.com/heketi/heketi/v10/executors/kubeexec"
+	"github.com/heketi/heketi/v10/executors/mockexec"
+	"github.com/heketi/heketi/v10/executors/sshexec"
+	"github.com/heketi/heketi/v10/executors/stack"
+	"github.com/heketi/heketi/v10/pkg/logging"
+	rex "github.com/heketi/heketi/v10/pkg/remoteexec"
 )
 
 var (

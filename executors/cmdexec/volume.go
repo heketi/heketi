@@ -16,9 +16,9 @@ import (
 
 	"github.com/lpabon/godbc"
 
-	"github.com/heketi/heketi/executors"
-	"github.com/heketi/heketi/pkg/idgen"
-	rex "github.com/heketi/heketi/pkg/remoteexec"
+	"github.com/heketi/heketi/v10/executors"
+	"github.com/heketi/heketi/v10/pkg/idgen"
+	rex "github.com/heketi/heketi/v10/pkg/remoteexec"
 )
 
 func (s *CmdExecutor) VolumeCreate(host string,
