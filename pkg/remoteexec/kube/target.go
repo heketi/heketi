@@ -10,6 +10,7 @@
 package kube
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -60,7 +61,8 @@ func (t TargetLabel) GetTargetPod(k *KubeConn) (TargetPod, error) {
 	tp.Namespace = ns
 	tp.origin = t
 	// Get a list of pods
-	pods, err := k.kube.CoreV1().Pods(ns).List(v1.ListOptions{
+	ctx := context.TODO()
+	pods, err := k.kube.CoreV1().Pods(ns).List(ctx, v1.ListOptions{
 		LabelSelector: t.Key + "==" + t.Value,
 	})
 	if err != nil {
@@ -127,7 +129,8 @@ func (t TargetDaemonSet) GetTargetPod(k *KubeConn) (TargetPod, error) {
 	tp.origin = t
 
 	// Get a list of pods
-	pods, err := k.kube.CoreV1().Pods(ns).List(v1.ListOptions{
+	ctx := context.TODO()
+	pods, err := k.kube.CoreV1().Pods(ns).List(ctx, v1.ListOptions{
 		LabelSelector: t.Selector,
 	})
 	if err != nil {
@@ -174,7 +177,8 @@ func (t TargetPod) String() string {
 // this function will return an error.
 func (t TargetPod) FirstContainer(k *KubeConn) (TargetContainer, error) {
 	tc := TargetContainer{TargetPod: t}
-	podSpec, err := k.kube.CoreV1().Pods(t.Namespace).Get(t.PodName, v1.GetOptions{})
+	ctx := context.TODO()
+	podSpec, err := k.kube.CoreV1().Pods(t.Namespace).Get(ctx, t.PodName, v1.GetOptions{})
 	if err != nil {
 		return tc, fmt.Errorf("Unable to get pod spec for %v: %v",
 			t.PodName, err)

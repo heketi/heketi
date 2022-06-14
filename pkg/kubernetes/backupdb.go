@@ -12,6 +12,7 @@ package kubernetes
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"fmt"
 	"os"
 
@@ -20,6 +21,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 )
@@ -89,10 +91,11 @@ func KubeBackupDbToSecret(db wdb.RODB) error {
 		}
 
 		// Submit secret
-		_, err = secrets.Create(secret)
+		ctx := context.TODO()
+		_, err = secrets.Create(ctx, secret, metav1.CreateOptions{})
 		if apierrors.IsAlreadyExists(err) {
 			// It already exists, so just update it instead
-			_, err = secrets.Update(secret)
+			_, err = secrets.Update(ctx, secret, metav1.UpdateOptions{})
 			if err != nil {
 				return fmt.Errorf("Unable to update database to secret: %v", err)
 			}
