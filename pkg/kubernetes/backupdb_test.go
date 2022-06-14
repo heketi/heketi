@@ -12,6 +12,7 @@ package kubernetes
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -217,7 +218,8 @@ func TestBackupToKubeSecretVerifyBackup(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Get the secret
-	secret, err := fakeclient.CoreV1().Secrets(ns).Get("heketi-db-backup", v1.GetOptions{})
+	ctx := context.TODO()
+	secret, err := fakeclient.CoreV1().Secrets(ns).Get(ctx, "heketi-db-backup", v1.GetOptions{})
 	tests.Assert(t, err == nil)
 
 	// Gunzip
@@ -305,7 +307,8 @@ func TestBackupToKubeSecretVerifyBackupWithName(t *testing.T) {
 	tests.Assert(t, err == nil)
 
 	// Get the secret
-	secret, err := fakeclient.CoreV1().Secrets(ns).Get(secretName, v1.GetOptions{})
+	ctx := context.TODO()
+	secret, err := fakeclient.CoreV1().Secrets(ns).Get(ctx, secretName, v1.GetOptions{})
 	tests.Assert(t, err == nil)
 
 	// Gunzip
