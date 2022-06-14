@@ -1,3 +1,4 @@
+//go:build dbexamples
 // +build dbexamples
 
 //

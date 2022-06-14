@@ -2,7 +2,7 @@ FROM docker.io/centos:7
 MAINTAINER Heketi Developers <heketi-devel@gluster.org>
 ARG HEKETI_REPO="https://github.com/heketi/heketi.git"
 ARG HEKETI_BRANCH="release/10"
-ARG GO_VERSION=1.15.14
+ARG GO_VERSION=1.18.1
 
 
 # let's setup all the necessary environment variables
