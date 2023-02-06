@@ -14,7 +14,7 @@ require (
 	github.com/spf13/cobra v1.2.1
 	github.com/urfave/negroni v1.0.0
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
-	k8s.io/api v0.15.12
-	k8s.io/apimachinery v0.15.12
-	k8s.io/client-go v0.15.12
+	k8s.io/api v0.20.0
+	k8s.io/apimachinery v0.20.0
+	k8s.io/client-go v0.20.0
 )
