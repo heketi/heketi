@@ -10,7 +10,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/heketi/tests v0.0.0-20151005000721-f3775cbcefd6
 	github.com/lpabon/godbc v0.1.1
-	github.com/prometheus/client_golang v1.11.0
+	github.com/prometheus/client_golang v1.11.1
 	github.com/spf13/cobra v1.2.1
 	github.com/urfave/negroni v1.0.0
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
