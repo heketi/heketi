@@ -3,12 +3,9 @@
 
 ⚠️ IMPORTANT - Please read this section carefully if you are currently using or plan to use Heketi or want to contribute to the project. ⚠️
 
-The Heketi project is now in deep maintenance status. This means that only critical bugs or security defects are being considered for inclusion by the project maintenance team. Expect the project to be archived soon. Expect slow replies to issues.
+The Heketi project is now unmaintained. The original maintenance team has archived this repository and is no longer monitoring it. If you need to build, test, or otherwise work on heketi you will need to do so in your own fork.
 
-It has been well over a year since we first entered maintenance mode. To anyone looking at
-creating a new install using Heketi: we highly encourage you to look at other appraoches
-to dynamic storage provisioning, especially if you're not already very familiar with
-Heketi/Gluster.
+Thank you to anyone who used or contributed to Heketi while it was maintained. 
 
 Additionally, we would like to note that the Heketi maintenance team does not maintain the gluster volume integration found in Kubernetes that makes use of Heketi. Issues beyond the Heketi server, cli tool, and client API are best addressed elsewhere.
 
